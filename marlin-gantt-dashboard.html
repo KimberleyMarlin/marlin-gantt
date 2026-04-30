@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marlin Marketing — Gantt Chart Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #f5f5f5;
+    color: #1a1a1a;
+  }
+  
+  .container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #1a3a2a, #2d5a3d);
+    color: white;
+    padding: 24px 32px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  
+  .header p {
+    font-size: 14px;
+    opacity: 0.85;
+  }
+  
+  .auth-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .btn-primary {
+    background: #d4a847;
+    color: #1a3a2a;
+  }
+  
+  .btn-primary:hover {
+    background: #e8c875;
+    transform: translateY(-1px);
+  }
+  
+  .btn-secondary {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+  
+  .btn-secondary:hover {
+    background: rgba(255,255,255,0.25);
+  }
+  
+  .status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4caf50;
+    animation: pulse 2s infinite;
+  }
+  
+  .status-indicator.disconnected {
+    background: #ff5252;
+    animation: none;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  /* Filters */
+  .filters {
+    background: white;
+    padding: 20px 24px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .filter-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .filter-select, .filter-input {
+    padding: 8px 12px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    background: white;
+    min-width: 180px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  
+  .filter-select:focus, .filter-input:focus {
+    border-color: #5c8a5e;
+  }
+  
+  .filter-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  
+  .chip {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+  }
+  
+  .chip.active {
+    background: #5c8a5e;
+    color: white;
+  }
+  
+  .chip:not(.active) {
+    background: #f0f0f0;
+    color: #666;
+  }
+  
+  .chip:hover {
+    transform: translateY(-1px);
+  }
+  
+  /* Gantt Chart */
+  .gantt-container {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow-x: auto;
+  }
+  
+  .gantt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .gantt-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a3a2a;
+  }
+  
+  .gantt-legend {
+    display: flex;
+    gap: 16px;
+  }
+  
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #666;
+  }
+  
+  .legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+  }
+  
+  /* Gantt Chart Canvas */
+  #ganttChart {
+    width: 100%;
+    min-height: 600px;
+    position: relative;
+  }
+  
+  .gantt-timeline {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .gantt-months {
+    display: flex;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+  }
+  
+  .gantt-month {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a3a2a;
+  }
+  
+  .gantt-grid {
+    position: relative;
+  }
+  
+  .gantt-row {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    border-bottom: 1px solid #f0f0f0;
+    position: relative;
+  }
+  
+  .gantt-row:hover {
+    background: #fafafa;
+  }
+  
+  .gantt-task-name {
+    width: 280px;
+    padding: 0 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1a3a2a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+  }
+  
+  .gantt-timeline-row {
+    flex: 1;
+    position: relative;
+    height: 100%;
+  }
+  
+  .gantt-bar {
+    position: absolute;
+    height: 28px;
+    top: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  
+  .gantt-bar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  
+  /* Venue Colors */
+  .venue-riverside { background: linear-gradient(135deg, #3b7dd8, #5c9fe8); }
+  .venue-anchor { background: linear-gradient(135deg, #2d5a3d, #5c8a5e); }
+  .venue-pavilion { background: linear-gradient(135deg, #c4714a, #d4a847); }
+  .venue-rooftop { background: linear-gradient(135deg, #7b5ea7, #9b7ec7); }
+  .venue-all { background: linear-gradient(135deg, #1a3a2a, #2d5a3d); }
+  
+  /* Loading State */
+  .loading {
+    text-align: center;
+    padding: 60px;
+    color: #666;
+  }
+  
+  .spinner {
+    border: 3px solid #f0f0f0;
+    border-top: 3px solid #5c8a5e;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  /* Error State */
+  .error {
+    background: #ffebee;
+    border: 2px solid #ef5350;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    color: #c62828;
+  }
+  
+  .error-title {
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  
+  /* Event Detail Popup */
+  .popup-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .popup-overlay.show {
+    display: flex;
+  }
+  
+  .popup {
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  
+  .popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  
+  .popup-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a3a2a;
+  }
+  
+  .popup-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #999;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+  }
+  
+  .popup-close:hover {
+    color: #333;
+  }
+  
+  .popup-field {
+    margin-bottom: 16px;
+  }
+  
+  .popup-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  
+  .popup-value {
+    font-size: 15px;
+    color: #1a3a2a;
+  }
+  
+  .today-marker {
+    position: absolute;
+    width: 2px;
+    background: #ff5252;
+    top: 0;
+    bottom: 0;
+    z-index: 10;
+  }
+  
+  .today-label {
+    position: absolute;
+    top: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ff5252;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>📊 Events & Campaigns Gantt Chart</h1>
+      <p>Live view from SharePoint • Marketing & Activations 2026</p>
+    </div>
+    <div class="auth-status">
+      <div class="status-indicator" id="statusIndicator"></div>
+      <button class="btn btn-primary" id="signInBtn" onclick="signIn()">Sign in with Microsoft 365</button>
+      <button class="btn btn-secondary" id="refreshBtn" onclick="loadData()" style="display:none;">Refresh Data</button>
+    </div>
+  </div>
+  
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-group">
+      <div class="filter-label">Venue</div>
+      <select class="filter-select" id="venueFilter" onchange="applyFilters()">
+        <option value="">All Venues</option>
+        <option value="Riverside Bar">Riverside Bar</option>
+        <option value="The Anchor">The Anchor</option>
+        <option value="Marlin Pavilion">Marlin Pavilion</option>
+        <option value="Rooftop Garden">Rooftop Garden</option>
+        <option value="All Venues">All Venues</option>
+      </select>
+    </div>
+    
+    <div class="filter-group">
+      <div class="filter-label">Date Range</div>
+      <input type="date" class="filter-input" id="startDateFilter" onchange="applyFilters()">
+    </div>
+    
+    <div class="filter-group">
+      <div class="filter-label">to</div>
+      <input type="date" class="filter-input" id="endDateFilter" onchange="applyFilters()">
+    </div>
+    
+    <div class="filter-group">
+      <div class="filter-label">Status</div>
+      <div class="filter-chips">
+        <span class="chip active" data-status="" onclick="toggleStatusFilter(this)">All</span>
+        <span class="chip" data-status="Approved" onclick="toggleStatusFilter(this)">Approved</span>
+        <span class="chip" data-status="Completed" onclick="toggleStatusFilter(this)">Completed</span>
+        <span class="chip" data-status="Live" onclick="toggleStatusFilter(this)">Live</span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Gantt Chart -->
+  <div class="gantt-container">
+    <div class="gantt-header">
+      <div class="gantt-title">Timeline View</div>
+      <div class="gantt-legend">
+        <div class="legend-item">
+          <div class="legend-color venue-riverside"></div>
+          <span>Riverside Bar</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color venue-anchor"></div>
+          <span>The Anchor</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color venue-pavilion"></div>
+          <span>Marlin Pavilion</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color venue-rooftop"></div>
+          <span>Rooftop Garden</span>
+        </div>
+      </div>
+    </div>
+    
+    <div id="ganttChart">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>Click "Sign in with Microsoft 365" to load your events</p>
+      </div>
+    </div>
+  </div>
+  
+</div>
+
+<!-- Event Detail Popup -->
+<div class="popup-overlay" id="popupOverlay" onclick="closePopup(event)">
+  <div class="popup" onclick="event.stopPropagation()">
+    <div class="popup-header">
+      <div class="popup-title" id="popupTitle"></div>
+      <button class="popup-close" onclick="closePopup()">×</button>
+    </div>
+    <div id="popupContent"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@microsoft/microsoft-graph-client/lib/graph-js-sdk.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
+
+<script>
+// MSAL Configuration
+const msalConfig = {
+  auth: {
+    clientId: '31c32921-0e55-4e1c-adf1-4cf8859b2109',
+    authority: 'https://login.microsoftonline.com/cafae2a4-6902-432a-9d2f-914bf980f181',
+    redirectUri: window.location.origin + window.location.pathname
+  }
+};
+
+const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+const graphScopes = ['User.Read', 'Sites.Read.All'];
+
+let allEvents = [];
+let filteredEvents = [];
+let currentUser = null;
+
+// Sign In
+async function signIn() {
+  try {
+    const loginResponse = await msalInstance.loginPopup({ scopes: graphScopes });
+    currentUser = loginResponse.account;
+    document.getElementById('signInBtn').style.display = 'none';
+    document.getElementById('refreshBtn').style.display = 'block';
+    document.getElementById('statusIndicator').classList.remove('disconnected');
+    await loadData();
+  } catch (error) {
+    console.error('Sign in error:', error);
+    showError('Failed to sign in. Please try again.');
+  }
+}
+
+// Load Data from SharePoint
+async function loadData() {
+  try {
+    const account = msalInstance.getAllAccounts()[0];
+    if (!account) {
+      showError('Not signed in');
+      return;
+    }
+    
+    const tokenResponse = await msalInstance.acquireTokenSilent({
+      scopes: graphScopes,
+      account: account
+    });
+    
+    // Fetch from SharePoint List
+    const siteId = 'marlingroupaus.sharepoint.com,<site-guid>,<web-guid>'; // Will be dynamically resolved
+    const listName = 'Marketing & Activations 2026';
+    
+    const response = await fetch(
+      `https://graph.microsoft.com/v1.0/sites/marlingroupaus.sharepoint.com:/sites/MarlinHospitalityMarketing:/lists/${encodeURIComponent(listName)}/items?expand=fields&$top=500`,
+      {
+        headers: {
+          'Authorization': `Bearer ${tokenResponse.accessToken}`
+        }
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    allEvents = data.value.map(item => ({
+      id: item.id,
+      title: item.fields.Title,
+      startDate: new Date(item.fields.EventStartDate),
+      endDate: new Date(item.fields.Event_x0020_End),
+      venue: item.fields.Venue,
+      status: item.fields.Status,
+      category: item.fields.Category,
+      workflowStage: item.fields.Workflow_x0020_Stage,
+      description: item.fields.Description,
+      brand: item.fields.Brand
+    }));
+    
+    applyFilters();
+    renderGantt();
+    
+  } catch (error) {
+    console.error('Load data error:', error);
+    showError(`Failed to load data: ${error.message}`);
+  }
+}
+
+// Apply Filters
+function applyFilters() {
+  const venueFilter = document.getElementById('venueFilter').value;
+  const startDateFilter = document.getElementById('startDateFilter').value;
+  const endDateFilter = document.getElementById('endDateFilter').value;
+  const statusFilter = document.querySelector('.chip.active').dataset.status;
+  
+  filteredEvents = allEvents.filter(event => {
+    if (venueFilter && event.venue !== venueFilter) return false;
+    if (statusFilter && event.status !== statusFilter) return false;
+    if (startDateFilter && event.startDate < new Date(startDateFilter)) return false;
+    if (endDateFilter && event.endDate > new Date(endDateFilter)) return false;
+    return true;
+  });
+  
+  renderGantt();
+}
+
+// Toggle Status Filter
+function toggleStatusFilter(chip) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  applyFilters();
+}
+
+// Render Gantt Chart
+function renderGantt() {
+  const container = document.getElementById('ganttChart');
+  
+  if (filteredEvents.length === 0) {
+    container.innerHTML = '<div class="loading"><p>No events match your filters</p></div>';
+    return;
+  }
+  
+  // Calculate date range
+  const allDates = filteredEvents.flatMap(e => [e.startDate, e.endDate]);
+  const minDate = new Date(Math.min(...allDates));
+  const maxDate = new Date(Math.max(...allDates));
+  
+  // Round to month boundaries
+  minDate.setDate(1);
+  maxDate.setMonth(maxDate.getMonth() + 1, 0);
+  
+  const totalDays = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24));
+  const timelineWidth = Math.max(1200, totalDays * 5); // 5px per day minimum
+  
+  // Generate months
+  const months = [];
+  let currentMonth = new Date(minDate);
+  while (currentMonth <= maxDate) {
+    const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+    const monthWidth = (daysInMonth / totalDays) * 100;
+    months.push({
+      label: currentMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      width: monthWidth
+    });
+    currentMonth.setMonth(currentMonth.getMonth() + 1);
+  }
+  
+  // Calculate today position
+  const today = new Date();
+  const todayPosition = ((today - minDate) / (maxDate - minDate)) * 100;
+  
+  // Build HTML
+  let html = '<div class="gantt-timeline">';
+  
+  // Month headers
+  html += '<div class="gantt-months">';
+  months.forEach(month => {
+    html += `<div class="gantt-month" style="width:${month.width}%">${month.label}</div>`;
+  });
+  html += '</div>';
+  
+  // Grid with rows
+  html += '<div class="gantt-grid" style="position:relative;">';
+  
+  // Today marker
+  if (todayPosition >= 0 && todayPosition <= 100) {
+    html += `<div class="today-marker" style="left:calc(280px + ${todayPosition}% - 1px)">
+      <div class="today-label">Today</div>
+    </div>`;
+  }
+  
+  // Event rows
+  filteredEvents.forEach(event => {
+    const startPos = ((event.startDate - minDate) / (maxDate - minDate)) * 100;
+    const duration = event.endDate - event.startDate;
+    const width = (duration / (maxDate - minDate)) * 100;
+    
+    const venueClass = getVenueClass(event.venue);
+    
+    html += `<div class="gantt-row">
+      <div class="gantt-task-name">${event.title}</div>
+      <div class="gantt-timeline-row">
+        <div class="gantt-bar ${venueClass}" 
+             style="left:${startPos}%;width:${width}%"
+             onclick="showEventDetails(${event.id})"
+             title="${event.title}">
+          ${event.title}
+        </div>
+      </div>
+    </div>`;
+  });
+  
+  html += '</div></div>';
+  
+  container.innerHTML = html;
+}
+
+// Get venue CSS class
+function getVenueClass(venue) {
+  const map = {
+    'Riverside Bar': 'venue-riverside',
+    'The Anchor': 'venue-anchor',
+    'Marlin Pavilion': 'venue-pavilion',
+    'Rooftop Garden': 'venue-rooftop',
+    'All Venues': 'venue-all'
+  };
+  return map[venue] || 'venue-all';
+}
+
+// Show Event Details
+function showEventDetails(eventId) {
+  const event = allEvents.find(e => e.id === eventId);
+  if (!event) return;
+  
+  document.getElementById('popupTitle').textContent = event.title;
+  
+  const fields = [
+    { label: 'Venue', value: event.venue },
+    { label: 'Start Date', value: event.startDate.toLocaleDateString() },
+    { label: 'End Date', value: event.endDate.toLocaleDateString() },
+    { label: 'Status', value: event.status },
+    { label: 'Workflow Stage', value: event.workflowStage },
+    { label: 'Category', value: event.category },
+    { label: 'Brand', value: event.brand },
+    { label: 'Description', value: event.description }
+  ].filter(f => f.value);
+  
+  let html = '';
+  fields.forEach(field => {
+    html += `<div class="popup-field">
+      <div class="popup-label">${field.label}</div>
+      <div class="popup-value">${field.value}</div>
+    </div>`;
+  });
+  
+  document.getElementById('popupContent').innerHTML = html;
+  document.getElementById('popupOverlay').classList.add('show');
+}
+
+// Close Popup
+function closePopup(event) {
+  if (!event || event.target === event.currentTarget) {
+    document.getElementById('popupOverlay').classList.remove('show');
+  }
+}
+
+// Show Error
+function showError(message) {
+  const container = document.getElementById('ganttChart');
+  container.innerHTML = `<div class="error">
+    <div class="error-title">Error</div>
+    <p>${message}</p>
+  </div>`;
+}
+
+// Initialize
+document.getElementById('statusIndicator').classList.add('disconnected');
+
+// Set default date filters (next 3 months)
+const today = new Date();
+const threeMonthsLater = new Date(today);
+threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
+document.getElementById('startDateFilter').valueAsDate = today;
+document.getElementById('endDateFilter').valueAsDate = threeMonthsLater;
+</script>
+
+</body>
+</html>
