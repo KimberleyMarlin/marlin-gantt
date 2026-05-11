@@ -603,7 +603,7 @@ async function signIn() {
       await initMSAL();
       if (!msalApp) { alert('Could not load authentication library. Please refresh the page and try again.'); return; }
     }
-    const resp = await msalApp.loginPopup({ scopes: ['User.Read', 'Sites.Read.All', 'Sites.ReadWrite.All'] });
+    const resp = await msalApp.loginPopup({ scopes: ['User.Read', 'Sites.Read.All'] });
     onAuthed(resp.account);
     await loadSharePointData();
   } catch(e) {
