@@ -3,9 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Marlin Marketing — Gantt Chart</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<title>Marlin Marketing Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,400&family=Outfit:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <style>
+/* ── RESET & ROOT ── */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --forest:#1a3a2a;--moss:#2d5a3d;--sage:#5c8a5e;--mint:#a8c9a0;
@@ -13,408 +15,526 @@
   --bark:#6b4c35;--white:#fdfcf8;--text:#1a2418;--muted:#7a9680;
   --leftbank:#3b7dd8;--ravenswood:#2d5a3d;--whitfords:#c4714a;
   --darwin:#7b5ea7;--loaded:#d4a847;--allvenues:#1a3a2a;
-  --blue-l:#dbeafe;--green-l:#d1fae5;--orange-l:#ffedd5;--purple-l:#ede9fe;--gold-l:#fef3c7;
+  --red:#dc2626;--blue:#2563eb;--purple:#7c3aed;
+  --shadow:0 1px 4px rgba(0,0,0,.06);--shadow-md:0 4px 16px rgba(0,0,0,.1);
 }
-body{font-family:'Outfit',sans-serif;background:var(--cream);color:var(--text);min-height:100vh}
+html,body{font-family:'Outfit',sans-serif;background:var(--cream);color:var(--text);min-height:100vh}
 
-/* HEADER */
-.hdr{background:var(--forest);padding:20px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.hdr-left{display:flex;align-items:center;gap:14px}
-.hdr-dot{width:10px;height:10px;border-radius:50%;background:var(--gold);animation:p 2s infinite}
-@keyframes p{0%,100%{opacity:1}50%{opacity:.4}}
-.hdr h1{font-size:20px;font-weight:700;color:var(--white);letter-spacing:-.02em}
-.hdr h1 span{color:var(--mint);font-weight:300}
-.hdr-right{display:flex;align-items:center;gap:12px}
-.hdr-badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:var(--mint);padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500}
-.hdr-btn{background:var(--gold);color:var(--forest);border:none;padding:8px 18px;border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
-.hdr-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.2)}
+/* ── LAYOUT ── */
+.hub{display:flex;min-height:100vh}
 
-/* FILTERS */
-.filters{background:var(--white);margin:20px;padding:16px 20px;border-radius:12px;display:flex;gap:14px;align-items:end;flex-wrap:wrap;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.fg{display:flex;flex-direction:column;gap:4px}
-.fg label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.fg select,.fg input{padding:7px 12px;border:1.5px solid var(--sand);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;background:var(--white);transition:border-color .2s;min-width:150px}
-.fg select:focus,.fg input:focus{border-color:var(--sage)}
-.chip-row{display:flex;gap:6px}
-.chip{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;border:2px solid transparent}
-.chip.on{background:var(--forest);color:var(--white)}
-.chip:not(.on){background:var(--sand);color:var(--bark)}
-.chip:hover{transform:translateY(-1px)}
+/* ── SIDEBAR ── */
+.sb{width:220px;background:var(--forest);min-height:100vh;position:fixed;left:0;top:0;bottom:0;z-index:200;display:flex;flex-direction:column;transition:transform .25s}
+.sb-logo{padding:20px 18px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sb-dot{width:9px;height:9px;border-radius:50%;background:var(--gold);animation:pulse 2.5s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(1.3)}}
+.sb-logo h2{font-family:'Fraunces',serif;font-size:15px;font-weight:700;color:var(--white);letter-spacing:-.02em;line-height:1.25}
+.sb-logo h2 em{color:var(--mint);font-weight:300;font-style:italic}
+.sb-nav{flex:1;padding:12px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.sb-btn{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;font-size:13px;font-weight:500;color:rgba(255,255,255,.48);cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left;font-family:'Outfit',sans-serif;line-height:1.2}
+.sb-btn:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.8)}
+.sb-btn.active{background:rgba(255,255,255,.11);color:var(--white);font-weight:600}
+.sb-btn .ico{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.sb-divider{height:1px;background:rgba(255,255,255,.06);margin:8px 12px}
+.sb-label{font-size:9.5px;font-weight:700;color:rgba(255,255,255,.2);text-transform:uppercase;letter-spacing:.12em;padding:6px 12px 3px}
+.sb-submit{margin:6px 8px 4px;padding:9px 12px;border-radius:8px;background:var(--gold);color:var(--forest);font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;transition:all .15s}
+.sb-submit:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.sb-footer{padding:14px 12px;border-top:1px solid rgba(255,255,255,.08)}
+.sb-auth{width:100%;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.55);font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;border:1px solid rgba(255,255,255,.1);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:8px;justify-content:center}
+.sb-auth:hover{background:rgba(255,255,255,.12);color:var(--white)}
+.sb-auth.connected{background:rgba(76,175,80,.15);color:#81c784;border-color:rgba(76,175,80,.25)}
+.sb-user{font-size:11px;color:rgba(255,255,255,.35);text-align:center;padding:6px 0 0;word-break:break-all;line-height:1.3}
 
-/* STATS ROW */
-.stats{margin:0 20px 16px;display:flex;gap:10px}
-.stat{background:var(--white);border-radius:10px;padding:14px 18px;flex:1;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-.stat-num{font-size:28px;font-weight:800;color:var(--forest);font-family:'Space Mono',monospace;line-height:1}
-.stat-lbl{font-size:11px;color:var(--muted);font-weight:500;margin-top:4px;text-transform:uppercase;letter-spacing:.04em}
+/* ── MAIN ── */
+.main{margin-left:220px;flex:1;min-height:100vh}
+.panel{display:none}
+.panel.active{display:block;animation:fadeUp .2s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 
-/* GANTT */
-.gantt-wrap{margin:0 20px 40px;background:var(--white);border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow:hidden}
-.gantt-top{padding:18px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--cream)}
-.gantt-title{font-size:17px;font-weight:700;color:var(--forest)}
-.legend{display:flex;gap:14px;flex-wrap:wrap}
-.leg{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
-.leg-dot{width:14px;height:14px;border-radius:4px}
+/* ── PAGE HEADER ── */
+.phdr{background:linear-gradient(135deg,var(--forest) 0%,var(--moss) 100%);padding:22px 30px 18px;position:relative;overflow:hidden}
+.phdr::after{content:'';position:absolute;right:-30px;top:-50px;width:260px;height:260px;background:radial-gradient(circle,rgba(168,201,160,.12) 0%,transparent 70%);pointer-events:none}
+.phdr-eye{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.phdr-eye::before{content:'';display:inline-block;width:16px;height:2px;background:var(--gold)}
+.phdr-title{font-family:'Fraunces',serif;font-size:clamp(20px,2.5vw,30px);font-weight:900;color:var(--white);letter-spacing:-.03em;line-height:1.1;margin-bottom:3px}
+.phdr-title em{font-style:italic;color:var(--mint)}
+.phdr-sub{font-size:12.5px;color:rgba(255,255,255,.45);max-width:480px}
+.phdr-actions{position:absolute;right:30px;top:50%;transform:translateY(-50%);display:flex;gap:8px;z-index:1}
 
-/* GANTT SCROLL AREA */
-.gantt-scroll{overflow-x:auto;overflow-y:visible;position:relative}
-.gantt-inner{min-width:1200px;position:relative}
+/* ── KPI ROW ── */
+.kpis{display:flex;gap:10px;padding:14px 28px;flex-wrap:wrap}
+.kpi{background:var(--white);border-radius:10px;padding:13px 16px;flex:1;min-width:120px;box-shadow:var(--shadow);cursor:pointer;transition:all .15s;border:2px solid transparent}
+.kpi:hover{border-color:var(--mint);transform:translateY(-2px)}
+.kpi.on{border-color:var(--sage);background:rgba(92,138,94,.05)}
+.kpi-n{font-family:'Space Mono',monospace;font-size:24px;font-weight:700;color:var(--forest);line-height:1}
+.kpi-l{font-size:10px;color:var(--muted);font-weight:500;margin-top:2px;text-transform:uppercase;letter-spacing:.04em}
+.kpi-t{font-size:9px;background:rgba(92,138,94,.14);color:var(--sage);padding:2px 7px;border-radius:10px;display:inline-block;margin-top:3px;font-weight:600}
 
-/* MONTH HEADER */
-.month-row{display:flex;position:sticky;top:0;z-index:10;background:var(--cream)}
-.month-label-col{width:260px;flex-shrink:0;padding:10px 16px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--cream)}
-.month-cells{display:flex;flex:1}
-.month-cell{flex:1;text-align:center;padding:10px 0;font-size:13px;font-weight:600;color:var(--forest);border-left:1px solid rgba(0,0,0,.04)}
+/* ── CONTENT ── */
+.ca{padding:14px 28px 40px}
 
-/* WEEK HEADER */
-.week-row{display:flex;background:var(--white);border-bottom:1px solid var(--sand)}
-.week-label-col{width:260px;flex-shrink:0}
-.week-cells{display:flex;flex:1}
-.week-cell{flex:1;text-align:center;padding:4px 0;font-size:10px;color:var(--muted);border-left:1px solid rgba(0,0,0,.03)}
+/* ── SECTION ── */
+.section{margin-bottom:24px}
+.sec-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.sec-title{font-size:14px;font-weight:700;color:var(--forest)}
+.sec-link{background:none;border:none;font-family:'Outfit',sans-serif;font-size:12px;color:var(--sage);cursor:pointer;font-weight:600;padding:0}
+.sec-link:hover{color:var(--forest)}
 
-/* EVENT ROWS */
-.ev-row{display:flex;align-items:center;height:42px;border-bottom:1px solid rgba(0,0,0,.04);transition:background .12s;position:relative}
+/* ── CARDS/LISTS ── */
+.card{background:var(--white);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;border:1.5px solid var(--sand)}
+.ev-row{display:flex;align-items:center;padding:10px 14px;gap:10px;border-bottom:1px solid rgba(0,0,0,.04);cursor:pointer;transition:background .12s}
+.ev-row:last-child{border-bottom:none}
 .ev-row:hover{background:rgba(92,138,94,.04)}
-.ev-name{width:260px;flex-shrink:0;padding:0 16px;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);display:flex;align-items:center;gap:8px}
-.ev-venue-dot{width:8px;height:8px;border-radius:3px;flex-shrink:0}
-.ev-timeline{flex:1;position:relative;height:100%}
-.ev-bar{position:absolute;height:26px;top:8px;border-radius:6px;cursor:pointer;transition:all .18s;display:flex;align-items:center;padding:0 10px;font-size:11px;font-weight:600;color:white;white-space:nowrap;overflow:hidden;min-width:4px}
-.ev-bar:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.18);z-index:5}
-.ev-bar .bar-label{overflow:hidden;text-overflow:ellipsis}
+.ev-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+.ev-info{flex:1;min-width:0}
+.ev-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev-meta{font-size:11px;color:var(--muted);margin-top:1px;display:flex;gap:8px;flex-wrap:wrap}
+.ev-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.t-event{background:#dbeafe;color:#1e40af}
+.t-campaign{background:#d1fae5;color:#065f46}
+.t-special{background:#ffedd5;color:#9a3412}
+.t-idea{background:#fef9c3;color:#854d0e}
+.st{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700}
+.st-live{background:#dcfce7;color:#166534}
+.st-awaiting{background:#fef3c7;color:#92400e}
+.st-planning{background:#e0e7ff;color:#3730a3}
+.st-complete{background:#f3f4f6;color:#374151}
+.st-awareness{background:#ede9fe;color:#5b21b6}
 
-/* VENUE COLORS */
+/* ── GANTT ── */
+.gantt-wrap{background:var(--white);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;border:1.5px solid var(--sand)}
+.gantt-scroll{overflow-x:auto}
+.gantt-inner{min-width:1100px;position:relative}
+.g-month-row{display:flex;position:sticky;top:0;z-index:10;background:var(--cream)}
+.g-label-col{width:240px;flex-shrink:0;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--cream)}
+.g-month-cells{display:flex;flex:1}
+.g-month{flex:1;text-align:center;padding:8px 0;font-size:12px;font-weight:600;color:var(--forest);border-left:1px solid rgba(0,0,0,.05)}
+.g-ev-row{display:flex;align-items:center;height:38px;border-bottom:1px solid rgba(0,0,0,.04);cursor:pointer;transition:background .12s}
+.g-ev-row:hover{background:rgba(92,138,94,.04)}
+.g-ev-name{width:240px;flex-shrink:0;padding:0 14px;font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:7px}
+.g-timeline{flex:1;position:relative;height:100%}
+.g-bar{position:absolute;height:22px;top:8px;border-radius:5px;cursor:pointer;transition:all .18s;display:flex;align-items:center;padding:0 8px;font-size:10px;font-weight:600;color:white;white-space:nowrap;overflow:hidden;min-width:3px}
+.g-bar:hover{transform:translateY(-2px);box-shadow:0 3px 12px rgba(0,0,0,.2);z-index:5}
+.g-today{position:absolute;width:2px;background:#ef4444;top:0;bottom:0;z-index:8;pointer-events:none}
+.g-today-flag{position:absolute;top:-2px;left:-16px;background:#ef4444;color:white;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap}
 .bg-leftbank{background:linear-gradient(135deg,#3b7dd8,#5c9fe8)}
 .bg-ravenswood{background:linear-gradient(135deg,#2d5a3d,#4a7a5c)}
 .bg-whitfords{background:linear-gradient(135deg,#c4714a,#d4915e)}
 .bg-darwin{background:linear-gradient(135deg,#7b5ea7,#9b7ec7)}
 .bg-loaded{background:linear-gradient(135deg,#d4a847,#e8c875)}
-.bg-all{background:linear-gradient(135deg,#1a3a2a,#3a5a4a)}
+.bg-allvenues{background:linear-gradient(135deg,#1a3a2a,#3a5a4a)}
 
-/* TODAY MARKER */
-.today-line{position:absolute;width:2px;background:#ff4444;top:0;bottom:0;z-index:8;pointer-events:none}
-.today-flag{position:absolute;top:-2px;left:-18px;background:#ff4444;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap}
+/* ── PIPELINE ── */
+.pipeline{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px}
+.stage{min-width:170px;background:var(--white);border-radius:10px;padding:10px;border:1.5px solid var(--sand);flex-shrink:0}
+.stage-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.stage-name{font-size:11px;font-weight:700;color:var(--forest)}
+.stage-count{background:var(--cream);color:var(--muted);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px}
+.pipe-card{background:var(--cream);border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:all .15s;border-left:3px solid var(--sage)}
+.pipe-card:hover{background:var(--sand);transform:translateX(2px)}
+.pipe-card-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px;line-height:1.3}
+.pipe-card-venue{font-size:10px;color:var(--muted);margin-bottom:4px}
+.pipe-card-foot{display:flex;justify-content:space-between;align-items:center}
+.pipe-date{font-size:10px;color:var(--muted)}
+.s-idea .pipe-card{border-left-color:#f59e0b}
+.s-approval .pipe-card{border-left-color:#3b82f6}
+.s-design .pipe-card{border-left-color:#8b5cf6}
+.s-marketing .pipe-card{border-left-color:#10b981}
+.s-publishing .pipe-card{border-left-color:#06b6d4}
+.s-collateral .pipe-card{border-left-color:#f97316}
+.s-complete .pipe-card{border-left-color:#6b7280}
 
-/* POPUP */
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center}
+/* ── DESIGN TABLE ── */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--sand);background:var(--cream)}
+.tbl td{padding:10px 12px;border-bottom:1px solid rgba(0,0,0,.05);font-size:12.5px;cursor:pointer;transition:background .12s}
+.tbl tr:hover td{background:rgba(92,138,94,.04)}
+.tbl tr:last-child td{border-bottom:none}
+.job-name{font-weight:600;color:var(--text);font-size:13px}
+.job-sub{font-size:10px;color:var(--muted);margin-top:1px}
+.pri{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+.pri-urgent{background:#fee2e2;color:#991b1b}
+.pri-high{background:#fef3c7;color:#92400e}
+.pri-normal{background:#dcfce7;color:#166534}
+.sp{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+.sp-done{background:#f3f4f6;color:#6b7280}
+.sp-inprog{background:#dbeafe;color:#1e40af}
+.sp-review{background:#ede9fe;color:#5b21b6}
+.sp-waiting{background:#fef9c3;color:#854d0e}
+
+/* ── FILTERS ── */
+.filters{background:var(--white);margin:0 0 14px;padding:12px 16px;border-radius:10px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;border:1.5px solid var(--sand)}
+.fg{display:flex;flex-direction:column;gap:3px}
+.fg label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.fg select,.fg input{padding:6px 10px;border:1.5px solid var(--sand);border-radius:7px;font-family:'Outfit',sans-serif;font-size:12.5px;outline:none;background:var(--white);transition:border-color .2s;min-width:130px}
+.fg select:focus,.fg input:focus{border-color:var(--sage)}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;border:2px solid transparent}
+.chip.on{background:var(--forest);color:var(--white)}
+.chip:not(.on){background:var(--sand);color:var(--bark)}
+.chip:hover{transform:translateY(-1px)}
+
+/* ── POPUP / DRAWER ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;align-items:center;justify-content:center}
 .overlay.show{display:flex}
-.popup{background:var(--white);border-radius:16px;padding:28px;max-width:480px;width:92%;max-height:85vh;overflow-y:auto;animation:slideUp .2s ease}
-@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.popup-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
-.popup-title{font-size:20px;font-weight:700;color:var(--forest);line-height:1.2}
-.popup-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:background .15s}
+.popup{background:var(--white);border-radius:16px;padding:26px;max-width:460px;width:92%;max-height:88vh;overflow-y:auto;animation:slideUp .2s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.popup-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+.popup-title{font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:var(--forest);line-height:1.2}
+.popup-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:background .15s}
 .popup-close:hover{background:var(--sand)}
-.popup-field{margin-bottom:14px}
-.popup-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
-.popup-val{font-size:14px;color:var(--text);line-height:1.4}
-.popup-tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.popup-field{margin-bottom:12px}
+.popup-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
+.popup-val{font-size:13.5px;color:var(--text);line-height:1.4}
 
-/* RESPONSIVE */
-@media(max-width:800px){
-  .stats{flex-wrap:wrap}
-  .stat{min-width:calc(50% - 10px)}
-  .filters{flex-direction:column}
+/* ── SUBMIT FORM ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.form-label .req{color:var(--terra)}
+.form-input,.form-select,.form-textarea{padding:9px 12px;border:1.5px solid var(--sand);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13.5px;outline:none;background:var(--white);transition:border-color .2s;width:100%;color:var(--text)}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--sage);box-shadow:0 0 0 3px rgba(92,138,94,.08)}
+.form-textarea{resize:vertical;min-height:90px;line-height:1.5}
+.form-notice{background:rgba(212,168,71,.1);border:1.5px solid rgba(212,168,71,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--bark);line-height:1.5;margin-bottom:14px}
+.form-submit{padding:11px 24px;background:var(--gold);color:var(--forest);border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s}
+.form-submit:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.15)}
+.form-submit:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.form-cancel{padding:11px 18px;background:var(--sand);color:var(--bark);border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
+.form-cancel:hover{background:var(--cream)}
+.form-msg{padding:12px 16px;border-radius:8px;font-size:13px;font-weight:500;margin-bottom:14px;display:none}
+.form-msg.ok{background:#dcfce7;color:#166534;border:1px solid #86efac;display:block}
+.form-msg.err{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;display:block}
+
+/* ── SIGN-IN SCREEN ── */
+.signin-screen{padding:80px 40px;text-align:center;min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.signin-lock{font-size:52px;margin-bottom:16px}
+.signin-title{font-family:'Fraunces',serif;font-size:26px;font-weight:900;color:var(--forest);margin-bottom:8px;letter-spacing:-.02em}
+.signin-sub{font-size:13.5px;color:var(--muted);max-width:420px;margin:0 auto 28px;line-height:1.6}
+.signin-btn{padding:13px 30px;background:var(--gold);color:var(--forest);border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s}
+.signin-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.signin-note{font-size:11px;color:var(--muted);margin-top:12px}
+
+/* ── VENUE CARDS ── */
+.venue-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.venue-card{background:var(--white);border-radius:12px;padding:18px;border:1.5px solid var(--sand);box-shadow:var(--shadow)}
+.vc-name{font-size:16px;font-weight:700;color:var(--forest);margin-bottom:2px}
+.vc-sub{font-size:12px;color:var(--muted);margin-bottom:12px}
+.vc-stats{display:flex;gap:16px;margin-bottom:10px}
+.vc-s{text-align:center}
+.vc-sn{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--forest)}
+.vc-sl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.vc-bar{height:4px;background:var(--sand);border-radius:2px;margin-bottom:10px}
+.vc-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--sage),var(--mint))}
+
+/* ── SPECIALS ── */
+.specials-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.special-card{background:var(--white);border-radius:10px;padding:14px;border:1.5px solid var(--sand);display:flex;gap:12px;align-items:flex-start}
+.sp-icon{font-size:28px;flex-shrink:0}
+.sp-name{font-size:14px;font-weight:700;color:var(--forest);margin-bottom:2px}
+.sp-venue{font-size:11px;color:var(--muted);margin-bottom:4px}
+.sp-disc{font-size:12px;font-weight:700;color:var(--terra)}
+
+/* ── SPINNER ── */
+.spinner{border:3px solid var(--sand);border-top-color:var(--sage);border-radius:50%;width:36px;height:36px;animation:spin 1s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{padding:60px 40px;text-align:center;color:var(--muted)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:860px){
+  .sb{transform:translateX(-220px)}
+  .sb.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .mob-toggle{display:flex!important}
+  .form-grid{grid-template-columns:1fr}
+  .kpis{padding:12px 16px}
+  .ca{padding:12px 16px 40px}
+  .phdr{padding:16px 16px 14px}
+  .phdr-actions{display:none}
 }
+.mob-toggle{display:none;position:fixed;top:12px;left:12px;z-index:300;background:var(--forest);border:none;border-radius:8px;padding:8px;cursor:pointer;color:white;font-size:18px;width:38px;height:38px;align-items:center;justify-content:center}
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<div class="hdr">
-  <div class="hdr-left">
-    <div class="hdr-dot"></div>
-    <h1>Marlin Marketing <span>Gantt Chart</span></h1>
-  </div>
-  <div class="hdr-right">
-    <div class="hdr-badge">Marketing & Activations 2026</div>
-    <div id="statusDot" class="hdr-dot" style="background:#ff4444;animation:none;margin-left:8px"></div>
-    <button class="hdr-btn" id="connectBtn" onclick="signIn()">Sign in with Microsoft 365</button>
-    <button class="hdr-btn" id="refreshBtn" onclick="loadSharePointData()" style="display:none">↻ Refresh</button>
-  </div>
-</div>
+<button class="mob-toggle" onclick="toggleMobile()" title="Menu">☰</button>
 
-<!-- FILTERS -->
-<div class="filters">
-  <div class="fg">
-    <label>Venue</label>
-    <select id="fVenue" onchange="render()">
-      <option value="">All Venues</option>
-      <option value="The Left Bank">The Left Bank</option>
-      <option value="The Ravenswood">The Ravenswood</option>
-      <option value="Whitfords Brewing Co">Whitfords Brewing Co</option>
-      <option value="Hotel Darwin">Hotel Darwin</option>
-      <option value="All Venues">All Venues (Cross-Venue)</option>
-      <option value="Loaded Rewards">Loaded Rewards</option>
-    </select>
+<div class="hub">
+
+<!-- ═══ SIDEBAR ═══ -->
+<nav class="sb" id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-dot"></div>
+    <h2>Marlin <em>Marketing</em><br>Hub</h2>
   </div>
-  <div class="fg">
-    <label>From</label>
-    <input type="date" id="fFrom" onchange="render()">
+  <div class="sb-nav">
+    <button class="sb-btn active" data-panel="overview" onclick="nav(this)"><span class="ico">🏠</span> Overview</button>
+    <button class="sb-btn" data-panel="gantt" onclick="nav(this)"><span class="ico">📊</span> Gantt Timeline</button>
+    <button class="sb-btn" data-panel="pipeline" onclick="nav(this)"><span class="ico">📋</span> Pipeline</button>
+    <button class="sb-btn" data-panel="design" onclick="nav(this)"><span class="ico">🎨</span> Design Jobs</button>
+    <div class="sb-divider"></div>
+    <div class="sb-label">Venues</div>
+    <button class="sb-btn" data-panel="venues" onclick="nav(this)"><span class="ico">📍</span> Venue Overview</button>
+    <button class="sb-btn" data-panel="specials" onclick="nav(this)"><span class="ico">⭐</span> Specials & Rewards</button>
+    <div class="sb-divider"></div>
+    <button class="sb-submit" onclick="openSubmit()"><span>＋</span> Submit Event Idea</button>
   </div>
-  <div class="fg">
-    <label>To</label>
-    <input type="date" id="fTo" onchange="render()">
+  <div class="sb-footer">
+    <button class="sb-auth" id="authBtn" onclick="signIn()">
+      <span>🔑</span><span id="authLabel">Sign in with M365</span>
+    </button>
+    <div class="sb-user" id="userLabel"></div>
   </div>
-  <div class="fg">
-    <label>Status</label>
-    <div class="chip-row">
-      <span class="chip on" data-s="" onclick="pickStatus(this)">All</span>
-      <span class="chip" data-s="Completed" onclick="pickStatus(this)">Completed</span>
-      <span class="chip" data-s="Live" onclick="pickStatus(this)">Live</span>
-      <span class="chip" data-s="Awareness" onclick="pickStatus(this)">Awareness</span>
+</nav>
+
+<!-- ═══ MAIN CONTENT ═══ -->
+<main class="main">
+
+  <!-- ══ SIGN-IN GATE (shown before auth) ══ -->
+  <div id="signinGate" class="signin-screen">
+    <div class="signin-lock">🔒</div>
+    <div class="signin-title">Marlin Marketing Hub</div>
+    <div class="signin-sub">Sign in with your Marlin Group Microsoft 365 account to access event data, the timeline, design jobs, and more.</div>
+    <button class="signin-btn" onclick="signIn()">Sign in with Microsoft 365</button>
+    <div class="signin-note">Read-only · All data sourced from SharePoint · Marlin M365 accounts only</div>
+  </div>
+
+  <!-- ══ PANEL: OVERVIEW ══ -->
+  <div class="panel" id="p-overview">
+    <div class="phdr">
+      <div class="phdr-eye">Marlin Hospitality Group</div>
+      <div class="phdr-title">Marketing <em>Command</em> Centre</div>
+      <div class="phdr-sub">Live event & campaign data from SharePoint</div>
+      <div class="phdr-actions">
+        <select class="fg select" id="ovVenue" onchange="renderOverview()" style="padding:7px 10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:white;border-radius:8px;font-family:Outfit,sans-serif;font-size:12px;outline:none">
+          <option value="">All Venues</option>
+          <option value="The Left Bank">The Left Bank</option>
+          <option value="The Ravenswood">The Ravenswood</option>
+          <option value="Whitfords Brewing Co">Whitfords Brewing Co</option>
+          <option value="Hotel Darwin">Hotel Darwin</option>
+          <option value="Loaded Rewards">Loaded Rewards</option>
+        </select>
+      </div>
+    </div>
+    <div class="kpis" id="ovKPIs"></div>
+    <div class="ca">
+      <div class="section">
+        <div class="sec-hdr"><span class="sec-title">📅 Upcoming Events</span><button class="sec-link" onclick="navTo('gantt')">View Gantt →</button></div>
+        <div class="chips" id="ovChips" style="margin-bottom:10px">
+          <div class="chip on" data-s="" onclick="pickOvStatus(this)">All</div>
+          <div class="chip" data-s="Live" onclick="pickOvStatus(this)">Live</div>
+          <div class="chip" data-s="Awareness" onclick="pickOvStatus(this)">Awareness</div>
+          <div class="chip" data-s="Planning" onclick="pickOvStatus(this)">Planning</div>
+          <div class="chip" data-s="Completed" onclick="pickOvStatus(this)">Completed</div>
+        </div>
+        <div class="card" id="ovEvents"><div class="loading-msg"><div class="spinner"></div>Loading…</div></div>
+      </div>
+      <div class="section">
+        <div class="sec-hdr"><span class="sec-title">📋 Pipeline Snapshot</span><button class="sec-link" onclick="navTo('pipeline')">Full pipeline →</button></div>
+        <div class="pipeline" id="ovPipeline"></div>
+      </div>
     </div>
   </div>
-  <div class="fg">
-    <label>Category</label>
-    <select id="fCat" onchange="render()">
-      <option value="">All Categories</option>
-      <option value="Calendar Event">Calendar Event</option>
-      <option value="Sporting Event">Sporting Event</option>
-      <option value="Ticketed">Ticketed</option>
-      <option value="Loaded Rewards">Loaded Rewards</option>
-      <option value="Public Holiday">Public Holiday</option>
-      <option value="Other">Other</option>
-    </select>
-  </div>
-</div>
 
-<!-- STATS -->
-<div class="stats" id="statsRow"></div>
-
-<!-- GANTT CHART -->
-<div class="gantt-wrap">
-  <div class="gantt-top">
-    <div class="gantt-title">Timeline View — 2026</div>
-    <div class="legend">
-      <div class="leg"><div class="leg-dot" style="background:var(--leftbank)"></div>The Left Bank</div>
-      <div class="leg"><div class="leg-dot" style="background:var(--ravenswood)"></div>The Ravenswood</div>
-      <div class="leg"><div class="leg-dot" style="background:var(--whitfords)"></div>Whitfords Brewing Co</div>
-      <div class="leg"><div class="leg-dot" style="background:var(--darwin)"></div>Hotel Darwin</div>
-      <div class="leg"><div class="leg-dot" style="background:var(--loaded)"></div>Loaded Rewards</div>
-      <div class="leg"><div class="leg-dot" style="background:var(--allvenues)"></div>All Venues</div>
+  <!-- ══ PANEL: GANTT ══ -->
+  <div class="panel" id="p-gantt">
+    <div class="phdr">
+      <div class="phdr-eye">Visual Timeline</div>
+      <div class="phdr-title">Events <em>Gantt</em> Chart</div>
+      <div class="phdr-sub">Marketing & Activations 2026 · Live from SharePoint</div>
     </div>
-  </div>
-  <div class="gantt-scroll">
-    <div class="gantt-inner" id="ganttInner"></div>
-  </div>
-</div>
-
-<!-- POPUP -->
-<div class="overlay" id="overlay" onclick="if(event.target===this)closePopup()">
-  <div class="popup">
-    <div class="popup-hdr">
-      <div class="popup-title" id="pTitle"></div>
-      <button class="popup-close" onclick="closePopup()">✕</button>
-    </div>
-    <div id="pBody"></div>
-  </div>
-</div>
-
-<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
-<script>
-// ══════════════════════════════════════
-// DEMO DATA — used as fallback if not connected
-// ══════════════════════════════════════
-const EVENTS = [
-  {id:1,title:"New Years Day",start:"2026-01-01",end:"2026-01-01",venue:"All Venues",status:"Completed",category:"Public Holiday",brand:""},
-  {id:2,title:"Australia Day",start:"2026-01-26",end:"2026-01-26",venue:"All Venues",status:"Completed",category:"Calendar Event",brand:""},
-  {id:3,title:"Super Bowl",start:"2026-02-09",end:"2026-02-09",venue:"All Venues",status:"Completed",category:"Sporting Event",brand:""},
-  {id:4,title:"LOADED Rewards — Guinness x Lion",start:"2026-03-01",end:"2026-03-30",venue:"All Venues",status:"Completed",category:"Loaded Rewards",brand:"Loaded Rewards"},
-  {id:5,title:"Labour Day",start:"2026-03-02",end:"2026-03-02",venue:"All Venues",status:"Completed",category:"Public Holiday",brand:""},
-  {id:6,title:"International Womens Day",start:"2026-03-08",end:"2026-03-08",venue:"All Venues",status:"Awareness",category:"Calendar Event",brand:""},
-  {id:7,title:"UFC",start:"2026-03-08",end:"2026-03-08",venue:"All Venues",status:"Awareness",category:"Sporting Event",brand:""},
-  {id:8,title:"Comfortably Numb — Pink Floyd",start:"2026-03-14",end:"2026-03-14",venue:"The Ravenswood",status:"Completed",category:"Ticketed",brand:""},
-  {id:9,title:"UFC",start:"2026-03-15",end:"2026-03-15",venue:"All Venues",status:"Awareness",category:"Sporting Event",brand:""},
-  {id:10,title:"Volendam Cruise Ship",start:"2026-03-16",end:"2026-03-16",venue:"Hotel Darwin",status:"",category:"Other",brand:""},
-  {id:11,title:"St Patricks Day",start:"2026-03-17",end:"2026-03-17",venue:"All Venues",status:"Awareness",category:"Calendar Event",brand:""},
-  {id:12,title:"Ampersand Estate Dinner",start:"2026-03-20",end:"2026-03-20",venue:"Whitfords Brewing Co",status:"Live",category:"Ticketed",brand:""},
-  {id:13,title:"International Day of Happiness",start:"2026-03-20",end:"2026-03-20",venue:"All Venues",status:"Awareness",category:"Calendar Event",brand:""},
-  {id:14,title:"Ravepalooza",start:"2026-03-21",end:"2026-03-21",venue:"The Ravenswood",status:"Live",category:"Ticketed",brand:""},
-  {id:15,title:"UFC",start:"2026-03-22",end:"2026-03-22",venue:"All Venues",status:"Awareness",category:"Sporting Event",brand:""},
-  {id:16,title:"World Water Day",start:"2026-03-22",end:"2026-03-22",venue:"All Venues",status:"Awareness",category:"Calendar Event",brand:""},
-  {id:17,title:"Bogan Bingo",start:"2026-03-27",end:"2026-03-27",venue:"The Ravenswood",status:"Live",category:"Ticketed",brand:""},
-  {id:18,title:"Oaks Day (Racing)",start:"2026-03-28",end:"2026-03-28",venue:"All Venues",status:"Awareness",category:"Sporting Event",brand:""},
-  {id:19,title:"Ultimate Fleetwood Mac Experience",start:"2026-03-28",end:"2026-03-28",venue:"The Ravenswood",status:"Live",category:"Ticketed",brand:""},
-  {id:20,title:"UFC",start:"2026-03-29",end:"2026-03-29",venue:"All Venues",status:"Awareness",category:"Sporting Event",brand:""},
-  {id:21,title:"Easter Friday",start:"2026-04-03",end:"2026-04-06",venue:"All Venues",status:"Awareness",category:"Public Holiday",brand:""},
-  {id:22,title:"ANZAC Day",start:"2026-04-25",end:"2026-04-25",venue:"All Venues",status:"Awareness",category:"Public Holiday",brand:""},
-  {id:23,title:"Mother's Day",start:"2026-05-10",end:"2026-05-10",venue:"All Venues",status:"Awareness",category:"Calendar Event",brand:""},
-  {id:24,title:"AFL Grand Final",start:"2026-09-26",end:"2026-09-26",venue:"All Venues",status:"",category:"Sporting Event",brand:""},
-  {id:25,title:"Melbourne Cup",start:"2026-11-03",end:"2026-11-03",venue:"All Venues",status:"",category:"Sporting Event",brand:""},
-  {id:26,title:"Christmas Day",start:"2026-12-25",end:"2026-12-25",venue:"All Venues",status:"",category:"Public Holiday",brand:""},
-  {id:27,title:"NYE 2026",start:"2026-12-31",end:"2026-12-31",venue:"All Venues",status:"",category:"Calendar Event",brand:""},
-];
-
-// ══════════════════════════════════════
-// VENUE HELPERS
-// ══════════════════════════════════════
-function venueColor(v){
-  if(v.includes('Left Bank'))return'leftbank';
-  if(v.includes('Ravenswood'))return'ravenswood';
-  if(v.includes('Whitfords'))return'whitfords';
-  if(v.includes('Darwin'))return'darwin';
-  if(v.includes('Loaded'))return'loaded';
-  return'all';
-}
-function venueCSSVar(v){
-  const m={'leftbank':'var(--leftbank)','ravenswood':'var(--ravenswood)','whitfords':'var(--whitfords)','darwin':'var(--darwin)','loaded':'var(--loaded)','all':'var(--allvenues)'};
-  return m[v]||m.all;
-}
-
-// ══════════════════════════════════════
-// FILTER & RENDER
-// ══════════════════════════════════════
-let statusFilter='';
-
-function pickStatus(el){
-  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
-  el.classList.add('on');
-  statusFilter=el.dataset.s;
-  render();
-}
-
-function getFiltered(){
-  const v=document.getElementById('fVenue').value;
-  const from=document.getElementById('fFrom').value;
-  const to=document.getElementById('fTo').value;
-  const cat=document.getElementById('fCat').value;
-  return EVENTS.filter(e=>{
-    if(v&&e.venue!==v)return false;
-    if(statusFilter&&e.status!==statusFilter)return false;
-    if(cat&&e.category!==cat)return false;
-    if(from&&e.start<from)return false;
-    if(to&&e.end>to)return false;
-    return true;
-  }).sort((a,b)=>a.start.localeCompare(b.start));
-}
-
-function render(){
-  const events=getFiltered();
-  renderStats(events);
-  renderGantt(events);
-}
-
-// ══════════════════════════════════════
-// STATS
-// ══════════════════════════════════════
-function renderStats(events){
-  const total=events.length;
-  const live=events.filter(e=>e.status==='Live').length;
-  const completed=events.filter(e=>e.status==='Completed').length;
-  const upcoming=events.filter(e=>new Date(e.start)>new Date()).length;
-  const venues=new Set(events.map(e=>e.venue)).size;
-  document.getElementById('statsRow').innerHTML=`
-    <div class="stat"><div class="stat-num">${total}</div><div class="stat-lbl">Total Events</div></div>
-    <div class="stat"><div class="stat-num">${live}</div><div class="stat-lbl">Live Now</div></div>
-    <div class="stat"><div class="stat-num">${completed}</div><div class="stat-lbl">Completed</div></div>
-    <div class="stat"><div class="stat-num">${upcoming}</div><div class="stat-lbl">Upcoming</div></div>
-    <div class="stat"><div class="stat-num">${venues}</div><div class="stat-lbl">Venues</div></div>
-  `;
-}
-
-// ══════════════════════════════════════
-// GANTT CHART RENDERING
-// ══════════════════════════════════════
-function renderGantt(events){
-  const container=document.getElementById('ganttInner');
-  if(!events.length){container.innerHTML='<div style="padding:60px;text-align:center;color:var(--muted)">No events match your filters</div>';return;}
-
-  // Date range
-  const dates=events.flatMap(e=>[new Date(e.start),new Date(e.end)]);
-  let minD=new Date(Math.min(...dates));
-  let maxD=new Date(Math.max(...dates));
-  minD=new Date(minD.getFullYear(),minD.getMonth(),1);
-  maxD=new Date(maxD.getFullYear(),maxD.getMonth()+1,0);
-  const totalMs=maxD-minD;
-  const totalDays=Math.ceil(totalMs/(864e5));
-
-  // Build months
-  const months=[];
-  let cur=new Date(minD);
-  while(cur<=maxD){
-    const daysInMonth=new Date(cur.getFullYear(),cur.getMonth()+1,0).getDate();
-    const monthStart=new Date(cur);
-    const monthEnd=new Date(cur.getFullYear(),cur.getMonth()+1,0);
-    const visibleStart=Math.max(monthStart,minD);
-    const visibleEnd=Math.min(monthEnd,maxD);
-    const visibleDays=(visibleEnd-visibleStart)/(864e5)+1;
-    months.push({label:cur.toLocaleDateString('en-AU',{month:'short',year:'numeric'}),days:visibleDays,pct:(visibleDays/totalDays)*100});
-    cur.setMonth(cur.getMonth()+1);
-  }
-
-  // Calc today position
-  const today=new Date();
-  today.setHours(0,0,0,0);
-  const todayPct=((today-minD)/totalMs)*100;
-
-  // HTML
-  let html='';
-
-  // Month headers
-  html+='<div class="month-row"><div class="month-label-col">Event / Activation</div><div class="month-cells">';
-  months.forEach(m=>{html+=`<div class="month-cell" style="flex:${m.days}">${m.label}</div>`;});
-  html+='</div></div>';
-
-  // Event rows
-  html+='<div style="position:relative">';
-
-  // Today line
-  if(todayPct>=0&&todayPct<=100){
-    html+=`<div class="today-line" style="left:calc(260px + (100% - 260px) * ${todayPct/100})"><div class="today-flag">Today</div></div>`;
-  }
-
-  events.forEach(ev=>{
-    const s=new Date(ev.start);
-    const e=new Date(ev.end);
-    // Ensure at least 1 day width for single-day events
-    const dur=Math.max(e-s,864e5);
-    const left=((s-minD)/totalMs)*100;
-    const width=(dur/totalMs)*100;
-    const vc=venueColor(ev.venue);
-
-    html+=`<div class="ev-row">
-      <div class="ev-name"><div class="ev-venue-dot" style="background:${venueCSSVar(vc)}"></div>${ev.title}</div>
-      <div class="ev-timeline">
-        <div class="ev-bar bg-${vc}" style="left:${left}%;width:${Math.max(width,.8)}%" onclick="showPopup(${ev.id})" title="${ev.title} — ${ev.venue}">
-          <span class="bar-label">${ev.title}</span>
+    <div class="ca">
+      <div class="filters">
+        <div class="fg">
+          <label>Venue</label>
+          <select id="gVenue" onchange="renderGantt()">
+            <option value="">All Venues</option>
+            <option value="The Left Bank">The Left Bank</option>
+            <option value="The Ravenswood">The Ravenswood</option>
+            <option value="Whitfords Brewing Co">Whitfords Brewing Co</option>
+            <option value="Hotel Darwin">Hotel Darwin</option>
+            <option value="Loaded Rewards">Loaded Rewards</option>
+            <option value="All Venues">Cross-Venue</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>From</label>
+          <input type="date" id="gFrom" onchange="renderGantt()">
+        </div>
+        <div class="fg">
+          <label>To</label>
+          <input type="date" id="gTo" onchange="renderGantt()">
+        </div>
+        <div class="fg">
+          <label>Status</label>
+          <select id="gStatus" onchange="renderGantt()">
+            <option value="">All Statuses</option>
+            <option value="Live">Live</option>
+            <option value="Awareness">Awareness</option>
+            <option value="Planning">Planning</option>
+            <option value="Completed">Completed</option>
+          </select>
         </div>
       </div>
-    </div>`;
-  });
+      <div class="kpis" id="gStats" style="padding:0 0 14px"></div>
+      <div class="gantt-wrap">
+        <div class="gantt-scroll"><div class="gantt-inner" id="ganttInner"><div class="loading-msg"><div class="spinner"></div>Loading events…</div></div></div>
+      </div>
+    </div>
+  </div>
 
-  html+='</div>';
-  container.innerHTML=html;
-}
+  <!-- ══ PANEL: PIPELINE ══ -->
+  <div class="panel" id="p-pipeline">
+    <div class="phdr">
+      <div class="phdr-eye">Workflow</div>
+      <div class="phdr-title">Event <em>Pipeline</em></div>
+      <div class="phdr-sub">Track events through every stage of the workflow</div>
+    </div>
+    <div class="ca">
+      <div class="pipeline" id="fullPipeline"></div>
+    </div>
+  </div>
 
-// ══════════════════════════════════════
-// POPUP
-// ══════════════════════════════════════
-function showPopup(id){
-  const ev=EVENTS.find(e=>e.id===id);
-  if(!ev)return;
-  document.getElementById('pTitle').textContent=ev.title;
-  const vc=venueColor(ev.venue);
-  const statusColors={'Completed':'background:#d1fae5;color:#065f46','Live':'background:#dbeafe;color:#1e40af','Awareness':'background:#fef3c7;color:#92400e'};
-  const sc=statusColors[ev.status]||'background:#f0f0f0;color:#666';
+  <!-- ══ PANEL: DESIGN ══ -->
+  <div class="panel" id="p-design">
+    <div class="phdr">
+      <div class="phdr-eye">Creative</div>
+      <div class="phdr-title">Design <em>Jobs</em></div>
+      <div class="phdr-sub">Design work tracker — priorities, statuses & due dates</div>
+    </div>
+    <div class="kpis" id="dKPIs"></div>
+    <div class="ca">
+      <div class="card" id="designTable" style="overflow-x:auto"><div class="loading-msg"><div class="spinner"></div>Loading…</div></div>
+    </div>
+  </div>
 
-  let h='';
-  h+=`<div class="popup-field"><div class="popup-lbl">Venue</div><div class="popup-val" style="display:flex;align-items:center;gap:8px"><div class="ev-venue-dot" style="background:${venueCSSVar(vc)}"></div>${ev.venue}</div></div>`;
-  h+=`<div class="popup-field"><div class="popup-lbl">Date</div><div class="popup-val">${new Date(ev.start).toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}${ev.start!==ev.end?' → '+new Date(ev.end).toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):''}</div></div>`;
-  if(ev.status)h+=`<div class="popup-field"><div class="popup-lbl">Status</div><div class="popup-val"><span class="popup-tag" style="${sc}">${ev.status}</span></div></div>`;
-  if(ev.category)h+=`<div class="popup-field"><div class="popup-lbl">Category</div><div class="popup-val">${ev.category}</div></div>`;
-  if(ev.brand)h+=`<div class="popup-field"><div class="popup-lbl">Brand</div><div class="popup-val">${ev.brand}</div></div>`;
-  if(ev.activationType)h+=`<div class="popup-field"><div class="popup-lbl">Activation Type</div><div class="popup-val">${ev.activationType}</div></div>`;
-  if(ev.workflowStage)h+=`<div class="popup-field"><div class="popup-lbl">Workflow Stage</div><div class="popup-val">${ev.workflowStage}</div></div>`;
-  if(ev.designBriefDue)h+=`<div class="popup-field"><div class="popup-lbl">Design Brief Due</div><div class="popup-val">${new Date(ev.designBriefDue).toLocaleDateString('en-AU')}</div></div>`;
-  if(ev.description)h+=`<div class="popup-field"><div class="popup-lbl">Description</div><div class="popup-val">${ev.description}</div></div>`;
+  <!-- ══ PANEL: VENUES ══ -->
+  <div class="panel" id="p-venues">
+    <div class="phdr">
+      <div class="phdr-eye">Venues</div>
+      <div class="phdr-title">Venue <em>Overview</em></div>
+      <div class="phdr-sub">Event activity breakdown per venue</div>
+    </div>
+    <div class="ca">
+      <div class="venue-grid" id="venueGrid"></div>
+    </div>
+  </div>
 
-  document.getElementById('pBody').innerHTML=h;
-  document.getElementById('overlay').classList.add('show');
-}
+  <!-- ══ PANEL: SPECIALS ══ -->
+  <div class="panel" id="p-specials">
+    <div class="phdr">
+      <div class="phdr-eye">Offers</div>
+      <div class="phdr-title">Specials <em>&amp; Rewards</em></div>
+      <div class="phdr-sub">Current promotions, specials and Loaded Rewards offers</div>
+    </div>
+    <div class="ca">
+      <div class="specials-grid" id="specialsGrid"></div>
+    </div>
+  </div>
 
-function closePopup(){document.getElementById('overlay').classList.remove('show')}
+  <!-- ══ PANEL: SUBMIT ══ -->
+  <div class="panel" id="p-submit">
+    <div class="phdr">
+      <div class="phdr-eye">Submit</div>
+      <div class="phdr-title">New Event <em>Idea</em></div>
+      <div class="phdr-sub">Submit directly into the Marketing & Activations 2026 SharePoint list</div>
+    </div>
+    <div class="ca">
+      <div class="card" style="max-width:820px;padding:28px">
+        <div class="form-notice">📌 All submissions go directly into the SharePoint list. An approval workflow will be triggered for review by the marketing team. Please allow minimum 4 weeks lead time.</div>
+        <div id="formMsg" class="form-msg"></div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label class="form-label">Event / Activation Title <span class="req">*</span></label>
+            <input class="form-input" id="fTitle" type="text" placeholder="e.g. Trivia Night — July Series">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Venue <span class="req">*</span></label>
+            <select class="form-select" id="fVenue">
+              <option value="">Select venue…</option>
+              <option>The Left Bank</option>
+              <option>The Ravenswood</option>
+              <option>Whitfords Brewing Co</option>
+              <option>Hotel Darwin</option>
+              <option>Loaded Rewards</option>
+              <option>All Venues</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category <span class="req">*</span></label>
+            <select class="form-select" id="fCategory">
+              <option value="">Select category…</option>
+              <option>Event</option>
+              <option>Campaign</option>
+              <option>Special</option>
+              <option>Activation</option>
+              <option>Collaboration</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Event Start Date <span class="req">*</span></label>
+            <input class="form-input" id="fStart" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Event End Date</label>
+            <input class="form-input" id="fEnd" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Brand / Partner</label>
+            <input class="form-input" id="fBrand" type="text" placeholder="e.g. XXXX Gold, Aperol">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Activation Type</label>
+            <select class="form-select" id="fActType">
+              <option value="">Select type…</option>
+              <option>Tasting</option>
+              <option>Activation</option>
+              <option>Entertainment</option>
+              <option>Promotion</option>
+              <option>Launch</option>
+              <option>Collaboration</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Design Brief Due</label>
+            <input class="form-input" id="fDesignDue" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Marketing Lead Weeks</label>
+            <input class="form-input" id="fLeadWeeks" type="number" min="1" max="52" placeholder="e.g. 4">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Description / Brief</label>
+            <textarea class="form-textarea" id="fDesc" placeholder="Describe the event concept, target audience, expected outcomes, any special requirements…"></textarea>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:6px">
+          <button class="form-submit" id="submitBtn" onclick="submitEvent()">Submit to SharePoint</button>
+          <button class="form-cancel" onclick="navTo('overview')">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-// ══════════════════════════════════════
-// MICROSOFT GRAPH / SHAREPOINT CONNECTION
-// ══════════════════════════════════════
+</main>
+</div>
+
+<!-- ═══ EVENT POPUP ═══ -->
+<div class="overlay" id="evOverlay" onclick="closePopup(event)">
+  <div class="popup">
+    <div class="popup-hdr">
+      <div class="popup-title" id="popTitle"></div>
+      <button class="popup-close" onclick="closePopup()">✕</button>
+    </div>
+    <div id="popBody"></div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════
+// CONFIG — update clientId / authority if needed
+// ════════════════════════════════════
 const MSAL_CONFIG = {
   auth: {
     clientId: 'b7e650cb-f871-4884-b5ba-3f55c1d8d20b',
@@ -424,155 +544,566 @@ const MSAL_CONFIG = {
   cache: { cacheLocation: 'sessionStorage' }
 };
 
-let msalApp = null;
-let isConnected = false;
+// SharePoint list details
+const SP_SITE = 'marlingroupaus.sharepoint.com,9932d19c-c701-44f9-9aa6-f6e64e2be3e8';
+const SP_LIST = '269191b2-47c7-4c0c-94bb-52c25ecb467f';
 
-// Initialize MSAL
+let msalApp = null;
+let EVENTS = [];
+let DESIGN_JOBS = []; // Design jobs can be a separate SharePoint list or left as internal data
+let isAuthed = false;
+
+// ════════════════════════════════════
+// AUTH
+// ════════════════════════════════════
 async function initMSAL() {
   try {
     msalApp = new msal.PublicClientApplication(MSAL_CONFIG);
     await msalApp.initialize();
-    // Check if already signed in
     const accounts = msalApp.getAllAccounts();
     if (accounts.length > 0) {
-      isConnected = true;
-      updateUI();
+      onAuthed(accounts[0]);
       await loadSharePointData();
     }
-  } catch (err) {
-    console.log('MSAL init:', err);
-  }
+  } catch(e) { console.warn('MSAL init:', e); }
 }
 
-// Sign In
 async function signIn() {
   try {
-    if (!msalApp) {
-      alert('Authentication library is still loading. Please wait a moment and try again.');
-      return;
-    }
-    const resp = await msalApp.loginPopup({ scopes: ['User.Read', 'Sites.Read.All'] });
-    isConnected = true;
-    updateUI();
+    if (!msalApp) { alert('Auth library still loading, please wait a moment.'); return; }
+    const resp = await msalApp.loginPopup({ scopes: ['User.Read', 'Sites.Read.All', 'Sites.ReadWrite.All'] });
+    onAuthed(resp.account);
     await loadSharePointData();
-  } catch (err) {
-    console.error('Sign in error:', err);
-    if (err.errorCode === 'popup_window_error') {
-      alert('Popup was blocked. Please allow popups for this site and try again.');
-    } else {
-      alert('Sign in failed: ' + (err.message || err));
-    }
+  } catch(e) {
+    console.error('Sign in:', e);
+    if (e.errorCode === 'popup_window_error') alert('Popup was blocked — please allow popups for this site.');
+    else alert('Sign in failed: ' + (e.message || e));
   }
 }
 
-// Get Access Token
-async function getToken() {
+function onAuthed(account) {
+  isAuthed = true;
+  document.getElementById('authBtn').classList.add('connected');
+  document.getElementById('authLabel').textContent = 'Connected ✓';
+  document.getElementById('userLabel').textContent = account.name || account.username;
+  document.getElementById('signinGate').style.display = 'none';
+  document.querySelector('.panel.active').style.display = '';
+  document.querySelector('.panel.active').classList.add('active');
+  // Show the active panel
+  showPanel(document.querySelector('.sb-btn.active').dataset.panel);
+}
+
+async function getToken(write = false) {
+  const scopes = write ? ['Sites.ReadWrite.All'] : ['Sites.Read.All'];
   const accounts = msalApp.getAllAccounts();
-  if (accounts.length === 0) throw new Error('Not signed in');
+  if (!accounts.length) throw new Error('Not signed in');
   try {
-    const resp = await msalApp.acquireTokenSilent({ scopes: ['Sites.Read.All'], account: accounts[0] });
-    return resp.accessToken;
-  } catch (err) {
-    const resp = await msalApp.acquireTokenPopup({ scopes: ['Sites.Read.All'] });
-    return resp.accessToken;
+    return (await msalApp.acquireTokenSilent({ scopes, account: accounts[0] })).accessToken;
+  } catch(e) {
+    return (await msalApp.acquireTokenPopup({ scopes })).accessToken;
   }
 }
 
-// Load SharePoint Data
+// ════════════════════════════════════
+// SHAREPOINT DATA
+// ════════════════════════════════════
 async function loadSharePointData() {
   try {
-    document.getElementById('ganttInner').innerHTML = '<div style="padding:60px;text-align:center;color:var(--muted)"><div style="border:3px solid #f0f0f0;border-top:3px solid var(--sage);border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 16px"></div>Loading events from SharePoint...</div>';
-    
     const token = await getToken();
-    
-    // Fetch list items from SharePoint
-    const listName = 'Marketing & Activations 2026';
-    const siteUrl = 'marlingroupaus.sharepoint.com:/sites/MarlinHospitalityMarketing:';
-    const url = `https://graph.microsoft.com/v1.0/sites/${siteUrl}/lists/${encodeURIComponent(listName)}/items?expand=fields&$top=500`;
-    
-    const response = await fetch(url, {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errText}`);
-    }
-    
-    const data = await response.json();
-    
-    // Map SharePoint fields to our format
-    EVENTS.length = 0; // Clear demo data
+    const url = `https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${SP_LIST}/items?expand=fields&$top=500`;
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' — ' + await res.text());
+    const data = await res.json();
+
+    EVENTS = [];
     let id = 1;
     data.value.forEach(item => {
       const f = item.fields;
-      if (!f.EventStartDate) return; // skip items without dates
-      
+      if (!f.EventStartDate) return;
       EVENTS.push({
         id: id++,
+        spId: item.id,
         title: f.Title || 'Untitled',
-        start: f.EventStartDate ? f.EventStartDate.split('T')[0] : '',
+        start: f.EventStartDate.split('T')[0],
         end: f.Event_x0020_End ? f.Event_x0020_End.split('T')[0] : f.EventStartDate.split('T')[0],
         venue: f.Venue || 'All Venues',
         status: f.Status || '',
         category: f.Category || '',
         brand: f.Brand || '',
+        stage: f.Workflow_x0020_Stage || 'Idea',
         description: f.Description || '',
-        workflowStage: f.Workflow_x0020_Stage || '',
-        assignee: f.Assignee || '',
+        activationType: f.ActivationType ? (typeof f.ActivationType === 'object' ? f.ActivationType.Label : f.ActivationType) : '',
         designBriefDue: f.DESIGN_x0020_BRIEF_x0020_DUE || '',
-        marketingStartDate: f.Marketing_x0020_Start_x0020_Date || '',
-        mktLeadWeeks: f.MktLeadWeeks || '',
-        activationType: f.ActivationType ? (typeof f.ActivationType === 'object' ? f.ActivationType.Label : f.ActivationType) : ''
+        assignee: f.Assignee || '',
+        mktLeadWeeks: f.MktLeadWeeks || ''
       });
     });
-    
-    // Sort by start date
     EVENTS.sort((a, b) => a.start.localeCompare(b.start));
-    
-    console.log(`Loaded ${EVENTS.length} events from SharePoint`);
-    render();
-    
-  } catch (err) {
-    console.error('Load error:', err);
-    document.getElementById('ganttInner').innerHTML = `<div style="padding:40px;text-align:center;">
-      <div style="background:#ffebee;border:2px solid #ef5350;border-radius:8px;padding:20px;max-width:600px;margin:0 auto;text-align:left;">
-        <div style="font-weight:700;color:#c62828;margin-bottom:8px;">Failed to load SharePoint data</div>
-        <div style="font-size:13px;color:#b71c1c;margin-bottom:12px;">${err.message}</div>
-        <div style="font-size:12px;color:#666;">
-          <strong>Common fixes:</strong><br>
-          • Make sure "Sites.Read.All" permission is granted in Azure<br>
-          • Click "Grant admin consent" in Azure → API permissions<br>
-          • Check the list name matches exactly: "Marketing & Activations 2026"<br>
-          • Try signing out and back in
-        </div>
-        <button onclick="signIn()" style="margin-top:12px;padding:8px 16px;background:#c62828;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">Try Again</button>
-      </div>
-    </div>`;
+
+    renderAll();
+  } catch(e) {
+    console.error('SP load error:', e);
+    showError('Failed to load SharePoint data: ' + e.message);
   }
 }
 
-// Update UI after sign in
-function updateUI() {
-  document.getElementById('statusDot').style.background = '#4caf50';
-  document.getElementById('statusDot').style.animation = 'p 2s infinite';
-  document.getElementById('connectBtn').style.display = 'none';
-  document.getElementById('refreshBtn').style.display = 'block';
+function showError(msg) {
+  const html = `<div style="margin:20px;background:#fee2e2;border:1.5px solid #fca5a5;border-radius:10px;padding:18px 20px;max-width:600px">
+    <div style="font-weight:700;color:#991b1b;margin-bottom:6px">⚠️ Could not load data</div>
+    <div style="font-size:13px;color:#7f1d1d;margin-bottom:10px">${msg}</div>
+    <div style="font-size:12px;color:#666;margin-bottom:12px"><strong>Common fixes:</strong><br>
+    • Ensure admin consent is granted for Sites.Read.All in Azure<br>
+    • Try signing out and back in<br>
+    • Check the list name: "Marketing & Activations 2026"</div>
+    <button onclick="signIn()" style="padding:8px 16px;background:#991b1b;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">Retry Sign-in</button>
+  </div>`;
+  ['ganttInner','ovEvents','fullPipeline','designTable'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = html;
+  });
 }
 
-// Add CSS for spinner
-const spinStyle = document.createElement('style');
-spinStyle.textContent = '@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}';
-document.head.appendChild(spinStyle);
+// ════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════
+function nav(btn) {
+  if (!isAuthed) { signIn(); return; }
+  document.querySelectorAll('.sb-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  showPanel(btn.dataset.panel);
+  // Close mobile menu
+  document.getElementById('sidebar').classList.remove('open');
+}
 
-// ══════════════════════════════════════
+function navTo(panelId) {
+  const btn = document.querySelector(`.sb-btn[data-panel="${panelId}"]`);
+  if(btn) nav(btn);
+}
+
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('p-' + id);
+  if(panel) panel.classList.add('active');
+  // Trigger renders
+  if(id === 'overview') renderOverview();
+  if(id === 'gantt') renderGantt();
+  if(id === 'pipeline') renderPipeline();
+  if(id === 'design') renderDesign();
+  if(id === 'venues') renderVenues();
+  if(id === 'specials') renderSpecials();
+}
+
+function openSubmit() {
+  if(!isAuthed) { signIn(); return; }
+  document.querySelectorAll('.sb-btn').forEach(b => b.classList.remove('active'));
+  showPanel('submit');
+}
+
+function toggleMobile() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════
+function venueKey(v) {
+  if(!v) return 'allvenues';
+  const vl = v.toLowerCase();
+  if(vl.includes('left bank')) return 'leftbank';
+  if(vl.includes('ravenswood')) return 'ravenswood';
+  if(vl.includes('whitfords')) return 'whitfords';
+  if(vl.includes('darwin')) return 'darwin';
+  if(vl.includes('loaded')) return 'loaded';
+  return 'allvenues';
+}
+function venueCSS(k) {
+  const m = {leftbank:'#3b7dd8',ravenswood:'#2d5a3d',whitfords:'#c4714a',darwin:'#7b5ea7',loaded:'#d4a847',allvenues:'#1a3a2a'};
+  return m[k] || '#1a3a2a';
+}
+function fmtDate(d) {
+  if(!d) return '';
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-AU', {day:'numeric',month:'short',year:'numeric'});
+}
+function stCls(s) {
+  const m = {Live:'st-live',Awareness:'st-awareness',Planning:'st-planning',Completed:'st-complete'};
+  return m[s] || 'st-planning';
+}
+function renderAll() {
+  renderOverview();
+  renderGantt();
+  renderPipeline();
+  renderDesign();
+  renderVenues();
+  renderSpecials();
+}
+
+let ovStatus = '';
+function pickOvStatus(el) {
+  document.querySelectorAll('#ovChips .chip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  ovStatus = el.dataset.s;
+  renderOverview();
+}
+
+// ════════════════════════════════════
+// OVERVIEW
+// ════════════════════════════════════
+function renderOverview() {
+  if(!isAuthed) return;
+  const venue = document.getElementById('ovVenue').value;
+  const total = EVENTS.length;
+  const live = EVENTS.filter(e => e.status === 'Live').length;
+  const upcoming = EVENTS.filter(e => new Date(e.start) > new Date()).length;
+  const stages = ['Idea','Approval','Design','Marketing Plan'];
+  const pipeline = EVENTS.filter(e => stages.includes(e.stage)).length;
+
+  document.getElementById('ovKPIs').innerHTML = `
+    <div class="kpi"><div class="kpi-n">${total}</div><div class="kpi-l">Total Events</div><div class="kpi-t">2026</div></div>
+    <div class="kpi"><div class="kpi-n">${live}</div><div class="kpi-l">Live Now</div><div class="kpi-t">Active</div></div>
+    <div class="kpi"><div class="kpi-n">${upcoming}</div><div class="kpi-l">Upcoming</div></div>
+    <div class="kpi" onclick="navTo('pipeline')"><div class="kpi-n">${pipeline}</div><div class="kpi-l">In Pipeline</div><div class="kpi-t">Click to view</div></div>
+  `;
+
+  let evts = EVENTS.filter(e => {
+    if(venue && e.venue !== venue) return false;
+    if(ovStatus && e.status !== ovStatus) return false;
+    return true;
+  });
+
+  document.getElementById('ovEvents').innerHTML = evts.length
+    ? evts.slice(0, 20).map(ev => {
+        const k = venueKey(ev.venue);
+        return `<div class="ev-row" onclick="showPopup(${ev.id})">
+          <div class="ev-dot" style="background:${venueCSS(k)}"></div>
+          <div class="ev-info">
+            <div class="ev-name">${ev.title}</div>
+            <div class="ev-meta"><span>${ev.venue}</span><span>${fmtDate(ev.start)}</span>${ev.stage ? `<span>${ev.stage}</span>` : ''}</div>
+          </div>
+          <div class="ev-right">
+            ${ev.status ? `<span class="st ${stCls(ev.status)}">${ev.status}</span>` : ''}
+            ${ev.category ? `<span class="tag t-event">${ev.category}</span>` : ''}
+          </div>
+        </div>`;
+      }).join('')
+    : '<div style="padding:30px;text-align:center;color:var(--muted)">No events match current filters</div>';
+
+  // Pipeline preview
+  const pStages = ['Idea','Approval','Design','Marketing Plan'];
+  const stageCls = {Idea:'s-idea',Approval:'s-approval',Design:'s-design','Marketing Plan':'s-marketing'};
+  document.getElementById('ovPipeline').innerHTML = pStages.map(s => {
+    const items = EVENTS.filter(e => e.stage === s);
+    return `<div class="stage ${stageCls[s]}">
+      <div class="stage-hdr"><span class="stage-name">${s}</span><span class="stage-count">${items.length}</span></div>
+      ${items.slice(0,3).map(ev => `<div class="pipe-card" onclick="showPopup(${ev.id})">
+        <div class="pipe-card-name">${ev.title}</div>
+        <div class="pipe-card-venue">${ev.venue}</div>
+        <div class="pipe-card-foot"><span class="tag t-event">${ev.category || 'Event'}</span><span class="pipe-date">${fmtDate(ev.start)}</span></div>
+      </div>`).join('')}
+      ${items.length > 3 ? `<div style="font-size:11px;color:var(--muted);text-align:center;padding:4px 0">+${items.length-3} more</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════
+// GANTT
+// ════════════════════════════════════
+function renderGantt() {
+  if(!isAuthed) return;
+  const venue = document.getElementById('gVenue').value;
+  const from = document.getElementById('gFrom').value;
+  const to = document.getElementById('gTo').value;
+  const status = document.getElementById('gStatus').value;
+
+  let evts = EVENTS.filter(e => {
+    if(venue && e.venue !== venue) return false;
+    if(status && e.status !== status) return false;
+    if(from && e.end < from) return false;
+    if(to && e.start > to) return false;
+    return true;
+  });
+
+  document.getElementById('gStats').innerHTML = `
+    <div class="kpi"><div class="kpi-n">${evts.length}</div><div class="kpi-l">Showing</div></div>
+    <div class="kpi"><div class="kpi-n">${evts.filter(e=>e.status==='Live').length}</div><div class="kpi-l">Live</div></div>
+    <div class="kpi"><div class="kpi-n">${evts.filter(e=>new Date(e.start)>new Date()).length}</div><div class="kpi-l">Upcoming</div></div>
+  `;
+
+  const c = document.getElementById('ganttInner');
+  if(!evts.length) { c.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">No events match the current filters</div>'; return; }
+
+  const minD = new Date(from || evts[0].start);
+  minD.setDate(1);
+  const maxD = new Date(to || evts[evts.length-1].end);
+  maxD.setMonth(maxD.getMonth()+1, 0);
+  const totalMs = maxD - minD;
+
+  const months = [];
+  let cur = new Date(minD);
+  while(cur <= maxD) {
+    const vs = Math.max(new Date(cur), minD);
+    const ve = Math.min(new Date(cur.getFullYear(), cur.getMonth()+1, 0), maxD);
+    months.push({ label: cur.toLocaleDateString('en-AU', {month:'short', year:'numeric'}), days: (ve-vs)/(864e5)+1 });
+    cur.setMonth(cur.getMonth()+1);
+  }
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayPct = ((today - minD) / totalMs) * 100;
+
+  let h = '<div class="g-month-row"><div class="g-label-col">Event / Activation</div><div class="g-month-cells">';
+  months.forEach(m => { h += `<div class="g-month" style="flex:${m.days}">${m.label}</div>`; });
+  h += '</div></div><div style="position:relative">';
+
+  if(todayPct >= 0 && todayPct <= 100) {
+    h += `<div class="g-today" style="left:calc(240px + (100% - 240px) * ${todayPct/100})"><div class="g-today-flag">Today</div></div>`;
+  }
+
+  evts.forEach(ev => {
+    const s = new Date(ev.start); const e = new Date(ev.end);
+    const dur = Math.max(e - s, 864e5);
+    const left = ((s - minD) / totalMs) * 100;
+    const width = (dur / totalMs) * 100;
+    const k = venueKey(ev.venue);
+    h += `<div class="g-ev-row" onclick="showPopup(${ev.id})">
+      <div class="g-ev-name"><div class="ev-dot" style="background:${venueCSS(k)}"></div>${ev.title}</div>
+      <div class="g-timeline">
+        <div class="g-bar bg-${k}" style="left:${left}%;width:${Math.max(width,.6)}%" title="${ev.title} — ${ev.venue}">${ev.title}</div>
+      </div>
+    </div>`;
+  });
+  h += '</div>';
+  c.innerHTML = h;
+}
+
+// ════════════════════════════════════
+// PIPELINE
+// ════════════════════════════════════
+function renderPipeline() {
+  if(!isAuthed) return;
+  const stages = ['Idea','Approval','Design','Marketing Plan','Publishing','Collateral','Complete'];
+  const cls = {Idea:'s-idea',Approval:'s-approval',Design:'s-design','Marketing Plan':'s-marketing',Publishing:'s-publishing',Collateral:'s-collateral',Complete:'s-complete'};
+  document.getElementById('fullPipeline').innerHTML = stages.map(s => {
+    const items = EVENTS.filter(e => e.stage === s);
+    return `<div class="stage ${cls[s]}">
+      <div class="stage-hdr"><span class="stage-name">${s}</span><span class="stage-count">${items.length}</span></div>
+      ${items.map(ev => `<div class="pipe-card" onclick="showPopup(${ev.id})">
+        <div class="pipe-card-name">${ev.title}</div>
+        <div class="pipe-card-venue">${ev.venue}</div>
+        <div class="pipe-card-foot"><span class="tag t-event">${ev.category||'Event'}</span><span class="pipe-date">${fmtDate(ev.start)}</span></div>
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════
+// DESIGN
+// ════════════════════════════════════
+function renderDesign() {
+  if(!isAuthed) return;
+  // Design jobs — if you have a separate SharePoint list, wire it up here.
+  // For now showing events that have a Design Brief Due date as "design jobs"
+  const designItems = EVENTS.filter(e => e.designBriefDue || e.stage === 'Design');
+  const urgent = designItems.filter(e => e.designBriefDue && new Date(e.designBriefDue) <= new Date(Date.now() + 7*864e5)).length;
+
+  document.getElementById('dKPIs').innerHTML = `
+    <div class="kpi"><div class="kpi-n">${designItems.length}</div><div class="kpi-l">Design Items</div></div>
+    <div class="kpi"><div class="kpi-n">${urgent}</div><div class="kpi-l">Brief Due Soon</div><div class="kpi-t">≤7 days</div></div>
+    <div class="kpi"><div class="kpi-n">${EVENTS.filter(e=>e.stage==='Design').length}</div><div class="kpi-l">In Design Stage</div></div>
+  `;
+
+  document.getElementById('designTable').innerHTML = designItems.length
+    ? `<table class="tbl">
+        <thead><tr><th>Event</th><th>Venue</th><th>Category</th><th>Stage</th><th>Design Brief Due</th><th>Event Date</th></tr></thead>
+        <tbody>${designItems.map(j => {
+          const isUrgent = j.designBriefDue && new Date(j.designBriefDue) <= new Date(Date.now() + 7*864e5);
+          return `<tr onclick="showPopup(${j.id})">
+            <td><div class="job-name">${j.title}</div>${j.brand ? `<div class="job-sub">${j.brand}</div>` : ''}</td>
+            <td style="font-size:11px;color:var(--muted)">${j.venue}</td>
+            <td>${j.category ? `<span class="tag t-event">${j.category}</span>` : '—'}</td>
+            <td><span class="sp sp-inprog">${j.stage}</span></td>
+            <td style="font-size:12px;color:${isUrgent?'var(--red)':'var(--muted)'};font-weight:${isUrgent?'700':'400'}">${j.designBriefDue ? fmtDate(j.designBriefDue) : '—'}</td>
+            <td style="font-size:12px;color:var(--muted)">${fmtDate(j.start)}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>`
+    : '<div style="padding:30px;text-align:center;color:var(--muted)">No design items found in current data</div>';
+}
+
+// ════════════════════════════════════
+// VENUES
+// ════════════════════════════════════
+function renderVenues() {
+  if(!isAuthed) return;
+  const venues = [
+    {name:'The Left Bank', sub:'Fremantle', icon:'🍸', key:'Left Bank'},
+    {name:'The Ravenswood', sub:'Ravenswood', icon:'🏨', key:'Ravenswood'},
+    {name:'Whitfords Brewing Co', sub:'Hillarys', icon:'🍺', key:'Whitfords'},
+    {name:'Hotel Darwin', sub:'Darwin NT', icon:'🌴', key:'Darwin'},
+    {name:'Loaded Rewards', sub:'Loyalty Program', icon:'⭐', key:'Loaded'}
+  ];
+  document.getElementById('venueGrid').innerHTML = venues.map(v => {
+    const evts = EVENTS.filter(e => e.venue && e.venue.toLowerCase().includes(v.key.toLowerCase()));
+    const live = evts.filter(e => e.status === 'Live').length;
+    return `<div class="venue-card">
+      <div class="vc-name">${v.icon} ${v.name}</div>
+      <div class="vc-sub">${v.sub}</div>
+      <div class="vc-stats">
+        <div class="vc-s"><div class="vc-sn">${evts.length}</div><div class="vc-sl">Events</div></div>
+        <div class="vc-s"><div class="vc-sn">${live}</div><div class="vc-sl">Live</div></div>
+        <div class="vc-s"><div class="vc-sn">${evts.filter(e=>new Date(e.start)>new Date()).length}</div><div class="vc-sl">Upcoming</div></div>
+      </div>
+      <div class="vc-bar"><div class="vc-fill" style="width:${Math.min(evts.length*12,100)}%"></div></div>
+      ${evts.slice(0,3).map(ev => `<div class="ev-row" style="padding:6px 10px" onclick="showPopup(${ev.id})">
+        <div class="ev-dot" style="background:${venueCSS(venueKey(ev.venue))}"></div>
+        <div class="ev-info"><div class="ev-name" style="font-size:12px">${ev.title}</div></div>
+        <span class="st ${stCls(ev.status)}" style="font-size:9px">${ev.status||'Planned'}</span>
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════
+// SPECIALS (static — update as needed)
+// ════════════════════════════════════
+function renderSpecials() {
+  if(!isAuthed) return;
+  const SPECIALS = [
+    {icon:'🍷',name:'Wine Wednesday 2-for-1',venue:'The Left Bank · Every Wednesday',disc:'Loyalty: 20% off · Code: LBWINE'},
+    {icon:'🍺',name:'Locals Lunch Deal',venue:'The Ravenswood · Weekdays 12–2pm',disc:'Loyalty: 15% off · Code: RVLUNCH'},
+    {icon:'🌅',name:'Sunset Sessions',venue:'Whitfords Brewing Co · Fridays 4–7pm',disc:'Members: Free entry + drinks special'},
+    {icon:'🎵',name:'Live Music Thursdays',venue:'Hotel Darwin · Every Thursday',disc:'No cover charge for LOADED members'},
+    {icon:'⭐',name:'LOADED Rewards Double Points',venue:'All Venues · This Month',disc:'Double points on all food orders'},
+  ];
+  document.getElementById('specialsGrid').innerHTML = SPECIALS.map(s => `
+    <div class="special-card">
+      <span class="sp-icon">${s.icon}</span>
+      <div><div class="sp-name">${s.name}</div><div class="sp-venue">${s.venue}</div><div class="sp-disc">${s.disc}</div></div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════
+// SUBMIT EVENT TO SHAREPOINT
+// ════════════════════════════════════
+async function submitEvent() {
+  const title = document.getElementById('fTitle').value.trim();
+  const venue = document.getElementById('fVenue').value;
+  const cat = document.getElementById('fCategory').value;
+  const start = document.getElementById('fStart').value;
+
+  if(!title || !venue || !cat || !start) {
+    showFormMsg('Please fill in all required fields (Title, Venue, Category, Start Date).', 'err');
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+
+  try {
+    const token = await getToken(true); // write token
+
+    const fields = {
+      Title: title,
+      Venue: venue,
+      Category: cat,
+      EventStartDate: start + 'T00:00:00Z',
+      Status: 'Idea',
+      Workflow_x0020_Stage: 'Idea'
+    };
+
+    const end = document.getElementById('fEnd').value;
+    if(end) fields.Event_x0020_End = end + 'T00:00:00Z';
+
+    const brand = document.getElementById('fBrand').value.trim();
+    if(brand) fields.Brand = brand;
+
+    const actType = document.getElementById('fActType').value;
+    if(actType) fields.ActivationType = actType;
+
+    const designDue = document.getElementById('fDesignDue').value;
+    if(designDue) fields.DESIGN_x0020_BRIEF_x0020_DUE = designDue + 'T00:00:00Z';
+
+    const leadWeeks = document.getElementById('fLeadWeeks').value;
+    if(leadWeeks) fields.MktLeadWeeks = parseInt(leadWeeks);
+
+    const desc = document.getElementById('fDesc').value.trim();
+    if(desc) fields.Description = desc;
+
+    const url = `https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${SP_LIST}/items`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields })
+    });
+
+    if(!res.ok) {
+      const errText = await res.text();
+      throw new Error('HTTP ' + res.status + ': ' + errText);
+    }
+
+    showFormMsg('✅ Event submitted successfully! It has been added to the Marketing & Activations 2026 list as an Idea, ready for approval.', 'ok');
+    clearForm();
+    await loadSharePointData(); // Refresh data
+  } catch(e) {
+    console.error('Submit error:', e);
+    showFormMsg('Failed to submit: ' + e.message + ' — Make sure write access (Sites.ReadWrite.All) has been granted in Azure.', 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Submit to SharePoint';
+  }
+}
+
+function showFormMsg(msg, type) {
+  const el = document.getElementById('formMsg');
+  el.textContent = msg;
+  el.className = 'form-msg ' + type;
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function clearForm() {
+  ['fTitle','fBrand','fDesc','fStart','fEnd','fDesignDue','fLeadWeeks'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  ['fVenue','fCategory','fActType'].forEach(id => {
+    document.getElementById(id).selectedIndex = 0;
+  });
+}
+
+// ════════════════════════════════════
+// EVENT POPUP
+// ════════════════════════════════════
+function showPopup(id) {
+  const ev = EVENTS.find(e => e.id === id);
+  if(!ev) return;
+  document.getElementById('popTitle').textContent = ev.title;
+  const k = venueKey(ev.venue);
+  let h = '';
+  h += `<div class="popup-field"><div class="popup-lbl">Venue</div><div class="popup-val" style="display:flex;align-items:center;gap:7px"><div class="ev-dot" style="background:${venueCSS(k)}"></div>${ev.venue}</div></div>`;
+  h += `<div class="popup-field"><div class="popup-lbl">Date</div><div class="popup-val">${fmtDate(ev.start)}${ev.start !== ev.end ? ' → ' + fmtDate(ev.end) : ''}</div></div>`;
+  if(ev.status) h += `<div class="popup-field"><div class="popup-lbl">Status</div><div class="popup-val"><span class="st ${stCls(ev.status)}">${ev.status}</span></div></div>`;
+  if(ev.stage) h += `<div class="popup-field"><div class="popup-lbl">Workflow Stage</div><div class="popup-val">${ev.stage}</div></div>`;
+  if(ev.category) h += `<div class="popup-field"><div class="popup-lbl">Category</div><div class="popup-val"><span class="tag t-event">${ev.category}</span></div></div>`;
+  if(ev.brand) h += `<div class="popup-field"><div class="popup-lbl">Brand / Partner</div><div class="popup-val">${ev.brand}</div></div>`;
+  if(ev.activationType) h += `<div class="popup-field"><div class="popup-lbl">Activation Type</div><div class="popup-val">${ev.activationType}</div></div>`;
+  if(ev.designBriefDue) h += `<div class="popup-field"><div class="popup-lbl">Design Brief Due</div><div class="popup-val">${fmtDate(ev.designBriefDue)}</div></div>`;
+  if(ev.assignee) h += `<div class="popup-field"><div class="popup-lbl">Assignee</div><div class="popup-val">${ev.assignee}</div></div>`;
+  if(ev.description) h += `<div class="popup-field"><div class="popup-lbl">Description</div><div class="popup-val" style="font-size:13px;line-height:1.5">${ev.description}</div></div>`;
+  document.getElementById('popBody').innerHTML = h;
+  document.getElementById('evOverlay').classList.add('show');
+}
+function closePopup(e) {
+  if(!e || e.target === document.getElementById('evOverlay') || e.type !== 'click' || e.target.tagName !== 'DIV') {
+    document.getElementById('evOverlay').classList.remove('show');
+  }
+}
+
+// ════════════════════════════════════
 // INIT
-// ══════════════════════════════════════
-document.getElementById('fFrom').value='2026-01-01';
-document.getElementById('fTo').value='2026-12-31';
-render();
+// ════════════════════════════════════
+document.getElementById('gFrom').value = '2026-01-01';
+document.getElementById('gTo').value = '2026-12-31';
 
-// Initialize MSAL auth
+// Hide all panels until signed in
+document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+document.getElementById('signinGate').style.display = 'flex';
+
 initMSAL();
 </script>
 </body>
