@@ -1593,7 +1593,7 @@ async function submitEvent(){
   const btn=document.getElementById('submitBtn');btn.disabled=true;btn.textContent='Submitting…';
   try{
     const token=await getToken(true);
-    const fields={Title:title,Venue:[venue],Start:start+'T00:00:00Z',ActivationType:[actType],WorkflowStage:'Idea',PlanningType:planType};
+    const fields={Title:title,Venue:venue,Start:start+'T00:00:00Z',ActivationType:actType,WorkflowStage:'Idea',PlanningType:planType};
     const end=document.getElementById('fEnd').value;if(end)fields.End=end+'T00:00:00Z';
     const lead=document.getElementById('fLead').value;if(lead)fields.Marketingleadtime=parseInt(lead);
     const design=document.getElementById('fDesign').value;if(design)fields.DESIGN_x0020_BRIEF=design+'T00:00:00Z';
