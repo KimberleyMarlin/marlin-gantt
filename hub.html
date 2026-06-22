@@ -451,7 +451,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 <!-- ═══ SIDEBAR ═══ -->
 <nav class="sb" id="sb">
   <div class="sb-head">
-    <img src="https://marlingroupaus.sharepoint.com/sites/MarlinHospitalityMarketing/SiteAssets/MARLIN_LOGO_-_White.png"
+    <img src="https://raw.githubusercontent.com/KimberleyMarlin/marlin-gantt/main/MARLIN_LOGO_-_White.png"
          class="sb-logo" alt="Marlin Hospitality"
          onerror="this.style.display='none';document.getElementById('sbFb').style.display='block'">
     <div id="sbFb" style="display:none"><div class="sb-logo-text">Marlin Hospitality</div><div class="sb-logo-sub">Marketing OS</div></div>
@@ -1410,7 +1410,7 @@ async function submitEvent(){
   const btn=document.getElementById('submitBtn');btn.disabled=true;btn.textContent='Submitting…';
   try{
     const token=await getToken(true);
-    const fields={Title:title,Venue:[venue],Start:start+'T00:00:00Z',ActivationType:[actType],WorkflowStage:'Idea',PlanningType:planType};
+    const fields={Title:title,Venue:venue,Start:start+'T00:00:00Z',ActivationType:actType,WorkflowStage:'Idea',PlanningType:planType};
     const end=document.getElementById('fEnd').value;if(end)fields.End=end+'T00:00:00Z';
     const lead=document.getElementById('fLead').value;if(lead)fields.Marketingleadtime=parseInt(lead);
     // DESIGN_x0020_BRIEF is a calculated field — cannot write via API
