@@ -709,30 +709,24 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 
   <!-- SUBMIT -->
   <div class="panel" id="p-submit">
-    <div class="ph"><div><div class="ph-eye">Submit</div><div class="ph-title">New Event <em>Idea</em></div><div class="ph-sub">Goes directly into Marketing &amp; Activations 2026</div></div></div>
+    <div class="ph"><div><div class="ph-eye">Submit</div><div class="ph-title">New Event <em>Idea</em></div><div class="ph-sub">Stage 1 of 5 · Just the basics — you can add more detail once approved</div></div></div>
     <div class="ca">
-      <div class="card" style="max-width:820px;padding:20px">
-        <div class="form-notice">📌 Submissions create a new SharePoint item with Workflow Stage = Idea. Minimum 4 weeks lead time recommended.</div>
+      <div class="card" style="max-width:680px;padding:24px">
+        <div class="form-notice">📌 Submit the core idea. Once approved, you'll receive a link to add design brief details, budget, and campaign specifics at each stage.</div>
         <div id="fMsg" class="form-msg"></div>
         <div class="form-grid">
-          <div class="form-group full"><label class="form-label">Title <span class="req">*</span></label><input class="form-input" id="fTitle" type="text" placeholder="e.g. Trivia Night — July Series"></div>
+          <div class="form-group full"><label class="form-label">Event / Activation Title <span class="req">*</span></label><input class="form-input" id="fTitle" type="text" placeholder="e.g. Trivia Night — July Series"></div>
           <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="fVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>All</option></select></div>
           <div class="form-group"><label class="form-label">Activation Type <span class="req">*</span></label><select class="form-select" id="fActType"><option value="">Select…</option><option>Event</option><option>Tasting</option><option>Activation</option><option>Entertainment</option><option>Promotion</option><option>Launch</option><option>Collaboration</option><option>Public Holiday</option><option>Seasonal Campaign</option></select></div>
-          <div class="form-group"><label class="form-label">Planning Type <span class="req">*</span></label><select class="form-select" id="fPlanType"><option value="">Select…</option><option>Activation</option><option>Awareness</option></select></div>
-          <div class="form-group"><label class="form-label">Primary Brand</label><select class="form-select" id="fBrand"><option value="">Select…</option><option>Marlin Hospitality</option><option>Loaded Rewards</option><option>Beerland Brewing</option><option>Venue Specific</option></select></div>
           <div class="form-group"><label class="form-label">Start Date <span class="req">*</span></label><input class="form-input" id="fStart" type="date"></div>
           <div class="form-group"><label class="form-label">End Date</label><input class="form-input" id="fEnd" type="date"></div>
-          <div class="form-group"><label class="form-label">Lead Time (weeks)</label><input class="form-input" id="fLead" type="number" min="1" max="52" placeholder="e.g. 4"></div>
-          <div class="form-group"><label class="form-label">Est. Budget ($)</label><input class="form-input" id="fBudget" type="number" placeholder="e.g. 1500"></div>
-          <div class="form-group"><label class="form-label">Design Brief Due</label><input class="form-input" id="fDesign" type="date"></div>
-          <div class="form-group"><label class="form-label">Loaded Rewards?</label><select class="form-select" id="fLoaded"><option value="No">No</option><option value="Yes">Yes</option></select></div>
-          <div class="form-group"><label class="form-label">Ticketed?</label><select class="form-select" id="fTicketed"><option value="No">No</option><option value="Yes">Yes</option></select></div>
-          <div class="form-group"><label class="form-label">Department</label><select class="form-select" id="fDept"><option value="">Select…</option><option>Marketing</option><option>Loaded Rewards</option><option>Functions</option><option>Venue</option></select></div>
-          <div class="form-group full"><label class="form-label">Campaign Objective</label><select class="form-select" id="fObj"><option value="">Select…</option><option>Drive Foot Traffic</option><option>Increase Revenue</option><option>Grow Loaded Memberships</option><option>Re-engage Lapsed Members</option><option>Build Brand Awareness</option><option>Sell Tickets</option><option>Generate Function Enquiries</option><option>Support Supplier Partnership</option><option>Seasonal Celebration</option></select></div>
-          <div class="form-group full"><label class="form-label">Description</label><textarea class="form-textarea" id="fDesc" placeholder="Describe the concept, target audience, expected outcomes…"></textarea></div>
+          <div class="form-group full"><label class="form-label">Description</label><textarea class="form-textarea" id="fDesc" placeholder="What's the concept? Who's it for? Any suppliers, talent or special requirements?"></textarea></div>
+        </div>
+        <div style="background:var(--surface2);border-radius:var(--r-sm);padding:10px 13px;margin:12px 0;font-size:12px;color:var(--text3);line-height:1.6">
+          <strong style="color:var(--text2)">What happens next:</strong> Your idea lands in the pipeline as <em>Idea</em>. Kim reviews and approves. You'll get an email with a link to fill in design brief details once approved.
         </div>
         <div class="form-actions">
-          <button class="btn btn-p" id="submitBtn" onclick="submitEvent()">Submit to SharePoint</button>
+          <button class="btn btn-p" id="submitBtn" onclick="submitEvent()">Submit Idea</button>
           <button class="btn btn-s" onclick="navTo('overview')">Cancel</button>
         </div>
       </div>
@@ -1405,28 +1399,37 @@ function markAllRead(){NOTIFS.forEach(n=>n.unread=false);generateNotifications()
 // SUBMIT
 // ═══════════════════════════════════════
 async function submitEvent(){
-  const title=document.getElementById('fTitle').value.trim();const venue=document.getElementById('fVenue').value;const actType=document.getElementById('fActType').value;const start=document.getElementById('fStart').value;const planType=document.getElementById('fPlanType').value;
-  if(!title||!venue||!actType||!start||!planType){showFMsg('Please fill in all required fields.','err');return;}
+  const title=document.getElementById('fTitle').value.trim();
+  const venue=document.getElementById('fVenue').value;
+  const actType=document.getElementById('fActType').value;
+  const start=document.getElementById('fStart').value;
+  if(!title||!venue||!actType||!start){showFMsg('Please fill in Title, Venue, Activation Type and Start Date.','err');return;}
   const btn=document.getElementById('submitBtn');btn.disabled=true;btn.textContent='Submitting…';
   try{
     const token=await getToken(true);
-    const fields={Title:title,Venue:venue,Start:start+'T00:00:00Z',ActivationType:actType,WorkflowStage:'Idea',PlanningType:planType};
+    const fields={
+      Title:title,
+      Venue:[venue],
+      ActivationType:[actType],
+      Start:start+'T00:00:00Z',
+      WorkflowStage:'Idea',
+      PlanningType:'Activation',
+      LoadedRewards0:false,
+      LandingPageRequired:false,
+      POSUpdateRequired:false,
+      TicketedEvent:false
+    };
     const end=document.getElementById('fEnd').value;if(end)fields.End=end+'T00:00:00Z';
-    const lead=document.getElementById('fLead').value;if(lead)fields.Marketingleadtime=parseInt(lead);
-    // DESIGN_x0020_BRIEF is a calculated field — cannot write via API
     const desc=document.getElementById('fDesc').value.trim();if(desc)fields.Description=desc;
-    const brand=document.getElementById('fBrand').value;if(brand)fields.Brand=brand;
-    const dept=document.getElementById('fDept').value;if(dept)fields.Departement=dept;
-    const obj=document.getElementById('fObj').value;if(obj)fields.CampaignObjective=obj;
     const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items`,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
     if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
-    showFMsg('✅ Submitted! Added to SharePoint as an Idea.','ok');
+    showFMsg('✅ Submitted! Your idea is now in the pipeline. Kim will review and you\'ll receive a link to add more details once approved.','ok');
     clearForm();await loadAll();
   }catch(e){showFMsg('Failed: '+e.message,'err');}
-  finally{btn.disabled=false;btn.textContent='Submit to SharePoint';}
+  finally{btn.disabled=false;btn.textContent='Submit Idea';}
 }
 function showFMsg(msg,type){const el=document.getElementById('fMsg');el.textContent=msg;el.className='form-msg '+type;el.scrollIntoView({behavior:'smooth',block:'nearest'});}
-function clearForm(){['fTitle','fDesc','fStart','fEnd','fLead','fBudget','fDesign'].forEach(id=>document.getElementById(id).value='');['fVenue','fActType','fPlanType','fBrand','fDept','fObj','fLoaded','fTicketed'].forEach(id=>document.getElementById(id).selectedIndex=0);}
+function clearForm(){['fTitle','fDesc','fStart','fEnd'].forEach(id=>document.getElementById(id).value='');['fVenue','fActType'].forEach(id=>document.getElementById(id).selectedIndex=0);}
 
 // ═══════════════════════════════════════
 // POPUP
