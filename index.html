@@ -211,13 +211,20 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .g-row:hover{background:var(--surface2)}
 .g-row-name{width:200px;flex-shrink:0;padding:0 13px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;color:var(--text)}
 .g-tl{flex:1;position:relative;height:100%}
-.g-bar{position:absolute;height:18px;top:9px;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:9px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;cursor:pointer;transition:var(--tr);min-width:3px}
+.g-bar{position:absolute;height:22px;top:7px;border-radius:4px;display:flex;align-items:center;padding:0 7px;font-size:9px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;cursor:pointer;transition:var(--tr);min-width:3px;gap:4px}
 .g-bar:hover{transform:translateY(-2px);box-shadow:var(--sh-md);z-index:5}
+.g-bar .vdot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.7);flex-shrink:0;display:inline-block}
 .g-today-line{position:absolute;width:1.5px;background:#ef4444;top:0;bottom:0;z-index:8;pointer-events:none}
 .g-today-flag{position:absolute;top:0;left:2px;background:#ef4444;color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px}
 
 /* VENUE BAR COLOURS */
 .vc-lb{background:var(--lb-primary)}.vc-rw{background:var(--rw-primary)}.vc-wf{background:var(--wbc-primary)}.vc-hd{background:var(--hd-primary)}.vc-mb{background:var(--mb-primary)}.vc-all{background:#374151}
+/* Venue chip colours */
+.chip-lb.on{background:#5ba4cf22;border-color:#5ba4cf;color:#5ba4cf}
+.chip-rw.on{background:#1a4a2e22;border-color:#1a4a2e;color:#1a4a2e}
+.chip-wbc.on{background:#1a3a6e22;border-color:#1a3a6e;color:#1a3a6e}
+.chip-hd.on{background:#7b1a2e22;border-color:#7b1a2e;color:#7b1a2e}
+.chip-mb.on{background:#c05c1a22;border-color:#c05c1a;color:#c05c1a}
 
 /* ── PIPELINE ── */
 .pipe{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;width:100%;-webkit-overflow-scrolling:touch}
@@ -226,8 +233,10 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .stage-n{font-size:10px;font-weight:700;color:var(--text)}
 .stage-c{background:var(--border);color:var(--text3);font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px}
 .stage-b{background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r-sm) var(--r-sm);padding:6px;min-height:100px;display:flex;flex-direction:column;gap:4px}
-.pc{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:7px 9px;cursor:pointer;transition:var(--tr);border-left:3px solid var(--border2)}
+.pc{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:7px 9px;cursor:grab;transition:var(--tr);border-left:3px solid var(--border2);user-select:none}
 .pc:hover{background:var(--surface3);transform:translateX(2px)}
+.pc.dragging{opacity:.4;cursor:grabbing;transform:scale(.95)}
+.stage-b.drag-over{outline:2px dashed var(--accent);outline-offset:2px;background:var(--accent-bg)}
 .pc-n{font-size:11px;font-weight:600;color:var(--text);margin-bottom:2px;line-height:1.3}
 .pc-v{font-size:9px;color:var(--text3);margin-bottom:4px}
 .pc-f{display:flex;justify-content:space-between;align-items:center}
@@ -238,12 +247,12 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .cal-wrap{overflow-x:auto;width:100%;-webkit-overflow-scrolling:touch}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);min-width:560px}
 .cal-dn{background:var(--surface2);padding:5px 0;text-align:center;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
-.cal-day{background:var(--surface);min-height:80px;padding:5px 6px;cursor:default;transition:background .1s}
+.cal-day{background:var(--surface);min-height:120px;padding:6px 7px;cursor:default;transition:background .1s}
 .cal-day.om .cal-num{color:var(--border2)}
 .cal-day.td{background:var(--accent-bg)}
 .cal-day.td .cal-num{color:var(--accent);font-weight:700}
-.cal-num{font-size:11px;font-weight:500;color:var(--text2);margin-bottom:2px}
-.cal-ev{font-size:8px;font-weight:600;padding:1px 4px;border-radius:3px;margin-bottom:2px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.cal-num{font-size:11px;font-weight:500;color:var(--text2);margin-bottom:3px}
+.cal-ev{font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;margin-bottom:2px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.4}
 .cal-more{font-size:9px;color:var(--accent);font-weight:600;cursor:pointer;padding:1px 4px;border-radius:3px;background:var(--accent-bg);display:inline-block;margin-top:1px}
 .cal-more:hover{background:var(--accent);color:#fff}
 
@@ -476,6 +485,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <button class="sb-item" data-p="ideas" onclick="nav(this)"><span class="ico">💡</span>Idea Bank</button>
     <div class="sb-sec">Creative</div>
     <button class="sb-item" data-p="design" onclick="nav(this)"><span class="ico">✦</span>Design Jobs</button>
+    <button class="sb-item" data-p="workload" onclick="nav(this)"><span class="ico">👥</span>Workload</button>
     <button class="sb-item" data-p="social" onclick="nav(this)"><span class="ico">◇</span>Social Calendar</button>
     <div class="sb-sec">Venues</div>
     <button class="sb-item" data-p="venuemonth" onclick="nav(this)"><span class="ico">◉</span>Venue Monthly</button>
@@ -585,11 +595,11 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Venue:</span>
         <div class="chips" id="gVenueChips">
           <div class="chip on" data-v="" onclick="toggleGanttVenue(this)">All</div>
-          <div class="chip" data-v="The Left Bank" onclick="toggleGanttVenue(this)">Left Bank</div>
-          <div class="chip" data-v="The Ravenswood" onclick="toggleGanttVenue(this)">Ravenswood</div>
-          <div class="chip" data-v="Whitfords Brewing Co" onclick="toggleGanttVenue(this)">Whitfords</div>
-          <div class="chip" data-v="Hotel Darwin" onclick="toggleGanttVenue(this)">Darwin</div>
-          <div class="chip" data-v="Mustang Bar" onclick="toggleGanttVenue(this)">Mustang</div>
+          <div class="chip chip-lb" data-v="The Left Bank" onclick="toggleGanttVenue(this)" style="border-left:3px solid #5ba4cf">Left Bank</div>
+          <div class="chip chip-rw" data-v="The Ravenswood" onclick="toggleGanttVenue(this)" style="border-left:3px solid #1a4a2e">Ravenswood</div>
+          <div class="chip chip-wbc" data-v="Whitfords Brewing Co" onclick="toggleGanttVenue(this)" style="border-left:3px solid #1a3a6e">Whitfords</div>
+          <div class="chip chip-hd" data-v="Hotel Darwin" onclick="toggleGanttVenue(this)" style="border-left:3px solid #7b1a2e">Darwin</div>
+          <div class="chip chip-mb" data-v="Mustang Bar" onclick="toggleGanttVenue(this)" style="border-left:3px solid #c05c1a">Mustang</div>
         </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
@@ -768,15 +778,105 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 
   <!-- DESIGN JOBS -->
   <div class="panel" id="p-design">
-    <div class="ph"><div><div class="ph-eye">Creative</div><div class="ph-title">Design <em>Jobs</em></div></div></div>
+    <div class="ph">
+      <div><div class="ph-eye">Creative</div><div class="ph-title">Design <em>Jobs</em></div></div>
+      <div class="ph-right">
+        <button class="tb-btn p" onclick="openDesignBrief()">＋ Submit Brief</button>
+        <button class="tb-btn" onclick="navTo('workload')">👥 Workload</button>
+      </div>
+    </div>
     <div class="ca">
       <div class="stats" id="dStats" style="margin-bottom:12px"></div>
       <div class="filters"><div class="chips" id="dChips">
         <div class="chip on" data-s="" onclick="pickChip(this,'dChips',renderDesign)">All</div>
         <div class="chip" data-s="urgent" onclick="pickChip(this,'dChips',renderDesign)">🔴 Urgent</div>
         <div class="chip" data-s="indesign" onclick="pickChip(this,'dChips',renderDesign)">In Design</div>
+        <div class="chip" data-s="review" onclick="pickChip(this,'dChips',renderDesign)">Review</div>
       </div></div>
       <div id="designList"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+
+  <!-- DESIGN BRIEF OVERLAY -->
+  <div class="overlay" id="designBriefOv" onclick="if(event.target===this)closeDesignBrief()">
+    <div class="popup" style="max-width:640px">
+      <div class="pop-h"><div class="pop-title">✏️ Submit Design Brief</div><button class="pop-close" onclick="closeDesignBrief()">✕</button></div>
+      <div class="pop-body">
+        <div id="briefFormMsg" class="form-msg"></div>
+        <!-- Section 1: What is it -->
+        <div class="form-section-head" style="color:var(--accent);border-bottom:2px solid var(--accent);padding-bottom:4px;margin-bottom:12px">1 — What is it?</div>
+        <div class="form-grid">
+          <div class="form-group full"><label class="form-label">Job Title <span class="req">*</span></label><input class="form-input" id="bTitle" placeholder="e.g. Christmas at Marlin — Instagram suite"></div>
+          <div class="form-group"><label class="form-label">Campaign / Event <span class="req">*</span></label><select class="form-select" id="bCampaign"><option value="">Select campaign…</option></select></div>
+          <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="bVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>All Venues</option></select></div>
+          <div class="form-group"><label class="form-label">Job Type <span class="req">*</span></label><select class="form-select" id="bType"><option value="">Select…</option><option>Social Media Post</option><option>Story / Reel</option><option>EDM Header</option><option>Web Banner</option><option>Print — Poster A3</option><option>Print — Poster A4</option><option>Print — Table Card</option><option>Menu Insert</option><option>Digital Screen</option><option>Logo / Brand</option><option>Video / Reel edit</option><option>Paid Ad creative</option><option>Other</option></select></div>
+        </div>
+        <!-- Section 2: Where does it go -->
+        <div class="form-section-head" style="color:var(--accent);border-bottom:2px solid var(--accent);padding-bottom:4px;margin:16px 0 12px">2 — Where does it go?</div>
+        <div class="form-grid">
+          <div class="form-group full"><label class="form-label">Platforms / Placements</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0" id="bPlatformPills">
+              ${['Instagram Feed','Instagram Story','Facebook','Website','Email','In-venue print','Digital screen','Google Ads','Humanitix'].map(p=>`<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" value="${p}" name="bPlatform"> ${p}</label>`).join('')}
+            </div>
+          </div>
+          <div class="form-group full"><label class="form-label">Asset Dimensions / Specs</label><input class="form-input" id="bSpecs" placeholder="e.g. 1080×1080px, 1080×1920px, A3 portrait 300dpi — or leave blank if job type covers it"></div>
+        </div>
+        <!-- Section 3: Copy & content -->
+        <div class="form-section-head" style="color:var(--accent);border-bottom:2px solid var(--accent);padding-bottom:4px;margin:16px 0 12px">3 — Copy & content</div>
+        <div class="form-grid">
+          <div class="form-group full"><label class="form-label">Copy / Text to include</label><textarea class="form-textarea" id="bCopy" placeholder="Event name, date, time, price, CTA, any specific wording that must appear…" style="min-height:70px"></textarea></div>
+          <div class="form-group full"><label class="form-label">Key message / tone</label><input class="form-input" id="bMessage" placeholder="e.g. Warm, celebratory, premium feel. Highlight the river views."></div>
+          <div class="form-group full"><label class="form-label">Reference images / inspiration</label><input class="form-input" id="bReference" type="url" placeholder="https:// — paste a link to Canva, Pinterest, Google Drive folder, or inspo image"></div>
+        </div>
+        <!-- Section 4: Deadlines -->
+        <div class="form-section-head" style="color:var(--accent);border-bottom:2px solid var(--accent);padding-bottom:4px;margin:16px 0 12px">4 — Deadlines</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Brief due to designer <span class="req">*</span></label><input class="form-input" id="bBriefDue" type="date"></div>
+          <div class="form-group"><label class="form-label">Artwork due back</label><input class="form-input" id="bArtworkDue" type="date"></div>
+          <div class="form-group"><label class="form-label">Go-live / publish date</label><input class="form-input" id="bGoLive" type="date"></div>
+          <div class="form-group"><label class="form-label">Assigned to</label><select class="form-select" id="bAssignTo"><option value="">Select designer…</option></select></div>
+          <div class="form-group full"><label class="form-label">Additional notes</label><textarea class="form-textarea" id="bNotes" placeholder="Anything else Luca or Didier needs to know…" style="min-height:60px"></textarea></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="btn btn-p" onclick="saveDesignBrief()">Submit Brief</button>
+          <button class="btn btn-s" onclick="closeDesignBrief()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKLOAD VIEW -->
+  <div class="panel" id="p-workload">
+    <div class="ph"><div><div class="ph-eye">Team</div><div class="ph-title">Workload <em>View</em></div><div class="ph-sub">Jobs per person, due this week and next</div></div></div>
+    <div class="ca" id="workloadBody"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+
+  <!-- POST-CAMPAIGN REPORT OVERLAY -->
+  <div class="overlay" id="postCampaignOv" onclick="if(event.target===this)closePostCampaign()">
+    <div class="popup" style="max-width:560px">
+      <div class="pop-h"><div class="pop-title">📊 Post-Campaign Report</div><button class="pop-close" onclick="closePostCampaign()">✕</button></div>
+      <div class="pop-body">
+        <div id="reportCampaignTitle" style="font-size:14px;font-weight:600;margin-bottom:14px;color:var(--text)"></div>
+        <div id="reportFormMsg" class="form-msg"></div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Actual Spend ($)</label><input class="form-input" id="rActualSpend" type="number" step="0.01" placeholder="0.00"></div>
+          <div class="form-group"><label class="form-label">Supplier Contribution ($)</label><input class="form-input" id="rSupplierContrib" type="number" step="0.01" placeholder="0.00"></div>
+          <div class="form-group"><label class="form-label">Tickets Sold</label><input class="form-input" id="rTicketsSold" type="number" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Ticket Revenue ($)</label><input class="form-input" id="rTicketRevenue" type="number" step="0.01" placeholder="Auto-calculated if left blank"></div>
+          <div class="form-group"><label class="form-label">Loaded Redemptions</label><input class="form-input" id="rRedemptions" type="number" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Estimated Covers / Pax</label><input class="form-input" id="rCovers" type="number" placeholder="0"></div>
+          <div class="form-group full"><label class="form-label">What worked?</label><textarea class="form-textarea" id="rWorked" placeholder="Key wins, strong performing channels, positive feedback…" style="min-height:60px"></textarea></div>
+          <div class="form-group full"><label class="form-label">What to improve next time?</label><textarea class="form-textarea" id="rImprove" placeholder="What would you change, what was missing, what didn't land…" style="min-height:60px"></textarea></div>
+        </div>
+        <div id="roiCalc" style="background:var(--accent-bg);border:1px solid rgba(10,102,64,.2);border-radius:8px;padding:12px 14px;margin:12px 0;font-size:13px;display:none">
+          <div style="font-weight:600;color:var(--accent);margin-bottom:6px">📈 ROI estimate</div>
+          <div id="roiDetails" style="font-size:12px;color:var(--text2);line-height:1.8"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="btn btn-p" onclick="savePostCampaign()">Save Report</button>
+          <button class="btn btn-s" onclick="closePostCampaign()">Cancel</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1834,7 +1934,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Gantt <em>Timeline</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Events <em>Calendar</em>',campaigns:'All <em>Campaigns</em>',loaded:'Loaded <em>Rewards</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',social:'Social <em>Calendar</em>',budget:'Budget <em>Tracker</em>',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'My <em>Tasks</em>',projects:'Marketing <em>Projects</em>',approvals:'Approvals <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>Event Idea</em>',myday:'My <em>Day</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Gantt <em>Timeline</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Events <em>Calendar</em>',campaigns:'All <em>Campaigns</em>',loaded:'Loaded <em>Rewards</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Budget <em>Tracker</em>',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'My <em>Tasks</em>',projects:'Marketing <em>Projects</em>',approvals:'Approvals <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>Event Idea</em>',myday:'My <em>Day</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -1848,7 +1948,7 @@ function showPanel(id){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   const p=document.getElementById('p-'+id);if(p)p.classList.add('active');
   document.getElementById('tbTitle').innerHTML=PANEL_TITLES[id]||id;
-  const map={overview:renderOverview,gantt:renderGantt,pipeline:renderPipeline,calendar:renderCalendar,campaigns:renderCampaigns,loaded:renderLoaded,ticketing:renderTicketing,design:renderDesign,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyDay};
+  const map={overview:renderOverview,gantt:renderGantt,pipeline:renderPipeline,calendar:renderCalendar,campaigns:renderCampaigns,loaded:renderLoaded,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyDay};
   if(map[id])map[id]();
 }
 function renderCurrentPanel(){const a=document.querySelector('.panel.active');if(a){const id=a.id.replace('p-','');showPanel(id);}}
@@ -2110,6 +2210,243 @@ function renderMyDay(){
   `).join('');
 }
 // ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// DESIGN BRIEF
+// ═══════════════════════════════════════
+function openDesignBrief(campaignId){
+  // Populate campaign dropdown
+  const sel=document.getElementById('bCampaign');
+  if(sel){
+    sel.innerHTML='<option value="">Select campaign…</option>';
+    EVENTS.filter(e=>!isArchived(e)).sort((a,b)=>a.title.localeCompare(b.title)).forEach(e=>{
+      const opt=document.createElement('option');opt.value=e.spId;opt.textContent=e.title+' ('+e.venue.replace('The ','').replace('Whitfords Brewing Co','WBC')+')';
+      if(campaignId&&e.spId==campaignId)opt.selected=true;
+      sel.appendChild(opt);
+    });
+  }
+  // Populate assign dropdown with M365 users
+  const asel=document.getElementById('bAssignTo');
+  if(asel){
+    asel.innerHTML='<option value="">Select designer…</option>';
+    M365_USERS.forEach(u=>{const opt=document.createElement('option');opt.value=u.email;opt.textContent=u.name;asel.appendChild(opt);});
+    if(!M365_USERS.length)asel.innerHTML='<option value="luca">Luca (design)</option><option value="didier">Didier (web)</option>';
+  }
+  // Set brief due to 3 days from now as default
+  const bDue=document.getElementById('bBriefDue');
+  if(bDue&&!bDue.value){const d=new Date();d.setDate(d.getDate()+3);bDue.value=d.toISOString().split('T')[0];}
+  document.getElementById('designBriefOv').classList.add('show');
+}
+
+function closeDesignBrief(){document.getElementById('designBriefOv').classList.remove('show');}
+
+async function saveDesignBrief(){
+  const title=document.getElementById('bTitle').value.trim();
+  const campaign=document.getElementById('bCampaign').value;
+  const venue=document.getElementById('bVenue').value;
+  const type=document.getElementById('bType').value;
+  if(!title||!campaign||!venue||!type){
+    document.getElementById('briefFormMsg').textContent='Please fill in title, campaign, venue and job type.';
+    document.getElementById('briefFormMsg').className='form-msg err';return;
+  }
+  const platforms=Array.from(document.querySelectorAll('#bPlatformPills input:checked')).map(i=>i.value).join(', ');
+  const fields={
+    Title:title,
+    TaskType:'Design Asset',
+    Status:'Not Started',
+    Priority:'High',
+    Platform:type,
+    AssetSpec:(document.getElementById('bSpecs').value||'')+(platforms?' | '+platforms:''),
+    Notes:[document.getElementById('bCopy').value,document.getElementById('bMessage').value,document.getElementById('bNotes').value,document.getElementById('bReference').value?'Reference: '+document.getElementById('bReference').value:''].filter(Boolean).join('\n\n'),
+    CopyRequired:!!document.getElementById('bCopy').value
+  };
+  const briefDue=document.getElementById('bBriefDue').value;if(briefDue)fields.DueDate=briefDue+'T00:00:00Z';
+  const assignTo=document.getElementById('bAssignTo').value;
+  const btn=event.target;btn.disabled=true;btn.textContent='Saving…';
+  try{
+    const token=await getToken(true);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    document.getElementById('briefFormMsg').textContent='✅ Brief submitted! '+document.getElementById('bAssignTo').options[document.getElementById('bAssignTo').selectedIndex]?.text+' will be notified.';
+    document.getElementById('briefFormMsg').className='form-msg ok';
+    await loadTasks();
+    setTimeout(()=>closeDesignBrief(),1500);
+  }catch(e){document.getElementById('briefFormMsg').textContent='Error: '+e.message;document.getElementById('briefFormMsg').className='form-msg err';}
+  btn.disabled=false;btn.textContent='Submit Brief';
+}
+
+// ═══════════════════════════════════════
+// WORKLOAD VIEW
+// ═══════════════════════════════════════
+function renderWorkload(){
+  if(!isAuthed)return;
+  const today=new Date();today.setHours(0,0,0,0);
+  const week=new Date(today);week.setDate(week.getDate()+7);
+  const twoWeeks=new Date(today);twoWeeks.setDate(twoWeeks.getDate()+14);
+
+  // Group tasks by assignee
+  const byPerson={};
+  MY_TASKS.filter(t=>t.status!=='Done').forEach(t=>{
+    const person=t.assignedTo||'Unassigned';
+    if(!byPerson[person])byPerson[person]={name:person,tasks:[],overdue:0,thisWeek:0,nextWeek:0};
+    byPerson[person].tasks.push(t);
+    if(t.due){
+      const d=new Date(t.due+'T00:00:00');
+      if(d<today)byPerson[person].overdue++;
+      else if(d<=week)byPerson[person].thisWeek++;
+      else if(d<=twoWeeks)byPerson[person].nextWeek++;
+    }
+  });
+
+  const body=document.getElementById('workloadBody');
+  if(!body)return;
+
+  if(!Object.keys(byPerson).length){
+    body.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)">No open tasks. <button class="btn btn-p" style="margin-left:12px;padding:6px 14px;font-size:12px" onclick="openAddTask()">+ New Task</button></div>';return;
+  }
+
+  body.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+    ${Object.values(byPerson).sort((a,b)=>b.tasks.length-a.tasks.length).map(p=>{
+      const maxTasks=8;
+      const load=Math.min(p.tasks.length/maxTasks*100,100);
+      const loadColor=p.tasks.length>=maxTasks?'var(--red)':p.tasks.length>=5?'var(--gold)':'var(--accent)';
+      return`<div class="card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0">${(p.name.split('@')[0]||'?')[0].toUpperCase()}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name.includes('@')?p.name.split('@')[0]:p.name}</div>
+            <div style="font-size:10px;color:var(--text3)">${p.tasks.length} open task${p.tasks.length!==1?'s':''}</div>
+          </div>
+          ${p.overdue>0?`<span style="font-size:10px;font-weight:700;color:var(--red);background:var(--red-bg);padding:2px 7px;border-radius:4px">${p.overdue} overdue</span>`:''}
+        </div>
+        <div class="b-bar-w" style="margin-bottom:8px"><div class="b-bar-f" style="width:${load}%;background:${loadColor}"></div></div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <div style="flex:1;text-align:center;background:var(--surface2);border-radius:6px;padding:6px"><div style="font-size:16px;font-weight:600;color:${p.thisWeek>0?'var(--gold)':'var(--text)'}">${p.thisWeek}</div><div style="font-size:9px;color:var(--text3)">This week</div></div>
+          <div style="flex:1;text-align:center;background:var(--surface2);border-radius:6px;padding:6px"><div style="font-size:16px;font-weight:600">${p.nextWeek}</div><div style="font-size:9px;color:var(--text3)">Next week</div></div>
+          <div style="flex:1;text-align:center;background:var(--surface2);border-radius:6px;padding:6px"><div style="font-size:16px;font-weight:600">${p.tasks.filter(t=>!t.due).length}</div><div style="font-size:9px;color:var(--text3)">No date</div></div>
+        </div>
+        ${p.tasks.slice(0,3).map(t=>`<div style="font-size:11px;padding:4px 0;border-bottom:0.5px solid var(--border);color:var(--text2);display:flex;justify-content:space-between;gap:8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</span><span style="flex-shrink:0;color:${t.due&&new Date(t.due+'T00:00:00')<today?'var(--red)':'var(--text3)'}">${t.due?fmtShort(t.due):'—'}</span></div>`).join('')}
+        ${p.tasks.length>3?`<div style="font-size:10px;color:var(--accent);padding-top:5px;cursor:pointer" onclick="document.getElementById('tAssigned').value='${p.name}';navTo('mytasks')">+${p.tasks.length-3} more →</div>`:''}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+// POST-CAMPAIGN REPORTING
+// ═══════════════════════════════════════
+let _reportingEventId=null;
+
+function openPostCampaign(evId){
+  _reportingEventId=evId;
+  const ev=EVENTS.find(e=>e.id===evId||e.spId==evId);
+  if(!ev)return;
+  const title=document.getElementById('reportCampaignTitle');
+  if(title)title.textContent=ev.title+' · '+ev.venue;
+  // Pre-fill existing actuals
+  const fields=['rActualSpend','rSupplierContrib','rTicketsSold','rRedemptions'];
+  fields.forEach(f=>{ const el=document.getElementById(f);if(el)el.value=''; });
+  if(ev.actualSpend)document.getElementById('rActualSpend').value=ev.actualSpend;
+  if(ev.supplierContrib)document.getElementById('rSupplierContrib').value=ev.supplierContrib;
+  if(ev.ticketsSold)document.getElementById('rTicketsSold').value=ev.ticketsSold;
+  document.getElementById('postCampaignOv').classList.add('show');
+  // Live ROI calc
+  ['rActualSpend','rSupplierContrib','rTicketsSold','rTicketRevenue','rRedemptions','rCovers'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.addEventListener('input',calcROI);
+  });
+}
+
+function closePostCampaign(){document.getElementById('postCampaignOv').classList.remove('show');_reportingEventId=null;}
+
+function calcROI(){
+  const ev=EVENTS.find(e=>e.id===_reportingEventId||e.spId==_reportingEventId);
+  const spend=parseFloat(document.getElementById('rActualSpend').value)||0;
+  const supplier=parseFloat(document.getElementById('rSupplierContrib').value)||0;
+  const sold=parseInt(document.getElementById('rTicketsSold').value)||0;
+  const price=ev?.ticketPrice||0;
+  const ticketRev=parseFloat(document.getElementById('rTicketRevenue').value)||(sold*price);
+  const netSpend=Math.max(spend-supplier,0);
+  const roiDiv=document.getElementById('roiCalc');
+  const roiDetails=document.getElementById('roiDetails');
+  if((spend||ticketRev)&&roiDiv&&roiDetails){
+    roiDiv.style.display='';
+    const roi=netSpend>0?Math.round((ticketRev-netSpend)/netSpend*100):null;
+    roiDetails.innerHTML=`
+      Budget allocated: <strong>$${(ev?.budget||0).toLocaleString()}</strong> · Actual spend: <strong>$${spend.toLocaleString()}</strong><br>
+      Supplier offset: <strong>$${supplier.toLocaleString()}</strong> · Net cost to Marlin: <strong>$${netSpend.toLocaleString()}</strong><br>
+      ${ticketRev?`Ticket revenue: <strong>$${ticketRev.toLocaleString()}</strong><br>`:''}
+      ${roi!==null?`<span style="font-size:14px;font-weight:700;color:${roi>=0?'var(--accent)':'var(--red)'}">ROI: ${roi>=0?'+':''}${roi}%</span>`:''}
+    `;
+  }
+}
+
+async function savePostCampaign(){
+  if(!_reportingEventId)return;
+  const ev=EVENTS.find(e=>e.id===_reportingEventId||e.spId==_reportingEventId);
+  if(!ev||!ev.spId)return;
+  const btn=event.target;btn.disabled=true;btn.textContent='Saving…';
+  try{
+    const token=await getToken(true);
+    const fields={WorkflowStage:'Complete'};
+    const spend=document.getElementById('rActualSpend').value;if(spend)fields.ActualSpend=parseFloat(spend);
+    const supplier=document.getElementById('rSupplierContrib').value;if(supplier)fields.SupplierContribution=parseFloat(supplier);
+    const sold=document.getElementById('rTicketsSold').value;if(sold)fields.TicketsSold=parseInt(sold);
+    const worked=document.getElementById('rWorked').value;
+    const improve=document.getElementById('rImprove').value;
+    if(worked||improve)fields.Fulldescription=(ev.description||'')+'\n\n--- POST-CAMPAIGN REPORT ---\n'+(worked?'✅ What worked:\n'+worked+'\n\n':'')+(improve?'🔄 To improve:\n'+improve:'');
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    document.getElementById('reportFormMsg').textContent='✅ Report saved. Campaign marked Complete.';
+    document.getElementById('reportFormMsg').className='form-msg ok';
+    await loadAll();
+    setTimeout(()=>closePostCampaign(),1500);
+  }catch(e){document.getElementById('reportFormMsg').textContent='Error: '+e.message;document.getElementById('reportFormMsg').className='form-msg err';}
+  btn.disabled=false;btn.textContent='Save Report';
+}
+// ═══════════════════════════════════════
+let _dragSpId=null;
+
+function pipeDragStart(e,el){
+  _dragSpId=el.dataset.id;
+  el.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',_dragSpId);
+}
+
+function pipeDragEnd(e,el){
+  el.classList.remove('dragging');
+  document.querySelectorAll('.stage-b.drag-over').forEach(b=>b.classList.remove('drag-over'));
+}
+
+function pipeDragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  document.querySelectorAll('.stage-b.drag-over').forEach(b=>{if(b!==e.currentTarget)b.classList.remove('drag-over');});
+  e.currentTarget.classList.add('drag-over');
+}
+
+function pipeDragLeave(e){
+  if(!e.currentTarget.contains(e.relatedTarget))e.currentTarget.classList.remove('drag-over');
+}
+
+async function pipeDrop(e,newStage){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(!_dragSpId)return;
+  const spId=_dragSpId;_dragSpId=null;
+  const ev=EVENTS.find(ev=>ev.spId==spId);
+  if(!ev)return;
+  const oldStage=ev.stage;
+  ev.stage=newStage;
+  renderPipeline();
+  try{
+    const token=await getToken(true);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${spId}`,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{WorkflowStage:newStage}})});
+    if(!res.ok){ev.stage=oldStage;renderPipeline();console.error('Stage update failed:',res.status);}
+    else{generateNotifications();}
+  }catch(err){ev.stage=oldStage;renderPipeline();console.error('Stage update error:',err);}
+}
+
+// ═══════════════════════════════════════
 let ganttVenueFilter=new Set(); // empty = All
 let ganttTypeFilter=new Set();  // empty = All
 let ganttViewMode='month'; // month | week | day
@@ -2258,13 +2595,18 @@ function renderGantt(){
       const barColor=calEvtColor(ev);
       const vc=vColor(ev.venue);
       const archived=isArchived(ev);
+      const shortVenue=ev.venue.replace('The ','').replace('Whitfords Brewing Co','WBC').replace('Hotel ','');
       h+=`<div class="g-row" onclick="showPop(${ev.id})">
         <div class="g-row-name" style="${archived?'opacity:.45':''}">
           <div style="width:7px;height:7px;border-radius:50%;background:${vc.c};flex-shrink:0"></div>
-          ${ev.title}${ev.loadedRewards?'<span style="font-size:9px;margin-left:3px">⭐</span>':''}
+          <span style="overflow:hidden;text-overflow:ellipsis">${ev.title}</span>
+          ${ev.loadedRewards?'<span style="font-size:9px;flex-shrink:0">⭐</span>':''}
         </div>
         <div class="g-tl">
-          <div class="g-bar" style="left:${left}%;width:${width}%;background:${barColor};${archived?'opacity:.4;':''}">${ev.title}</div>
+          <div class="g-bar" style="left:${left}%;width:${width}%;background:${barColor};${archived?'opacity:.4;':''}" title="${ev.title} · ${ev.venue}">
+            <span class="vdot" style="background:${vc.c};border:1.5px solid rgba(255,255,255,.5)"></span>
+            <span>${shortVenue} · ${ev.title}</span>
+          </div>
         </div>
       </div>`;
     });
@@ -2364,11 +2706,21 @@ function renderPipeline(){
       </div>
       <span class="stage-c" style="background:${col}22;color:${col}">${items.length}</span>
     </div>
-    <div class="stage-b">
+    <div class="stage-b" 
+      data-stage="${s}"
+      ondragover="pipeDragOver(event)"
+      ondragleave="pipeDragLeave(event)"
+      ondrop="pipeDrop(event,'${s}')">
       ${items.map(ev=>{
         const vc=vColor(ev.venue);
         const posWarn=ev.posStatus==='Pending'?'<span title="POS update pending" style="color:#b45309;margin-left:4px">⚠️</span>':'';
-        return`<div class="pc" onclick="showPop(${ev.id})">
+        return`<div class="pc" 
+          draggable="true"
+          data-id="${ev.spId}"
+          data-title="${ev.title.replace(/"/g,'&quot;')}"
+          onclick="showPop(${ev.id})"
+          ondragstart="pipeDragStart(event,this)"
+          ondragend="pipeDragEnd(event,this)">
           <div class="pc-n">${ev.title}${posWarn}</div>
           <div class="pc-v"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${vc.c};margin-right:4px;vertical-align:middle"></span>${ev.venue.replace('The ','').replace('Whitfords Brewing Co','WBC')}</div>
           <div class="pc-f">
@@ -3393,6 +3745,16 @@ function showPop(id){
     }
   }
   if(ev.description){h+=`<div class="pop-section">Description</div><div style="font-size:13px;color:var(--text2);line-height:1.6">${ev.description}</div>`;}
+  // Action buttons
+  h+=`<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">`;
+  if(ev.stage==='Reporting Required'||ev.stage==='Complete'){
+    h+=`<button class="btn btn-p" onclick="closePop();openPostCampaign(${ev.spId})">📊 Post-Campaign Report</button>`;
+  }
+  if(['Design Brief Required','Awaiting Approval','Finalise Idea'].includes(ev.stage)){
+    h+=`<button class="btn btn-s" onclick="closePop();openDesignBrief(${ev.spId})">✏️ Submit Design Brief</button>`;
+  }
+  h+=`<button class="btn btn-s" onclick="closePop()">Close</button>`;
+  h+=`</div>`;
   document.getElementById('popBody').innerHTML=h;
   document.getElementById('evOv').classList.add('show');
 }
