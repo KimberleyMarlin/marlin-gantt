@@ -534,7 +534,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="tb-title" id="tbTitle">Dashboard <em>Overview</em></div>
     <div class="tb-date" id="tbDate"></div>
     <div class="sw"><input type="text" placeholder="Search…" id="gSearch" oninput="doSearch(this.value)"></div>
-    <span style="font-size:9px;color:var(--accent);font-weight:700;background:var(--accent-bg);padding:2px 6px;border-radius:4px;flex-shrink:0" title="Build version">v11</span>
+    <span style="font-size:9px;color:var(--accent);font-weight:700;background:var(--accent-bg);padding:2px 6px;border-radius:4px;flex-shrink:0" title="Build version">v13</span>
     <button class="tb-btn" onclick="loadAll()">↻</button>
     <button class="tb-btn p" onclick="navTo('submit')">＋ Submit</button>
   </div>
@@ -683,7 +683,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <div class="card-h"><span class="card-title">🏷 Activity Type Mix</span></div>
             <div style="position:relative;height:180px"><canvas id="chartTypeMix"></canvas></div>
           </div>
-          <div class="card">
+          <div class="card" id="budgetChartCard">
             <div class="card-h"><span class="card-title">💰 Budget vs Spend</span></div>
             <div style="position:relative;height:180px"><canvas id="chartBudget"></canvas></div>
           </div>
@@ -1027,16 +1027,16 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <div id="reportCampaignTitle" style="font-size:14px;font-weight:600;margin-bottom:14px;color:var(--text)"></div>
         <div id="reportFormMsg" class="form-msg"></div>
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Actual Spend ($)</label><input class="form-input" id="rActualSpend" type="number" step="0.01" placeholder="0.00"></div>
-          <div class="form-group"><label class="form-label">Supplier Contribution ($)</label><input class="form-input" id="rSupplierContrib" type="number" step="0.01" placeholder="0.00"></div>
+          <div class="form-group report-financial"><label class="form-label">Actual Spend ($)</label><input class="form-input" id="rActualSpend" type="number" step="0.01" placeholder="0.00"></div>
+          <div class="form-group report-financial"><label class="form-label">Supplier Contribution ($)</label><input class="form-input" id="rSupplierContrib" type="number" step="0.01" placeholder="0.00"></div>
           <div class="form-group"><label class="form-label">Tickets Sold</label><input class="form-input" id="rTicketsSold" type="number" placeholder="0"></div>
-          <div class="form-group"><label class="form-label">Ticket Revenue ($)</label><input class="form-input" id="rTicketRevenue" type="number" step="0.01" placeholder="Auto-calculated if left blank"></div>
+          <div class="form-group report-financial"><label class="form-label">Ticket Revenue ($)</label><input class="form-input" id="rTicketRevenue" type="number" step="0.01" placeholder="Auto-calculated if left blank"></div>
           <div class="form-group"><label class="form-label">Loaded Redemptions</label><input class="form-input" id="rRedemptions" type="number" placeholder="0"></div>
           <div class="form-group"><label class="form-label">Estimated Covers / Pax</label><input class="form-input" id="rCovers" type="number" placeholder="0"></div>
           <div class="form-group full"><label class="form-label">What worked?</label><textarea class="form-textarea" id="rWorked" placeholder="Key wins, strong performing channels, positive feedback…" style="min-height:60px"></textarea></div>
           <div class="form-group full"><label class="form-label">What to improve next time?</label><textarea class="form-textarea" id="rImprove" placeholder="What would you change, what was missing, what didn't land…" style="min-height:60px"></textarea></div>
         </div>
-        <div id="roiCalc" style="background:var(--accent-bg);border:1px solid rgba(10,102,64,.2);border-radius:8px;padding:12px 14px;margin:12px 0;font-size:13px;display:none">
+        <div id="roiCalc" class="report-financial" style="background:var(--accent-bg);border:1px solid rgba(10,102,64,.2);border-radius:8px;padding:12px 14px;margin:12px 0;font-size:13px;display:none">
           <div style="font-weight:600;color:var(--accent);margin-bottom:6px">📈 ROI estimate</div>
           <div id="roiDetails" style="font-size:12px;color:var(--text2);line-height:1.8"></div>
         </div>
@@ -1214,7 +1214,9 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <select class="form-select" id="newConvActivity"><option value="">Select…</option></select>
           </div>
           <div class="form-group full"><label class="form-label">Who's this with?</label>
-            <div id="newConvPeople" style="display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--text3);padding-top:4px">Loading team list…</div>
+            <input class="form-input" id="newConvPeopleSearch" type="search" placeholder="Type at least 2 letters to search Microsoft 365…" oninput="renderNewConversationPeople(this.value)" autocomplete="off">
+            <div id="newConvPeopleSelected" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px"></div>
+            <div id="newConvPeople" style="max-height:190px;overflow-y:auto;font-size:12.5px;color:var(--text3);padding-top:6px">Loading team list…</div>
           </div>
           <div class="form-group full"><label class="form-label">First message <span class="req">*</span></label>
             <textarea class="form-textarea" id="newConvText" placeholder="What's this about?" style="min-height:70px"></textarea>
@@ -1769,6 +1771,19 @@ const ROLE_MAP={
   'jo@marlinhospitality.com.au':         {role:'management', venue:'The Ravenswood'},
 };
 
+// Exact tenant display-name fallbacks for staff whose sign-in address differs from the old
+// guessed aliases above. These are only consulted after Microsoft Graph confirms the signed-in
+// user's own profile, so an arbitrary name typed into a form cannot grant access.
+const ROLE_NAME_MAP={
+  'kimberley maley': {role:'admin',      venue:null},
+  'luca brignoli':   {role:'design',     venue:null},
+  'didier bertrand': {role:'design',     venue:null},
+  'perrin lefebour': {role:'ops',        venue:null},
+  'amelia shugar':   {role:'management', venue:null},
+  'ben rasheed':     {role:'management', venue:null},
+  'joanne connor':   {role:'management', venue:'The Ravenswood'},
+};
+
 // Role → what they can see and do
 const ROLE_CONFIG={
   admin:{
@@ -1799,6 +1814,7 @@ const ROLE_CONFIG={
 
 let currentRole='general'; // fail closed until the signed-in user is resolved
 let currentVenueAccess=null; // null = all venues
+let currentM365Profile=null;
 
 // Keyword → role mapping against the signed-in user's own M365 jobTitle/department.
 // This is the primary source of truth — pulled live via Graph on every sign-in.
@@ -1826,9 +1842,18 @@ function venueFromM365Profile(text){
 async function resolveRoleFromM365(){
   try{
     const token=await getToken(false);
-    const res=await fetch('https://graph.microsoft.com/v1.0/me?$select=jobTitle,department',{headers:{Authorization:'Bearer '+token}});
+    const res=await fetch('https://graph.microsoft.com/v1.0/me?$select=id,displayName,mail,userPrincipalName,jobTitle,department',{headers:{Authorization:'Bearer '+token}});
     if(!res.ok)return null;
     const me=await res.json();
+    currentM365Profile=me;
+    const profileEmails=[me.mail,me.userPrincipalName].filter(Boolean).map(v=>v.toLowerCase());
+    const exactEmail=profileEmails.map(v=>ROLE_MAP[v]).find(Boolean);
+    if(exactEmail)return exactEmail;
+    const exactName=ROLE_NAME_MAP[(me.displayName||'').trim().toLowerCase()];
+    if(exactName){
+      console.log('Role resolved from exact M365 identity:',me.displayName,'→',exactName.role);
+      return exactName;
+    }
     const probe=((me.jobTitle||'')+' '+(me.department||'')).toLowerCase();
     if(!probe.trim())return null;
     for(const role of['admin','design','ops','venue','management']){
@@ -1857,6 +1882,12 @@ async function resolveRole(email){
     currentVenueAccess=m365Role?.venue||null;
   }
   applyRoleUI();
+  const userLabel=document.getElementById('userLabel');
+  if(userLabel){
+    const displayName=currentM365Profile?.displayName||currentUser?.name||email;
+    userLabel.textContent=`${displayName} · ${currentRole}`;
+    userLabel.title=`${currentM365Profile?.mail||currentM365Profile?.userPrincipalName||email} · Hub role: ${currentRole}${currentVenueAccess?' · '+currentVenueAccess:''}`;
+  }
   // Set default assignee emails for playbook
   if(currentRole==='admin'||currentRole==='management'){
     ROLE_EMAILS.designer=Object.entries(ROLE_MAP).find(([,v])=>v.role==='design')?.[0]||'';
@@ -1894,7 +1925,8 @@ function applyRoleUI(){
     const venueLabel=document.createElement('div');
     venueLabel.id='venueLabel';
     venueLabel.style.cssText='padding:8px 16px;font-size:10px;font-weight:700;color:var(--red);background:var(--red-bg);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.07em';
-    venueLabel.textContent=currentRole==='venue'?'Venue access not configured':'Limited access';
+    venueLabel.textContent=currentRole==='venue'?'Venue access not configured':'Limited access — Hub role not assigned';
+    venueLabel.title=`Signed in as ${currentUserEmail||'unknown account'}. Ask a Hub administrator to add this account to the access roster.`;
     const sb=document.querySelector('.sb-nav');
     if(sb&&!document.getElementById('venueLabel'))sb.prepend(venueLabel);
   }
@@ -2683,6 +2715,56 @@ function markThreadRead(campaignId){
 
 let _inboxThreads={};
 let _activeInboxThread=null;
+const NEW_CONV_SELECTED=new Map();
+
+function renderNewConversationSelected(){
+  const el=document.getElementById('newConvPeopleSelected');
+  if(!el)return;
+  el.innerHTML=[...NEW_CONV_SELECTED.entries()].map(([key,p])=>`<span class="chip on" style="font-size:11px;padding:3px 8px 3px 10px;display:inline-flex;align-items:center;gap:5px">${escapeAttr(p.name)}<span onclick="toggleNewConversationPerson('${escapeAttr(key)}')" style="cursor:pointer;opacity:.7">✕</span></span>`).join('');
+}
+
+function toggleNewConversationPerson(key){
+  const k=String(key||'').toLowerCase();
+  if(NEW_CONV_SELECTED.has(k))NEW_CONV_SELECTED.delete(k);
+  else{
+    const person=[...M365_DIRECTORY,...M365_USERS].find(u=>(u.email||u.id||u.name).toLowerCase()===k);
+    if(person)NEW_CONV_SELECTED.set(k,{name:cleanPersonName(person.name),email:person.email||''});
+  }
+  renderNewConversationPeople(document.getElementById('newConvPeopleSearch')?.value||'');
+  renderNewConversationSelected();
+}
+
+function addNewConversationGroup(group){
+  (TAG_GROUPS[group]||[]).forEach(name=>{
+    const person=[...M365_USERS,...M365_DIRECTORY].find(u=>(u.name||'').toLowerCase().includes(name.toLowerCase()));
+    if(person){
+      const key=(person.email||person.id||person.name).toLowerCase();
+      NEW_CONV_SELECTED.set(key,{name:cleanPersonName(person.name),email:person.email||''});
+    }
+  });
+  renderNewConversationPeople(document.getElementById('newConvPeopleSearch')?.value||'');
+  renderNewConversationSelected();
+}
+
+function renderNewConversationPeople(query=''){
+  const el=document.getElementById('newConvPeople');
+  if(!el)return;
+  const q=String(query||'').trim().toLowerCase();
+  const source=q.length>=2?M365_DIRECTORY:M365_USERS;
+  const matches=source.filter(u=>{
+    if(q.length<2)return true;
+    return (u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q);
+  }).slice(0,30);
+  const groups=q.length<2?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px">${Object.keys(TAG_GROUPS).map(g=>`<button type="button" class="chip" style="font-size:10.5px" onclick="addNewConversationGroup('${escapeAttr(g)}')">👥 ${escapeAttr(g)}</button>`).join('')}</div>`:'';
+  const help=q.length===1?'Type one more character to search the full Microsoft 365 directory.':!matches.length?'No Microsoft 365 matches found.':'';
+  el.innerHTML=directoryWarningHtml()+groups+`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:3px 4px 5px">${q.length>=2?'Microsoft 365 results':'Frequent people'}</div>`+
+    (help?`<div style="font-size:11px;color:var(--text3);padding:7px 4px">${help}</div>`:'')+
+    matches.map(u=>{
+      const key=(u.email||u.id||u.name).toLowerCase();
+      const checked=NEW_CONV_SELECTED.has(key);
+      return`<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer;padding:6px 4px"><input type="checkbox" ${checked?'checked':''} data-person-key="${escapeAttr(key)}" onchange="toggleNewConversationPerson(this.dataset.personKey)"><span><strong style="color:var(--text)">${escapeAttr(u.name)}</strong>${u.email?`<br><span style="font-size:10.5px;color:var(--text3)">${escapeAttr(u.email)}</span>`:''}</span></label>`;
+    }).join('');
+}
 
 function openNewConversation(){
   const actSel=document.getElementById('newConvActivity');
@@ -2692,16 +2774,10 @@ function openNewConversation(){
       const opt=document.createElement('option');opt.value=e.spId;opt.textContent=`${e.title} (${shortVenue(e.venue)})`;actSel.appendChild(opt);
     });
   }
-  const peopleEl=document.getElementById('newConvPeople');
-  if(peopleEl){
-    const people=M365_USERS.length?M365_USERS:[{name:'Kim'},{name:'Luca'},{name:'Perrin'},{name:'Didier'},{name:'Amelia'},{name:'Ben'}];
-    let html=directoryWarningHtml()+Object.keys(TAG_GROUPS).map(g=>`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;color:var(--accent)"><input type="checkbox" class="newConvGroup" value="${g}"> 👥 ${g}</label>`).join('');
-    html+=people.map(u=>{
-      const clean=u.name.replace(/\s*\([^)]*\)\s*/g,'').trim();
-      return`<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" class="newConvPerson" value="${clean}" data-email="${u.email||''}"> ${u.name}</label>`;
-    }).join('');
-    peopleEl.innerHTML=html;
-  }
+  NEW_CONV_SELECTED.clear();
+  const peopleSearch=document.getElementById('newConvPeopleSearch');if(peopleSearch)peopleSearch.value='';
+  renderNewConversationPeople('');
+  renderNewConversationSelected();
   document.getElementById('newConvText').value='';
   const emailCb=document.getElementById('newConvEmail');if(emailCb)emailCb.checked=true;
   document.getElementById('newConvMsg').textContent='';
@@ -2717,13 +2793,7 @@ async function startNewConversation(button){
   if(!text){msg.textContent='Please write a message.';msg.className='form-msg err';return;}
   const ev=EVENTS.find(e=>String(e.spId)===String(spId));
   if(!ev)return;
-  const names=new Set();
-  document.querySelectorAll('.newConvPerson:checked').forEach(cb=>names.add(cb.value));
-  document.querySelectorAll('.newConvGroup:checked').forEach(cb=>(TAG_GROUPS[cb.value]||[]).forEach(n=>names.add(n)));
-  const recipients=[...names].map(name=>{
-    const person=M365_USERS.find(u=>u.name.toLowerCase().includes(name.toLowerCase()));
-    return{name,email:person?.email||''};
-  });
+  const recipients=[...NEW_CONV_SELECTED.values()];
   const result=await postItemComment(ev.id,{text,recipients,wantsEmail:document.getElementById('newConvEmail')?.checked??true,button,buttonLabel:'Start Conversation'});
   if(!result?.posted)return;
   const undelivered=[...(result.emailResult?.failed||[]).map(r=>r.name),...(result.emailResult?.missing||[])];
@@ -3251,6 +3321,45 @@ function openDeepLinkedActivity(){
 // ═══════════════════════════════════════
 // KEY DATES — Calendar Reference + Nager.Date public holidays
 // ═══════════════════════════════════════
+let CALENDAR_REF_FIELDS=null;
+
+function normaliseColumnName(value){
+  return String(value||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+}
+
+async function getCalendarRefFieldMap(token){
+  if(CALENDAR_REF_FIELDS)return CALENDAR_REF_FIELDS;
+  const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.calendarRef}/columns?$select=name,displayName&$top=200`;
+  const res=await fetch(url,{headers:{Authorization:'Bearer '+token}});
+  if(!res.ok)throw new Error('Could not read the Calendar Reference column setup (HTTP '+res.status+').');
+  const data=await res.json();
+  const columns=Array.isArray(data.value)?data.value:[];
+  const find=(...aliases)=>{
+    const wanted=aliases.map(normaliseColumnName);
+    return columns.find(c=>wanted.includes(normaliseColumnName(c.name))||wanted.includes(normaliseColumnName(c.displayName)))?.name||null;
+  };
+  CALENDAR_REF_FIELDS={
+    title:find('Title'),
+    start:find('Start','Start Date','StartDate','Event Date','EventDate','Date'),
+    end:find('End','End Date','EndDate'),
+    dateType:find('Date Type','DateType','Type'),
+    marketingOpportunity:find('Marketing Opportunity','MarketingOpportunity'),
+    isPublicHoliday:find('Is Public Holiday','IsPublicHoliday','Public Holiday'),
+    stateRegion:find('State / Region','State Region','StateRegion'),
+    opsImpact:find('Ops Impact','OpsImpact'),
+    appliesToVenues:find('Applies to Venues','AppliesToVenues','Venues'),
+    websiteUpdateRequired:find('Website Update Required','WebsiteUpdateRequired'),
+    gbpUpdateRequired:find('GBP Update Required','GBPUpdateRequired'),
+    socialNoticeRequired:find('Social Notice Required','SocialNoticeRequired'),
+    notes:find('Notes')
+  };
+  if(!CALENDAR_REF_FIELDS.title||!CALENDAR_REF_FIELDS.start){
+    CALENDAR_REF_FIELDS=null;
+    throw new Error('The Calendar Reference list needs Title and Start Date columns before Key Dates can be saved.');
+  }
+  return CALENDAR_REF_FIELDS;
+}
+
 async function loadKeyDates(){
   KEY_DATES=[];
   // 1. Auto-load Australian public holidays from Nager.Date (free, no auth)
@@ -3289,26 +3398,29 @@ async function loadKeyDates(){
   if(!LIST_IDS.calendarRef||!isAuthed)return;
   try{
     const token=await getToken();
+    const fieldMap=await getCalendarRefFieldMap(token);
     const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.calendarRef}/items?expand=fields&$top=500`;
     const items=await fetchGraphItems(url,token);
     items.forEach(item=>{
       const f=item.fields;
-      if(!f.Start&&!f.EventDate)return;
+      const startValue=f[fieldMap.start];
+      if(!startValue)return;
+      const endValue=fieldMap.end?f[fieldMap.end]:null;
       KEY_DATES.push({
         id:'cr-'+item.id,
-        title:f.Title||'Key Date',
-        start:(f.Start||f.EventDate||'').split('T')[0],
-        end:(f.End||f.EndDate||f.Start||f.EventDate||'').split('T')[0],
-        dateType:f.DateType||'National Calendar Event',
-        isPublicHoliday:f.IsPublicHoliday===true||f.IsPublicHoliday==='Yes',
-        states:f.StateRegion?[f.StateRegion]:['National'],
-        marketingOpportunity:f.MarketingOpportunity||'Optional',
-        opsImpact:f.OpsImpact||'',
-        appliesToVenues:f.AppliesToVenues||'',
-        websiteUpdateRequired:f.WebsiteUpdateRequired===true,
-        gbpUpdateRequired:f.GBPUpdateRequired===true,
-        socialNoticeRequired:f.SocialNoticeRequired===true,
-        notes:f.Notes||'',
+        title:f[fieldMap.title]||'Key Date',
+        start:String(startValue).split('T')[0],
+        end:String(endValue||startValue).split('T')[0],
+        dateType:(fieldMap.dateType&&f[fieldMap.dateType])||'National Calendar Event',
+        isPublicHoliday:!!(fieldMap.isPublicHoliday&&(f[fieldMap.isPublicHoliday]===true||f[fieldMap.isPublicHoliday]==='Yes')),
+        states:fieldMap.stateRegion&&f[fieldMap.stateRegion]?[f[fieldMap.stateRegion]]:['National'],
+        marketingOpportunity:(fieldMap.marketingOpportunity&&f[fieldMap.marketingOpportunity])||'Optional',
+        opsImpact:(fieldMap.opsImpact&&f[fieldMap.opsImpact])||'',
+        appliesToVenues:(fieldMap.appliesToVenues&&f[fieldMap.appliesToVenues])||'',
+        websiteUpdateRequired:!!(fieldMap.websiteUpdateRequired&&f[fieldMap.websiteUpdateRequired]===true),
+        gbpUpdateRequired:!!(fieldMap.gbpUpdateRequired&&f[fieldMap.gbpUpdateRequired]===true),
+        socialNoticeRequired:!!(fieldMap.socialNoticeRequired&&f[fieldMap.socialNoticeRequired]===true),
+        notes:(fieldMap.notes&&f[fieldMap.notes])||'',
         source:'sharepoint'
       });
     });
@@ -3405,35 +3517,26 @@ async function saveKeyDateForm(existingId){
   const marketingOpportunity=document.getElementById('kdOpp').value;
   const appliesToVenues=document.getElementById('kdVenues').value.trim();
   const notes=document.getElementById('kdNotes').value.trim();
-  const fields={Title:title,Start:start+'T00:00:00Z',DateType:dateType,MarketingOpportunity:marketingOpportunity};
-  if(end)fields.End=end+'T00:00:00Z';
-  if(appliesToVenues)fields.AppliesToVenues=appliesToVenues;
-  if(notes)fields.Notes=notes;
-  if(dateType==='Public Holiday')fields.IsPublicHoliday=true;
   if(msgEl)msgEl.textContent='Saving…';
   try{
     const token=await getToken(true);
+    const fieldMap=await getCalendarRefFieldMap(token);
+    const fields={};
+    fields[fieldMap.title]=title;
+    fields[fieldMap.start]=start+'T00:00:00Z';
+    if(fieldMap.end&&end)fields[fieldMap.end]=end+'T00:00:00Z';
+    if(fieldMap.dateType)fields[fieldMap.dateType]=dateType;
+    if(fieldMap.marketingOpportunity)fields[fieldMap.marketingOpportunity]=marketingOpportunity;
+    if(fieldMap.appliesToVenues&&appliesToVenues)fields[fieldMap.appliesToVenues]=appliesToVenues;
+    if(fieldMap.notes&&notes)fields[fieldMap.notes]=notes;
+    if(fieldMap.isPublicHoliday)fields[fieldMap.isPublicHoliday]=dateType==='Public Holiday';
     const spId=existingId?existingId.replace(/^cr-/,''):null;
     const url=spId
       ?`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.calendarRef}/items/${spId}`
       :`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.calendarRef}/items`;
-    // Graceful degradation — some of these columns may not exist yet on the Calendar Reference
-    // list, so drop them group-by-group and retry rather than failing the whole save.
-    const removableGroups=[['AppliesToVenues'],['Notes'],['MarketingOpportunity'],['IsPublicHoliday'],['End']];
-    let payload={...fields},dropped=[],res,ok=false,resBody='';
-    for(let attempt=0;attempt<=removableGroups.length;attempt++){
-      res=await fetch(url,{method:spId?'PATCH':'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:payload})});
-      resBody=await res.text();
-      if(res.ok){ok=true;break;}
-      if(attempt<removableGroups.length){
-        const group=removableGroups[attempt];
-        let removedAny=false;
-        group.forEach(f=>{if(payload.hasOwnProperty(f)){delete payload[f];dropped.push(f);removedAny=true;}});
-        if(!removedAny)continue;
-      }
-    }
-    if(!ok)throw new Error('HTTP '+res.status+': '+resBody);
-    if(msgEl)msgEl.innerHTML=dropped.length?`<span style="color:var(--gold)">Saved — but these columns don't exist yet and were skipped: ${dropped.join(', ')}.</span>`:'<span style="color:var(--accent)">Saved.</span>';
+    const res=await fetch(url,{method:spId?'PATCH':'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+    if(msgEl)msgEl.innerHTML='<span style="color:var(--accent)">Saved.</span>';
     document.getElementById('kdFormWrap').innerHTML='';
     await loadKeyDates();
     renderKeyDatesManagerList();
@@ -4925,14 +5028,15 @@ function renderOverview(){
   const totalSpend=completed.reduce((a,e)=>a+(e.actualSpend||0),0);
   const totalRevenue=completed.reduce((a,e)=>a+(e.ticketsSold||0)*(e.ticketPrice||0),0);
   const supplierFunds=completed.reduce((a,e)=>a+(e.supplierContrib||0),0);
-  document.getElementById('ovResults').innerHTML=`
+  const canSeeFinancials=!!rolePermissions().canViewBudget;
+  document.getElementById('ovResults').innerHTML=canSeeFinancials?`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px">
       <div style="padding:10px;background:var(--surface2);border-radius:6px"><div style="font-size:18px;font-weight:700;color:var(--text)">${completed.length}</div><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Completed</div></div>
       <div style="padding:10px;background:var(--surface2);border-radius:6px"><div style="font-size:18px;font-weight:700;color:var(--accent)">${totalSpend>0?'$'+Math.round(totalSpend/1000)+'k':'—'}</div><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Actual Spend</div></div>
       <div style="padding:10px;background:var(--surface2);border-radius:6px"><div style="font-size:18px;font-weight:700;color:var(--gold)">${totalRevenue>0?'$'+Math.round(totalRevenue/1000)+'k':'—'}</div><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Ticket Revenue</div></div>
       <div style="padding:10px;background:var(--surface2);border-radius:6px"><div style="font-size:18px;font-weight:700;color:#4a9e8e">${supplierFunds>0?'$'+Math.round(supplierFunds/1000)+'k':'—'}</div><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Supplier Funds</div></div>
     </div>
-  `;
+  `:`<div style="padding:10px"><div style="padding:10px;background:var(--surface2);border-radius:6px"><div style="font-size:18px;font-weight:700;color:var(--text)">${completed.length}</div><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Completed</div></div></div>`;
 
   setTimeout(()=>renderDashboardCharts(allEvts),50);
   applyDashboardLayout();
@@ -4948,6 +5052,9 @@ function destroyChart(id){if(_charts[id]){_charts[id].destroy();delete _charts[i
 
 function renderDashboardCharts(evts){
   if(typeof Chart==='undefined')return;
+  const canSeeFinancials=!!rolePermissions().canViewBudget;
+  const budgetCard=document.getElementById('budgetChartCard');
+  if(budgetCard)budgetCard.style.display=canSeeFinancials?'':'none';
   const isDark=window.matchMedia('(prefers-color-scheme: dark)').matches;
   const textColor=isDark?'#b4b2a9':'#88887e';
   const gridColor=isDark?'rgba(255,255,255,.08)':'rgba(0,0,0,.06)';
@@ -4996,6 +5103,7 @@ function renderDashboardCharts(evts){
 
   // ── Chart 3: Budget vs actual by venue ──
   destroyChart('chartBudget');
+  if(!canSeeFinancials)return;
   const venues=['LB','RAV','WBC','Darwin','Mustang'];
   const venueKeys=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
   const budgets=venueKeys.map(v=>Math.round(evts.filter(e=>e.venue===v).reduce((a,e)=>a+(e.budget||0),0)));
@@ -5429,6 +5537,8 @@ function openPostCampaign(evId){
   _reportingEventId=evId;
   const ev=EVENTS.find(e=>e.id===evId||e.spId==evId);
   if(!ev)return;
+  const canSeeFinancials=!!rolePermissions().canViewBudget;
+  document.querySelectorAll('#postCampaignOv .report-financial').forEach(el=>el.style.display=canSeeFinancials?'':'none');
   const title=document.getElementById('reportCampaignTitle');
   if(title)title.textContent=ev.title+' · '+ev.venue;
   // Pre-fill existing actuals
@@ -5447,6 +5557,10 @@ function openPostCampaign(evId){
 function closePostCampaign(){document.getElementById('postCampaignOv').classList.remove('show');_reportingEventId=null;}
 
 function calcROI(){
+  if(!rolePermissions().canViewBudget){
+    const roiDiv=document.getElementById('roiCalc');if(roiDiv)roiDiv.style.display='none';
+    return;
+  }
   const ev=EVENTS.find(e=>e.id===_reportingEventId||e.spId==_reportingEventId);
   const spend=parseFloat(document.getElementById('rActualSpend').value)||0;
   const supplier=parseFloat(document.getElementById('rSupplierContrib').value)||0;
@@ -5478,8 +5592,10 @@ async function savePostCampaign(btn){
   try{
     const token=await getToken(true);
     const fields={WorkflowStage:'Done'};
-    const spend=document.getElementById('rActualSpend').value;if(spend)fields.ActualSpend=parseFloat(spend);
-    const supplier=document.getElementById('rSupplierContrib').value;if(supplier)fields.SupplierContribution=parseFloat(supplier);
+    if(rolePermissions().canViewBudget){
+      const spend=document.getElementById('rActualSpend').value;if(spend)fields.ActualSpend=parseFloat(spend);
+      const supplier=document.getElementById('rSupplierContrib').value;if(supplier)fields.SupplierContribution=parseFloat(supplier);
+    }
     const sold=document.getElementById('rTicketsSold').value;if(sold)fields.TicketsSold=parseInt(sold);
     const worked=document.getElementById('rWorked').value;
     const improve=document.getElementById('rImprove').value;
@@ -6392,6 +6508,9 @@ function renderLoaded(){
 // ═══════════════════════════════════════
 function renderTicketing(){
   if(!isAuthed)return;
+  const canSeeFinancials=!!rolePermissions().canViewBudget;
+  const ticketHead=document.querySelector('#tkTable thead tr');
+  if(ticketHead)ticketHead.innerHTML=`<th>Event</th><th>Date</th><th>Venue</th><th>Platform</th><th>Cap</th><th>Sold</th>${canSeeFinancials?'<th>Revenue</th>':''}<th>Progress</th><th>Link</th><th>Readiness</th>`;
   const venueFilter=document.querySelector('#tkChips .chip.on')?.dataset.v||'';
   // Rule: ticketed if TicketedEvent=Yes OR EventFormat = Ticketed Event
   let tk=EVENTS.filter(e=>(e.ticketed||e.eventFormat==='Ticketed Event')&&!isArchived(e));
@@ -6409,7 +6528,7 @@ function renderTicketing(){
     <div class="stat ${needsSetup>0?'hi':''}"><div class="stat-n" style="color:${needsSetup>0?'#c0392b':'inherit'}">${needsSetup}</div><div class="stat-l">Needs Setup</div></div>
     <div class="stat"><div class="stat-n">${totalSold.toLocaleString()}</div><div class="stat-l">Tickets Sold</div></div>
     <div class="stat"><div class="stat-n">${totalCap>0?Math.round(totalSold/totalCap*100):0}%</div><div class="stat-l">Avg Fill Rate</div></div>
-    <div class="stat"><div class="stat-n">${totalRev>0?'$'+Math.round(totalRev/1000)+'k':'-'}</div><div class="stat-l">Est. Revenue</div></div>
+    ${canSeeFinancials?`<div class="stat"><div class="stat-n">${totalRev>0?'$'+Math.round(totalRev/1000)+'k':'-'}</div><div class="stat-l">Est. Revenue</div></div>`:''}
   `;
   const platformIcons={Humanitix:'🎫',TryBooking:'🎟',Eventbrite:'🎪',Oztix:'🎶','Now Book It':'📋'};
   document.getElementById('tkBody').innerHTML=tk.length?tk.map(ev=>{
@@ -6433,7 +6552,7 @@ function renderTicketing(){
       <td>${ev.ticketPlatform?`<span class="tag t-b">${icon} ${ev.ticketPlatform}</span>`:'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
       <td style="text-align:center;font-size:12px">${cap||'-'}</td>
       <td style="text-align:center;font-size:12px;font-weight:${sold>0?'600':'400'};color:${isFull?'var(--red)':sold>0?'var(--accent)':'var(--text3)'}">${sold||'-'}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent)">${rev>0?'$'+rev.toLocaleString():'-'}</td>
+      ${canSeeFinancials?`<td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent)">${rev>0?'$'+rev.toLocaleString():'-'}</td>`:''}
       <td style="min-width:120px">
         <div class="tc-progress">
           <div class="tc-bar-w"><div class="tc-bar-f ${isFull?'sold':''}" style="width:${pct}%;background:${isFull?'var(--red)':isAlmostFull?'var(--gold)':'var(--accent)'}"></div></div>
@@ -6444,7 +6563,7 @@ function renderTicketing(){
       <td>${ev.ticketUrl?`<a href="${ev.ticketUrl}" target="_blank" style="font-size:11px;color:var(--accent);font-weight:600;text-decoration:none" onclick="event.stopPropagation()">Buy →</a>`:'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
       <td><span style="font-size:10px;font-weight:700;color:${badge.c};background:${badge.bg};padding:2px 8px;border-radius:10px;white-space:nowrap">${badge.t}</span></td>
     </tr>`;
-  }).join(''):`<tr><td colspan="10" style="padding:30px;text-align:center;color:var(--text3)">
+  }).join(''):`<tr><td colspan="${canSeeFinancials?10:9}" style="padding:30px;text-align:center;color:var(--text3)">
     No ticketed events found. Set <strong>TicketedEvent = Yes</strong> (or EventFormat = Ticketed Event) in SharePoint → add Platform, Capacity, Ticket Price and Ticket URL.
   </td></tr>`;
 }
@@ -7456,7 +7575,12 @@ async function submitJob(){
     TaskType:document.getElementById('fJobType').value,
   };
   const due=document.getElementById('fJobDue').value;if(due)fields.DueDate=due+'T12:00:00Z';
-  const notes=document.getElementById('fJobNotes').value;if(notes)fields.Notes=notes;
+  // The My Tasks list does not currently have a Venue column. Preserve the selection in Notes
+  // until that schema debt is fixed, instead of silently throwing the user's venue away.
+  const venue=document.getElementById('fJobVenue').value;
+  const rawNotes=document.getElementById('fJobNotes').value.trim();
+  const notes=[venue?`Venue: ${venue}`:'',rawNotes].filter(Boolean).join('\n\n');
+  if(notes)fields.Notes=notes;
   const assign=document.getElementById('fJobAssign').value;if(assign)fields.AssignedTo=assign;
   // Campaign & digital linkage
   const relatedCampaign=document.getElementById('fJobCampaign').value;if(relatedCampaign)fields.RelatedCampaignId=relatedCampaign;
@@ -7733,9 +7857,11 @@ function renderActivityDetail(id,mode){
       ${peopleNames.map(n=>`<option value="${n}" ${n===ev.owner?'selected':''}>${n}</option>`).join('')}
     </select></div>`;
   h+=editField('Venue',ev.venue,'Venue','select',['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','All Venues']);
-  h+=editField('Budget ($)',ev.budget||'','BudgetAllocated','number');
-  if(ev.actualSpend)h+=editField('Actual Spend ($)',ev.actualSpend,'ActualSpend','number');
-  if(ev.supplierContrib)h+=editField('Supplier Contribution ($)',ev.supplierContrib,'SupplierContribution','number');
+  if(rolePermissions().canViewBudget){
+    h+=editField('Budget ($)',ev.budget||'','BudgetAllocated','number');
+    if(ev.actualSpend)h+=editField('Actual Spend ($)',ev.actualSpend,'ActualSpend','number');
+    if(ev.supplierContrib)h+=editField('Supplier Contribution ($)',ev.supplierContrib,'SupplierContribution','number');
+  }
   h+=`</div>`;
 
   // Links & setup — the fields most likely to need updating after submission
