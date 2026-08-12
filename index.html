@@ -541,7 +541,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="tb-title" id="tbTitle">Dashboard <em>Overview</em></div>
     <div class="tb-date" id="tbDate"></div>
     <div class="sw"><input type="text" placeholder="Search…" id="gSearch" oninput="doSearch(this.value)"></div>
-    <span style="font-size:9px;color:var(--accent);font-weight:700;background:var(--accent-bg);padding:2px 6px;border-radius:4px;flex-shrink:0" title="Build version">v15</span>
+    <span style="font-size:9px;color:var(--accent);font-weight:700;background:var(--accent-bg);padding:2px 6px;border-radius:4px;flex-shrink:0" title="Build version">v16</span>
     <button class="tb-btn" onclick="loadAll()">↻</button>
     <button class="tb-btn p" onclick="navTo('submit')">＋ Submit</button>
   </div>
@@ -1453,7 +1453,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             </div>
             <div class="form-group full"><label class="form-label">External person, not in Microsoft 365</label><input class="form-input" id="fAdditionalOther" type="text" placeholder="Name or email, comma-separated"></div>
             <div class="form-group full">
-              <label class="checkbox-row" style="font-size:12px"><input type="checkbox" id="fNotifyPeopleByEmail" checked> Email selected Microsoft 365 people as well as adding this to their Inbox</label>
+              <label class="checkbox-row" style="font-size:12px"><input type="checkbox" id="fNotifyPeopleByEmail"> Email selected Microsoft 365 people as well as adding this to their Inbox</label>
               <div class="field-help">Search the full Microsoft 365 directory. Selected people are added to the activity conversation from the start.</div>
             </div>
           </div>
@@ -3599,6 +3599,48 @@ async function deleteKeyDateEntry(id){
   }
 }
 
+const POS_NOTES_HEADING='--- POS UPDATE REQUIRED ---';
+
+function splitPOSNotes(description=''){
+  const source=String(description||'');
+  const marker=`\n\n${POS_NOTES_HEADING}\n`;
+  const markerAt=source.lastIndexOf(marker);
+  if(markerAt<0)return{description:source,posNotes:''};
+  return{
+    description:source.slice(0,markerAt).trimEnd(),
+    posNotes:source.slice(markerAt+marker.length).trim()
+  };
+}
+
+function withPOSNotes(description='',posNotes=''){
+  const base=splitPOSNotes(description).description.trimEnd();
+  const notes=String(posNotes||'').trim();
+  if(!notes)return base;
+  return`${base}${base?'\n\n':''}${POS_NOTES_HEADING}\n${notes}`;
+}
+
+function isLoadedRewardsFields(fields={}){
+  const isLoadedValue=(value)=>{
+    if(value===true)return true;
+    const normalised=String(value??'').trim().toLowerCase();
+    return normalised==='loaded rewards'||normalised==='yes'||normalised==='true'||normalised==='1';
+  };
+  return isLoadedValue(fields.LoadedRewards)
+    ||isLoadedValue(fields.IsLoaded)
+    ||isLoadedValue(fields.Brand)
+    ||isLoadedValue(fields.BusinessStream)
+    ||isLoadedValue(fields.Departement);
+}
+
+function isLoadedRewardsEvent(ev={}){
+  return isLoadedRewardsFields({
+    LoadedRewards:ev.loadedFlag,
+    Brand:ev.brand,
+    BusinessStream:ev.businessStream,
+    Departement:ev.department
+  });
+}
+
 async function loadCampaigns(){
   try{
     const token=await getToken();
@@ -3629,6 +3671,9 @@ async function loadCampaigns(){
         :(recurringDayRaw?[recurringDayRaw]:[]);
       // RecurringFrequency is single Choice
       const recurringFreq=f.RecurringFrequency||'';
+      const descriptionParts=splitPOSNotes(f.Description||'');
+      const loadedRewards=isLoadedRewardsFields(f);
+      const posRequired=f.POSUpdateRequired===true||f.POSUpdateRequired==='Yes';
       // DesignBriefDue = StartDate - (leadWeeks * 7) days
       // Marketing Start Date = StartDate - (leadWeeks * 7) - 7 extra days for marketing prep
       // Both calculated in OS since DESIGN_x0020_BRIEF calculated field is broken
@@ -3680,7 +3725,7 @@ async function loadCampaigns(){
         campaignObjective:f.CampaignObjective||'',
         targetAudience:f.TargetAudience||'',
         // Copy fields
-        description:f.Description||'',
+        description:descriptionParts.description,
         keyMessage:f.KeyMessage||'',
         cta:f.CTA||'',
         tagline:f.Tagline||'',
@@ -3736,15 +3781,16 @@ async function loadCampaigns(){
         googleAdsId:f.GoogleAdsCampaignID||'',
         metaCampaignId:f.MetaCampaignID||'',
         // Loaded / pricing
-        loadedRewards:(f.Brand||'').trim().toLowerCase()==='loaded rewards',
+        loadedRewards,
+        loadedFlag:f.LoadedRewards??f.IsLoaded??'',
         // Supplier
         supplierInvolved:f.SupplierInvolved===true||f.SupplierInvolved==='Yes',
         supplierLookup:f.Supplier?.LookupValue||'',
         product:f.Product?.LookupValue||'',
         // Operational
-        posRequired:f.POSUpdateRequired===true||f.POSUpdateRequired==='Yes',
-        posStatus:f.PosStatus||'Not Required',
-        posNotes:f.POSNotes||'',
+        posRequired,
+        posStatus:f.PosStatus||(posRequired?'Required':''),
+        posNotes:f.POSNotes||descriptionParts.posNotes,
         designJobCreated:f.DesignJobCreated===true||f.DesignJobCreated==='Yes',
         collateralStatus:f.CollateralStatus||'',
         artworkFile:f.Artwork_x0020_File?.Url||f.Artwork_x0020_File||'',
@@ -3806,7 +3852,7 @@ function renderVenueMonth(){
     const s=new Date(e.start+'T00:00:00'),en=new Date(e.end+'T00:00:00');
     return s<=monthEnd&&en>=monthStart&&!isArchived(e);
   });
-  const isLoaded=(e)=>e.loadedRewards; // strictly Primary Brand === 'Loaded Rewards'
+  const isLoaded=(e)=>e.loadedRewards;
 
   const body=document.getElementById('vmBody');
   if(!body)return;
@@ -6405,7 +6451,8 @@ function renderCampaigns(){
     ?evts.map(ev=>{
         const vc=vColor(ev.venue);
         const sc=stageColors[ev.stage]||'#6b7280';
-        const posWarn=ev.posStatus==='Pending'?'<span title="POS pending" style="color:#b45309">⚠️</span>':'';
+        const posWarn=['Required','Pending','To Do','In Progress'].includes(ev.posStatus)?'<span title="POS update outstanding" style="color:#b45309">⚠️</span>':'';
+        const posText=ev.posStatus||(ev.posRequired?'Required':'');
         const vLogo=VENUE_LOGOS[ev.venue];
         return`<tr onclick="showActivityPage(${ev.id})" style="cursor:pointer">
           <td><div class="tbl-name" style="display:flex;align-items:center;gap:7px">${vLogo?`<img src="${vLogo}" alt="" style="height:16px;width:16px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">`:''}<span>${ev.title}${posWarn}</span></div>${ev.brand?`<div class="tbl-sub">${ev.brand}</div>`:''}</td>
@@ -6415,7 +6462,7 @@ function renderCampaigns(){
           <td><span style="font-size:10px;font-weight:500;color:${sc};background:${sc}18;padding:2px 7px;border-radius:4px;white-space:nowrap">${stageLabel(ev.stage)}</span></td>
           <td>${statusPill(ev.status)}</td>
           <td>${ev.loadedRewards?'<span class="tag t-a" style="font-size:10px">⭐</span>':'-'}</td>
-          <td>${ev.posRequired?`<span style="font-size:10px;font-weight:500;color:${ev.posStatus==='Pending'?'#b45309':'#0a6640'}">${ev.posStatus||'Pending'}</span>`:'-'}</td>
+          <td>${posText?`<span style="font-size:10px;font-weight:500;color:${['Required','Pending','To Do','In Progress'].includes(posText)?'#b45309':'#0a6640'}">${posText}</span>`:'-'}</td>
         </tr>`;
       }).join('')
     :`<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3)">No campaigns match filters</td></tr>`;
@@ -6473,7 +6520,7 @@ const TIER_ICONS={
 
 function renderLoaded(){
   if(!isAuthed)return;
-  const allLR=EVENTS.filter(e=>e.loadedRewards); // strictly Primary Brand === 'Loaded Rewards'
+  const allLR=EVENTS.filter(e=>e.loadedRewards);
   const lr=allLR.filter(e=>!isArchived(e));
   const totalRedemptions=OFFER_VARIANTS.reduce((a,v)=>a+(v.actualRedemption||0),0);
   const supplierFunded=OFFER_VARIANTS.filter(v=>v.supplierFunding).length;
@@ -7814,7 +7861,9 @@ async function submitEvent(){
     fields.POSUpdateRequired=posRequired;
     fields.PosStatus=posRequired?'Required':'Not Required';
     const posDetails=document.getElementById('fPOSDetails')?.value.trim();
-    if(posRequired&&posDetails)fields.POSNotes=posDetails;
+    // The Campaigns list does not reliably expose a POSNotes column. Preserve the user's notes
+    // in the existing Description field under a tagged section so they always write back.
+    if(posRequired&&posDetails)fields.Description=withPOSNotes(fields.Description,posDetails);
 
     // Channels
     const channels=[];
@@ -7838,7 +7887,7 @@ async function submitEvent(){
     // Fields most likely to not exist as SharePoint columns yet, tried as removable groups if the
     // full payload is rejected — a generic 400 on create doesn't tell us which field is the problem,
     // unlike editing an existing item, so we strip the newest/least-confirmed fields first and retry.
-    const removableGroups=[['POSNotes'],['TicketURL'],['TicketPlatform','TicketPrice','Capacity','TicketedEvent'],['RegularPrice','LoadedBasePrice'],['AssetTVsDetail'],['AssetNewsletterDetail'],['DesignStatus'],['AssetsNeeded'],['Channels'],['GoogleAdsEligible'],['AppShortDescription'],['AppHeading','AppDescription'],['NewsletterRequired'],['AppRequired'],['BookingURL'],['Brand']];
+    const removableGroups=[['TicketURL'],['TicketPlatform','TicketPrice','Capacity','TicketedEvent'],['RegularPrice','LoadedBasePrice'],['AssetTVsDetail'],['AssetNewsletterDetail'],['DesignStatus'],['AssetsNeeded'],['Channels'],['GoogleAdsEligible'],['AppShortDescription'],['AppHeading','AppDescription'],['NewsletterRequired'],['AppRequired'],['BookingURL'],['Brand']];
     let payload={...fields};
     const dropped=[];
     let res,ok=false,resBody='';
@@ -7933,7 +7982,7 @@ function renderActivityDetail(id,mode){
   const vc=vColor(ev.venue);
   const titleElId=mode==='page'?'activityDetailTitle':'popTitle';
   const bodyElId=mode==='page'?'activityDetailBody':'popBody';
-  document.getElementById(titleElId).innerHTML=`<div style="flex:1;min-width:0"><input class="pop-edit-inp" data-field="Title" value="${(ev.title||'').replace(/"/g,'&quot;')}" onchange="markPopDirty()" style="font-size:17px;font-weight:600;font-family:'DM Serif Display',serif;border:1px solid transparent;background:transparent;padding:2px 4px;border-radius:4px;width:100%;color:var(--text)" onfocus="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'" onblur="this.style.borderColor='transparent';this.style.background='transparent'"><div><button onclick="savePopEdit(${ev.id})" class="pop-save-btn" style="display:none;margin-top:4px;padding:3px 10px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600">Save changes</button></div></div>`;
+  document.getElementById(titleElId).innerHTML=`<div style="flex:1;min-width:0"><input class="pop-edit-inp" data-field="Title" value="${(ev.title||'').replace(/"/g,'&quot;')}" onchange="markPopDirty('${mode}')" style="font-size:17px;font-weight:600;font-family:'DM Serif Display',serif;border:1px solid transparent;background:transparent;padding:2px 4px;border-radius:4px;width:100%;color:var(--text)" onfocus="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'" onblur="this.style.borderColor='transparent';this.style.background='transparent'"><div><button onclick="savePopEdit(${ev.id},'${mode}')" class="pop-save-btn" style="display:none;margin-top:4px;padding:3px 10px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600">Save changes</button></div></div>`;
 
   // Submission timing + lead time
   const timing=calcSubmissionTiming(ev);
@@ -8155,7 +8204,7 @@ function renderActivityDetail(id,mode){
     h+=`<button class="btn btn-s" onclick="closePop();openDesignBrief(${ev.spId})">✏️ Submit Design Brief</button>`;
   }
   h+=`<button class="btn btn-s" onclick="duplicateCampaign(${ev.id})">📋 Duplicate</button>`;
-  if(canEdit)h+=`<button onclick="savePopEdit(${ev.id})" class="btn btn-p pop-save-btn" style="display:none">Save changes</button>`;
+  if(canEdit)h+=`<button onclick="savePopEdit(${ev.id},'${mode}')" class="btn btn-p pop-save-btn" style="display:none">Save changes</button>`;
   if(canEdit)h+=`<button class="btn btn-s" style="margin-left:auto;color:var(--red);border-color:#fca5a5" onclick="archiveCampaign(${ev.id},this)">🗑 Archive</button>`;
   if(mode==='popup')h+=`<button class="btn btn-s" onclick="closePop()">Close</button>`;
   h+=`</div>`;
@@ -8165,30 +8214,45 @@ function renderActivityDetail(id,mode){
   }
   if(mode==='popup')document.getElementById('evOv').classList.add('show');
 }
-function markPopDirty(){
+function activityEditRoots(mode){
+  const effectiveMode=mode||(document.getElementById('evOv')?.classList.contains('show')?'popup':'page');
+  return effectiveMode==='popup'
+    ?[document.getElementById('popTitle'),document.getElementById('popBody')].filter(Boolean)
+    :[document.getElementById('activityDetailTitle'),document.getElementById('activityDetailBody')].filter(Boolean);
+}
+
+function markPopDirty(mode){
   if(!canEditCampaigns())return;
-  document.querySelectorAll('.pop-save-btn').forEach(btn=>btn.style.display='inline-block');
+  activityEditRoots(mode).forEach(root=>root.querySelectorAll('.pop-save-btn').forEach(btn=>btn.style.display='inline-block'));
 }
 
 // Columns we've added to the UI ahead of the matching SharePoint column existing. PATCH on an
 // existing item can fail on these as a generic 500 "generalException" rather than the cleaner
 // 400 "Field 'X' is not recognized" — so they need to be tried as an explicit drop-and-retry,
 // not just caught by the regex below. Remove an entry here once its column has been created.
-const UNCONFIRMED_COLUMNS=['AppShortDescription','POSNotes','RegularPrice','LoadedBasePrice'];
+const UNCONFIRMED_COLUMNS=['AppShortDescription','RegularPrice','LoadedBasePrice'];
 
-async function savePopEdit(evId){
+async function savePopEdit(evId,mode){
   if(!canEditCampaigns()){alert('You do not have permission to edit campaigns.');return;}
   const ev=EVENTS.find(e=>e.id===evId);
   if(!ev||!ev.spId){alert('Cannot save — campaign has no SharePoint ID');return;}
-  const btns=[...document.querySelectorAll('.overlay.show .pop-save-btn, .panel.active .pop-save-btn')];
+  const roots=activityEditRoots(mode);
+  const btns=roots.flatMap(root=>[...root.querySelectorAll('.pop-save-btn')]);
   const setBtns=(text,opts={})=>btns.forEach(b=>{b.textContent=text;if(opts.disabled!==undefined)b.disabled=opts.disabled;if(opts.bg!==undefined)b.style.background=opts.bg;if(opts.color!==undefined)b.style.color=opts.color;if(opts.display!==undefined)b.style.display=opts.display;});
   setBtns('Saving…',{disabled:true});
   const fields={};
-  document.querySelectorAll('.pop-edit-inp,.pop-edit-sel').forEach(el=>{
+  let requestedPOSNotes=null;
+  const editElements=roots.flatMap(root=>[...root.querySelectorAll('.pop-edit-inp,.pop-edit-sel')]);
+  editElements.forEach(el=>{
     const f=el.dataset.field;
     if(!f)return;
     const v=el.value.trim();
-    if(!v&&f!=='Assignee')return; // skip empty (but allow Assignee to be cleared)
+    if(f==='POSNotes'){
+      requestedPOSNotes=v;
+      ev.posNotes=v;
+      return;
+    }
+    if(!v&&!['Assignee','Description','PosStatus'].includes(f))return;
     if(f==='BudgetAllocated'||f==='ActualSpend'||f==='SupplierContribution'||f==='MarketingBudget'||f==='TicketPrice'||f==='Capacity'){
       fields[f]=f==='Capacity'?parseInt(v)||0:parseFloat(v)||0;
     } else if(f==='Start'||f==='End'){
@@ -8211,7 +8275,7 @@ async function savePopEdit(evId){
       'BookingURL':'bookingUrl','LandingPageURL':'landingPageUrl','TicketPlatform':'ticketPlatform',
       'TicketPrice':'ticketPrice','Capacity':'capacity',
       'AppRequired':'appRequired','NewsletterRequired':'newsletterRequired','AppHeading':'appHeading','AppDescription':'appDescription','AppShortDescription':'appShortDescription',
-      'RegularPrice':'regularPrice','LoadedBasePrice':'loadedBasePrice','POSNotes':'posNotes'
+      'RegularPrice':'regularPrice','LoadedBasePrice':'loadedBasePrice'
     };
     const localKey=localMap[f];
     if(localKey){
@@ -8221,8 +8285,19 @@ async function savePopEdit(evId){
       else ev[localKey]=v;
     }
     if(f==='WorkflowStage')ev.stage=v;
-    if(f==='Brand')ev.loadedRewards=(v||'').trim().toLowerCase()==='loaded rewards';
+    if(f==='PosStatus'){
+      const posIsRequired=!!v&&v!=='Not Required';
+      fields.POSUpdateRequired=posIsRequired;
+      ev.posRequired=posIsRequired;
+    }
   });
+
+  if(requestedPOSNotes!==null){
+    const baseDescription=Object.prototype.hasOwnProperty.call(fields,'Description')?fields.Description:ev.description;
+    fields.Description=withPOSNotes(baseDescription,requestedPOSNotes);
+    ev.description=splitPOSNotes(baseDescription).description;
+  }
+  ev.loadedRewards=isLoadedRewardsEvent(ev);
 
   const hasRegularFields=Object.keys(fields).length>0;
 
