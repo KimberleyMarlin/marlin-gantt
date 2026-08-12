@@ -260,6 +260,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .cal-day.td{background:var(--accent-bg)}
 .cal-day.td .cal-num{color:var(--accent);font-weight:700}
 .cal-day.cd-hol{background:#fff8f8}.dark .cal-day.cd-hol{background:#2a1515}
+.cal-day.cal-day-out{background:var(--surface2);opacity:.42}
 .cal-num{font-size:10.5px;font-weight:500;color:var(--text2);margin-bottom:2px}
 .cal-ev{font-size:9px;font-weight:600;padding:1px 5px;border-radius:0 3px 3px 0;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.35}
 .cal-more{font-size:9px;color:var(--accent);font-weight:600;cursor:pointer;padding:1px 4px;border-radius:3px;background:var(--accent-bg);display:inline-block;margin-top:1px}
@@ -534,7 +535,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="tb-title" id="tbTitle">Dashboard <em>Overview</em></div>
     <div class="tb-date" id="tbDate"></div>
     <div class="sw"><input type="text" placeholder="Search…" id="gSearch" oninput="doSearch(this.value)"></div>
-    <span style="font-size:9px;color:var(--accent);font-weight:700;background:var(--accent-bg);padding:2px 6px;border-radius:4px;flex-shrink:0" title="Build version">v13</span>
+    <span style="font-size:9px;color:var(--accent);font-weight:700;background:var(--accent-bg);padding:2px 6px;border-radius:4px;flex-shrink:0" title="Build version">v14</span>
     <button class="tb-btn" onclick="loadAll()">↻</button>
     <button class="tb-btn p" onclick="navTo('submit')">＋ Submit</button>
   </div>
@@ -790,6 +791,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="ph">
       <div><div class="ph-eye">Activities</div><div class="ph-title">Activity <em>Overview</em></div></div>
       <div class="ph-right">
+        <button class="tb-btn p" onclick="openActivitySubmissionFromOverview()">＋ Add Activity</button>
         <button class="tb-btn" id="campArchiveToggle" onclick="toggleCampArchive()">Show Completed</button>
       </div>
     </div>
@@ -847,6 +849,12 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       </div>
     </div>
     <div id="calOwnBody">
+    <div style="padding:10px 20px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+      <div class="fg"><label>From</label><input type="date" id="calFrom" onchange="applyCalendarRange()"></div>
+      <div class="fg"><label>To</label><input type="date" id="calTo" onchange="applyCalendarRange()"></div>
+      <button class="tb-btn" type="button" onclick="clearCalendarRange()" style="margin-bottom:1px">Clear dates</button>
+      <div id="calRangeMsg" style="font-size:10.5px;color:var(--red);padding-bottom:7px"></div>
+    </div>
     <div style="padding:10px 20px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-right:4px">Venue:</div>
       <div class="chips" id="calVenueChips">
@@ -1318,7 +1326,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
               </select>
             </div>
             <div class="form-group" id="fEventFormatGroup" style="display:none"><label class="form-label">Event Format</label>
-              <select class="form-select" id="fEventFormat">
+              <select class="form-select" id="fEventFormat" onchange="updateSubmitForm()">
                 <option value="">Select…</option>
                 <option>Ticketed Event</option>
                 <option>Table Booking Event</option>
@@ -1330,13 +1338,23 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
                 <option>Recurring Event</option>
               </select>
             </div>
-            <div class="form-group"><label class="form-label">RRP ($)</label><input class="form-input" id="fRegularPrice" type="number" step="0.01" min="0" placeholder="e.g. 32.00"></div>
-            <div class="form-group"><label class="form-label">Discount / Member Price ($)</label><input class="form-input" id="fLoadedBasePrice" type="number" step="0.01" min="0" placeholder="e.g. 16.00"></div>
+            <div class="form-group" id="fRegularPriceGroup" style="display:none"><label class="form-label">RRP ($)</label><input class="form-input" id="fRegularPrice" type="number" step="0.01" min="0" placeholder="e.g. 32.00"></div>
+            <div class="form-group" id="fLoadedPriceGroup" style="display:none"><label class="form-label">Discount / Member Price ($)</label><input class="form-input" id="fLoadedBasePrice" type="number" step="0.01" min="0" placeholder="e.g. 16.00"></div>
+          </div>
+
+          <div id="fTicketingGroup" style="display:none">
+            <div class="form-section-head">Ticketing</div>
+            <div class="form-grid">
+              <div class="form-group"><label class="form-label">Ticket Platform</label><select class="form-select" id="fTicketPlatform"><option value="">Select…</option><option>Humanitix</option><option>TryBooking</option><option>Eventbrite</option><option>Oztix</option><option>Now Book It</option><option>Other</option></select></div>
+              <div class="form-group"><label class="form-label">Ticket Price ($)</label><input class="form-input" id="fTicketPrice" type="number" step="0.01" min="0"></div>
+              <div class="form-group"><label class="form-label">Capacity</label><input class="form-input" id="fTicketCapacity" type="number" step="1" min="0"></div>
+              <div class="form-group"><label class="form-label">Ticket Link</label><input class="form-input" id="fTicketURL" type="url" placeholder="https://"></div>
+            </div>
           </div>
 
           <div class="form-section-head">Loaded</div>
           <div class="form-grid">
-            <div class="form-group full"><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="fIsLoaded" onchange="toggleFLoadedApp()"> Will this be in Loaded Rewards?</label></div>
+            <div class="form-group full"><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="fIsLoaded" onchange="updateActivityConditionalSections()"> Will this be in Loaded Rewards?</label></div>
           </div>
           <div id="fLoadedAppGroup" style="display:none">
             <div class="form-grid">
@@ -1359,8 +1377,8 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             </div>
           </div>
 
-          <div class="form-section-head">Where will customers see it?</div>
-          <div class="form-grid">
+          <div class="form-section-head"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fNeedsChannels" onchange="updateActivityConditionalSections()"> Marketing / promotion support required</label></div>
+          <div class="form-grid" id="fChannelsGroup" style="display:none">
             <div class="form-group full">
               <div class="multiselect-dd" style="position:relative">
                 <button type="button" class="form-select" style="text-align:left;cursor:pointer;width:100%;display:flex;justify-content:space-between;align-items:center" onclick="toggleMultiSelectDD('ddChannels')">
@@ -1381,7 +1399,8 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <div class="form-group full"><label class="form-label">Other</label><input class="form-input" id="fChanOther" type="text" placeholder="Anywhere else customers might see this"></div>
           </div>
 
-          <div class="form-section-head">What needs to be made?</div>
+          <div class="form-section-head"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fNeedsDesign" onchange="updateActivityConditionalSections()"> Artwork / design required</label></div>
+          <div id="fAssetsGroup" style="display:none">
           <div class="form-grid">
             <div class="form-group full">
               <div class="multiselect-dd" style="position:relative">
@@ -1391,8 +1410,8 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
                 <div id="ddAssets" class="multiselect-panel" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:var(--sh-md);max-height:240px;overflow-y:auto;z-index:20;padding:8px;margin-top:2px">
                   <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetWebsite" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Website assets</label>
                   <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetMeta" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Meta assets</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetNewsletter" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Newsletter assets</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetTVs" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> TVs</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetNewsletter" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…');updateAssetDetailVisibility()"> Newsletter assets</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetTVs" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…');updateAssetDetailVisibility()"> TVs</label>
                   <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetInVenue" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> In-venue assets</label>
                   <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetLoaded" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Loaded assets</label>
                   <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetPaidAd" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Paid ad assets</label>
@@ -1400,6 +1419,11 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
                 </div>
               </div>
             </div>
+          </div>
+          <div class="form-grid" style="margin-top:8px">
+            <div class="form-group full" id="fAssetTVsDetailGroup" style="display:none"><label class="form-label">TV sizes, orientation or venue screens</label><input class="form-input" id="fAssetTVsDetail" type="text" placeholder="e.g. 1920×1080 landscape, all venue TVs"></div>
+            <div class="form-group full" id="fAssetNewsletterDetailGroup" style="display:none"><label class="form-label">Newsletter requirements</label><input class="form-input" id="fAssetNewsletterDetail" type="text" placeholder="e.g. hero image and short offer tile"></div>
+          </div>
           </div>
 
           <div class="form-section-head">Loop anyone else in?</div>
@@ -3513,6 +3537,7 @@ async function saveKeyDateForm(existingId){
   const msgEl=document.getElementById('kdFormMsg');
   if(!title||!start){if(msgEl)msgEl.innerHTML='<span style="color:var(--red)">Title and Start Date are required.</span>';return;}
   const end=document.getElementById('kdEnd').value;
+  if(end&&end<start){if(msgEl)msgEl.innerHTML='<span style="color:var(--red)">End Date cannot be before Start Date.</span>';return;}
   const dateType=document.getElementById('kdType').value;
   const marketingOpportunity=document.getElementById('kdOpp').value;
   const appliesToVenues=document.getElementById('kdVenues').value.trim();
@@ -3524,7 +3549,8 @@ async function saveKeyDateForm(existingId){
     const fields={};
     fields[fieldMap.title]=title;
     fields[fieldMap.start]=start+'T00:00:00Z';
-    if(fieldMap.end&&end)fields[fieldMap.end]=end+'T00:00:00Z';
+    if(end&&!fieldMap.end)throw new Error('An End Date was entered, but the Calendar Reference list has no matching End Date column. Add an End Date column in SharePoint, then try again.');
+    if(fieldMap.end)fields[fieldMap.end]=(end||start)+'T00:00:00Z';
     if(fieldMap.dateType)fields[fieldMap.dateType]=dateType;
     if(fieldMap.marketingOpportunity)fields[fieldMap.marketingOpportunity]=marketingOpportunity;
     if(fieldMap.appliesToVenues&&appliesToVenues)fields[fieldMap.appliesToVenues]=appliesToVenues;
@@ -3685,6 +3711,10 @@ async function loadCampaigns(){
         landingPageUrl:f.LandingPageURL?.Url||f.LandingPageURL||'',
         landingPageStatus:f.LandingPageStatus||'',
         bookingUrl:f.BookingURL?.Url||f.BookingURL||'',
+        channels:Array.isArray(f.Channels)?f.Channels:(f.Channels?[f.Channels]:[]),
+        assetsNeeded:Array.isArray(f.AssetsNeeded)?f.AssetsNeeded:(f.AssetsNeeded?[f.AssetsNeeded]:[]),
+        assetTVsDetail:f.AssetTVsDetail||'',
+        assetNewsletterDetail:f.AssetNewsletterDetail||'',
         appRequired:f.AppRequired||'',
         newsletterRequired:f.NewsletterRequired||'',
         appHeading:f.AppHeading||'',
@@ -6044,6 +6074,41 @@ function calNext(){
 
 let calVenueFilter='';
 let calCatFilter='';
+let calRangeFrom='';
+let calRangeTo='';
+
+function applyCalendarRange(){
+  const from=document.getElementById('calFrom')?.value||'';
+  const to=document.getElementById('calTo')?.value||'';
+  const msg=document.getElementById('calRangeMsg');
+  if(from&&to&&to<from){
+    if(msg)msg.textContent='To date cannot be before From date.';
+    return;
+  }
+  if(msg)msg.textContent='';
+  calRangeFrom=from;calRangeTo=to;
+  if(from){
+    const d=new Date(from+'T00:00:00');
+    calYear=d.getFullYear();calMonth=d.getMonth();
+    if(calViewMode==='week'){
+      calWeekStart=new Date(d);
+      calWeekStart.setDate(calWeekStart.getDate()-calWeekStart.getDay());
+    }
+  }
+  renderCalendar();
+}
+
+function clearCalendarRange(){
+  calRangeFrom='';calRangeTo='';
+  const from=document.getElementById('calFrom');if(from)from.value='';
+  const to=document.getElementById('calTo');if(to)to.value='';
+  const msg=document.getElementById('calRangeMsg');if(msg)msg.textContent='';
+  renderCalendar();
+}
+
+function calendarDateInRange(dateStr){
+  return(!calRangeFrom||dateStr>=calRangeFrom)&&(!calRangeTo||dateStr<=calRangeTo);
+}
 
 function pickCalVenue(el){
   document.querySelectorAll('#calVenueChips .chip').forEach(c=>c.classList.remove('on'));
@@ -6137,7 +6202,9 @@ function renderCalendar(){
     const realDate=new Date(y,m,day);
     const isToday=realDate.getTime()===today.getTime();
 
-    let dayEvts=EVENTS.filter(e=>{
+    const dateStr=toLocalISODate(realDate);
+    const inSelectedRange=calendarDateInRange(dateStr);
+    let dayEvts=inSelectedRange?EVENTS.filter(e=>{
       if(isArchived(e))return false;
       const s=new Date(e.start+'T00:00:00'),en=new Date(e.end+'T00:00:00');
       // Recurring parent events only count on days matching their RecurringDay
@@ -6148,7 +6215,7 @@ function renderCalendar(){
         return matchesDay&&realDate>=s&&realDate<=en;
       }
       return realDate>=s&&realDate<=en;
-    });
+    }):[];
     if(calVenueFilter)dayEvts=dayEvts.filter(e=>e.venue===calVenueFilter||e.venue==='All Venues');
     if(calCatFilter){
       if(calCatFilter==='holiday'){dayEvts=dayEvts.filter(e=>['Public Holiday','National Calendar Event','School Holidays'].includes(e.activityType||e.eventFormat||e.businessStream));}
@@ -6163,19 +6230,18 @@ function renderCalendar(){
       return (catOrder[a.eventFormat||a.activityType]||99)-(catOrder[b.eventFormat||b.activityType]||99);
     });
 
-    const dateStr=toLocalISODate(realDate);
     // Key dates for this day (public holidays + calendar reference)
-    const dayKeyDates=KEY_DATES.filter(k=>{
+    const dayKeyDates=inSelectedRange?KEY_DATES.filter(k=>{
       if(!k.start)return false;
       return k.start<=dateStr&&(k.end||k.start)>=dateStr;
-    });
+    }):[];
     const isPublicHoliday=dayKeyDates.some(k=>k.isPublicHoliday);
 
     const maxShow=3;
     const shown=dayEvts.slice(0,maxShow);
     const extra=dayEvts.length-maxShow;
 
-    h+=`<div class="cal-day${isOther?' om':''}${isToday?' td':''}${isPublicHoliday?' cd-hol':''}">
+    h+=`<div class="cal-day${isOther?' om':''}${isToday?' td':''}${isPublicHoliday?' cd-hol':''}${!inSelectedRange?' cal-day-out':''}">
       <div class="cal-num">${day}</div>
       ${dayKeyDates.map(k=>`<div style="font-size:9px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:1px 4px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
       ${shown.map(ev=>{
@@ -6193,7 +6259,8 @@ function renderCalendar(){
 function showCalDayPopup(evt,y,m,day){
   evt.stopPropagation();
   const realDate=new Date(y,m,day);
-  let dayEvts=EVENTS.filter(e=>{
+  const realDateKey=toLocalISODate(realDate);
+  let dayEvts=calendarDateInRange(realDateKey)?EVENTS.filter(e=>{
     const s=new Date(e.start+'T00:00:00'),en=new Date(e.end+'T00:00:00');
     if(e.recurringDay&&e.recurringDay.length){
       const dow=realDate.getDay();
@@ -6202,7 +6269,7 @@ function showCalDayPopup(evt,y,m,day){
       return matchesDay&&realDate>=s&&realDate<=en&&!isArchived(e);
     }
     return realDate>=s&&realDate<=en&&!isArchived(e);
-  });
+  }):[];
   if(calVenueFilter)dayEvts=dayEvts.filter(e=>e.venue===calVenueFilter||e.venue==='All Venues');
   const dateStr=realDate.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'});
   // Show in a simple overlay
@@ -6245,7 +6312,9 @@ function renderCalendarWeek(){
   for(let i=0;i<7;i++){
     const d=new Date(ws);d.setDate(d.getDate()+i);
     const isToday=d.getTime()===today.getTime();
-    let dayEvts=EVENTS.filter(e=>{
+    const dateKey=toLocalISODate(d);
+    const inSelectedRange=calendarDateInRange(dateKey);
+    let dayEvts=inSelectedRange?EVENTS.filter(e=>{
       if(!ganttShowArchive&&isArchived(e))return false;
       const s=new Date(e.start+'T00:00:00'),en=new Date(e.end+'T00:00:00');
       if(e.recurringDay&&e.recurringDay.length){
@@ -6255,7 +6324,7 @@ function renderCalendarWeek(){
         return matchesDay&&d>=s&&d<=en;
       }
       return d>=s&&d<=en;
-    });
+    }):[];
     if(calVenueFilter)dayEvts=dayEvts.filter(e=>e.venue===calVenueFilter||e.venue==='All Venues');
     if(calCatFilter){
       if(calCatFilter==='holiday'){dayEvts=dayEvts.filter(e=>['Public Holiday','National Calendar Event','School Holidays'].includes(e.activityType||e.eventFormat||e.businessStream));}
@@ -6273,12 +6342,9 @@ function renderCalendarWeek(){
     // Week view has room to spare (7 columns vs. month's ~35 cells), so show everything in a
     // scrollable column with fuller rows — title + venue + type — instead of capping at a
     // handful of tiny chips and hiding the rest behind "+more".
-    const dayKeyDates=KEY_DATES.filter(k=>{
-      const dateStr=toLocalISODate(d);
-      return k.start&&k.start<=dateStr&&(k.end||k.start)>=dateStr;
-    });
+    const dayKeyDates=inSelectedRange?KEY_DATES.filter(k=>k.start&&k.start<=dateKey&&(k.end||k.start)>=dateKey):[];
 
-    h+=`<div class="cal-day wk${isToday?' td':''}">
+    h+=`<div class="cal-day wk${isToday?' td':''}${!inSelectedRange?' cal-day-out':''}">
       <div class="cal-num">${d.toLocaleDateString('en-AU',{day:'numeric',month:'short'})}</div>
       ${dayKeyDates.map(k=>`<div style="font-size:9.5px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:2px 5px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:5px;display:inline-block" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
       ${dayEvts.length?dayEvts.map(ev=>{
@@ -7465,6 +7531,12 @@ function pickSubmitPath(path){
   }
 }
 
+function openActivitySubmissionFromOverview(){
+  navTo('submit');
+  pickSubmitPath('activity');
+  document.getElementById('fTitle')?.focus();
+}
+
 function toggleJobConditional(triggerId,groupId){
   const trigger=document.getElementById(triggerId);
   const group=document.getElementById(groupId);
@@ -7481,6 +7553,35 @@ function updateSubmitForm(){
   const type=document.getElementById('fActType')?.value||'';
   const grp=document.getElementById('fEventFormatGroup');
   if(grp)grp.style.display=type==='Event'?'':'none';
+  if(type!=='Event'){
+    const format=document.getElementById('fEventFormat');if(format)format.value='';
+  }
+  updateActivityConditionalSections();
+}
+
+function updateActivityConditionalSections(){
+  const type=document.getElementById('fActType')?.value||'';
+  const format=document.getElementById('fEventFormat')?.value||'';
+  const isLoaded=!!document.getElementById('fIsLoaded')?.checked;
+  const needsChannels=!!document.getElementById('fNeedsChannels')?.checked;
+  const needsDesign=!!document.getElementById('fNeedsDesign')?.checked;
+  const isTicketed=format==='Ticketed Event';
+  const showPricing=isLoaded||type==='Promotion / Offer'||isTicketed||format==='Table Booking Event';
+  const show=(id,on)=>{const el=document.getElementById(id);if(el)el.style.display=on?'':'none';};
+  show('fLoadedAppGroup',isLoaded);
+  show('fRegularPriceGroup',showPricing);
+  show('fLoadedPriceGroup',isLoaded||type==='Promotion / Offer');
+  show('fTicketingGroup',isTicketed);
+  show('fChannelsGroup',needsChannels);
+  show('fAssetsGroup',needsDesign);
+  updateAssetDetailVisibility();
+}
+
+function updateAssetDetailVisibility(){
+  const needsDesign=!!document.getElementById('fNeedsDesign')?.checked;
+  const show=(id,on)=>{const el=document.getElementById(id);if(el)el.style.display=on?'':'none';};
+  show('fAssetTVsDetailGroup',needsDesign&&!!document.getElementById('fAssetTVs')?.checked);
+  show('fAssetNewsletterDetailGroup',needsDesign&&!!document.getElementById('fAssetNewsletter')?.checked);
 }
 function toggleMultiSelectDD(panelId){
   const panel=document.getElementById(panelId);
@@ -7502,9 +7603,7 @@ document.addEventListener('click',(e)=>{
 });
 
 function toggleFLoadedApp(){
-  const on=document.getElementById('fIsLoaded')?.checked;
-  const grp=document.getElementById('fLoadedAppGroup');
-  if(grp)grp.style.display=on?'':'none';
+  updateActivityConditionalSections();
 }
 function togglePOSDetails(){
   const on=document.getElementById('fPOSRequired')?.value==='Yes';
@@ -7524,6 +7623,8 @@ function applyActivityTemplate(){
   if(t.stream)selectOpt('fStream',t.stream);
   (t.channels||[]).forEach(id=>{const el=document.getElementById(id);if(el)el.checked=true;});
   (t.assets||[]).forEach(id=>{const el=document.getElementById(id);if(el)el.checked=true;});
+  const needsChannels=document.getElementById('fNeedsChannels');if(needsChannels)needsChannels.checked=!!(t.channels||[]).length;
+  const needsDesign=document.getElementById('fNeedsDesign');if(needsDesign)needsDesign.checked=!!(t.assets||[]).length;
   if(t.isLoaded){
     const cb=document.getElementById('fIsLoaded');
     if(cb){cb.checked=true;toggleFLoadedApp();}
@@ -7531,6 +7632,7 @@ function applyActivityTemplate(){
   if(t.appRequired)selectOpt('fAppRequired',t.appRequired);
   if(t.appHeading)set('fAppHeading',t.appHeading);
   if(t.posRequired)selectOpt('fPOSRequired',t.posRequired);
+  updateActivityConditionalSections();
   const msg=document.getElementById('fMsg');
   if(msg){msg.textContent=`📋 "${key}" template applied — check the highlighted basics, then just add the date, venue and any details.`;msg.className='form-msg ok';}
 }
@@ -7654,12 +7756,14 @@ async function submitEvent(){
   const actType=document.getElementById('fActType').value;
   const start=document.getElementById('fStart').value;
   if(!title||!venue||!actType||!start){showFMsg('Please fill in Title, Venue, Activity Type and Start Date.','err');return;}
+  const end=document.getElementById('fEnd').value;
+  if(end&&end<start){showFMsg('End Date cannot be before Start Date.','err');return;}
   const btn=document.querySelector('#submitFormActivity .btn-p');
   if(btn){btn.disabled=true;btn.textContent='Submitting…';}
   try{
     const token=await getToken(true);
     const fields={Title:title,Venue:venue,ActivityType:actType,Start:start+'T12:00:00Z',WorkflowStage:'Intake',Status:'Active'};
-    const end=document.getElementById('fEnd').value;if(end)fields.End=end+'T12:00:00Z';
+    if(end)fields.End=end+'T12:00:00Z';
     const desc=document.getElementById('fDesc').value.trim();
     const submitter=currentUser?.name||currentUserEmail||'Unknown';
     fields.Description=(desc?desc+'\n\n':'')+'Submitted by: '+submitter;
@@ -7669,6 +7773,16 @@ async function submitEvent(){
     const stream=document.getElementById('fStream')?.value;if(stream)fields.BusinessStream=stream;
     const rrp=document.getElementById('fRegularPrice')?.value;if(rrp)fields.RegularPrice=parseFloat(rrp)||0;
     const discPrice=document.getElementById('fLoadedBasePrice')?.value;if(discPrice)fields.LoadedBasePrice=parseFloat(discPrice)||0;
+
+    // Ticketing fields only exist for a ticketed event. EventFormat remains the fallback flag if
+    // the older TicketedEvent column is not present in SharePoint.
+    if(ef==='Ticketed Event'){
+      fields.TicketedEvent=true;
+      const platform=document.getElementById('fTicketPlatform')?.value;if(platform)fields.TicketPlatform=platform;
+      const ticketPrice=document.getElementById('fTicketPrice')?.value;if(ticketPrice)fields.TicketPrice=parseFloat(ticketPrice)||0;
+      const capacity=document.getElementById('fTicketCapacity')?.value;if(capacity)fields.Capacity=parseInt(capacity,10)||0;
+      const ticketURL=document.getElementById('fTicketURL')?.value.trim();if(ticketURL)fields.TicketURL=ticketURL;
+    }
 
     // Loaded — is this a Loaded Rewards promo, and what's required to feature it?
     const isLoaded=document.getElementById('fIsLoaded')?.checked;
@@ -7689,18 +7803,18 @@ async function submitEvent(){
     // Channels
     const channels=[];
     [['fChanWebsite','Website'],['fChanMeta','Meta'],['fChanNewsletter','Newsletter'],['fChanLoaded','Loaded'],['fChanGBP','Google Business Profile'],['fChanGoogleAds','Google Ads'],['fChanInVenue','In-venue'],['fChanRadio','Radio']].forEach(([id,label])=>{
-      if(document.getElementById(id)?.checked)channels.push(label);
+      if(document.getElementById('fNeedsChannels')?.checked&&document.getElementById(id)?.checked)channels.push(label);
     });
-    const chanOther=document.getElementById('fChanOther')?.value.trim();if(chanOther)channels.push(chanOther);
+    const chanOther=document.getElementById('fNeedsChannels')?.checked?document.getElementById('fChanOther')?.value.trim():'';if(chanOther)channels.push(chanOther);
     if(channels.length)fields.Channels=channels;
-    if(document.getElementById('fChanGoogleAds')?.checked)fields.GoogleAdsEligible=true;
+    if(document.getElementById('fNeedsChannels')?.checked&&document.getElementById('fChanGoogleAds')?.checked)fields.GoogleAdsEligible=true;
 
     // Assets needed
     const assets=[];
     [['fAssetWebsite','Website'],['fAssetMeta','Meta'],['fAssetNewsletter','Newsletter'],['fAssetTVs','TVs'],['fAssetInVenue','In-venue'],['fAssetLoaded','Loaded'],['fAssetPaidAd','Paid ad'],['fAssetStaff','Staff / internal']].forEach(([id,label])=>{
-      if(document.getElementById(id)?.checked)assets.push(label);
+      if(document.getElementById('fNeedsDesign')?.checked&&document.getElementById(id)?.checked)assets.push(label);
     });
-    if(assets.length)fields.AssetsNeeded=assets;
+    if(assets.length){fields.AssetsNeeded=assets;fields.DesignStatus='Brief Needed';}
     const tvDetail=document.getElementById('fAssetTVsDetail')?.value.trim();if(tvDetail)fields.AssetTVsDetail=tvDetail;
     const newsletterDetail=document.getElementById('fAssetNewsletterDetail')?.value.trim();if(newsletterDetail)fields.AssetNewsletterDetail=newsletterDetail;
 
@@ -7708,7 +7822,7 @@ async function submitEvent(){
     // Fields most likely to not exist as SharePoint columns yet, tried as removable groups if the
     // full payload is rejected — a generic 400 on create doesn't tell us which field is the problem,
     // unlike editing an existing item, so we strip the newest/least-confirmed fields first and retry.
-    const removableGroups=[['POSNotes'],['RegularPrice','LoadedBasePrice'],['AssetTVsDetail'],['AssetNewsletterDetail'],['AssetsNeeded'],['Channels'],['GoogleAdsEligible'],['AppShortDescription'],['AppHeading','AppDescription'],['NewsletterRequired'],['AppRequired'],['BookingURL'],['Brand']];
+    const removableGroups=[['POSNotes'],['TicketURL'],['TicketPlatform','TicketPrice','Capacity','TicketedEvent'],['RegularPrice','LoadedBasePrice'],['AssetTVsDetail'],['AssetNewsletterDetail'],['DesignStatus'],['AssetsNeeded'],['Channels'],['GoogleAdsEligible'],['AppShortDescription'],['AppHeading','AppDescription'],['NewsletterRequired'],['AppRequired'],['BookingURL'],['Brand']];
     let payload={...fields};
     const dropped=[];
     let res,ok=false,resBody='';
@@ -7772,9 +7886,9 @@ async function submitEvent(){
 }
 function showFMsg(msg,type){const el=document.getElementById('fMsg');if(!el)return;el.textContent=msg;el.className='form-msg '+type;el.scrollIntoView({behavior:'smooth',block:'nearest'});}
 function clearForm(){
-  ['fTitle','fDesc','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fChanOther','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['fVenue','fActType','fEventFormat','fStream','fAppRequired','fNewsletterRequired','fPOSRequired'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
-  ['fIsLoaded','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  ['fTitle','fDesc','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['fVenue','fActType','fEventFormat','fStream','fTicketPlatform','fAppRequired','fNewsletterRequired','fPOSRequired'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  ['fIsLoaded','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   SUBMIT_PEOPLE_SELECTED.clear();
   const peopleSearch=document.getElementById('fPeopleSearch');if(peopleSearch)peopleSearch.value='';
   renderSubmitPeopleResults('');
@@ -7783,7 +7897,7 @@ function clearForm(){
   updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…');
   updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…');
   updateMultiSelectSummary('ddPeople','ddPeopleSummary','Select people…');
-  const loadedAppGroup=document.getElementById('fLoadedAppGroup');if(loadedAppGroup)loadedAppGroup.style.display='none';
+  updateActivityConditionalSections();
 }
 
 // ═══════════════════════════════════════
