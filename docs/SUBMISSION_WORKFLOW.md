@@ -2,13 +2,29 @@
 
 Updated: 2026-08-12.
 
-## Current behaviour through v17
+## Current behaviour through v18
 
 1. Activity submission creates a row in `Marketing & Activations 2026` at `WorkflowStage = Intake`.
 2. The submission is tagged to the review recipient and appears in Submissions.
 3. Approve changes the activity stage to `In Design`, displayed as Planning.
 4. No design, web, marketing, POS or other job is created automatically.
 5. Head Office can bulk-import reviewed activities through the HTML. Each non-duplicate row enters the same `Intake` stage. Bulk import deliberately does not send 80 individual notification emails; triage and downstream job creation remain controlled from Submissions.
+
+## Loaded Rewards offer structure
+
+A Loaded activity is the parent promotion. Its offer components are not stored as extra free-text campaign columns. The Hub creates or updates linked `Offer Variants` rows for:
+
+- Base Member Deal.
+- Premium.
+- Re-engagement, with both category and offer.
+- Referral.
+- Staff Incentive.
+- Comp Metrics.
+- Marketing Spend.
+
+Dropdown values are sourced from `Offer Mechanics`. Selecting a new custom value creates a reusable Offer Mechanics item, then links the configured Offer Variant to the permanent activity SharePoint ID. Clearing a component deactivates its existing variant instead of deleting its history.
+
+The June 2026 Loaded schedule maps `Base Price ($)` to Base Member Deal, `Advanced Tier` to Premium, the two Reengagement columns to the Re-engagement variant, and the remaining Referral, Staff Incentive, Comp Prize and Marketing columns to their matching components. The schedule contains no historical Comp Prize values, so none are inferred.
 
 The codebase contains `PLAYBOOK_TEMPLATES` and `runPlaybook(ev)`, but `runPlaybook` is not called by the approval path.
 

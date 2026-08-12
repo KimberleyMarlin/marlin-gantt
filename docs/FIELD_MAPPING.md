@@ -1,6 +1,6 @@
 # Marlin Hub field mapping audit
 
-Updated: 2026-08-12, v17 working copy.
+Updated: 2026-08-12, v18 working copy.
 
 This audit covers the Activity submission form in `index.html`, the `Marketing & Activations 2026` list payload, and the fields read back into the Hub. SharePoint internal names remain authoritative.
 
@@ -8,14 +8,16 @@ This audit covers the Activity submission form in `index.html`, the `Marketing &
 
 | Form value | SharePoint internal field | Loaded back into Hub | Conditional rule |
 |---|---|---|---|
-| Title | `Title` | `title` | Always required |
+| Activation | `Title` | `title` | Always required. Repeatable program name, for example `Beer of the Month` |
+| Month | derived from `Start` | `activityMonthLabel()` | Display value only. Do not create another SharePoint column |
 | Venue | `Venue` | `venue` | Always required |
 | Start Date | `Start` | `start` | Always required |
 | End Date | `End` | `end` | Optional, must not precede Start |
 | Activity Type | `ActivityType` | `activityType` | Always required |
 | Event Format | `EventFormat` | `eventFormat` | Event only |
 | Marketing Funnel | `BusinessStream` | `businessStream` | Optional |
-| Details | `Description` | `description` | Optional, submitter appended |
+| Activity Detail | `Description` | `description` | Specific occurrence or product detail, for example `Cheeky Monkey pints`; submitter and tagged fallback metadata are appended |
+| Long Description | `LongDescription` | `longDescription` | New multi-line master customer-facing copy. If the column is not ready, the Hub preserves it in a tagged `Description` section until the column is created |
 | Submitted By | `Assignee` | `owner` | Signed-in user |
 | Initial workflow | `WorkflowStage` | `stage` | Always `Intake` on create |
 | Initial status | `Status` | `status` | Always `Active` on create |
@@ -25,7 +27,8 @@ This audit covers the Activity submission form in `index.html`, the `Marketing &
 | Trigger | Fields written | Loaded back into Hub | v14 result |
 |---|---|---|---|
 | Ticketed Event | `TicketedEvent`, `TicketPlatform`, `TicketPrice`, `Capacity`, `TicketURL` | `ticketed`, `ticketPlatform`, `ticketPrice`, `capacity`, `ticketUrl` | Added missing submission inputs and mapping |
-| Loaded Rewards | `Brand`, `BusinessStream`, optional `LoadedRewards` / `IsLoaded` flag, `AppRequired`, `NewsletterRequired`, `AppHeading`, `AppShortDescription`, `AppDescription`, `BookingURL`, `LoadedBasePrice` | `loadedRewards` plus corresponding Loaded fields | Membership is recognised from the dedicated flag, Primary Brand, Marketing Funnel or Loaded department, so a supplier brand does not exclude a real Loaded activity |
+| Loaded Rewards | `Brand`, `BusinessStream`, optional `LoadedRewards` / `IsLoaded` flag, `AppRequired`, `NewsletterRequired`, `AppHeading`, `AppShortDescription`, `AppDescription`, `BookingURL`, `LoadedBasePrice` | `loadedRewards` plus corresponding Loaded fields | Membership is recognised from the dedicated flag, Primary Brand, Marketing Funnel or Loaded department. `AppDescription` is an optional app-specific override; otherwise the general `LongDescription` is used |
+| Loaded offer components | Child rows in `Offer Variants`, linked through the Campaign lookup; reusable selections in `Offer Mechanics` | `OFFER_VARIANTS` / `OFFER_MECHANICS` | One active variant each for Base Member Deal, Premium, Re-engagement, Referral, Staff Incentive, Comp Metrics and Marketing Spend. Re-engagement category is stored with the Re-engagement variant |
 | POS required | `POSUpdateRequired`, `PosStatus`; update notes are stored in a tagged section of `Description` until a confirmed `POSNotes` column exists | `posRequired`, `posStatus`, `posNotes` | Checkbox reveals Updates Required only when selected; activity-detail saves are scoped to the visible record |
 | Marketing support | `Channels`, `GoogleAdsEligible` | `channels`, `googleAdsEligible` | Section hidden until selected, read mapping added |
 | Artwork/design required | `AssetsNeeded`, `AssetTVsDetail`, `AssetNewsletterDetail`, `DesignStatus` | `assetsNeeded`, asset details, `designStatus` | Section hidden until selected, missing detail inputs and read mapping added |
@@ -46,6 +49,10 @@ This audit covers the Activity submission form in `index.html`, the `Marketing &
 ## Bulk import mapping
 
 The admin-only HTML importer accepts reviewed CSV rows and creates the required core fields first: `Title`, `Venue`, `ActivityType`, `Start`, `End`, `WorkflowStage = Intake`, `Status = Active`, and `Description`. It then patches only optional columns that exist in the live schema. A failed optional field is reported against the created item without losing the core Intake record. Duplicate checks use the persistent `ImportRef` in Description first, then the same normalised title, venue and overlapping dates.
+
+The importer now reads each live column definition and writes its actual internal name with a value coerced to the SharePoint Boolean, Choice, Number or Text type. Re-uploading the same reviewed CSV exposes a repair action for exact live matches, allowing failed optional fields to be patched without creating another activity.
+
+Archive writes are field-scoped and verified after saving. The Hub accepts either `Archive` or `Archived` according to the live Status choices, writes the matching completed Workflow Stage, then reloads the item before treating the activity as archived locally.
 
 ## Still requiring a live SharePoint schema check
 
