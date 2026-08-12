@@ -2,12 +2,13 @@
 
 Updated: 2026-08-12.
 
-## Current live behaviour in v13
+## Current behaviour through v17
 
 1. Activity submission creates a row in `Marketing & Activations 2026` at `WorkflowStage = Intake`.
 2. The submission is tagged to the review recipient and appears in Submissions.
 3. Approve changes the activity stage to `In Design`, displayed as Planning.
 4. No design, web, marketing, POS or other job is created automatically.
+5. Head Office can bulk-import reviewed activities through the HTML. Each non-duplicate row enters the same `Intake` stage. Bulk import deliberately does not send 80 individual notification emails; triage and downstream job creation remain controlled from Submissions.
 
 The codebase contains `PLAYBOOK_TEMPLATES` and `runPlaybook(ev)`, but `runPlaybook` is not called by the approval path.
 
@@ -39,4 +40,3 @@ The codebase contains `PLAYBOOK_TEMPLATES` and `runPlaybook(ev)`, but `runPlaybo
 ## Blocking schema decision
 
 Before automatic creation is connected, confirm the real My Tasks parent-activity field. The source currently uses `RelatedCampaignId` in manual Job submission, while earlier specifications refer to `LinkedCampaignID` or a SharePoint lookup. One authoritative lookup field must be used by manual jobs, design briefs and playbook jobs. This is necessary for activity navigation, duplicate prevention and reliable reporting.
-
