@@ -1,5 +1,9 @@
 # Marlin Hospitality OS — Technical Debt
 
+## POS notes need a dedicated SharePoint column
+
+**Issue:** The Hub previously wrote the Updates Required text to an unconfirmed `POSNotes` field, so SharePoint could reject and skip it. v16 preserves those notes inside a tagged section of the existing Description field and separates them again when loading. **Risk:** The fallback is reliable and human-readable, but POS notes are not independently filterable or reportable in SharePoint. **Recommended future fix:** Create a confirmed multiple-lines-of-text column for POS update notes, record its real internal name, migrate the tagged Description sections, then switch the Hub mapping to that column.
+
 ## Approval playbook exists but is not connected
 
 **Issue:** `runPlaybook(ev)` contains task templates for design, web, social, EDM, POS, signage and other work, but no production code calls it. `approveCampaign()` currently changes `WorkflowStage` from `Intake` to `In Design` and sends notifications only. It creates no linked task or design brief. **Risk:** The Hub visually implies an activity has entered planning/design while Luca and the other delivery owners may have received no actionable job. **Priority:** High. **Recommended future fix:** Add an approval preview that shows the proposed jobs derived from `Channels`, `AssetsNeeded`, ticketing, Loaded and POS answers. Let the approver confirm owners and due dates, then create only those tasks, link them to the activity, and mark the activity's creation flags only after all required writes succeed.
