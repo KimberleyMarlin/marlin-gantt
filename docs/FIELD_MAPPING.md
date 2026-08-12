@@ -1,6 +1,6 @@
 # Marlin Hub field mapping audit
 
-Updated: 2026-08-12, v16 working copy.
+Updated: 2026-08-12, v17 working copy.
 
 This audit covers the Activity submission form in `index.html`, the `Marketing & Activations 2026` list payload, and the fields read back into the Hub. SharePoint internal names remain authoritative.
 
@@ -29,6 +29,7 @@ This audit covers the Activity submission form in `index.html`, the `Marketing &
 | POS required | `POSUpdateRequired`, `PosStatus`; update notes are stored in a tagged section of `Description` until a confirmed `POSNotes` column exists | `posRequired`, `posStatus`, `posNotes` | Checkbox reveals Updates Required only when selected; activity-detail saves are scoped to the visible record |
 | Marketing support | `Channels`, `GoogleAdsEligible` | `channels`, `googleAdsEligible` | Section hidden until selected, read mapping added |
 | Artwork/design required | `AssetsNeeded`, `AssetTVsDetail`, `AssetNewsletterDetail`, `DesignStatus` | `assetsNeeded`, asset details, `designStatus` | Section hidden until selected, missing detail inputs and read mapping added |
+| Supplier or product involved | Schema-discovered `<Supplier internal name>LookupId`, `<Product internal name>LookupId`, plus `SupplierInvolved` when available | Lookup ID and display value for `supplierLookup` / `product` | Options are loaded from the lists targeted by the actual SharePoint Lookup column definitions. The Hub disables the selector and names the missing setup when a column is not a lookup. |
 
 ## Confirmed defects found in the audit
 
@@ -39,6 +40,12 @@ This audit covers the Activity submission form in `index.html`, the `Marketing &
 5. Key Dates silently ignored a selected End Date if the Calendar Reference list did not contain a matching End Date column. v14 stops with a specific schema error instead of converting a multi-day date into a one-day date.
 6. Loaded-only filtering incorrectly depended only on Primary Brand = Loaded Rewards. v16 also recognises the Loaded flag, Marketing Funnel and department, preserving supplier brands such as Brown Forman.
 7. Activity-detail saves gathered fields from hidden and visible activity views together, and `POSNotes` could be silently skipped because the SharePoint column is unconfirmed. v16 scopes saves to the visible activity and stores POS notes reliably in a tagged Description section.
+8. Activity-detail saves still resent every displayed value, including unchanged blank values such as `Assignee`, which could make SharePoint return a generic HTTP 500. v17 records each field's original value, sends only changes, and retries a generic multi-field failure one field at a time to identify the real culprit.
+9. Hyperlink or image column objects could become a literal `[object Object]` URL and generate a 404. v17 normalises SharePoint URL, hyperlink and image values before rendering.
+
+## Bulk import mapping
+
+The admin-only HTML importer accepts reviewed CSV rows and creates the required core fields first: `Title`, `Venue`, `ActivityType`, `Start`, `End`, `WorkflowStage = Intake`, `Status = Active`, and `Description`. It then patches only optional columns that exist in the live schema. A failed optional field is reported against the created item without losing the core Intake record. Duplicate checks use the persistent `ImportRef` in Description first, then the same normalised title, venue and overlapping dates.
 
 ## Still requiring a live SharePoint schema check
 

@@ -371,6 +371,14 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .people-picker .multiselect-panel{position:static!important;inset:auto!important;margin-top:6px!important;max-height:300px!important;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-gutter:stable;border-radius:8px!important}
 .people-picker .form-input[type=search]{position:sticky;top:0;z-index:2;background:var(--surface);margin-bottom:7px}
 .loaded-logo-white{filter:brightness(0) invert(1);object-fit:contain}
+.import-summary{display:grid;grid-template-columns:repeat(4,minmax(110px,1fr));gap:8px;margin:12px 0}
+.import-stat{padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2)}
+.import-stat strong{display:block;font-size:20px;color:var(--text)}
+.import-stat span{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.import-log{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--surface2);font-size:11.5px}
+.import-log-row{display:grid;grid-template-columns:70px minmax(180px,1fr) 130px minmax(180px,1fr);gap:8px;padding:7px 9px;border-bottom:1px solid var(--border);align-items:start}
+.import-log-row:last-child{border-bottom:0}
+.lookup-note{font-size:10.5px;color:var(--text3);line-height:1.45;margin-top:4px}
 
 /* ── POPUP ── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(2px);padding:16px}
@@ -541,7 +549,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="tb-title" id="tbTitle">Dashboard <em>Overview</em></div>
     <div class="tb-date" id="tbDate"></div>
     <div class="sw"><input type="text" placeholder="Search…" id="gSearch" oninput="doSearch(this.value)"></div>
-    <span style="font-size:9px;color:var(--accent);font-weight:700;background:var(--accent-bg);padding:2px 6px;border-radius:4px;flex-shrink:0" title="Build version">v16</span>
+    <span style="font-size:9px;color:var(--accent);font-weight:700;background:var(--accent-bg);padding:2px 6px;border-radius:4px;flex-shrink:0" title="Build version">v17</span>
     <button class="tb-btn" onclick="loadAll()">↻</button>
     <button class="tb-btn p" onclick="navTo('submit')">＋ Submit</button>
   </div>
@@ -1271,7 +1279,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="ca">
 
       <!-- PATH SELECTOR -->
-      <div id="submitPathPicker" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:720px;margin-bottom:20px">
+      <div id="submitPathPicker" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;max-width:960px;margin-bottom:20px">
         <button onclick="pickSubmitPath('activity')" id="pathBtn-activity" style="padding:20px;border:2px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;transition:border-color .15s">
           <div style="font-size:28px;margin-bottom:8px">📅</div>
           <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Activity, Event, Offer</div>
@@ -1289,6 +1297,12 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Maintenance / Update Ticket</div>
           <div style="font-size:11.5px;color:var(--text3);line-height:1.4">Menu update, website fix, print request, social post, design job, anything that needs to be done</div>
           <div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">→ Creates Task / Job Ticket</div>
+        </button>
+        <button onclick="pickSubmitPath('import')" id="pathBtn-import" style="display:none;padding:20px;border:2px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;transition:border-color .15s">
+          <div style="font-size:28px;margin-bottom:8px">⇧</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Import Activities</div>
+          <div style="font-size:11.5px;color:var(--text3);line-height:1.4">Upload a reviewed CSV, check it against the live list, then create only genuinely new Intake records</div>
+          <div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.06em">Admin only · Preflight first</div>
         </button>
       </div>
 
@@ -1370,6 +1384,17 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
               <div class="form-group full"><label class="form-label">Short Description</label><input class="form-input" id="fAppShortDescription" type="text" placeholder="e.g. Members special. Every Wednesday"><div style="font-size:10.5px;color:var(--text3);margin-top:3px">The one-liner shown under the heading in app listings</div></div>
               <div class="form-group full"><label class="form-label">Long Description</label><textarea class="form-textarea" id="fAppDescription" placeholder="e.g. 1/2 price steak every Wednesday! Black Angus steak, cooked to your liking - Served with chips, salad and Jus!" style="min-height:60px"></textarea><div style="font-size:10.5px;color:var(--text3);margin-top:3px">The full details shown when someone opens the offer</div></div>
               <div class="form-group full"><label class="form-label">Booking Link / Landing Page</label><input class="form-input" id="fLoadedBookingLink" type="url" placeholder="https://"></div>
+            </div>
+          </div>
+
+          <div class="form-section-head">Supplier &amp; Product</div>
+          <div class="form-grid">
+            <div class="form-group full"><label class="checkbox-row"><input type="checkbox" id="fSupplierInvolved" onchange="updateActivityConditionalSections()"> A supplier or featured product is involved</label></div>
+          </div>
+          <div id="fSupplierProductGroup" style="display:none">
+            <div class="form-grid">
+              <div class="form-group"><label class="form-label">Supplier</label><select class="form-select" id="fSupplierLookup"><option value="">Loading SharePoint lookup…</option></select><div class="lookup-note" id="fSupplierLookupNote"></div></div>
+              <div class="form-group"><label class="form-label">Product</label><select class="form-select" id="fProductLookup"><option value="">Loading SharePoint lookup…</option></select><div class="lookup-note" id="fProductLookupNote"></div></div>
             </div>
           </div>
 
@@ -1551,6 +1576,28 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           </div>
         </div>
       </div>
+
+      <!-- BULK IMPORT (admin only) -->
+      <div id="submitFormImport" style="display:none;max-width:960px">
+        <div class="card" style="padding:24px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <span style="font-size:20px">⇧</span>
+            <div style="font-weight:700;font-size:15px">Import Activities</div>
+            <button onclick="pickSubmitPath('')" style="margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px">← Back</button>
+          </div>
+          <div class="form-notice">Upload a reviewed CSV. Preflight checks the live SharePoint list again, skips exact duplicates, and validates the real column schema before any item is created.</div>
+          <div id="bulkImportMsg" class="form-msg"></div>
+          <div class="form-grid">
+            <div class="form-group full"><label class="form-label">Reviewed activity CSV</label><input class="form-input" id="bulkImportFile" type="file" accept=".csv,text/csv" onchange="readBulkImportFile(this.files?.[0])"><div class="field-help">The file stays in your browser. It is not uploaded to GitHub.</div></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+            <button class="btn btn-s" id="bulkPreflightBtn" onclick="preflightBulkImport()" disabled>Check against live list</button>
+            <button class="btn btn-p" id="bulkRunBtn" onclick="runBulkImport()" disabled>Import new activities</button>
+          </div>
+          <div class="import-summary" id="bulkImportSummary" style="display:none"></div>
+          <div id="bulkImportLog" class="import-log" style="display:none"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1713,6 +1760,12 @@ const LIST_IDS={
   sponsorships:null,
   comments:'4d41274c-6a2e-459c-8658-b5d4593aa175',
 };
+
+let CAMPAIGN_COLUMNS=new Map();
+const CAMPAIGN_LOOKUPS={Supplier:null,Product:null};
+const LOOKUP_OPTIONS={Supplier:[],Product:[]};
+let BULK_IMPORT_ROWS=[];
+let BULK_IMPORT_PREFLIGHT=[];
 
 // Diagnostic tools — kept right up here near the top so they're always available in the console,
 // regardless of anything that happens later in the script. Call dumpLists() then dumpCols('list-id').
@@ -3312,12 +3365,98 @@ async function fetchGraphItems(url,token){
   return items;
 }
 
+function sharePointUrl(value){
+  if(!value)return'';
+  if(typeof value==='string'){
+    const trimmed=value.trim();
+    if(!trimmed)return'';
+    if(trimmed.startsWith('{')){
+      try{return sharePointUrl(JSON.parse(trimmed));}catch{}
+    }
+    return trimmed==='[object Object]'?'':trimmed;
+  }
+  if(typeof value==='object'){
+    if(value.Url||value.url||value.webUrl)return String(value.Url||value.url||value.webUrl);
+    if(value.serverUrl&&value.serverRelativeUrl)return String(value.serverUrl)+String(value.serverRelativeUrl);
+  }
+  return'';
+}
+
+function lookupDisplay(value){
+  if(!value)return'';
+  if(typeof value==='string')return value;
+  return String(value.LookupValue||value.lookupValue||value.Title||value.title||'');
+}
+
 // Diagnostic tools (dumpLists/dumpCols) moved to the very top of the script — see right after LIST_IDS
 
 // ═══════════════════════════════════════
 // DATA
 // ═══════════════════════════════════════
+function hasCampaignColumn(name){return CAMPAIGN_COLUMNS.has(name);}
+
+function campaignLookupPayloadKey(kind){
+  const config=CAMPAIGN_LOOKUPS[kind];
+  return config?`${config.name}LookupId`:'';
+}
+
+async function loadCampaignSchemaAndLookups(){
+  CAMPAIGN_COLUMNS=new Map();
+  CAMPAIGN_LOOKUPS.Supplier=null;
+  CAMPAIGN_LOOKUPS.Product=null;
+  LOOKUP_OPTIONS.Supplier=[];
+  LOOKUP_OPTIONS.Product=[];
+  if(!isAuthed)return;
+  try{
+    const token=await getToken();
+    const colUrl=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/columns?$select=id,name,displayName,lookup,readOnly,hidden&$top=300`;
+    const colRes=await fetch(colUrl,{headers:{Authorization:'Bearer '+token}});
+    if(!colRes.ok)throw new Error('Column schema HTTP '+colRes.status+': '+await colRes.text());
+    const columns=(await colRes.json()).value||[];
+    columns.forEach(column=>{
+      CAMPAIGN_COLUMNS.set(column.name,column);
+      if(column.displayName)CAMPAIGN_COLUMNS.set(column.displayName,column);
+    });
+    for(const kind of ['Supplier','Product']){
+      const column=columns.find(c=>c.name===kind||c.displayName===kind);
+      if(!column?.lookup?.listId)continue;
+      const config={name:column.name,listId:column.lookup.listId,labelField:column.lookup.columnName||'Title',allowMultiple:!!column.lookup.allowMultipleValues};
+      CAMPAIGN_LOOKUPS[kind]=config;
+      const itemUrl=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${config.listId}/items?expand=fields&$top=500`;
+      const items=await fetchGraphItems(itemUrl,token);
+      LOOKUP_OPTIONS[kind]=items.map(item=>({
+        id:String(item.id),
+        label:lookupDisplay(item.fields?.[config.labelField]??item.fields?.Title??item.fields?.Name??'')
+      })).filter(option=>option.label).sort((a,b)=>a.label.localeCompare(b.label));
+    }
+    populateCampaignLookupSelects();
+  }catch(e){
+    console.error('Campaign schema / lookup load error:',e);
+    populateCampaignLookupSelects(e.message||String(e));
+  }
+}
+
+function populateCampaignLookupSelects(error=''){
+  for(const kind of ['Supplier','Product']){
+    const select=document.getElementById(kind==='Supplier'?'fSupplierLookup':'fProductLookup');
+    const note=document.getElementById(kind==='Supplier'?'fSupplierLookupNote':'fProductLookupNote');
+    if(!select)continue;
+    const config=CAMPAIGN_LOOKUPS[kind];
+    const options=LOOKUP_OPTIONS[kind]||[];
+    select.innerHTML='<option value="">None selected</option>'+options.map(option=>`<option value="${escapeAttr(option.id)}">${escapeAttr(option.label)}</option>`).join('');
+    select.disabled=!config||!!error;
+    if(note)note.textContent=error?`Could not load lookup: ${error}`:!config?`${kind} is not configured as a SharePoint Lookup column on Marketing & Activations 2026.`:`Pulled live from the connected ${kind.toLowerCase()} list.`;
+  }
+}
+
+function updateAdminImportVisibility(){
+  const button=document.getElementById('pathBtn-import');
+  if(button)button.style.display=canApproveCampaigns()?'':'none';
+  if(!canApproveCampaigns()&&document.getElementById('submitFormImport')?.style.display!=='none')pickSubmitPath('');
+}
+
 async function loadAll(){
+  await loadCampaignSchemaAndLookups();
   await loadCampaigns();
   await loadTasks();
   await loadProjects();
@@ -3327,6 +3466,7 @@ async function loadAll(){
   await loadM365Users();
   await loadAllComments();
   SPONSORSHIPS=[...STATIC_SPONSORSHIPS];
+  updateAdminImportVisibility();
   generateNotifications();
   renderCurrentPanel();
   openDeepLinkedActivity();
@@ -3753,17 +3893,17 @@ async function loadCampaigns(){
         ticketsSold:parseInt(f.TicketsSold||0),
         // Ticketing
         ticketed:f.TicketedEvent===true||f.TicketedEvent==='Yes',
-        ticketUrl:f.TicketURL?.Url||f.TicketURL||'',
+        ticketUrl:sharePointUrl(f.TicketURL),
         ticketPlatform:f.TicketPlatform||'',
         ticketPrice:parseFloat(f.TicketPrice||0),
         capacity:parseInt(f.Capacity||0),
         // Event image (uploaded Image column or EventImageURL) — used for card thumbnails
-        eventImageUrl:(f.Image?(typeof f.Image==='string'?f.Image:(f.Image.serverUrl&&f.Image.serverRelativeUrl?f.Image.serverUrl+f.Image.serverRelativeUrl:'')):'')||f.EventImageURL||'',
+        eventImageUrl:sharePointUrl(f.Image)||sharePointUrl(f.EventImageURL),
         // Digital / SEO
         landingPageRequired:f.LandingPageRequired===true||f.LandingPageRequired==='Yes',
-        landingPageUrl:f.LandingPageURL?.Url||f.LandingPageURL||'',
+        landingPageUrl:sharePointUrl(f.LandingPageURL),
         landingPageStatus:f.LandingPageStatus||'',
-        bookingUrl:f.BookingURL?.Url||f.BookingURL||'',
+        bookingUrl:sharePointUrl(f.BookingURL),
         channels:Array.isArray(f.Channels)?f.Channels:(f.Channels?[f.Channels]:[]),
         assetsNeeded:Array.isArray(f.AssetsNeeded)?f.AssetsNeeded:(f.AssetsNeeded?[f.AssetsNeeded]:[]),
         assetTVsDetail:f.AssetTVsDetail||'',
@@ -3785,19 +3925,21 @@ async function loadCampaigns(){
         loadedFlag:f.LoadedRewards??f.IsLoaded??'',
         // Supplier
         supplierInvolved:f.SupplierInvolved===true||f.SupplierInvolved==='Yes',
-        supplierLookup:f.Supplier?.LookupValue||'',
-        product:f.Product?.LookupValue||'',
+        supplierLookup:lookupDisplay(f.Supplier),
+        supplierId:String(f.SupplierLookupId||f.Supplier?.LookupId||''),
+        product:lookupDisplay(f.Product),
+        productId:String(f.ProductLookupId||f.Product?.LookupId||''),
         // Operational
         posRequired,
         posStatus:f.PosStatus||(posRequired?'Required':''),
         posNotes:f.POSNotes||descriptionParts.posNotes,
         designJobCreated:f.DesignJobCreated===true||f.DesignJobCreated==='Yes',
         collateralStatus:f.CollateralStatus||'',
-        artworkFile:f.Artwork_x0020_File?.Url||f.Artwork_x0020_File||'',
+        artworkFile:sharePointUrl(f.Artwork_x0020_File),
         // Design step
         designBrief:f.DesignBrief||f.Design_x0020_Brief_x0020_Notes||'',
         designStatus:f.DesignStatus||'',
-        jobFolderUrl:f.JobFolderURL?.Url||f.JobFolderURL||'',
+        jobFolderUrl:sharePointUrl(f.JobFolderURL),
         // Build channels (each: Not Required / To Do / In Progress / Done)
         webStatus:f.WebStatus||'',
         loadedStatus:f.LoadedStatus||'',
@@ -5959,7 +6101,7 @@ const VENUE_LOGOS={
 function eventLogo(ev){
   // Loaded department -> Loaded logo; else own image; else venue logo
   if((ev.department||'')==='Loaded Rewards')return LR_LOGO;
-  if(ev.imageUrl)return ev.imageUrl;
+  if(ev.eventImageUrl)return ev.eventImageUrl;
   return VENUE_LOGOS[ev.venue]||'';
 }
 
@@ -7543,14 +7685,19 @@ function markAllRead(){
 // SUBMIT FORM — conditional sections
 // ═══════════════════════════════════════
 function pickSubmitPath(path){
+  if(path==='import'&&!canApproveCampaigns()){
+    alert('Bulk import is restricted to Head Office approvers.');
+    path='';
+  }
   // Highlight selected path button
-  ['activity','idea','job'].forEach(p=>{
+  ['activity','idea','job','import'].forEach(p=>{
     const btn=document.getElementById('pathBtn-'+p);
     if(btn){btn.style.borderColor=p===path?'var(--accent)':'var(--border)';btn.style.background=p===path?'var(--accent-bg)':'var(--surface)';}
   });
   document.getElementById('submitFormActivity').style.display=path==='activity'?'':'none';
   document.getElementById('submitFormIdea').style.display=path==='idea'?'':'none';
   document.getElementById('submitFormJob').style.display=path==='job'?'':'none';
+  document.getElementById('submitFormImport').style.display=path==='import'?'':'none';
   // Auto-populate Submitted By with the signed-in user (writes to Assignee — the same "Owner/person"
   // field the item popup uses — kept separate from the department "Owner" dropdown on this form)
   if(path==='activity'){
@@ -7570,6 +7717,7 @@ function pickSubmitPath(path){
       }).join('');
     }
     renderSubmitPeopleResults(document.getElementById('fPeopleSearch')?.value||'');
+    populateCampaignLookupSelects();
   }
   // Populate job assignee
   if(path==='job'){
@@ -7623,6 +7771,7 @@ function updateActivityConditionalSections(){
   const isLoaded=!!document.getElementById('fIsLoaded')?.checked;
   const needsChannels=!!document.getElementById('fNeedsChannels')?.checked;
   const needsDesign=!!document.getElementById('fNeedsDesign')?.checked;
+  const supplierInvolved=!!document.getElementById('fSupplierInvolved')?.checked;
   const isTicketed=format==='Ticketed Event';
   const showPricing=isLoaded||type==='Promotion / Offer'||isTicketed||format==='Table Booking Event';
   const show=(id,on)=>{const el=document.getElementById(id);if(el)el.style.display=on?'':'none';};
@@ -7632,6 +7781,7 @@ function updateActivityConditionalSections(){
   show('fTicketingGroup',isTicketed);
   show('fChannelsGroup',needsChannels);
   show('fAssetsGroup',needsDesign);
+  show('fSupplierProductGroup',supplierInvolved);
   updateAssetDetailVisibility();
 }
 
@@ -7812,6 +7962,219 @@ async function submitJob(){
   if(btn){btn.disabled=false;btn.textContent='Submit Job →';}
 }
 
+function parseCsvText(text){
+  const rows=[];
+  let row=[],cell='',quoted=false;
+  const source=String(text||'').replace(/^\uFEFF/,'');
+  for(let i=0;i<source.length;i++){
+    const ch=source[i];
+    if(quoted){
+      if(ch==='"'&&source[i+1]==='"'){cell+='"';i++;}
+      else if(ch==='"')quoted=false;
+      else cell+=ch;
+    }else if(ch==='"')quoted=true;
+    else if(ch===','){row.push(cell);cell='';}
+    else if(ch==='\n'){row.push(cell.replace(/\r$/,''));rows.push(row);row=[];cell='';}
+    else cell+=ch;
+  }
+  if(cell||row.length){row.push(cell.replace(/\r$/,''));rows.push(row);}
+  if(!rows.length)return[];
+  const headers=rows[0].map(header=>header.trim());
+  return rows.slice(1).filter(values=>values.some(value=>String(value).trim())).map((values,index)=>{
+    const record={_csvRow:index+2};
+    headers.forEach((header,col)=>record[header]=String(values[col]??'').trim());
+    return record;
+  });
+}
+
+function normaliseImportText(value){
+  return String(value||'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim();
+}
+
+function importDatesOverlap(aStart,aEnd,bStart,bEnd){
+  return aStart<=bEnd&&aEnd>=bStart;
+}
+
+function setBulkImportMessage(message,type='ok'){
+  const el=document.getElementById('bulkImportMsg');
+  if(!el)return;
+  el.textContent=message;
+  el.className='form-msg '+type;
+}
+
+async function readBulkImportFile(file){
+  BULK_IMPORT_ROWS=[];
+  BULK_IMPORT_PREFLIGHT=[];
+  document.getElementById('bulkRunBtn').disabled=true;
+  document.getElementById('bulkImportSummary').style.display='none';
+  document.getElementById('bulkImportLog').style.display='none';
+  if(!file)return;
+  try{
+    const rows=parseCsvText(await file.text()).filter(row=>!row.Decision||row.Decision.toUpperCase()==='IMPORT');
+    const required=['Title','Venue','Start','End','Activity Type'];
+    const missing=required.filter(header=>!Object.prototype.hasOwnProperty.call(rows[0]||{},header));
+    if(missing.length)throw new Error('Missing CSV columns: '+missing.join(', '));
+    BULK_IMPORT_ROWS=rows;
+    document.getElementById('bulkPreflightBtn').disabled=!rows.length;
+    setBulkImportMessage(`${rows.length} reviewed activities loaded. Run the live duplicate check before importing.`,'ok');
+  }catch(e){
+    document.getElementById('bulkPreflightBtn').disabled=true;
+    setBulkImportMessage('Could not read CSV: '+e.message,'err');
+  }
+}
+
+function renderBulkImportResults(){
+  const counts={new:0,duplicate:0,invalid:0,created:0,failed:0};
+  BULK_IMPORT_PREFLIGHT.forEach(item=>counts[item.status]=(counts[item.status]||0)+1);
+  const summary=document.getElementById('bulkImportSummary');
+  summary.style.display='grid';
+  summary.innerHTML=[['New',counts.new,'var(--accent)'],['Duplicates',counts.duplicate,'var(--gold)'],['Invalid',counts.invalid,'var(--red)'],['Created',counts.created,'#15803d']].map(([label,value,color])=>`<div class="import-stat"><strong style="color:${color}">${value}</strong><span>${label}</span></div>`).join('');
+  const log=document.getElementById('bulkImportLog');
+  log.style.display='block';
+  const color={new:'var(--accent)',duplicate:'var(--gold)',invalid:'var(--red)',created:'#15803d',failed:'var(--red)'};
+  log.innerHTML=BULK_IMPORT_PREFLIGHT.map(item=>`<div class="import-log-row"><strong style="color:${color[item.status]||'var(--text3)'}">${escapeAttr(item.status.toUpperCase())}</strong><span>${escapeAttr(item.row.Title)}</span><span>${escapeAttr(item.row.Venue)}</span><span>${escapeAttr(item.reason||'')}</span></div>`).join('');
+}
+
+async function preflightBulkImport(){
+  if(!canApproveCampaigns()){setBulkImportMessage('Bulk import is restricted to Head Office approvers.','err');return;}
+  if(!BULK_IMPORT_ROWS.length){setBulkImportMessage('Choose the reviewed CSV first.','err');return;}
+  const btn=document.getElementById('bulkPreflightBtn');
+  btn.disabled=true;btn.textContent='Checking live list…';
+  try{
+    await loadCampaignSchemaAndLookups();
+    const requiredColumns=['Title','Venue','ActivityType','Start','End','WorkflowStage','Status','Description'];
+    const missingColumns=requiredColumns.filter(name=>!hasCampaignColumn(name));
+    if(missingColumns.length)throw new Error('SharePoint schema is missing required columns: '+missingColumns.join(', '));
+    await loadCampaigns();
+    const seen=[];
+    BULK_IMPORT_PREFLIGHT=BULK_IMPORT_ROWS.map(row=>{
+      const start=row.Start;
+      const end=row.End||row.Start;
+      let status='new',reason='No live title/date overlap found';
+      if(!row.Title||!row.Venue||!start||!end||!row['Activity Type']){
+        status='invalid';reason='Missing required title, venue, date or activity type';
+      }else if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||end<start){
+        status='invalid';reason='Invalid or reversed date range';
+      }else if(start<'2026-07-01'){
+        status='invalid';reason='Before the approved 1 July 2026 cutoff';
+      }else{
+        const titleKey=normaliseImportText(row.Title);
+        const venueKey=normaliseImportText(row.Venue);
+        const importRef=row['Import Ref']||'';
+        const liveMatch=EVENTS.find(event=>{
+          if(importRef&&String(event.description||'').includes(`ImportRef: ${importRef}`))return true;
+          return normaliseImportText(event.title)===titleKey&&normaliseImportText(event.venue)===venueKey&&importDatesOverlap(start,end,event.start,event.end);
+        });
+        const fileMatch=seen.find(other=>normaliseImportText(other.Title)===titleKey&&normaliseImportText(other.Venue)===venueKey&&importDatesOverlap(start,end,other.Start,other.End||other.Start));
+        if(liveMatch){status='duplicate';reason=`Already in SharePoint as item #${liveMatch.spId}: ${liveMatch.title}`;}
+        else if(fileMatch){status='duplicate';reason=`Overlaps CSV row ${fileMatch._csvRow}`;}
+        seen.push(row);
+      }
+      return{row,status,reason};
+    });
+    renderBulkImportResults();
+    const newCount=BULK_IMPORT_PREFLIGHT.filter(item=>item.status==='new').length;
+    document.getElementById('bulkRunBtn').disabled=!newCount;
+    setBulkImportMessage(`${newCount} new activities ready. Exact live and in-file duplicates will be skipped.`,'ok');
+  }catch(e){
+    setBulkImportMessage('Preflight failed: '+e.message,'err');
+  }finally{
+    btn.disabled=false;btn.textContent='Check against live list';
+  }
+}
+
+function lookupIdByLabel(kind,label){
+  const key=normaliseImportText(label);
+  return (LOOKUP_OPTIONS[kind]||[]).find(option=>normaliseImportText(option.label)===key)?.id||'';
+}
+
+function optionalImportFields(row){
+  const optional={};
+  const add=(field,value)=>{if(value!==''&&value!=null&&hasCampaignColumn(field))optional[field]=value;};
+  const numberValue=(value)=>{
+    const cleaned=String(value??'').replace(/[$,]/g,'').trim();
+    if(!cleaned)return null;
+    const parsed=Number(cleaned);
+    return Number.isFinite(parsed)?parsed:null;
+  };
+  const loaded=normaliseImportText(row['Loaded Rewards'])==='yes';
+  if(loaded){
+    add('BusinessStream','Loaded Rewards');
+    add('LoadedRewards','Yes');
+    add('AppRequired','Yes');
+  }
+  add('AppDescription',row['App Description']||'');
+  add('LoadedBasePrice',numberValue(row['Member Price']));
+  add('RegularPrice',numberValue(row['Regular Price']));
+  const supplierId=lookupIdByLabel('Supplier',row.Supplier);
+  const productId=lookupIdByLabel('Product',row.Product);
+  const supplierKey=campaignLookupPayloadKey('Supplier');
+  const productKey=campaignLookupPayloadKey('Product');
+  if(supplierId&&supplierKey)optional[supplierKey]=parseInt(supplierId,10);
+  if(productId&&productKey)optional[productKey]=parseInt(productId,10);
+  if(supplierId||productId)add('SupplierInvolved',true);
+  return optional;
+}
+
+async function patchImportOptionalFields(url,token,fields){
+  if(!Object.keys(fields).length)return{saved:[],failed:[]};
+  const full=await fetch(url,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+  if(full.ok)return{saved:Object.keys(fields),failed:[]};
+  console.warn('Optional import fields failed as a group; diagnosing individually:',full.status,await full.text());
+  const saved=[],failed=[];
+  for(const [field,value] of Object.entries(fields)){
+    const response=await fetch(url,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{[field]:value}})});
+    if(response.ok)saved.push(field);
+    else failed.push({field,status:response.status,error:await response.text()});
+  }
+  return{saved,failed};
+}
+
+async function runBulkImport(){
+  const ready=BULK_IMPORT_PREFLIGHT.filter(item=>item.status==='new');
+  if(!ready.length){setBulkImportMessage('No new rows are ready to import.','err');return;}
+  if(!confirm(`Create ${ready.length} new SharePoint activities at Intake stage? Exact duplicates will remain skipped.`))return;
+  const runBtn=document.getElementById('bulkRunBtn');
+  runBtn.disabled=true;
+  const token=await getToken(true);
+  let completed=0;
+  for(const item of ready){
+    const row=item.row;
+    runBtn.textContent=`Importing ${completed+1} of ${ready.length}…`;
+    const baseFields={
+      Title:row.Title,
+      Venue:row.Venue,
+      ActivityType:row['Activity Type'],
+      Start:row.Start+'T12:00:00Z',
+      End:(row.End||row.Start)+'T12:00:00Z',
+      WorkflowStage:'Intake',
+      Status:'Active',
+      Description:row.Description||`ImportRef: ${row['Import Ref']||''}`
+    };
+    try{
+      const createRes=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:baseFields})});
+      const createText=await createRes.text();
+      if(!createRes.ok)throw new Error(`Base create HTTP ${createRes.status}: ${createText}`);
+      const created=JSON.parse(createText);
+      const patchResult=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${created.id}`,token,optionalImportFields(row));
+      item.status='created';
+      item.reason=patchResult.failed.length?`Created item #${created.id}; optional fields failed: ${patchResult.failed.map(f=>f.field).join(', ')}`:`Created SharePoint item #${created.id}`;
+      patchResult.failed.forEach(f=>console.error(`Bulk import item #${created.id}, field ${f.field} failed:`,f.status,f.error));
+    }catch(e){
+      item.status='failed';item.reason=e.message;
+      console.error('Bulk import row failed:',row,e);
+    }
+    completed++;
+    renderBulkImportResults();
+  }
+  await loadCampaigns();
+  const createdCount=BULK_IMPORT_PREFLIGHT.filter(item=>item.status==='created').length;
+  const failedCount=BULK_IMPORT_PREFLIGHT.filter(item=>item.status==='failed').length;
+  setBulkImportMessage(`Import finished: ${createdCount} created, ${failedCount} failed. Review the row log before retrying anything.`,failedCount?'err':'ok');
+  runBtn.textContent='Import new activities';
+  runBtn.disabled=true;
+}
+
 async function submitEvent(){
   const title=document.getElementById('fTitle').value.trim();
   const venue=document.getElementById('fVenue').value;
@@ -7836,6 +8199,17 @@ async function submitEvent(){
     const rrp=document.getElementById('fRegularPrice')?.value;if(rrp)fields.RegularPrice=parseFloat(rrp)||0;
     const discPrice=document.getElementById('fLoadedBasePrice')?.value;if(discPrice)fields.LoadedBasePrice=parseFloat(discPrice)||0;
 
+    const supplierInvolved=!!document.getElementById('fSupplierInvolved')?.checked;
+    const supplierKey=campaignLookupPayloadKey('Supplier');
+    const productKey=campaignLookupPayloadKey('Product');
+    if(supplierInvolved){
+      fields.SupplierInvolved=true;
+      const supplierId=document.getElementById('fSupplierLookup')?.value;
+      const productId=document.getElementById('fProductLookup')?.value;
+      if(supplierId&&supplierKey)fields[supplierKey]=parseInt(supplierId,10);
+      if(productId&&productKey)fields[productKey]=parseInt(productId,10);
+    }
+
     // Ticketing fields only exist for a ticketed event. EventFormat remains the fallback flag if
     // the older TicketedEvent column is not present in SharePoint.
     if(ef==='Ticketed Event'){
@@ -7850,6 +8224,8 @@ async function submitEvent(){
     const isLoaded=document.getElementById('fIsLoaded')?.checked;
     if(isLoaded){
       fields.Brand='Loaded Rewards';
+      if(!fields.BusinessStream)fields.BusinessStream='Loaded Rewards';
+      if(hasCampaignColumn('LoadedRewards'))fields.LoadedRewards='Yes';
       const appRequired=document.getElementById('fAppRequired')?.value;if(appRequired)fields.AppRequired=appRequired;
       const newsletterRequired=document.getElementById('fNewsletterRequired')?.value;if(newsletterRequired)fields.NewsletterRequired=newsletterRequired;
       const appHeading=document.getElementById('fAppHeading')?.value.trim();if(appHeading)fields.AppHeading=appHeading;
@@ -7887,7 +8263,7 @@ async function submitEvent(){
     // Fields most likely to not exist as SharePoint columns yet, tried as removable groups if the
     // full payload is rejected — a generic 400 on create doesn't tell us which field is the problem,
     // unlike editing an existing item, so we strip the newest/least-confirmed fields first and retry.
-    const removableGroups=[['TicketURL'],['TicketPlatform','TicketPrice','Capacity','TicketedEvent'],['RegularPrice','LoadedBasePrice'],['AssetTVsDetail'],['AssetNewsletterDetail'],['DesignStatus'],['AssetsNeeded'],['Channels'],['GoogleAdsEligible'],['AppShortDescription'],['AppHeading','AppDescription'],['NewsletterRequired'],['AppRequired'],['BookingURL'],['Brand']];
+    const removableGroups=[[productKey],[supplierKey],['SupplierInvolved'],['TicketURL'],['TicketPlatform','TicketPrice','Capacity','TicketedEvent'],['RegularPrice','LoadedBasePrice'],['AssetTVsDetail'],['AssetNewsletterDetail'],['DesignStatus'],['AssetsNeeded'],['Channels'],['GoogleAdsEligible'],['AppShortDescription'],['AppHeading','AppDescription'],['NewsletterRequired'],['AppRequired'],['BookingURL'],['LoadedRewards'],['Brand']].filter(group=>group.some(Boolean));
     let payload={...fields};
     const dropped=[];
     let res,ok=false,resBody='';
@@ -7952,8 +8328,8 @@ async function submitEvent(){
 function showFMsg(msg,type){const el=document.getElementById('fMsg');if(!el)return;el.textContent=msg;el.className='form-msg '+type;el.scrollIntoView({behavior:'smooth',block:'nearest'});}
 function clearForm(){
   ['fTitle','fDesc','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['fVenue','fActType','fEventFormat','fStream','fTicketPlatform','fAppRequired','fNewsletterRequired'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
-  ['fIsLoaded','fPOSRequired','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  ['fVenue','fActType','fEventFormat','fStream','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup','fProductLookup'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  ['fIsLoaded','fSupplierInvolved','fPOSRequired','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   togglePOSDetails();
   SUBMIT_PEOPLE_SELECTED.clear();
   const peopleSearch=document.getElementById('fPeopleSearch');if(peopleSearch)peopleSearch.value='';
@@ -7982,7 +8358,7 @@ function renderActivityDetail(id,mode){
   const vc=vColor(ev.venue);
   const titleElId=mode==='page'?'activityDetailTitle':'popTitle';
   const bodyElId=mode==='page'?'activityDetailBody':'popBody';
-  document.getElementById(titleElId).innerHTML=`<div style="flex:1;min-width:0"><input class="pop-edit-inp" data-field="Title" value="${(ev.title||'').replace(/"/g,'&quot;')}" onchange="markPopDirty('${mode}')" style="font-size:17px;font-weight:600;font-family:'DM Serif Display',serif;border:1px solid transparent;background:transparent;padding:2px 4px;border-radius:4px;width:100%;color:var(--text)" onfocus="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'" onblur="this.style.borderColor='transparent';this.style.background='transparent'"><div><button onclick="savePopEdit(${ev.id},'${mode}')" class="pop-save-btn" style="display:none;margin-top:4px;padding:3px 10px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600">Save changes</button></div></div>`;
+  document.getElementById(titleElId).innerHTML=`<div style="flex:1;min-width:0"><input class="pop-edit-inp" data-field="Title" data-original="${escapeAttr(ev.title||'')}" value="${(ev.title||'').replace(/"/g,'&quot;')}" onchange="markPopDirty('${mode}')" style="font-size:17px;font-weight:600;font-family:'DM Serif Display',serif;border:1px solid transparent;background:transparent;padding:2px 4px;border-radius:4px;width:100%;color:var(--text)" onfocus="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'" onblur="this.style.borderColor='transparent';this.style.background='transparent'"><div><button onclick="savePopEdit(${ev.id},'${mode}')" class="pop-save-btn" style="display:none;margin-top:4px;padding:3px 10px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600">Save changes</button></div></div>`;
 
   // Submission timing + lead time
   const timing=calcSubmissionTiming(ev);
@@ -8009,13 +8385,21 @@ function renderActivityDetail(id,mode){
     const safeVal=(val||'').toString().replace(/"/g,'&quot;');
     if(type==='select'&&opts){
       return`<div class="pop-field"><div class="pop-lbl">${label}</div>
-        <select class="pop-edit-sel" data-field="${fieldKey}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
+        <select class="pop-edit-sel" data-field="${fieldKey}" data-original="${escapeAttr(val||'')}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
           ${opts.map(o=>`<option value="${o}" ${o===val?'selected':''}>${o?stageLabel(o):'—'}</option>`).join('')}
         </select></div>`;
     }
     return`<div class="pop-field"><div class="pop-lbl">${label}</div>
-      <input class="pop-edit-inp" data-field="${fieldKey}" type="${type==='date'?'date':'text'}" value="${safeVal}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
+      <input class="pop-edit-inp" data-field="${fieldKey}" data-original="${escapeAttr(val||'')}" type="${type==='date'?'date':'text'}" value="${safeVal}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
     </div>`;
+  };
+  const editLookup=(label,kind,currentId,currentLabel)=>{
+    const config=CAMPAIGN_LOOKUPS[kind];
+    if(!config)return`<div class="pop-field"><div class="pop-lbl">${label}</div><div class="pop-val" style="font-size:11px;color:var(--gold)">${currentLabel||'SharePoint lookup not configured'}</div></div>`;
+    const options=LOOKUP_OPTIONS[kind]||[];
+    const selectedId=String(currentId||options.find(option=>option.label===currentLabel)?.id||'');
+    const fieldKey=`${config.name}LookupId`;
+    return`<div class="pop-field"><div class="pop-lbl">${label}</div><select class="pop-edit-sel" data-field="${escapeAttr(fieldKey)}" data-original="${escapeAttr(selectedId)}" data-lookup-kind="${kind}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none"><option value="">—</option>${options.map(option=>`<option value="${escapeAttr(option.id)}" ${option.id===selectedId?'selected':''}>${escapeAttr(option.label)}</option>`).join('')}</select></div>`;
   };
 
   h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="popEditFields">`;
@@ -8028,11 +8412,13 @@ function renderActivityDetail(id,mode){
   h+=editField('Marketing Silo',ev.marketingSilo,'CampaignSilo','select',['','Hero','Momentum','Always-On','Organic','Maintenance']);
   h+=editField('Marketing Funnel',ev.businessStream,'BusinessStream','select',['','Venue Marketing','Loaded Rewards','Functions','Gift Cards','Events Program','Group / Brand Marketing','Marketing Operations']);
   h+=editField('Primary Brand',ev.brand,'Brand','select',['','The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Loaded Rewards','Beerland Brewing']);
+  h+=editLookup('Supplier','Supplier',ev.supplierId,ev.supplierLookup);
+  h+=editLookup('Product','Product',ev.productId,ev.product);
   if(ev.department)h+=editField('Department',ev.department,'Departement');
   // Owner — Choice field (names). Change Assignee to a Choice column in SharePoint with these values.
   const peopleNames=(M365_USERS.length?M365_USERS.map(u=>u.name):['Kim','Luca','Perrin','Didier','Ben','Jo','Amelia']);
   h+=`<div class="pop-field"><div class="pop-lbl">Owner ${!M365_USERS.length?'<span style="color:var(--gold);font-weight:400">(list from directory once User.ReadBasic.All is granted)</span>':''}</div>
-    <select class="pop-edit-sel" data-field="Assignee" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
+    <select class="pop-edit-sel" data-field="Assignee" data-original="${escapeAttr(ev.owner||'')}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
       <option value="">Unassigned</option>
       ${peopleNames.map(n=>`<option value="${n}" ${n===ev.owner?'selected':''}>${n}</option>`).join('')}
     </select></div>`;
@@ -8091,19 +8477,19 @@ function renderActivityDetail(id,mode){
   h+=`<div class="pop-section">🎨 Design</div>`;
   h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">`;
   h+=`<div class="pop-field"><div class="pop-lbl">Design Status</div>
-    <select class="pop-edit-sel" data-field="DesignStatus" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
+    <select class="pop-edit-sel" data-field="DesignStatus" data-original="${escapeAttr(ev.designStatus||'')}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
       ${['','Not Required','Brief Needed','In Design','Artwork Uploaded','Approved'].map(o=>`<option value="${o}" ${o===ev.designStatus?'selected':''}>${o||'—'}</option>`).join('')}
     </select></div>`;
   h+=`<div class="pop-field"><div class="pop-lbl">Brief Due</div><div class="pop-val" style="font-size:12px;color:${ev.designBriefDue&&new Date(ev.designBriefDue+'T00:00:00')<new Date()?'var(--red)':'var(--text2)'}">${ev.designBriefDue?fmtShort(ev.designBriefDue):'—'}</div></div>`;
   h+=`</div>`;
   h+=`<div class="pop-field" style="margin-top:6px"><div class="pop-lbl">Design Brief</div>
-    <textarea class="pop-edit-inp" data-field="DesignBrief" onchange="markPopDirty()" rows="3" placeholder="What's it for, key message, must-haves, dimensions/format…" style="font-size:12px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none;font-family:inherit;resize:vertical">${(ev.designBrief||'').replace(/</g,'&lt;')}</textarea></div>`;
+    <textarea class="pop-edit-inp" data-field="DesignBrief" data-original="${escapeAttr(ev.designBrief||'')}" onchange="markPopDirty()" rows="3" placeholder="What's it for, key message, must-haves, dimensions/format…" style="font-size:12px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none;font-family:inherit;resize:vertical">${(ev.designBrief||'').replace(/</g,'&lt;')}</textarea></div>`;
   // Artwork folder link
   h+=`<div class="pop-field" style="margin-top:6px"><div class="pop-lbl">Job / Artwork Folder</div>`;
   if(ev.jobFolderUrl){
     h+=`<div style="display:flex;align-items:center;gap:8px"><a href="${ev.jobFolderUrl}" target="_blank" style="font-size:12px;color:var(--accent);font-weight:600;text-decoration:none">📁 Open artwork folder →</a></div>`;
   } else {
-    h+=`<input class="pop-edit-inp" data-field="JobFolderURL" type="text" value="" onchange="markPopDirty()" placeholder="Paste SharePoint folder link for this job…" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">`;
+    h+=`<input class="pop-edit-inp" data-field="JobFolderURL" data-original="" type="text" value="" onchange="markPopDirty()" placeholder="Paste SharePoint folder link for this job…" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">`;
   }
   if(ev.artworkFile)h+=`<div style="margin-top:4px"><a href="${ev.artworkFile}" target="_blank" style="font-size:11px;color:var(--accent)">🖼 Latest artwork →</a></div>`;
   h+=`</div>`;
@@ -8123,7 +8509,7 @@ function renderActivityDetail(id,mode){
     h+=`<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface2);border-radius:6px">
       <span style="font-size:12px;font-weight:600;min-width:80px">${c.label}</span>
       <span style="font-size:10px;color:var(--text3);min-width:60px">${c.owner}</span>
-      <select class="pop-edit-sel" data-field="${c.field}" onchange="markPopDirty()" style="flex:1;font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:${chanColor(c.val)};font-weight:600;outline:none">
+      <select class="pop-edit-sel" data-field="${c.field}" data-original="${escapeAttr(c.val||'')}" onchange="markPopDirty()" style="flex:1;font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:${chanColor(c.val)};font-weight:600;outline:none">
         ${['','Not Required','To Do','In Progress','Done'].map(o=>`<option value="${o}" ${o===c.val?'selected':''}>${o||'—'}</option>`).join('')}
       </select>
     </div>`;
@@ -8175,7 +8561,7 @@ function renderActivityDetail(id,mode){
       h+=`</div>`;
     }
   }
-  h+=`<div class="pop-section">Description</div><textarea class="pop-edit-inp" data-field="Description" onchange="markPopDirty()" rows="4" style="font-size:12.5px;color:var(--text2);line-height:1.6;width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);font-family:inherit;resize:vertical">${(ev.description||'').replace(/</g,'&lt;')}</textarea>`;
+  h+=`<div class="pop-section">Description</div><textarea class="pop-edit-inp" data-field="Description" data-original="${escapeAttr(ev.description||'')}" onchange="markPopDirty()" rows="4" style="font-size:12.5px;color:var(--text2);line-height:1.6;width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);font-family:inherit;resize:vertical">${(ev.description||'').replace(/</g,'&lt;')}</textarea>`;
 
   // Discussion — loaded async after the popup renders, so opening the popup isn't blocked on a fetch
   h+=`<div class="pop-section">💬 Discussion</div>
@@ -8247,19 +8633,28 @@ async function savePopEdit(evId,mode){
     const f=el.dataset.field;
     if(!f)return;
     const v=el.value.trim();
+    const original=String(el.dataset.original??'').trim();
+    if(v===original)return;
     if(f==='POSNotes'){
       requestedPOSNotes=v;
       ev.posNotes=v;
       return;
     }
-    if(!v&&!['Assignee','Description','PosStatus'].includes(f))return;
-    if(f==='BudgetAllocated'||f==='ActualSpend'||f==='SupplierContribution'||f==='MarketingBudget'||f==='TicketPrice'||f==='Capacity'){
-      fields[f]=f==='Capacity'?parseInt(v)||0:parseFloat(v)||0;
+    if(f.endsWith('LookupId')){
+      fields[f]=v?parseInt(v,10):null;
+      const kind=el.dataset.lookupKind;
+      if(kind){
+        const selected=LOOKUP_OPTIONS[kind]?.find(option=>option.id===v);
+        if(kind==='Supplier'){ev.supplierId=v;ev.supplierLookup=selected?.label||'';}
+        if(kind==='Product'){ev.productId=v;ev.product=selected?.label||'';}
+      }
+    } else if(f==='BudgetAllocated'||f==='ActualSpend'||f==='SupplierContribution'||f==='MarketingBudget'||f==='TicketPrice'||f==='Capacity'){
+      fields[f]=v?(f==='Capacity'?parseInt(v,10):parseFloat(v)):null;
     } else if(f==='Start'||f==='End'){
       // Noon UTC so the date doesn't shift back a day in Perth (UTC+8)
-      fields[f]=v.includes('T')?v:v+'T12:00:00Z';
+      fields[f]=v?(v.includes('T')?v:v+'T12:00:00Z'):null;
     } else {
-      fields[f]=v;
+      fields[f]=v||null;
     }
     // Update local EVENTS object immediately for optimistic UI
     const localMap={
@@ -8292,6 +8687,12 @@ async function savePopEdit(evId,mode){
     }
   });
 
+  if(Object.keys(fields).some(field=>field.endsWith('LookupId'))){
+    const involved=!!(ev.supplierId||ev.productId);
+    if(hasCampaignColumn('SupplierInvolved'))fields.SupplierInvolved=involved;
+    ev.supplierInvolved=involved;
+  }
+
   if(requestedPOSNotes!==null){
     const baseDescription=Object.prototype.hasOwnProperty.call(fields,'Description')?fields.Description:ev.description;
     fields.Description=withPOSNotes(baseDescription,requestedPOSNotes);
@@ -8313,12 +8714,13 @@ async function savePopEdit(evId,mode){
     const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`;
     let payload={...fields};
     const skipped=[];
-    let res,ok=false;
+    let res,ok=false,lastErrText='';
     for(let attempt=0;attempt<10;attempt++){
       if(!Object.keys(payload).length)break;
       res=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:payload})});
       if(res.ok){ok=true;break;}
       const errText=await res.text();
+      lastErrText=errText;
       console.error('Save failed:',res.status,errText);
       // If SharePoint rejects a specific field it doesn't recognize, drop just that field and retry —
       // otherwise one unrecognized column (e.g. a feature whose SharePoint column hasn't been created yet)
@@ -8341,6 +8743,26 @@ async function savePopEdit(evId,mode){
       break; // some other error — stop retrying
     }
 
+    // SharePoint often returns a useless generic 500 when one field in a larger PATCH is invalid.
+    // Retry each changed field separately so valid edits still stick and the exact failing field is named.
+    if(!ok&&Object.keys(payload).length>1){
+      const individuallySaved={};
+      for(const [field,value] of Object.entries(payload)){
+        const singleRes=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{[field]:value}})});
+        if(singleRes.ok){
+          individuallySaved[field]=value;
+        }else{
+          const singleError=await singleRes.text();
+          skipped.push(field);
+          console.error(`Field ${field} failed independently:`,singleRes.status,singleError);
+        }
+      }
+      if(Object.keys(individuallySaved).length){
+        payload=individuallySaved;
+        ok=true;
+      }
+    }
+
     if(ok){
       // Verify what actually got stored — SharePoint sometimes returns 200 OK for a field name that
       // doesn't really match a column (silently ignoring it) rather than erroring, which looks like a
@@ -8352,8 +8774,11 @@ async function savePopEdit(evId,mode){
         if(verifyRes.ok){
           const verifyData=await verifyRes.json();
           Object.keys(payload).forEach(f=>{
-            const sent=String(payload[f]).trim();
-            const stored=String(verifyData.fields?.[f]??'').trim();
+            const sent=payload[f]==null?'':String(payload[f]).trim();
+            const lookupBase=f.endsWith('LookupId')?f.slice(0,-8):'';
+            const storedLookupId=lookupBase?(verifyData.fields?.[f]??verifyData.fields?.[lookupBase]?.LookupId):undefined;
+            if(lookupBase&&storedLookupId===undefined)return;
+            const stored=String(lookupBase?storedLookupId:(verifyData.fields?.[f]??'')).trim();
             if(sent&&sent!==stored)mismatches.push(f);
           });
         }
@@ -8363,6 +8788,10 @@ async function savePopEdit(evId,mode){
         setBtns(`⚠️ Saved, but didn't stick: ${mismatches.join(', ')}`,{disabled:false,bg:'var(--red)',color:'#fff'});
         console.error('These fields returned 200 OK but did not actually persist — the internal column name is likely wrong, or the column is read-only / controlled by a workflow:',mismatches.join(', '));
       } else {
+        editElements.forEach(el=>{
+          const field=el.dataset.field;
+          if(payload.hasOwnProperty(field)||(field==='POSNotes'&&payload.hasOwnProperty('Description')))el.dataset.original=el.value.trim();
+        });
         setBtns(skipped.length?`✓ Saved (skipped ${skipped.join(', ')})`:'✓ Saved',{bg:skipped.length?'var(--gold)':'#0a6640',color:'#fff'});
         if(skipped.length)console.warn('Saved, but these fields don\'t exist as SharePoint columns yet and were skipped:',skipped.join(', '));
         setTimeout(()=>setBtns('Save changes',{disabled:false,bg:'',color:'',display:'none'}),skipped.length?3200:1800);
