@@ -1,5 +1,13 @@
 # Marlin Hospitality OS — Technical Debt
 
+## Approval playbook exists but is not connected
+
+**Issue:** `runPlaybook(ev)` contains task templates for design, web, social, EDM, POS, signage and other work, but no production code calls it. `approveCampaign()` currently changes `WorkflowStage` from `Intake` to `In Design` and sends notifications only. It creates no linked task or design brief. **Risk:** The Hub visually implies an activity has entered planning/design while Luca and the other delivery owners may have received no actionable job. **Priority:** High. **Recommended future fix:** Add an approval preview that shows the proposed jobs derived from `Channels`, `AssetsNeeded`, ticketing, Loaded and POS answers. Let the approver confirm owners and due dates, then create only those tasks, link them to the activity, and mark the activity's creation flags only after all required writes succeed.
+
+## Campaign task lookup is not consistently mapped
+
+**Issue:** Manually submitted jobs write `RelatedCampaignId`, while the existing task model and earlier specifications refer to `LinkedCampaignID` or a campaign lookup. Auto-playbook tasks currently write neither. **Risk:** Design and delivery tickets cannot reliably navigate back to their parent activity, and duplicate prevention is weak. **Priority:** High, before connecting automatic job creation. **Recommended future fix:** Confirm the actual My Tasks lookup column internal name and type, then use that one mapping in manual jobs, design briefs and playbook tasks.
+
 ## Financial data is not yet separated at the SharePoint layer
 
 The Hub hides financial fields from roles without `canViewBudget`, and v12 closes the known UI gaps. This is presentation-level control, not column-level security. Users who can read the Campaigns list can potentially inspect the raw Microsoft Graph response.
