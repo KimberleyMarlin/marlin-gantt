@@ -26,7 +26,7 @@ This audit covers the Activity submission form in `index.html`, the `Marketing &
 |---|---|---|---|
 | Ticketed Event | `TicketedEvent`, `TicketPlatform`, `TicketPrice`, `Capacity`, `TicketURL` | `ticketed`, `ticketPlatform`, `ticketPrice`, `capacity`, `ticketUrl` | Added missing submission inputs and mapping |
 | Loaded Rewards | `Brand`, `AppRequired`, `NewsletterRequired`, `AppHeading`, `AppShortDescription`, `AppDescription`, `BookingURL`, `LoadedBasePrice` | Corresponding Loaded fields | Details hidden until Loaded is selected |
-| POS required | `POSUpdateRequired`, `PosStatus`, `POSNotes` | `posRequired`, `posStatus`, `posNotes` | Details hidden until Yes |
+| POS required | `POSUpdateRequired`, `PosStatus`, `POSNotes` | `posRequired`, `posStatus`, `posNotes` | Checkbox reveals Updates Required only when selected |
 | Marketing support | `Channels`, `GoogleAdsEligible` | `channels`, `googleAdsEligible` | Section hidden until selected, read mapping added |
 | Artwork/design required | `AssetsNeeded`, `AssetTVsDetail`, `AssetNewsletterDetail`, `DesignStatus` | `assetsNeeded`, asset details, `designStatus` | Section hidden until selected, missing detail inputs and read mapping added |
 
@@ -41,4 +41,3 @@ This audit covers the Activity submission form in `index.html`, the `Marketing &
 ## Still requiring a live SharePoint schema check
 
 The Hub retries activity creation after removing optional fields that SharePoint rejects. That prevents a whole submission failing, but it does not prove every optional column exists. The next authenticated test should submit one controlled record containing every conditional section, note any fields the success message says were skipped, and compare those names with the list column output.
-
