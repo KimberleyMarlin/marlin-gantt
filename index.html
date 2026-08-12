@@ -365,6 +365,12 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .form-msg{padding:10px 12px;border-radius:var(--r-sm);font-size:12.5px;font-weight:500;margin-bottom:12px;display:none}
 .form-msg.ok{background:#dcfce7;color:#15803d;border:1px solid #86efac;display:block}
 .form-msg.err{background:var(--red-bg);color:var(--red);border:1px solid #fca5a5;display:block}
+.checkbox-row{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;line-height:1.4}
+.checkbox-row input[type=checkbox]{margin-top:2px;flex-shrink:0}
+.field-help{font-size:10.5px;color:var(--text3);line-height:1.45;margin-top:2px}
+.people-picker .multiselect-panel{position:static!important;inset:auto!important;margin-top:6px!important;max-height:300px!important;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-gutter:stable;border-radius:8px!important}
+.people-picker .form-input[type=search]{position:sticky;top:0;z-index:2;background:var(--surface);margin-bottom:7px}
+.loaded-logo-white{filter:brightness(0) invert(1);object-fit:contain}
 
 /* ── POPUP ── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(2px);padding:16px}
@@ -535,7 +541,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="tb-title" id="tbTitle">Dashboard <em>Overview</em></div>
     <div class="tb-date" id="tbDate"></div>
     <div class="sw"><input type="text" placeholder="Search…" id="gSearch" oninput="doSearch(this.value)"></div>
-    <span style="font-size:9px;color:var(--accent);font-weight:700;background:var(--accent-bg);padding:2px 6px;border-radius:4px;flex-shrink:0" title="Build version">v14</span>
+    <span style="font-size:9px;color:var(--accent);font-weight:700;background:var(--accent-bg);padding:2px 6px;border-radius:4px;flex-shrink:0" title="Build version">v15</span>
     <button class="tb-btn" onclick="loadAll()">↻</button>
     <button class="tb-btn p" onclick="navTo('submit')">＋ Submit</button>
   </div>
@@ -904,7 +910,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <div class="panel" id="p-loaded">
     <div class="ph" style="background:linear-gradient(135deg,#0a1628 0%,#1a3a6e 100%);border-radius:var(--r-sm) var(--r-sm) 0 0;margin:-20px -20px 0;padding:20px">
       <div style="display:flex;align-items:center;gap:14px">
-        <img src="https://www.loadedrewards.com.au/wp-content/uploads/2025/10/cropped-LR_App_Logo_blue_salmon-web2.png" style="height:44px" onerror="this.style.display='none'" alt="Loaded Rewards">
+        <img src="https://www.loadedrewards.com.au/wp-content/uploads/2026/08/cropped-Loaded-Rewards-Logo.webp" class="loaded-logo-white" style="height:50px;width:auto" onerror="this.style.display='none'" alt="Loaded Rewards">
         <div>
           <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:4px">Loyalty Program</div>
           <div style="font-size:22px;font-weight:700;color:#fff;font-family:'DM Serif Display',serif">Loaded <em style="font-style:italic;color:#f4a57a">Rewards</em></div>
@@ -1369,11 +1375,11 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 
           <div class="form-section-head">Operations</div>
           <div class="form-grid">
-            <div class="form-group"><label class="form-label">POS Setup Required?</label><select class="form-select" id="fPOSRequired" onchange="togglePOSDetails()"><option value="">Select…</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="form-group full"><label class="checkbox-row"><input type="checkbox" id="fPOSRequired" onchange="togglePOSDetails()"> POS setup or update required</label></div>
           </div>
           <div id="fPOSDetailsGroup" style="display:none">
             <div class="form-grid">
-              <div class="form-group full"><label class="form-label">POS Changes / Requirements</label><textarea class="form-textarea" id="fPOSDetails" placeholder="Please enter all changes or requirements in Point of Sale" style="min-height:60px"></textarea></div>
+              <div class="form-group full"><label class="form-label">Updates Required</label><textarea class="form-textarea" id="fPOSDetails" placeholder="e.g. price change, new product or addition, button or category update" style="min-height:60px"></textarea></div>
             </div>
           </div>
 
@@ -1434,21 +1440,23 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             </div>
             <div class="form-group full">
               <label class="form-label">People</label>
-              <div class="multiselect-dd" style="position:relative">
+              <div class="multiselect-dd people-picker">
                 <button type="button" class="form-select" style="text-align:left;cursor:pointer;width:100%;display:flex;justify-content:space-between;align-items:center" onclick="toggleMultiSelectDD('ddPeople')">
                   <span id="ddPeopleSummary">Select people…</span><span style="opacity:.5">▾</span>
                 </button>
-                <div id="ddPeople" class="multiselect-panel" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:var(--sh-md);max-height:320px;overflow-y:auto;z-index:20;padding:8px;margin-top:2px;font-size:12.5px;color:var(--text3)">
-                  <input class="form-input" id="fPeopleSearch" type="search" placeholder="Type a Microsoft 365 name or email…" autocomplete="off" oninput="renderSubmitPeopleResults(this.value)" style="position:sticky;top:0;z-index:2;background:var(--surface);margin-bottom:6px">
+                <div id="ddPeople" class="multiselect-panel" style="display:none;background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh-md);padding:8px;font-size:12.5px;color:var(--text3)">
+                  <input class="form-input" id="fPeopleSearch" type="search" placeholder="Type a Microsoft 365 name or email…" autocomplete="off" oninput="renderSubmitPeopleResults(this.value)">
                   <div id="fPeopleSelected" style="display:flex;gap:5px;flex-wrap:wrap;margin:2px 0 6px"></div>
                   <div id="fPeopleResults">Loading team list…</div>
                 </div>
               </div>
             </div>
             <div class="form-group full"><label class="form-label">External person, not in Microsoft 365</label><input class="form-input" id="fAdditionalOther" type="text" placeholder="Name or email, comma-separated"></div>
-            <div class="form-group full"><label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" id="fNotifyPeopleByEmail" checked> Email selected Microsoft 365 people as well as adding this to their Inbox</label></div>
+            <div class="form-group full">
+              <label class="checkbox-row" style="font-size:12px"><input type="checkbox" id="fNotifyPeopleByEmail" checked> Email selected Microsoft 365 people as well as adding this to their Inbox</label>
+              <div class="field-help">Search the full Microsoft 365 directory. Selected people are added to the activity conversation from the start.</div>
+            </div>
           </div>
-          <div style="font-size:10px;color:var(--text3);margin-top:-8px;margin-bottom:12px">Start typing to search the full Microsoft 365 directory. Selected people get this added straight to their Inbox, so they can follow the conversation from the start.</div>
 
           <div style="display:flex;gap:8px;margin-top:20px">
             <button class="btn btn-p" onclick="submitEvent()">Submit Activity →</button>
@@ -1736,13 +1744,13 @@ window.dumpCols=async function(listId){
 
 let KEY_DATES=[]; // Calendar Reference entries + auto-loaded public holidays
 
-const LR_LOGO='https://www.loadedrewards.com.au/wp-content/uploads/2025/10/cropped-LR_App_Logo_blue_salmon-web2.png';
+const LR_LOGO='https://www.loadedrewards.com.au/wp-content/uploads/2026/08/cropped-Loaded-Rewards-Logo.webp';
 
 // Group templates for tagging multiple people at once via @ — edit this list as your team's
 // structure changes. Group names show in the @ autocomplete alongside individual people.
 const TAG_GROUPS={
   'Design Team':['Luca','Didier'],
-  'Head Office':['Perrin','Kimberley','Amelia','Ben'],
+  'Head Office':['Perrin','Amelia','Ben','Kim'],
 };
 // Who gets auto-tagged every time a new activity is submitted, regardless of type
 const SUBMISSION_NOTIFY_TO='Kimberley';
@@ -2779,7 +2787,7 @@ function renderNewConversationPeople(query=''){
     if(q.length<2)return true;
     return (u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q);
   }).slice(0,30);
-  const groups=q.length<2?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px">${Object.keys(TAG_GROUPS).map(g=>`<button type="button" class="chip" style="font-size:10.5px" onclick="addNewConversationGroup('${escapeAttr(g)}')">👥 ${escapeAttr(g)}</button>`).join('')}</div>`:'';
+  const groups=q.length<2?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px">${Object.keys(TAG_GROUPS).map(g=>{const members=g==='Design Team'?TAG_GROUPS[g].join(' & '):TAG_GROUPS[g].join(', ');return`<button type="button" class="chip" title="${escapeAttr(members)}" style="font-size:10.5px" onclick="addNewConversationGroup('${escapeAttr(g)}')">👥 ${escapeAttr(g)}</button>`;}).join('')}</div>`:'';
   const help=q.length===1?'Type one more character to search the full Microsoft 365 directory.':!matches.length?'No Microsoft 365 matches found.':'';
   el.innerHTML=directoryWarningHtml()+groups+`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:3px 4px 5px">${q.length>=2?'Microsoft 365 results':'Frequent people'}</div>`+
     (help?`<div style="font-size:11px;color:var(--text3);padding:7px 4px">${help}</div>`:'')+
@@ -5904,7 +5912,7 @@ const VENUE_LOGOS={
 };
 function eventLogo(ev){
   // Loaded department -> Loaded logo; else own image; else venue logo
-  if((ev.department||'')==='Loaded Rewards')return 'https://www.loadedrewards.com.au/wp-content/uploads/2025/01/Loaded-Rewards-Image.png';
+  if((ev.department||'')==='Loaded Rewards')return LR_LOGO;
   if(ev.imageUrl)return ev.imageUrl;
   return VENUE_LOGOS[ev.venue]||'';
 }
@@ -7509,7 +7517,10 @@ function pickSubmitPath(path){
     }
     const teamsEl=document.getElementById('fAddTeams');
     if(teamsEl){
-      teamsEl.innerHTML=Object.keys(TAG_GROUPS).map(g=>`<div class="chip fAddGroupChip" data-group="${g}" onclick="this.classList.toggle('on')" style="cursor:pointer">👥 ${g}</div>`).join('');
+      teamsEl.innerHTML=Object.keys(TAG_GROUPS).map(g=>{
+        const members=g==='Design Team'?TAG_GROUPS[g].join(' & '):TAG_GROUPS[g].join(', ');
+        return`<div class="chip fAddGroupChip" data-group="${g}" title="${escapeAttr(members)}" onclick="this.classList.toggle('on')" style="cursor:pointer">👥 ${g}</div>`;
+      }).join('');
     }
     renderSubmitPeopleResults(document.getElementById('fPeopleSearch')?.value||'');
   }
@@ -7606,7 +7617,7 @@ function toggleFLoadedApp(){
   updateActivityConditionalSections();
 }
 function togglePOSDetails(){
-  const on=document.getElementById('fPOSRequired')?.value==='Yes';
+  const on=!!document.getElementById('fPOSRequired')?.checked;
   const grp=document.getElementById('fPOSDetailsGroup');
   if(grp)grp.style.display=on?'':'none';
 }
@@ -7631,7 +7642,11 @@ function applyActivityTemplate(){
   }
   if(t.appRequired)selectOpt('fAppRequired',t.appRequired);
   if(t.appHeading)set('fAppHeading',t.appHeading);
-  if(t.posRequired)selectOpt('fPOSRequired',t.posRequired);
+  if(t.posRequired){
+    const pos=document.getElementById('fPOSRequired');
+    if(pos)pos.checked=t.posRequired===true||t.posRequired==='Yes';
+    togglePOSDetails();
+  }
   updateActivityConditionalSections();
   const msg=document.getElementById('fMsg');
   if(msg){msg.textContent=`📋 "${key}" template applied — check the highlighted basics, then just add the date, venue and any details.`;msg.className='form-msg ok';}
@@ -7795,10 +7810,11 @@ async function submitEvent(){
       const appDescription=document.getElementById('fAppDescription')?.value.trim();if(appDescription)fields.AppDescription=appDescription;
       const loadedBookingLink=document.getElementById('fLoadedBookingLink')?.value.trim();if(loadedBookingLink)fields.BookingURL=loadedBookingLink;
     }
-    const posRequired=document.getElementById('fPOSRequired')?.value;
-    if(posRequired){fields.POSUpdateRequired=(posRequired==='Yes');fields.PosStatus=posRequired==='Yes'?'Required':'Not Required';}
+    const posRequired=!!document.getElementById('fPOSRequired')?.checked;
+    fields.POSUpdateRequired=posRequired;
+    fields.PosStatus=posRequired?'Required':'Not Required';
     const posDetails=document.getElementById('fPOSDetails')?.value.trim();
-    if(posRequired==='Yes'&&posDetails)fields.POSNotes=posDetails;
+    if(posRequired&&posDetails)fields.POSNotes=posDetails;
 
     // Channels
     const channels=[];
@@ -7850,7 +7866,7 @@ async function submitEvent(){
     // lands in their Inbox (and email, if that gets checked) automatically
     await autoTagPerson(created.id,title,SUBMISSION_NOTIFY_TO,'New submission — needs review.');
     if(isLoaded)await autoTagPerson(created.id,title,'amelia','New Loaded Rewards activity submitted — auto-tagged for review.');
-    if(posRequired==='Yes')await autoTagPerson(created.id,title,'perrin','POS setup is needed for this activity before it goes live.'+(posDetails?' Details: '+posDetails:''));
+    if(posRequired)await autoTagPerson(created.id,title,'perrin','POS setup is needed for this activity before it goes live.'+(posDetails?' Details: '+posDetails:''));
     // Additional people looped in at submission time
     const who=currentUser?.name||currentUserEmail||'Someone';
     const emailSelectedPeople=document.getElementById('fNotifyPeopleByEmail')?.checked??true;
@@ -7887,8 +7903,9 @@ async function submitEvent(){
 function showFMsg(msg,type){const el=document.getElementById('fMsg');if(!el)return;el.textContent=msg;el.className='form-msg '+type;el.scrollIntoView({behavior:'smooth',block:'nearest'});}
 function clearForm(){
   ['fTitle','fDesc','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['fVenue','fActType','fEventFormat','fStream','fTicketPlatform','fAppRequired','fNewsletterRequired','fPOSRequired'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
-  ['fIsLoaded','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  ['fVenue','fActType','fEventFormat','fStream','fTicketPlatform','fAppRequired','fNewsletterRequired'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  ['fIsLoaded','fPOSRequired','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  togglePOSDetails();
   SUBMIT_PEOPLE_SELECTED.clear();
   const peopleSearch=document.getElementById('fPeopleSearch');if(peopleSearch)peopleSearch.value='';
   renderSubmitPeopleResults('');
