@@ -1940,6 +1940,7 @@ const CRM_MAP_FIELDS=[
   {key:'venue',label:'Venue',aliases:['venue','location','site','store']},
   {key:'emailConsent',label:'Email consent',aliases:['email consent','marketing consent','email opt in','email opt-in','subscribed','email status']},
   {key:'smsConsent',label:'SMS consent',aliases:['sms consent','sms opt in','sms opt-in','text consent']},
+  {key:'marketingEligibility',label:'Marketing eligibility / hold',aliases:['marketing eligibility','marketing eligible','marketing status','mailing status','hold','suppressed']},
   {key:'optInTime',label:'Opt-in time',aliases:['optin_time','opt in time','opt-in time','signup time','consent time','consent date']},
   {key:'optInIp',label:'Opt-in IP',aliases:['optin_ip','opt in ip','opt-in ip','signup ip']},
   {key:'confirmTime',label:'Confirmation time',aliases:['confirm_time','confirm time','confirmation time','double opt in time']},
@@ -8826,12 +8827,18 @@ function crmIPQuality(value){
   if(/^(?:\d{1,3}\.){3}\d{1,3}$/.test(ip)||ip.includes(':'))return'Public';
   return'Invalid';
 }
+function crmMarketingSuppressed(data){
+  const eligibility=normaliseImportText(data.marketingEligibility||'');
+  const explicitHold=['hold','held','suppressed','not eligible','do not market','do not contact','blocked'].some(value=>eligibility===value||eligibility.includes(value));
+  if(explicitHold||data.emailConsent==='Opted Out'||data.smsConsent==='Opted Out')return true;
+  return data.emailConsent!=='Opted In'&&data.smsConsent!=='Opted In';
+}
 function crmRowData(row){
   let firstName=crmMapped(row,'firstName'),lastName=crmMapped(row,'lastName');const fullName=crmMapped(row,'fullName');
   if(!firstName&&!lastName&&fullName){const parts=fullName.split(/\s+/);firstName=parts.shift()||'';lastName=parts.join(' ');}
   const email=crmMapped(row,'email'),phone=crmMapped(row,'phone');
   const optInIp=crmMapped(row,'optInIp'),confirmIp=crmMapped(row,'confirmIp');
-  return{sourceId:crmMapped(row,'sourceId'),firstName,lastName,fullName:fullName||[firstName,lastName].filter(Boolean).join(' '),email,emailNorm:normaliseCRMEmail(email),phone,phoneNorm:normaliseCRMPhone(phone),dob:normaliseCRMDate(crmMapped(row,'dob')),venue:crmMapped(row,'venue')||document.getElementById('crmDefaultVenue')?.value||'',emailConsent:crmConsent(crmMapped(row,'emailConsent')),smsConsent:crmConsent(crmMapped(row,'smsConsent')),optInTime:normaliseCRMDateTime(crmMapped(row,'optInTime')),optInIp,optInIpQuality:crmIPQuality(optInIp),confirmTime:normaliseCRMDateTime(crmMapped(row,'confirmTime')),confirmIp,withdrawTime:normaliseCRMDateTime(crmMapped(row,'withdrawTime')),consentTextVersion:crmMapped(row,'consentTextVersion'),formIdOrUrl:crmMapped(row,'formIdOrUrl'),loyaltyTier:crmMapped(row,'loyaltyTier'),suburb:crmMapped(row,'suburb'),postcode:crmMapped(row,'postcode'),state:crmMapped(row,'state'),notes:crmMapped(row,'notes')};
+  return{sourceId:crmMapped(row,'sourceId'),firstName,lastName,fullName:fullName||[firstName,lastName].filter(Boolean).join(' '),email,emailNorm:normaliseCRMEmail(email),phone,phoneNorm:normaliseCRMPhone(phone),dob:normaliseCRMDate(crmMapped(row,'dob')),venue:crmMapped(row,'venue')||document.getElementById('crmDefaultVenue')?.value||'',emailConsent:crmConsent(crmMapped(row,'emailConsent')),smsConsent:crmConsent(crmMapped(row,'smsConsent')),marketingEligibility:crmMapped(row,'marketingEligibility'),optInTime:normaliseCRMDateTime(crmMapped(row,'optInTime')),optInIp,optInIpQuality:crmIPQuality(optInIp),confirmTime:normaliseCRMDateTime(crmMapped(row,'confirmTime')),confirmIp,withdrawTime:normaliseCRMDateTime(crmMapped(row,'withdrawTime')),consentTextVersion:crmMapped(row,'consentTextVersion'),formIdOrUrl:crmMapped(row,'formIdOrUrl'),loyaltyTier:crmMapped(row,'loyaltyTier'),suburb:crmMapped(row,'suburb'),postcode:crmMapped(row,'postcode'),state:crmMapped(row,'state'),notes:crmMapped(row,'notes')};
 }
 
 async function preflightCRMImport(){
@@ -8908,7 +8915,7 @@ async function crmHash(value){
   }
   let hash=2166136261;for(let i=0;i<textValue.length;i++){hash^=textValue.charCodeAt(i);hash=Math.imul(hash,16777619);}return(hash>>>0).toString(16).padStart(8,'0');
 }
-function crmCustomerValues(data,now){return{Title:data.fullName||data.email||data.phone||'Unnamed customer',FirstName:data.firstName,LastName:data.lastName,PrimaryEmail:data.email,EmailNormalized:data.emailNorm,PrimaryPhone:data.phone,PhoneNormalized:data.phoneNorm,DateOfBirth:data.dob,Suburb:data.suburb,Postcode:data.postcode,State:data.state,Country:'Australia',CustomerStatus:'Active',MatchStatus:'Confirmed',MarketingSuppressed:data.emailConsent==='Opted Out'||data.smsConsent==='Opted Out'?true:null,FirstSeen:now,LastSeen:now,LastChanged:now,PreferredVenue:data.venue,SourceCount:1,Notes:data.notes};}
+function crmCustomerValues(data,now){return{Title:data.fullName||data.email||data.phone||'Unnamed customer',FirstName:data.firstName,LastName:data.lastName,PrimaryEmail:data.email,EmailNormalized:data.emailNorm,PrimaryPhone:data.phone,PhoneNormalized:data.phoneNorm,DateOfBirth:data.dob,Suburb:data.suburb,Postcode:data.postcode,State:data.state,Country:'Australia',CustomerStatus:'Active',MatchStatus:'Confirmed',MarketingSuppressed:crmMarketingSuppressed(data),FirstSeen:now,LastSeen:now,LastChanged:now,PreferredVenue:data.venue,SourceCount:1,Notes:data.notes};}
 
 async function runCRMImport(){
   const actionable=CRM_PREFLIGHT.filter(item=>['new','update','consolidate'].includes(item.status));if(!actionable.length)return;
@@ -8967,15 +8974,18 @@ async function upsertCRMVenueRelationship(customerId,data,sourceSystem,now,token
   const created=await crmCreateItem('customerVenues',crmPayload('customerVenues',values),token);CRM_CUSTOMER_VENUES.push(created);return{created:true,item:created};
 }
 async function writeCRMConsentEvents(customerId,importId,data,sourceSystem,now,token){
-  for(const [channel,status] of [['Email',data.emailConsent],['SMS',data.smsConsent]]){
+  for(const [channel,sourceStatus] of [['Email',data.emailConsent],['SMS',data.smsConsent]]){
+    const hasHistoricalEvidence=channel==='Email'&&!!(data.optInTime||data.optInIp||data.confirmTime||data.confirmIp);
+    const status=sourceStatus||(hasHistoricalEvidence?'Unknown':'');
     if(!status)continue;
     const existing=CRM_CONSENT_EVENTS.filter(item=>crmLookupId(item.fields,'consentEvents','Customer')===String(customerId)&&normaliseImportText(crmRead(item.fields,'consentEvents','Channel'))===normaliseImportText(channel)&&normaliseImportText(crmRead(item.fields,'consentEvents','SourceSystem'))===normaliseImportText(sourceSystem)).sort((a,b)=>String(crmRead(b.fields,'consentEvents','EventDate')).localeCompare(String(crmRead(a.fields,'consentEvents','EventDate'))))[0];
     const oldStatus=existing?crmRead(existing.fields,'consentEvents','ConsentStatus'):'';
     if(normaliseImportText(oldStatus)===normaliseImportText(status))continue;
-    const eventType=!existing?'Captured':status==='Opted Out'?'Withdrawn':'Updated';
+    const eventType=status==='Opted Out'?'Withdrawn':!existing?'Captured':'Updated';
     const sourceEventTime=status==='Opted Out'?(data.withdrawTime||now):(data.optInTime||now);
     const usedSourceTime=status==='Opted Out'?!!data.withdrawTime:!!data.optInTime;
-    const values={Title:`${channel} ${status} · ${customerId}`,Channel:channel,ConsentStatus:status,EventType:eventType,EventDate:sourceEventTime,SourceSystem:sourceSystem,ConsentBasis:status==='Opted Out'?'Withdrawn':'Unknown',CaptureMethod:'Imported source record',ConsentTextVersion:data.consentTextVersion,FormIDorURL:data.formIdOrUrl,OptInIP:data.optInIp,IPQuality:data.optInIpQuality,ConfirmedAt:data.confirmTime,ConfirmIP:data.confirmIp,Evidence:`Explicit ${channel.toLowerCase()} status supplied in ${CRM_FILE_NAME}; ${usedSourceTime?'source event time retained.':'source event time was absent, so import time was recorded.'}`,WithdrawnAt:status==='Opted Out'?(data.withdrawTime||now):'',SuppressionReason:status==='Opted Out'?'Source unsubscribe / opt-out':'',EffectiveBy:status==='Opted Out'?now:''};values[crmLookupPayloadKey('consentEvents','Customer')]=Number(customerId);values[crmLookupPayloadKey('consentEvents','Import')]=Number(importId);const created=await crmCreateItem('consentEvents',crmPayload('consentEvents',values),token);CRM_CONSENT_EVENTS.push(created);await writeCRMChange(customerId,importId,sourceSystem,'Consent',channel,oldStatus,status,token,'Explicit source value');
+    const evidenceLead=status==='Unknown'?`Historical ${channel.toLowerCase()} evidence supplied without a reliable current subscription status`:`Explicit ${channel.toLowerCase()} status supplied`;
+    const values={Title:`${channel} ${status} · ${customerId}`,Channel:channel,ConsentStatus:status,EventType:eventType,EventDate:sourceEventTime,SourceSystem:sourceSystem,ConsentBasis:status==='Opted Out'?'Withdrawn':'Unknown',CaptureMethod:'Imported source record',ConsentTextVersion:data.consentTextVersion,FormIDorURL:data.formIdOrUrl,OptInIP:data.optInIp,IPQuality:data.optInIpQuality,ConfirmedAt:data.confirmTime,ConfirmIP:data.confirmIp,Evidence:`${evidenceLead} in ${CRM_FILE_NAME}; ${usedSourceTime?'source event time retained.':'source event time was absent, so import time was recorded.'}`,WithdrawnAt:status==='Opted Out'?(data.withdrawTime||now):'',SuppressionReason:status==='Opted Out'?'Source unsubscribe / opt-out':status==='Unknown'?'Current consent not established':'',EffectiveBy:status==='Opted Out'?now:''};values[crmLookupPayloadKey('consentEvents','Customer')]=Number(customerId);values[crmLookupPayloadKey('consentEvents','Import')]=Number(importId);const created=await crmCreateItem('consentEvents',crmPayload('consentEvents',values),token);CRM_CONSENT_EVENTS.push(created);await writeCRMChange(customerId,importId,sourceSystem,'Consent',channel,oldStatus,status,token,status==='Unknown'?'Historical evidence only':'Explicit source value');
   }
 }
 async function writeCRMChange(customerId,importId,sourceSystem,changeType,fieldName,oldValue,newValue,token,reason){
