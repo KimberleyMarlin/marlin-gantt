@@ -3498,6 +3498,7 @@ function previewMode(){
   document.getElementById('userLabel').textContent='👁 UI preview — no live SharePoint data';
   document.getElementById('gate').style.display='none';
   resolveRole(currentUserEmail);
+  updateAdminImportVisibility();
   const who=document.getElementById('myTasksWho');
   if(who)who.textContent='Showing tasks for UI Preview';
   showPanel('overview');
