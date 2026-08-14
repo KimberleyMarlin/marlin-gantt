@@ -105,6 +105,14 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .sw::before{content:'⌕';position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px;pointer-events:none}
 .sw input{padding:5px 8px 5px 26px;border:1px solid var(--border);border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;background:var(--surface2);width:160px;transition:var(--tr);color:var(--text)}
 .sw input:focus{border-color:var(--accent);background:#fff;width:200px}
+.search-results{display:none;position:fixed;top:49px;right:180px;width:min(420px,calc(100vw - 24px));max-height:360px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--sh-md);z-index:450}
+.search-result{padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer}
+.search-result:last-child{border-bottom:0}.search-result:hover{background:var(--surface2)}
+.search-result-title{font-size:12.5px;font-weight:700;color:var(--text)}.search-result-meta{font-size:10.5px;color:var(--text3);margin-top:2px}
+.toast-stack{position:fixed;right:18px;top:64px;width:min(360px,calc(100vw - 28px));z-index:900;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{pointer-events:auto;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:8px;box-shadow:var(--sh-md);padding:11px 12px;display:flex;align-items:flex-start;gap:10px;animation:toastIn .18s ease-out}
+.toast-copy{flex:1;min-width:0;font-size:12px;line-height:1.45;color:var(--text2)}.toast-copy strong{display:block;color:var(--text);margin-bottom:2px}.toast-close{border:0;background:none;color:var(--text3);cursor:pointer;padding:0}
+@keyframes toastIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── PANELS ── */
 .panel{display:none;flex:1;flex-direction:column;width:100%;max-width:100%;overflow-x:hidden}
@@ -601,6 +609,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 </head>
 <body>
 <div id="mkt-hub-app">
+<div class="toast-stack" id="toastStack" aria-live="polite"></div>
 <button class="mob-btn" onclick="document.getElementById('sb').classList.toggle('open')" aria-label="Menu">☰</button>
 
 <div class="layout">
@@ -654,7 +663,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <div class="topbar">
     <div class="tb-title" id="tbTitle">Dashboard <em>Overview</em></div>
     <div class="tb-date" id="tbDate"></div>
-    <div class="sw"><input type="text" placeholder="Search…" id="gSearch" oninput="doSearch(this.value)"></div>
+    <div class="sw"><input type="search" placeholder="Search activities…" id="gSearch" oninput="doSearch(this.value)" onkeydown="if(event.key==='Escape')clearGlobalSearch()"><div class="search-results" id="globalSearchResults"></div></div>
     <span style="font-size:9px;color:var(--accent);font-weight:700;background:var(--accent-bg);padding:2px 6px;border-radius:4px;flex-shrink:0" title="Build version">v18</span>
     <button class="tb-btn" onclick="loadAll()">↻</button>
     <button class="tb-btn p" onclick="navTo('submit')">＋ Submit</button>
@@ -943,7 +952,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <div class="panel" id="p-activitydetail">
     <div class="ph">
       <div style="flex:1;min-width:0">
-        <div class="ph-eye"><span onclick="navTo('campaigns')" style="cursor:pointer;color:var(--accent)">← Activity Overview</span></div>
+        <div class="ph-eye" id="activityDetailBack"><span onclick="navTo('campaigns')" style="cursor:pointer;color:var(--accent)">← Activity Overview</span></div>
         <div class="ph-title" id="activityDetailTitle"></div>
       </div>
     </div>
@@ -1984,9 +1993,10 @@ const LISTS={campaigns:'269191b2-47c7-4c0c-94bb-52c25ecb467f'};
 // To find: go to list → Settings → the URL contains the list GUID
 const LIST_IDS={
   campaigns:'269191b2-47c7-4c0c-94bb-52c25ecb467f',
-  myTasks:'8dd02125-2a69-40a8-bb33-1a9d75d8b404',
-  // Paste the GUID of the new Kimberley-only SharePoint list here after it is created.
-  personalTasks:null,
+  // Team Work must use its own shared list. Never point this at Kimberley's private My Tasks list.
+  myTasks:null,
+  // Existing SharePoint "My Tasks" list supplied by Kimberley. This is private/personal work only.
+  personalTasks:'8dd02125-2a69-40a8-bb33-1a9d75d8b404',
   projects:'fade78c7-0847-4279-9af4-0b7e30fe7051',
   offerVariants:'86aaed91-f1a8-48de-8ff2-e7b9716faf31',
   offerMechanics:'0522b777-f292-4e24-9970-975e5b62a5e8',
@@ -3321,7 +3331,7 @@ function renderInboxChat(campaignId){
     <div style="padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <div style="font-weight:700;font-size:14px">${thread.title}</div>
-        ${thread.ev?`<button class="tb-btn" style="font-size:11px;padding:4px 10px" onclick="showActivityPage(${thread.ev.id})">Open job ticket →</button>`:''}
+        ${thread.ev?`<button class="tb-btn" style="font-size:11px;padding:4px 10px" onclick="showActivityPage(${thread.ev.id},true)">Open job ticket →</button>`:''}
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:700">In this chat:</span>
@@ -3645,7 +3655,16 @@ async function initMSAL(){
   // they next reload. This keeps it reasonably live without needing a real push/notification backend.
   setInterval(async()=>{
     if(!isAuthed)return;
+    const knownIds=new Set(ALL_COMMENTS.map(comment=>String(comment.id)));
     await loadAllComments();
+    const myName=(currentUser?.name||'').trim().toLowerCase();
+    const myFirst=myName.split(' ')[0];
+    const incoming=ALL_COMMENTS.filter(comment=>!knownIds.has(String(comment.id))&&canSeeComment(comment)&&!nameMatches(comment.author,myName,myFirst)&&(nameMatches(comment.recipient,myName,myFirst)||!(comment.recipient||'').trim())).sort((a,b)=>new Date(b.created)-new Date(a.created));
+    if(incoming.length){
+      const newest=incoming[0];
+      const ev=EVENTS.find(item=>String(item.spId)===String(newest.campaignId));
+      showToast(incoming.length>1?`${incoming.length} new messages`:`New message from ${newest.author||'the team'}`,`${ev?.title||newest.title||'Activity'}: ${String(newest.text||'').slice(0,120)}`,()=>{navTo('inbox');openInboxThread(String(newest.campaignId));});
+    }
     if(document.getElementById('p-inbox')?.classList.contains('active'))renderInbox();
   },120000);
 }
@@ -6465,6 +6484,18 @@ function _renderGanttInner(){
     return true;
   });
 
+  // One row per SharePoint activity. If an activity is repeated by an expanded date/venue source,
+  // keep one Gantt row and stretch that row across the full activity range.
+  const ganttRows=new Map();
+  evts.forEach(event=>{
+    const key=String(event.spId||event.id);
+    if(!ganttRows.has(key)){ganttRows.set(key,{...event});return;}
+    const row=ganttRows.get(key);
+    if(event.start&&(!row.start||event.start<row.start))row.start=event.start;
+    if(event.end&&(!row.end||event.end>row.end))row.end=event.end;
+  });
+  evts=[...ganttRows.values()];
+
   const today=new Date();today.setHours(0,0,0,0);
 
   // Date range: use pickers if set, else default today → today+3mo
@@ -7730,6 +7761,14 @@ function pickTaskQueue(el){
 
 function renderMyTasks(){
   if(!isAuthed)return;
+  if(!LIST_IDS.myTasks&&!isPreviewMode){
+    MY_TASKS=[];
+    const who=document.getElementById('myTasksWho');if(who)who.textContent='Shared register waiting for its own SharePoint list';
+    const stats=document.getElementById('myTaskStats');if(stats)stats.innerHTML='';
+    const list=document.getElementById('tasksList');if(list)list.innerHTML=`<div class="card"><div class="card-body" style="padding:22px"><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:7px">Shared Team Work list not connected</div><div style="font-size:12px;color:var(--text2);line-height:1.55">Kimberley’s existing <b>My Tasks</b> list is private and is now used only by Personal Tasks. Create a separate SharePoint list for the four-person register, then connect its GUID here. Until then, no personal item can appear in Team Work.</div></div></div>`;
+    ['tBadge','mydayTaskBadge'].forEach(id=>{const badge=document.getElementById(id);if(badge)badge.style.display='none';});
+    return;
+  }
   const today=new Date();today.setHours(0,0,0,0);
   const todayStr=toLocalISODate(today);
   const weekStr=toLocalISODate(new Date(today.getTime()+7*864e5));
@@ -7847,6 +7886,7 @@ function renderMyTasks(){
 
 async function loadTasks(){
   if(!isAuthed)return;
+  if(!LIST_IDS.myTasks&&!isPreviewMode)MY_TASKS=[];
   if(LIST_IDS.myTasks){
     try{
       const token=await getToken();
@@ -8104,7 +8144,7 @@ async function loadPersonalTasks(){
   try{
     const token=await getToken();
     const items=await fetchGraphItems(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items?expand=fields&$top=200`,token);
-    PERSONAL_TASKS=items.map(item=>{const f=item.fields||{};return{id:String(item.id),title:f.Title||'',status:f.Status||'Not Started',priority:f.Priority||'Medium',due:f.DueDate?String(f.DueDate).split('T')[0]:'',notes:f.Notes||''};});
+    PERSONAL_TASKS=items.map(item=>{const f=item.fields||{};return{id:String(item.id),title:f.Title||'',status:f.Status||f.Progress||'Not Started',priority:f.Priority||'Medium',category:f.Category||f.TaskType||'',due:f.DueDate?String(f.DueDate).split('T')[0]:'',notes:f.Notes||'',blocker:f.Blocker||f.BlockedReason||'',linkedCampaignId:f.LinkedCampaignID||''};});
   }catch(e){console.error('Personal tasks load error:',e);}
   renderPersonalTasks();
 }
@@ -8151,7 +8191,19 @@ async function savePersonalTask(){
   const existing=PERSONAL_TASKS.find(item=>String(item.id)===String(editId));
   const fields={Title:title,Status:existing?.status||'Not Started',Priority:priority};if(due)fields.DueDate=due+'T12:00:00Z';if(notes)fields.Notes=notes;
   try{
-    if(LIST_IDS.personalTasks&&!isPreviewMode){const token=await getToken(true);const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items${editId?'/'+editId:''}`;const res=await fetch(url,{method:editId?'PATCH':'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());if(!editId){const created=await res.json();fields.id=String(created.id);}}
+    if(LIST_IDS.personalTasks&&!isPreviewMode){
+      const token=await getToken(true);const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items${editId?'/'+editId:''}`;
+      let payload={...fields},res,created=null,lastError='';
+      const optional=['Priority','Status'];
+      for(let attempt=0;attempt<=optional.length;attempt++){
+        res=await fetch(url,{method:editId?'PATCH':'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:payload})});
+        if(res.ok){if(!editId)created=await res.json();break;}
+        lastError=await res.text();
+        if(attempt<optional.length)delete payload[optional[attempt]];
+      }
+      if(!res?.ok)throw new Error('HTTP '+res?.status+': '+lastError);
+      if(created)fields.id=String(created.id);
+    }
     if(existing){Object.assign(existing,{title,due,notes,priority});}else PERSONAL_TASKS.push({id:fields.id||'PT-'+Date.now(),title,status:'Not Started',priority,due,notes});
     closeAddPersonalTask();renderPersonalTasks();
   }catch(e){msg.textContent='Could not save: '+e.message;msg.className='form-msg err';}
@@ -9922,7 +9974,9 @@ function clearForm(){
 // POPUP
 // ═══════════════════════════════════════
 function showPop(id){renderActivityDetail(id,'popup');}
-function showActivityPage(id){
+function showActivityPage(id,fromChat=false){
+  const back=document.getElementById('activityDetailBack');
+  if(back)back.innerHTML=fromChat?`<span onclick="navTo('inbox');if(_activeInboxThread)openInboxThread(_activeInboxThread)" style="cursor:pointer;color:var(--accent)">← Back to chat</span>`:`<span onclick="navTo('campaigns')" style="cursor:pointer;color:var(--accent)">← Activity Overview</span>`;
   showPanel('activitydetail');
   renderActivityDetail(id,'page');
 }
@@ -9955,6 +10009,8 @@ function renderActivityDetail(id,mode){
     ${timing?`<span style="font-size:10px;font-weight:700;color:${timingColor};background:${timingColor}18;padding:2px 8px;border-radius:4px">${timing}</span>`:''}
     ${complexity?`<span style="font-size:10px;color:var(--text3)">${complexity} complexity</span>`:''}
   </div>`;
+
+  h+=`<div class="pop-section">Activity Description</div><textarea class="pop-edit-inp" data-field="Description" data-original="${escapeAttr(ev.description||'')}" onchange="markPopDirty()" rows="4" style="font-size:12.5px;color:var(--text2);line-height:1.6;width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);font-family:inherit;resize:vertical">${(ev.description||'').replace(/</g,'&lt;')}</textarea>`;
 
   // Editable fields
   const editField=(label,val,fieldKey,type='text',opts=null)=>{
@@ -10143,8 +10199,6 @@ function renderActivityDetail(id,mode){
       h+=`</div>`;
     }
   }
-  h+=`<div class="pop-section">Activity Description</div><textarea class="pop-edit-inp" data-field="Description" data-original="${escapeAttr(ev.description||'')}" onchange="markPopDirty()" rows="4" style="font-size:12.5px;color:var(--text2);line-height:1.6;width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);font-family:inherit;resize:vertical">${(ev.description||'').replace(/</g,'&lt;')}</textarea>`;
-
   // Discussion — loaded async after the popup renders, so opening the popup isn't blocked on a fetch
   h+=`<div class="pop-section">💬 Discussion</div>
     ${directoryWarningHtml()}
@@ -10412,19 +10466,27 @@ function closePop(){document.getElementById('evOv').classList.remove('show');}
 // ═══════════════════════════════════════
 // SEARCH
 // ═══════════════════════════════════════
+function clearGlobalSearch(){
+  const input=document.getElementById('gSearch'),box=document.getElementById('globalSearchResults');
+  if(input)input.value='';if(box){box.style.display='none';box.innerHTML='';}
+}
+function openSearchResult(id){clearGlobalSearch();showActivityPage(id);}
 function doSearch(q){
-  if(!q||q.length<2)return;
-  const ql=q.toLowerCase();
-  const r=EVENTS.filter(e=>(e.title||'').toLowerCase().includes(ql)||(e.venue||'').toLowerCase().includes(ql));
-  if(r.length===1){showPop(r[0].id);return;}
-  if(r.length>1){
-    // If any match is archived, make sure Campaigns shows it instead of silently hiding it
-    if(r.some(isArchived)){
-      campShowArchive=true;
-      const btn=document.getElementById('campArchiveToggle');if(btn)btn.textContent='Hide Completed';
-    }
-    navTo('campaigns');
-  }
+  const box=document.getElementById('globalSearchResults');if(!box)return;
+  const term=String(q||'').trim().toLowerCase();
+  if(term.length<2){box.style.display='none';box.innerHTML='';return;}
+  const results=EVENTS.filter(e=>[e.title,e.venue,e.activityType,e.eventFormat,e.description,e.product,e.supplierLookup,e.owner].some(value=>String(value||'').toLowerCase().includes(term))).slice(0,20);
+  box.innerHTML=results.length?results.map(e=>`<div class="search-result" onclick="openSearchResult(${e.id})"><div class="search-result-title">${escapeAttr(e.title||'Untitled activity')}</div><div class="search-result-meta">${escapeAttr(e.venue||'No venue')} · ${escapeAttr(e.activityType||e.eventFormat||'Activity')} · ${e.start?fmtShort(e.start):'No date'}${isArchived(e)?' · Completed':''}</div></div>`).join(''):`<div class="search-result"><div class="search-result-title">No matching activities</div><div class="search-result-meta">Try a venue, campaign, product, supplier or owner.</div></div>`;
+  box.style.display='block';
+}
+
+function showToast(title,message,onOpen){
+  const stack=document.getElementById('toastStack');if(!stack)return;
+  const toast=document.createElement('div');toast.className='toast';
+  toast.innerHTML=`<div style="font-size:18px">💬</div><div class="toast-copy"><strong>${escapeAttr(title)}</strong>${escapeAttr(message)}</div><button class="toast-close" aria-label="Dismiss">✕</button>`;
+  toast.querySelector('.toast-close').onclick=()=>toast.remove();
+  if(onOpen){toast.querySelector('.toast-copy').style.cursor='pointer';toast.querySelector('.toast-copy').onclick=()=>{onOpen();toast.remove();};}
+  stack.prepend(toast);while(stack.children.length>3)stack.lastElementChild.remove();setTimeout(()=>toast.remove(),10000);
 }
 
 // ═══════════════════════════════════════
