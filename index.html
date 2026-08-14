@@ -622,6 +622,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <button class="sb-item" data-p="submit" onclick="nav(this)"><span class="ico">＋</span>Submit</button>
     <div class="sb-sec">Work</div>
     <button class="sb-item" data-p="mytasks" onclick="nav(this)"><span class="ico">☐</span>Team Work<span class="sb-badge a" id="tBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="personaltasks" onclick="nav(this)"><span class="ico">🔒</span>Personal Tasks<span class="sb-badge" id="personalTaskBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="operations" onclick="nav(this)"><span class="ico">⌘</span>Operations Map</button>
     <button class="sb-item" data-p="campaigns" onclick="nav(this)"><span class="ico">◎</span>Activity Overview<span class="sb-badge" id="aBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="loaded" onclick="nav(this)"><span class="ico">⭐</span>Loaded Rewards</button>
@@ -1294,6 +1295,37 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     </div>
   </div>
 
+  <!-- PERSONAL TASKS — separate private SharePoint list, Kimberley only -->
+  <div class="panel" id="p-personaltasks">
+    <div class="ph">
+      <div><div class="ph-eye">Kimberley Only</div><div class="ph-title">Personal <em>Tasks</em></div><div class="ph-sub">Private work and reminders, stored separately from the four-person Team Work register.</div></div>
+      <div class="ph-right"><button class="tb-btn p" onclick="openAddPersonalTask()">+ New Personal Task</button><button class="tb-btn" onclick="loadPersonalTasks()">↻</button></div>
+    </div>
+    <div class="ca">
+      <div class="privacy-banner"><span style="font-size:18px">🔒</span><div><strong>Separate private list</strong><br>This panel never reads from the shared Team Work list. Access must also be restricted to Kimberley in SharePoint.</div></div>
+      <div class="stats" id="personalTaskStats" style="margin-bottom:12px"></div>
+      <div id="personalTasksList"></div>
+    </div>
+  </div>
+
+  <!-- ADD PERSONAL TASK OVERLAY -->
+  <div class="overlay" id="addPersonalTaskOv" onclick="if(event.target===this)closeAddPersonalTask()">
+    <div class="popup" style="max-width:560px">
+      <div class="pop-h"><div class="pop-title" id="addPersonalTaskTitle">New Personal Task</div><button class="pop-close" onclick="closeAddPersonalTask()">✕</button></div>
+      <div class="pop-body">
+        <div id="personalTaskFormMsg" class="form-msg"></div>
+        <div class="form-grid">
+          <div class="form-group full"><label class="form-label">Task Title <span class="req">*</span></label><input class="form-input" id="ptTitle" type="text" placeholder="What do I need to remember or complete?"></div>
+          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="ptPriority"><option>Medium</option><option>Critical</option><option>High</option><option>Low</option></select></div>
+          <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="ptDue" type="date"></div>
+          <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="ptNotes" placeholder="Private context or next action…" style="min-height:80px"></textarea></div>
+        </div>
+        <input type="hidden" id="ptEditId" value="">
+        <div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-p" onclick="savePersonalTask()">Save Personal Task</button><button class="btn btn-s" onclick="closeAddPersonalTask()">Cancel</button></div>
+      </div>
+    </div>
+  </div>
+
   <!-- OPERATIONS MAP -->
   <div class="panel" id="p-operations">
     <div class="ph">
@@ -1953,6 +1985,8 @@ const LISTS={campaigns:'269191b2-47c7-4c0c-94bb-52c25ecb467f'};
 const LIST_IDS={
   campaigns:'269191b2-47c7-4c0c-94bb-52c25ecb467f',
   myTasks:'8dd02125-2a69-40a8-bb33-1a9d75d8b404',
+  // Paste the GUID of the new Kimberley-only SharePoint list here after it is created.
+  personalTasks:null,
   projects:'fade78c7-0847-4279-9af4-0b7e30fe7051',
   offerVariants:'86aaed91-f1a8-48de-8ff2-e7b9716faf31',
   offerMechanics:'0522b777-f292-4e24-9970-975e5b62a5e8',
@@ -2063,6 +2097,16 @@ function seedTaskPreview(){
     {id:'T-DEMO-4',title:'Complete POS setup for next Loaded offer',status:'Blocked',priority:'Medium',category:'POS Update',due:dateFromNow(5),blocker:'Waiting for confirmed offer pricing',notes:'',assignedTo:'perrin@marlinhospitality.com.au',campaignLookup:'Loaded Rewards · September'},
     {id:'T-DEMO-5',title:'Review Loaded Rewards August results',status:'Not Started',priority:'Medium',category:'Paid Ad',due:dateFromNow(7),notes:'',assignedTo:'amelia@marlinhospitality.com.au',campaignLookup:'Loaded Rewards · August'},
     {id:'T-DEMO-6',title:'Map existing customer sources',status:'Done',priority:'Medium',category:'Admin',due:dateFromNow(-2),notes:'',assignedTo:currentUserEmail,campaignLookup:''}
+  ];
+}
+
+function seedPersonalTaskPreview(){
+  if(PERSONAL_TASKS.length)return;
+  const dateFromNow=days=>{const d=new Date();d.setDate(d.getDate()+days);return toLocalISODate(d);};
+  PERSONAL_TASKS=[
+    {id:'PT-DEMO-1',title:'Review tomorrow before leaving work',status:'Not Started',priority:'High',due:dateFromNow(0),notes:'Private preview item.'},
+    {id:'PT-DEMO-2',title:'Capture follow-up thought',status:'Not Started',priority:'Medium',due:dateFromNow(2),notes:'This stays outside Team Work.'},
+    {id:'PT-DEMO-3',title:'Personal admin completed',status:'Done',priority:'Low',due:dateFromNow(-1),notes:''}
   ];
 }
 
@@ -2225,6 +2269,12 @@ let currentRole='general'; // fail closed until the signed-in user is resolved
 let currentVenueAccess=null; // null = all venues
 let currentM365Profile=null;
 
+function currentAuthorisedMember(){return authorisedMember(currentM365Profile,currentUserEmail);}
+function canAccessMailing(){
+  const member=currentAuthorisedMember();
+  return isPreviewMode||currentRole==='admin'||member?.key==='amelia';
+}
+
 // Keyword → role mapping against the signed-in user's own M365 jobTitle/department.
 // This is the primary source of truth — pulled live via Graph on every sign-in.
 // Adjust these keyword lists if real job titles don't match (Kim to confirm/edit).
@@ -2314,11 +2364,17 @@ function applyRoleUI(){
   if(kdBtn)kdBtn.style.display=(currentRole==='admin'||currentRole==='management')?'':'none';
   // Hide panels not available to this role
   config.hidePanels.forEach(p=>{
+    if(canAccessPanel(p))return;
     const navBtn=document.querySelector(`.sb-item[data-p="${p}"]`);
     if(navBtn)navBtn.style.display='none';
     const scheduleChip=document.querySelector(`#calViewChips .chip[data-v="${p}"]`);
-    if(scheduleChip)scheduleChip.style.display='none';
+      if(scheduleChip)scheduleChip.style.display='none';
   });
+  // Personal Tasks is a separate Kimberley-only list and panel.
+  if(!canAccessPanel('personaltasks')){
+    const personalBtn=document.querySelector('.sb-item[data-p="personaltasks"]');
+    if(personalBtn)personalBtn.style.display='none';
+  }
   // Hide approve buttons for non-approvers
   if(!config.canApprove){
     document.querySelectorAll('[id^="approveBtn-"]').forEach(b=>b.style.display='none');
@@ -3516,7 +3572,7 @@ function busynessTextColor(level){
 // STATE
 // ═══════════════════════════════════════
 let msalApp=null,isAuthed=false,currentUser=null,currentUserEmail='',isPreviewMode=false;
-let EVENTS=[],MY_TASKS=[],PROJECTS=[],SPONSORSHIPS=[];
+let EVENTS=[],MY_TASKS=[],PERSONAL_TASKS=[],PROJECTS=[],SPONSORSHIPS=[];
 const TASK_SHARING_ENABLED=true;
 let PROJECTS_ERROR='';
 let calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calTypeFilter='';
@@ -3643,6 +3699,7 @@ function previewMode(){
   // Populate whatever doesn't require a network call, so panels aren't blank
   SPONSORSHIPS=[...STATIC_SPONSORSHIPS];
   seedTaskPreview();
+  seedPersonalTaskPreview();
   seedCRMPreview();
   generateNotifications();
   renderCurrentPanel();
@@ -3887,6 +3944,7 @@ async function loadAll(){
   await loadCampaignSchemaAndLookups();
   await loadCampaigns();
   await loadTasks();
+  if(canAccessPanel('personaltasks'))await loadPersonalTasks();
   await loadProjects();
   await loadOfferMechanics();
   await loadOfferVariants();
@@ -4902,7 +4960,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Budget <em>Tracker</em>',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Team <em>Work Register</em>',operations:'Operations <em>Map</em>',projects:'Marketing <em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>Event Idea</em>',myday:'My <em>Day</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Budget <em>Tracker</em>',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Team <em>Work Register</em>',personaltasks:'Personal <em>Tasks</em>',operations:'Operations <em>Map</em>',projects:'Marketing <em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>Event Idea</em>',myday:'My <em>Day</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -4913,7 +4971,11 @@ function nav(btn){
 function navTo(id){const btn=document.querySelector(`.sb-item[data-p="${id}"]`);if(btn)nav(btn);else showPanel(id);}
 
 function rolePermissions(){return ROLE_CONFIG[currentRole]||ROLE_CONFIG.general;}
-function canAccessPanel(id){return !rolePermissions().hidePanels.includes(id);}
+function canAccessPanel(id){
+  if(id==='personaltasks')return isPreviewMode||currentRole==='admin';
+  if(id==='crm')return canAccessMailing();
+  return !rolePermissions().hidePanels.includes(id);
+}
 function canEditCampaigns(){return !!rolePermissions().canEdit;}
 function canApproveCampaigns(){return !!rolePermissions().canApprove;}
 function isCurrentUserAssignment(value){
@@ -4940,7 +5002,7 @@ function showPanel(id){
   // Schedule consolidation: gantt/venuemonth/crossvenue are now sub-views of 'calendar', not standalone pages.
   // If navigating anywhere else, make sure none of them are left visibly showing.
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:renderCampaigns,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyTasks,submit:()=>{}};
+  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:renderCampaigns,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyTasks,submit:()=>{}};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
   if(p){const ca=p.querySelector('.ca');if(ca){ca.style.minHeight='calc(100vh - 90px)';ca.style.height='auto';ca.style.display='block';ca.style.flex='none';}}
@@ -8033,6 +8095,79 @@ async function deleteTaskPermanently(id){
 }
 
 // ═══════════════════════════════════════
+// PERSONAL TASKS — separate Kimberley-only SharePoint list
+// ═══════════════════════════════════════
+async function loadPersonalTasks(){
+  if(!canAccessPanel('personaltasks'))return;
+  if(isPreviewMode){seedPersonalTaskPreview();renderPersonalTasks();return;}
+  if(!LIST_IDS.personalTasks){PERSONAL_TASKS=[];renderPersonalTasks();return;}
+  try{
+    const token=await getToken();
+    const items=await fetchGraphItems(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items?expand=fields&$top=200`,token);
+    PERSONAL_TASKS=items.map(item=>{const f=item.fields||{};return{id:String(item.id),title:f.Title||'',status:f.Status||'Not Started',priority:f.Priority||'Medium',due:f.DueDate?String(f.DueDate).split('T')[0]:'',notes:f.Notes||''};});
+  }catch(e){console.error('Personal tasks load error:',e);}
+  renderPersonalTasks();
+}
+
+function renderPersonalTasks(){
+  if(!canAccessPanel('personaltasks'))return;
+  const stats=document.getElementById('personalTaskStats'),list=document.getElementById('personalTasksList');
+  if(!stats||!list)return;
+  if(!LIST_IDS.personalTasks&&!isPreviewMode){
+    stats.innerHTML='';
+    list.innerHTML=`<div class="card"><div class="card-body" style="padding:22px"><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:7px">Private SharePoint list not connected yet</div><div style="font-size:12px;color:var(--text2);line-height:1.55">Create a list named <b>Kimberley Personal Tasks</b>, restrict it to Kimberley only, then add its list GUID to <code>LIST_IDS.personalTasks</code>. Required columns: Title, Status, Priority, DueDate and Notes.</div></div></div>`;
+    return;
+  }
+  const today=toLocalISODate(new Date());
+  const open=PERSONAL_TASKS.filter(task=>task.status!=='Done');
+  const overdue=open.filter(task=>task.due&&task.due<today);
+  const done=PERSONAL_TASKS.filter(task=>task.status==='Done');
+  const badge=document.getElementById('personalTaskBadge');if(badge){badge.textContent=open.length;badge.style.display=open.length?'':'none';}
+  stats.innerHTML=`<div class="stat"><div class="stat-n">${open.length}</div><div class="stat-l">Open</div></div><div class="stat ${overdue.length?'hi':''}"><div class="stat-n">${overdue.length}</div><div class="stat-l">Overdue</div></div><div class="stat"><div class="stat-n">${done.length}</div><div class="stat-l">Completed</div></div>`;
+  const rows=PERSONAL_TASKS.slice().sort((a,b)=>(a.status==='Done')-(b.status==='Done')||(a.due||'9999').localeCompare(b.due||'9999'));
+  list.innerHTML=rows.length?rows.map(task=>{const isDone=task.status==='Done',isOverdue=!isDone&&task.due&&task.due<today;return`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right"><span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority||'Medium')}</span><button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;}).join(''):'<div style="padding:36px;text-align:center;color:var(--text3)">No personal tasks yet.</div>';
+}
+
+function openAddPersonalTask(){
+  if(!canAccessPanel('personaltasks'))return;
+  ['ptTitle','ptDue','ptNotes','ptEditId'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('ptPriority').value='Medium';
+  document.getElementById('addPersonalTaskTitle').textContent='New Personal Task';
+  document.getElementById('personalTaskFormMsg').textContent='';
+  document.getElementById('addPersonalTaskOv').classList.add('show');
+}
+function openEditPersonalTask(id){
+  const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task)return;
+  document.getElementById('ptTitle').value=task.title||'';document.getElementById('ptDue').value=task.due||'';document.getElementById('ptNotes').value=task.notes||'';document.getElementById('ptPriority').value=task.priority||'Medium';document.getElementById('ptEditId').value=task.id;document.getElementById('addPersonalTaskTitle').textContent='Edit Personal Task';document.getElementById('personalTaskFormMsg').textContent='';document.getElementById('addPersonalTaskOv').classList.add('show');
+}
+function closeAddPersonalTask(){document.getElementById('addPersonalTaskOv').classList.remove('show');}
+
+async function savePersonalTask(){
+  const title=document.getElementById('ptTitle').value.trim(),editId=document.getElementById('ptEditId').value;
+  const msg=document.getElementById('personalTaskFormMsg');
+  if(!title){msg.textContent='Please enter a task title.';msg.className='form-msg err';return;}
+  if(!LIST_IDS.personalTasks&&!isPreviewMode){msg.textContent='Create and connect the private SharePoint list before saving live personal tasks.';msg.className='form-msg err';return;}
+  const due=document.getElementById('ptDue').value,notes=document.getElementById('ptNotes').value,priority=document.getElementById('ptPriority').value;
+  const existing=PERSONAL_TASKS.find(item=>String(item.id)===String(editId));
+  const fields={Title:title,Status:existing?.status||'Not Started',Priority:priority};if(due)fields.DueDate=due+'T12:00:00Z';if(notes)fields.Notes=notes;
+  try{
+    if(LIST_IDS.personalTasks&&!isPreviewMode){const token=await getToken(true);const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items${editId?'/'+editId:''}`;const res=await fetch(url,{method:editId?'PATCH':'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());if(!editId){const created=await res.json();fields.id=String(created.id);}}
+    if(existing){Object.assign(existing,{title,due,notes,priority});}else PERSONAL_TASKS.push({id:fields.id||'PT-'+Date.now(),title,status:'Not Started',priority,due,notes});
+    closeAddPersonalTask();renderPersonalTasks();
+  }catch(e){msg.textContent='Could not save: '+e.message;msg.className='form-msg err';}
+}
+
+async function togglePersonalTask(id){
+  const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task)return;const old=task.status;task.status=old==='Done'?'Not Started':'Done';
+  try{if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(id).startsWith('PT-')){const token=await getToken(true);const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:task.status}})});if(!res.ok)throw new Error('HTTP '+res.status);}}catch(e){task.status=old;alert('Could not update the personal task.');}renderPersonalTasks();
+}
+
+async function deletePersonalTask(id){
+  const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task||!confirm(`Delete "${task.title}"?`))return;
+  try{if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(id).startsWith('PT-')){const token=await getToken(true);const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${id}`,{method:'DELETE',headers:{Authorization:'Bearer '+token}});if(!res.ok&&res.status!==404)throw new Error('HTTP '+res.status);}PERSONAL_TASKS=PERSONAL_TASKS.filter(item=>String(item.id)!==String(id));renderPersonalTasks();}catch(e){alert('Could not delete the personal task: '+e.message);}
+}
+
+// ═══════════════════════════════════════
 // OPERATIONS MAP — boss view + system dependencies
 // ═══════════════════════════════════════
 let _opsView='boss';
@@ -8979,7 +9114,7 @@ async function createCRMDatabase(){
 }
 
 function renderCRM(){
-  if(currentRole!=='admin')return;
+  if(!canAccessMailing())return;
   const badge=document.getElementById('crmModeBadge');
   if(badge){badge.textContent=isPreviewMode?'Demo data · writes locked':CRM_WRITE_ENABLED?'Live SharePoint':'SharePoint read-only';badge.className='crm-mode '+(CRM_WRITE_ENABLED?'live':'locked');}
   if(isPreviewMode)seedCRMPreview();
