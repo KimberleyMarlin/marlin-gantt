@@ -435,7 +435,21 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .crm-preview-row{display:grid;grid-template-columns:85px minmax(160px,1fr) minmax(180px,1.2fr) minmax(220px,1.6fr);gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);font-size:11.5px;align-items:start}
 .crm-preview-row:last-child{border-bottom:0}
 .crm-pii-note{border-left:3px solid var(--gold);background:var(--gold-bg);padding:10px 12px;border-radius:7px;font-size:11.5px;color:var(--text2);line-height:1.5}
-@media(max-width:720px){.crm-health-row,.crm-preview-row{grid-template-columns:1fr}.crm-health-row>*:not(:first-child),.crm-preview-row>*:not(:first-child){padding-left:8px}}
+.crm-mode{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text2)}
+.crm-mode::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--gold)}
+.crm-mode.live::before{background:#15803d}.crm-mode.locked::before{background:var(--gold)}
+.crm-step-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:8px;margin-bottom:12px}
+.crm-step{border:1px solid var(--border);border-radius:9px;background:var(--surface);padding:12px;min-height:92px}
+.crm-step-n{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--accent-bg);color:var(--accent);font-size:11px;font-weight:800;margin-bottom:8px}
+.crm-step strong{display:block;font-size:12px;margin-bottom:3px}.crm-step span{font-size:10.5px;color:var(--text3);line-height:1.4}
+.crm-segment-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px}
+.crm-segment{border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:14px;cursor:pointer;transition:var(--tr)}
+.crm-segment:hover{border-color:var(--accent);box-shadow:var(--sh)}.crm-segment strong{font-size:24px;display:block;color:var(--text)}.crm-segment span{font-size:11px;color:var(--text3)}
+.crm-review-card{border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:0 9px 9px 0;background:var(--surface);padding:12px;margin-bottom:7px;display:flex;gap:12px;align-items:flex-start}
+.privacy-banner{display:flex;gap:12px;align-items:flex-start;border:1px solid rgba(10,102,64,.18);background:var(--accent-bg);padding:11px 13px;border-radius:9px;margin-bottom:12px;color:var(--text2);font-size:11.5px;line-height:1.5}
+.privacy-banner strong{color:var(--accent)}
+@media(max-width:900px){.crm-step-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:720px){.crm-health-row,.crm-preview-row{grid-template-columns:1fr}.crm-health-row>*:not(:first-child),.crm-preview-row>*:not(:first-child){padding-left:8px}.crm-step-grid{grid-template-columns:1fr}}
 .lookup-note{font-size:10.5px;color:var(--text3);line-height:1.45;margin-top:4px}
 
 /* ── POPUP ── */
@@ -497,6 +511,30 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 /* ── VENUE COLOUR SWATCHES ── */
 .vc-lb-s{--vc:var(--lb-primary)}.vc-rw-s{--vc:var(--rw-primary)}.vc-wf-s{--vc:var(--wbc-primary)}.vc-hd-s{--vc:var(--hd-primary)}.vc-mb-s{--vc:var(--mb-primary)}.vc-all-s{--vc:#374151}
 
+/* ── OPERATIONS MAP / AUTHORISED TEAM ── */
+.ops-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.ops-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.ops-person{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px;min-height:126px}
+.ops-person.owner{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-bg)}
+.ops-person-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px}
+.ops-person-role{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:10px}
+.ops-perm{display:flex;align-items:flex-start;gap:6px;font-size:11px;color:var(--text2);line-height:1.4;margin-top:5px}
+.ops-flow{display:grid;grid-template-columns:1fr 34px 1.2fr 34px 1.2fr 34px 1fr;gap:6px;align-items:stretch}
+.ops-stage{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px;min-height:170px}
+.ops-stage.core{border:2px solid var(--accent);background:var(--accent-bg)}
+.ops-stage h3{font-size:12px;margin:0 0 8px;color:var(--text)}
+.ops-stage ul{list-style:none;padding:0;margin:0;display:grid;gap:6px}
+.ops-stage li{font-size:10.5px;color:var(--text2);line-height:1.35;padding:5px 7px;background:rgba(255,255,255,.55);border-radius:5px}
+.ops-arrow{display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:22px;font-weight:700}
+.dep-table{width:100%;border-collapse:collapse;font-size:11.5px}
+.dep-table th,.dep-table td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+.dep-table th{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);background:var(--surface2)}
+.foundation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.foundation-card{border:1px solid var(--border);border-radius:9px;padding:13px;background:var(--surface)}
+.foundation-card strong{display:block;font-size:12px;margin-bottom:5px;color:var(--text)}
+.foundation-card p{font-size:11px;line-height:1.45;color:var(--text2);margin:0}
+.team-banner{display:flex;gap:10px;align-items:flex-start;background:var(--accent-bg);border:1px solid rgba(25,98,68,.24);border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:11.5px;color:var(--text2);line-height:1.45}
+
 /* ════════════════════════════════
    RESPONSIVE BREAKPOINTS
    ════════════════════════════════ */
@@ -509,6 +547,9 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   .stats{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
   .sw input{width:130px}.sw input:focus{width:160px}
   .tb-date{display:none}
+  .ops-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ops-flow{grid-template-columns:1fr;gap:8px}
+  .ops-arrow{transform:rotate(90deg);min-height:22px}
 }
 
 /* MOBILE <768px */
@@ -542,6 +583,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   .activity-logo-box,.lr-logo-box{width:46px;height:46px}
   .activity-summary-fields{grid-template-columns:1fr}
   .lr-price-panel{width:100%;align-items:flex-start;padding:0 0 0 58px}
+  .ops-grid,.foundation-grid{grid-template-columns:1fr}
 }
 
 /* SMALL MOBILE <480px */
@@ -579,7 +621,8 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <button class="sb-item" data-p="calendar" onclick="nav(this)"><span class="ico">◻</span>Activity Calendar</button>
     <button class="sb-item" data-p="submit" onclick="nav(this)"><span class="ico">＋</span>Submit</button>
     <div class="sb-sec">Work</div>
-    <button class="sb-item" data-p="mytasks" onclick="nav(this)"><span class="ico">☐</span>My Tasks<span class="sb-badge a" id="tBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="mytasks" onclick="nav(this)"><span class="ico">☐</span>Team Work<span class="sb-badge a" id="tBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="operations" onclick="nav(this)"><span class="ico">⌘</span>Operations Map</button>
     <button class="sb-item" data-p="campaigns" onclick="nav(this)"><span class="ico">◎</span>Activity Overview<span class="sb-badge" id="aBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="loaded" onclick="nav(this)"><span class="ico">⭐</span>Loaded Rewards</button>
     <button class="sb-item" data-p="crm" onclick="nav(this)"><span class="ico">◉</span>Mailing</button>
@@ -1175,18 +1218,17 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     </div>
   </div>
 
-  <!-- MY TASKS — queue view with tabs -->
+  <!-- TEAM WORK — shared four-person queue -->
   <div class="panel" id="p-mytasks">
     <div class="ph">
-      <div><div class="ph-eye">Work Queue</div><div class="ph-title">My <em>Tasks</em></div><div class="ph-sub" id="myTasksWho">Loading…</div></div>
+      <div><div class="ph-eye">Authorised Team</div><div class="ph-title">Work <em>Register</em></div><div class="ph-sub" id="myTasksWho">Loading…</div></div>
       <div class="ph-right">
         <div class="chips" id="taskQueueChips">
           <div class="chip on" data-q="mine" onclick="pickTaskQueue(this)">My Tasks</div>
-          <div class="chip" data-q="design" onclick="pickTaskQueue(this)">✦ Design</div>
-          <div class="chip" data-q="web" onclick="pickTaskQueue(this)">🌐 Web</div>
+          <div class="chip" data-q="all" onclick="pickTaskQueue(this)">All Team</div>
           <div class="chip" data-q="overdue" onclick="pickTaskQueue(this)">🔴 Overdue</div>
           <div class="chip" data-q="week" onclick="pickTaskQueue(this)">📅 This Week</div>
-          <div class="chip" data-q="all" onclick="pickTaskQueue(this)">All Open</div>
+          <div class="chip" data-q="blocked" onclick="pickTaskQueue(this)">Waiting / Blocked</div>
           <div class="chip" data-q="archive" onclick="pickTaskQueue(this)">🗄 Archive</div>
         </div>
         <button class="tb-btn p" onclick="openAddTask()">+ New Task</button>
@@ -1194,6 +1236,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       </div>
     </div>
     <div class="ca">
+      <div class="team-banner" id="tasksPrivacyBanner"><span style="font-size:18px">👥</span><div><strong>Shared with four authorised users</strong><br>Kimberley, Perrin, Amelia and Ben can view this work register. Kimberley controls the system, management can edit shared work, and Perrin can update work assigned to him. SharePoint list permissions remain the security boundary.</div></div>
       <div class="stats" id="myTaskStats" style="margin-bottom:12px"></div>
       <div id="tasksList"></div>
     </div>
@@ -1233,10 +1276,11 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
               <option value="Low">Low</option>
             </select>
           </div>
-          <div class="form-group"><label class="form-label">Assign To</label>
+          <div class="form-group"><label class="form-label">Owner</label>
             <select class="form-select" id="tAssignTo">
-              <option value="">Unassigned</option>
+              <option value="">Me</option>
             </select>
+            <div class="field-help">Only the four authorised team members are available here. Assignment controls responsibility, while SharePoint controls actual access.</div>
           </div>
           <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="tDue" type="date"></div>
           <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="tNotes" placeholder="Additional context or requirements…" style="min-height:60px"></textarea></div>
@@ -1247,6 +1291,23 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <button class="btn btn-s" onclick="closeAddTask()">Cancel</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- OPERATIONS MAP -->
+  <div class="panel" id="p-operations">
+    <div class="ph">
+      <div><div class="ph-eye">Management View</div><div class="ph-title">Operations <em>Map</em></div><div class="ph-sub">What is being built, what it depends on, and where the work flows next.</div></div>
+      <div class="ph-right"><button class="tb-btn" onclick="loadTasks().then(()=>renderOperationsMap())">↻ Refresh</button></div>
+    </div>
+    <div class="ca">
+      <div class="ops-tabs" id="opsTabs">
+        <div class="chip on" data-ops="boss" onclick="pickOpsView(this)">Boss View</div>
+        <div class="chip" data-ops="flow" onclick="pickOpsView(this)">System Flow</div>
+        <div class="chip" data-ops="dependencies" onclick="pickOpsView(this)">Dependencies</div>
+        <div class="chip" data-ops="foundations" onclick="pickOpsView(this)">Missing Foundations</div>
+      </div>
+      <div id="operationsMapBody"></div>
     </div>
   </div>
 
@@ -1272,19 +1333,27 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <div class="panel" id="p-crm">
     <div class="ph">
       <div><div class="ph-eye">Customer Data</div><div class="ph-title">Mailing <em>CRM</em></div><div class="ph-sub">One customer, every venue and source, with consent and changes preserved</div></div>
-      <div class="ph-right"><button class="tb-btn p" id="crmCreateDatabaseBtn" onclick="createCRMDatabase()">＋ Create CRM database</button><button class="tb-btn" onclick="loadCRMSetup(true)">↻ Check setup</button></div>
+      <div class="ph-right"><span class="crm-mode locked" id="crmModeBadge">Read-only build</span><button class="tb-btn" onclick="loadCRMSetup(true)">↻ Check setup</button></div>
     </div>
     <div class="ca">
       <div class="crm-tabs">
         <button class="chip on" data-crm-tab="overview" onclick="pickCRMTab(this)">Overview</button>
         <button class="chip" data-crm-tab="import" onclick="pickCRMTab(this)">Import &amp; consolidate</button>
         <button class="chip" data-crm-tab="customers" onclick="pickCRMTab(this)">Master customers</button>
+        <button class="chip" data-crm-tab="review" onclick="pickCRMTab(this)">Review queue <span id="crmReviewBadge"></span></button>
+        <button class="chip" data-crm-tab="segments" onclick="pickCRMTab(this)">Mailing segments</button>
         <button class="chip" data-crm-tab="history" onclick="pickCRMTab(this)">Imports &amp; changes</button>
         <button class="chip" data-crm-tab="connections" onclick="pickCRMTab(this)">Connections</button>
       </div>
 
       <section class="crm-section active" id="crm-overview">
-        <div class="crm-pii-note" style="margin-bottom:12px"><strong>Access:</strong> the CRM is hidden to non-admin Hub roles, but SharePoint permissions are the real security boundary. The customer lists must be restricted to authorised staff at SharePoint level before live data is imported.</div>
+        <div class="crm-pii-note" style="margin-bottom:12px"><strong>Safe build mode:</strong> mapping, cleaning, matching, review and segmentation can be demonstrated now. Live SharePoint writes are intentionally locked until the CRM lists and permissions are approved.</div>
+        <div class="crm-step-grid">
+          <div class="crm-step"><div class="crm-step-n">1</div><strong>Upload source</strong><span>CSV or Excel from Now Book It, Loaded Rewards, Mailchimp or a venue.</span></div>
+          <div class="crm-step"><div class="crm-step-n">2</div><strong>Clean and match</strong><span>Normalise email and phone, then match only on reliable identifiers.</span></div>
+          <div class="crm-step"><div class="crm-step-n">3</div><strong>Review exceptions</strong><span>Hold conflicts, ambiguous matches and invalid identities for a person.</span></div>
+          <div class="crm-step"><div class="crm-step-n">4</div><strong>Publish safely</strong><span>Write approved records to SharePoint, keeping consent evidence and change history.</span></div>
+        </div>
         <div class="stats" id="crmStats"></div>
         <div class="g2">
           <div class="card"><div class="card-h"><div class="card-title">SharePoint setup</div><button class="card-act" onclick="loadCRMSetup(true)">Refresh</button></div><div id="crmHealth"><div class="loading"><div class="spinner"></div></div></div></div>
@@ -1310,7 +1379,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div id="crmMappingWrap" style="display:none"><div style="font-size:12px;font-weight:700;margin-top:14px">Confirm column mapping</div><div class="crm-map-grid" id="crmMapping"></div></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
             <button class="btn btn-s" id="crmPreflightBtn" onclick="preflightCRMImport()" disabled>Check against master CRM</button>
-            <button class="btn btn-p" id="crmRunBtn" onclick="runCRMImport()" disabled>Import confident records</button>
+            <button class="btn btn-p" id="crmRunBtn" onclick="runCRMImport()" disabled>Simulate safe import</button>
             <button class="btn btn-s" id="crmExportHeldBtn" onclick="exportCRMHeldRows()" disabled>Export held rows</button>
           </div>
           <div class="import-summary" id="crmImportSummary" style="display:none"></div>
@@ -1319,9 +1388,13 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       </section>
 
       <section class="crm-section" id="crm-customers">
-        <div class="filters"><div class="fg" style="flex:1"><label>Search master customers</label><input id="crmCustomerSearch" type="search" placeholder="Name, email, phone or customer ID" oninput="renderCRMCustomers()" style="max-width:none;width:100%"></div><button class="tb-btn" onclick="loadCRMCustomers(true)">↻ Refresh</button></div>
+        <div class="filters"><div class="fg" style="flex:1"><label>Search master customers</label><input id="crmCustomerSearch" type="search" placeholder="Name, email, phone or customer ID" oninput="renderCRMCustomers()" style="max-width:none;width:100%"></div><div class="fg"><label>Mailing status</label><select id="crmConsentFilter" onchange="renderCRMCustomers()"><option value="">All</option><option value="mail">Safe to mail</option><option value="hold">Hold / unknown</option><option value="suppressed">Suppressed</option></select></div><button class="tb-btn" onclick="loadCRMCustomers(true)">↻ Refresh</button></div>
         <div class="card"><div id="crmCustomerList"><div style="padding:30px;text-align:center;color:var(--text3)">Open this tab to load customers.</div></div></div>
       </section>
+
+      <section class="crm-section" id="crm-review"><div class="card"><div class="card-h"><div><div class="card-title">Records requiring a decision</div><div class="tbl-sub">Nothing held here is written or mailed automatically.</div></div></div><div class="card-body" id="crmReviewQueue"></div></div></section>
+
+      <section class="crm-section" id="crm-segments"><div class="card"><div class="card-h"><div><div class="card-title">Mailing-ready audiences</div><div class="tbl-sub">Suppressed and unknown-consent records stay excluded.</div></div><button class="card-act" onclick="exportCRMSegment('mail')">Export safe-to-mail CSV</button></div><div class="card-body"><div class="crm-segment-grid" id="crmSegments"></div></div></div></section>
 
       <section class="crm-section" id="crm-history"><div class="g2"><div class="card"><div class="card-h"><div class="card-title">Import batches</div></div><div id="crmImportHistory"><div style="padding:24px;color:var(--text3)">No data loaded.</div></div></div><div class="card"><div class="card-h"><div class="card-title">Recent changes</div></div><div id="crmChangeHistory"><div style="padding:24px;color:var(--text3)">No data loaded.</div></div></div></div></section>
 
@@ -1955,6 +2028,43 @@ const CRM_MAP_FIELDS=[
   {key:'notes',label:'Notes',aliases:['notes','comments','customer notes']}
 ];
 let CRM_LISTS={},CRM_COLUMNS={},CRM_SETUP_LOADED=false,CRM_ROWS=[],CRM_HEADERS=[],CRM_FILE_NAME='',CRM_MAPPING={},CRM_PREFLIGHT=[],CRM_CUSTOMERS=[],CRM_SOURCE_LINKS=[],CRM_VENUES=[],CRM_CUSTOMER_VENUES=[],CRM_CONSENT_EVENTS=[],CRM_IMPORTS=[],CRM_CHANGES=[];
+// Flip this only after the CRM SharePoint lists, columns and restricted permissions are approved.
+// Read-only checks and browser-side cleaning still work while it is false.
+const CRM_WRITE_ENABLED=false;
+
+function seedCRMPreview(){
+  if(CRM_CUSTOMERS.length)return;
+  CRM_LISTS=Object.fromEntries(Object.entries(CRM_LIST_NAMES).map(([key,name])=>[key,{id:`demo-${key}`,displayName:name}]));
+  CRM_COLUMNS=Object.fromEntries(Object.entries(CRM_REQUIRED_COLUMNS).map(([key,names])=>[key,names.map(name=>({name,displayName:crmHumanise(name)}))]));
+  CRM_SETUP_LOADED=true;
+  CRM_CUSTOMERS=[
+    {spId:'1001',title:'Ava Thompson',firstName:'Ava',lastName:'Thompson',email:'ava.thompson@example.com',emailNorm:'ava.thompson@example.com',phone:'0412 555 101',phoneNorm:'0412555101',status:'Active',sourceCount:3,venue:'The Left Bank',source:'Now Book It',consent:'Opted In',suppressed:false,lastSeen:'2026-08-09'},
+    {spId:'1002',title:'Marcus Lee',firstName:'Marcus',lastName:'Lee',email:'marcus.lee@example.com',emailNorm:'marcus.lee@example.com',phone:'0438 555 202',phoneNorm:'0438555202',status:'Active',sourceCount:2,venue:'Whitfords Brewing Co',source:'Loaded Rewards',consent:'Opted In',suppressed:false,lastSeen:'2026-08-11'},
+    {spId:'1003',title:'Sophie Nguyen',firstName:'Sophie',lastName:'Nguyen',email:'sophie.nguyen@example.com',emailNorm:'sophie.nguyen@example.com',phone:'0401 555 303',phoneNorm:'0401555303',status:'Suppressed',sourceCount:2,venue:'Hotel Darwin',source:'Mailchimp',consent:'Opted Out',suppressed:true,lastSeen:'2026-07-28'},
+    {spId:'1004',title:'Noah Williams',firstName:'Noah',lastName:'Williams',email:'noah.williams@example.com',emailNorm:'noah.williams@example.com',phone:'0422 555 404',phoneNorm:'0422555404',status:'Needs Review',sourceCount:1,venue:'The Ravenswood',source:'Venue upload',consent:'Unknown',suppressed:true,lastSeen:'2026-08-01'},
+    {spId:'1005',title:'Mia Carter',firstName:'Mia',lastName:'Carter',email:'mia.carter@example.com',emailNorm:'mia.carter@example.com',phone:'0444 555 505',phoneNorm:'0444555505',status:'Active',sourceCount:4,venue:'Mustang Bar',source:'Now Book It',consent:'Opted In',suppressed:false,lastSeen:'2026-08-12'},
+    {spId:'1006',title:'Ethan Patel',firstName:'Ethan',lastName:'Patel',email:'ethan.patel@example.com',emailNorm:'ethan.patel@example.com',phone:'0455 555 606',phoneNorm:'0455555606',status:'Active',sourceCount:2,venue:'The Left Bank',source:'Loaded Rewards',consent:'Opted In',suppressed:false,lastSeen:'2026-08-06'},
+    {spId:'1007',title:'Chloe Martin',firstName:'Chloe',lastName:'Martin',email:'chloe.martin@example.com',emailNorm:'chloe.martin@example.com',phone:'0466 555 707',phoneNorm:'0466555707',status:'Needs Review',sourceCount:1,venue:'Whitfords Brewing Co',source:'Legacy CSV',consent:'Unknown',suppressed:true,lastSeen:'2026-06-20'},
+    {spId:'1008',title:'Liam Brown',firstName:'Liam',lastName:'Brown',email:'liam.brown@example.com',emailNorm:'liam.brown@example.com',phone:'0477 555 808',phoneNorm:'0477555808',status:'Suppressed',sourceCount:2,venue:'The Ravenswood',source:'Mailchimp',consent:'Opted Out',suppressed:true,lastSeen:'2026-07-15'}
+  ];
+  CRM_SOURCE_LINKS=CRM_CUSTOMERS.flatMap(customer=>Array.from({length:Math.min(customer.sourceCount,2)},(_,index)=>({spId:`S-${customer.spId}-${index+1}`,sourceKey:`${normaliseImportText(customer.source)}|${customer.spId}-${index+1}`,customerId:customer.spId})));
+  CRM_VENUES=VENUES_DATA.map((venue,index)=>({spId:String(index+1),title:venue.name}));
+  CRM_IMPORTS=[{demo:true,title:'Now Book It · August customer export',status:'Completed',source:'Now Book It',date:'2026-08-12 09:24',rows:1250},{demo:true,title:'Loaded Rewards · Member sync',status:'Completed with errors',source:'Loaded Rewards',date:'2026-08-09 16:40',rows:842}];
+  CRM_CHANGES=[{demo:true,title:'Consent: Email',source:'Mailchimp',date:'2026-08-12 09:26'},{demo:true,title:'Linked: Venue',source:'Now Book It',date:'2026-08-12 09:25'},{demo:true,title:'Updated: PrimaryPhone',source:'Loaded Rewards',date:'2026-08-09 16:41'}];
+}
+
+function seedTaskPreview(){
+  if(MY_TASKS.length)return;
+  const dateFromNow=days=>{const d=new Date();d.setDate(d.getDate()+days);return toLocalISODate(d);};
+  MY_TASKS=[
+    {id:'T-DEMO-1',title:'Finalise CRM SharePoint permissions',status:'Not Started',priority:'Critical',category:'Admin',due:dateFromNow(0),notes:'Restrict all CRM lists before importing customer data.',assignedTo:currentUserEmail,campaignLookup:''},
+    {id:'T-DEMO-2',title:'Prepare boss CRM demonstration',status:'In Progress',priority:'High',category:'General',due:dateFromNow(1),notes:'Use synthetic contacts only.',assignedTo:'ben@marlinhospitality.com.au',campaignLookup:''},
+    {id:'T-DEMO-3',title:'Confirm January to June campaign priorities',status:'Not Started',priority:'High',category:'General',due:dateFromNow(3),notes:'Supplier and venue priorities.',assignedTo:'ben@marlinhospitality.com.au',campaignLookup:''},
+    {id:'T-DEMO-4',title:'Complete POS setup for next Loaded offer',status:'Blocked',priority:'Medium',category:'POS Update',due:dateFromNow(5),blocker:'Waiting for confirmed offer pricing',notes:'',assignedTo:'perrin@marlinhospitality.com.au',campaignLookup:'Loaded Rewards · September'},
+    {id:'T-DEMO-5',title:'Review Loaded Rewards August results',status:'Not Started',priority:'Medium',category:'Paid Ad',due:dateFromNow(7),notes:'',assignedTo:'amelia@marlinhospitality.com.au',campaignLookup:'Loaded Rewards · August'},
+    {id:'T-DEMO-6',title:'Map existing customer sources',status:'Done',priority:'Medium',category:'Admin',due:dateFromNow(-2),notes:'',assignedTo:currentUserEmail,campaignLookup:''}
+  ];
+}
 
 // Diagnostic tools — kept right up here near the top so they're always available in the console,
 // regardless of anything that happens later in the script. Call dumpLists() then dumpCols('list-id').
@@ -2057,6 +2167,31 @@ const ROLE_NAME_MAP={
   'ben rasheed':     {role:'management', venue:null},
   'joanne connor':   {role:'management', venue:'The Ravenswood'},
 };
+
+// Production access roster. These exact Microsoft 365 identities are the only people who may
+// pass the live sign-in gate. Preview mode remains available for layout review and never loads data.
+const AUTHORISED_TEAM=[
+  {key:'kimberley',name:'Kimberley Maley',names:['kimberley maley'],emailAliases:['kimberley@marlinhospitality.com.au','kimberley@marlingroup.com.au','kim@marlinhospitality.com.au','kim@marlingroup.com.au'],role:'Owner / Admin'},
+  {key:'perrin',name:'Perrin Lefebour',names:['perrin lefebour'],emailAliases:['perrin@marlinhospitality.com.au'],role:'Operations / POS'},
+  {key:'amelia',name:'Amelia Shugar',names:['amelia shugar'],emailAliases:['amelia@marlinhospitality.com.au'],role:'Loaded Rewards / Management'},
+  {key:'ben',name:'Ben Rasheed',names:['ben rasheed'],emailAliases:['ben@marlinhospitality.com.au'],role:'Leadership / Management'},
+];
+
+function authorisedMember(profile,email){
+  if(isPreviewMode)return AUTHORISED_TEAM[0];
+  const display=(profile?.displayName||currentUser?.name||'').trim().toLowerCase();
+  const emails=[email,profile?.mail,profile?.userPrincipalName].filter(Boolean).map(v=>String(v).toLowerCase());
+  return AUTHORISED_TEAM.find(member=>member.names.includes(display)||member.emailAliases.some(alias=>emails.includes(alias)))||null;
+}
+
+function authorisedAssignableUsers(){
+  const directory=M365_USERS.length?M365_USERS:AUTHORISED_TEAM.map(member=>({name:member.name,email:member.emailAliases[0]}));
+  return directory.filter(user=>{
+    const display=(user.name||'').trim().toLowerCase();
+    const email=(user.email||'').toLowerCase();
+    return AUTHORISED_TEAM.some(member=>member.names.includes(display)||member.emailAliases.includes(email));
+  });
+}
 
 // Role → what they can see and do
 const ROLE_CONFIG={
@@ -3382,6 +3517,7 @@ function busynessTextColor(level){
 // ═══════════════════════════════════════
 let msalApp=null,isAuthed=false,currentUser=null,currentUserEmail='',isPreviewMode=false;
 let EVENTS=[],MY_TASKS=[],PROJECTS=[],SPONSORSHIPS=[];
+const TASK_SHARING_ENABLED=true;
 let PROJECTS_ERROR='';
 let calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calTypeFilter='';
 let NOTIFS=[];
@@ -3446,7 +3582,7 @@ async function initMSAL(){
     msalApp=new msal.PublicClientApplication({auth:{clientId:CFG.clientId,authority:CFG.authority,redirectUri:CFG.redirectUri},cache:{cacheLocation:'sessionStorage'}});
     await msalApp.initialize();
     const accs=msalApp.getAllAccounts();
-    if(accs.length>0){await onAuthed(accs[0]);await loadAll();}
+    if(accs.length>0&&await onAuthed(accs[0]))await loadAll();
   }catch(e){console.error('MSAL init:',e);}
   // Poll for new comments/mentions periodically — the Inbox otherwise only ever updates at login
   // or when you personally post something, so someone tagged by a colleague wouldn't see it until
@@ -3462,7 +3598,7 @@ async function signIn(){
   if(!msalApp){let w=0;while(!window._msalReady&&w<8000){await sleep(200);w+=200;}await initMSAL();if(!msalApp){alert('Auth failed. Please refresh.');return;}}
   try{
     const r=await msalApp.loginPopup({scopes:['User.Read','User.ReadBasic.All','Sites.Read.All','Sites.ReadWrite.All']});
-    await onAuthed(r.account);await loadAll();
+    if(await onAuthed(r.account))await loadAll();
   }catch(e){if(e.errorCode==='popup_window_error')alert('Popup blocked — please allow popups.');else console.error('Sign in:',e);}
 }
 
@@ -3499,7 +3635,6 @@ function previewMode(){
   document.getElementById('userLabel').textContent='👁 UI preview — no live SharePoint data';
   document.getElementById('gate').style.display='none';
   resolveRole(currentUserEmail);
-  updateAdminImportVisibility();
   const who=document.getElementById('myTasksWho');
   if(who)who.textContent='Showing tasks for UI Preview';
   showPanel('overview');
@@ -3507,6 +3642,8 @@ function previewMode(){
   document.querySelector('.sb-item[data-p="overview"]')?.classList.add('active');
   // Populate whatever doesn't require a network call, so panels aren't blank
   SPONSORSHIPS=[...STATIC_SPONSORSHIPS];
+  seedTaskPreview();
+  seedCRMPreview();
   generateNotifications();
   renderCurrentPanel();
 }
@@ -3519,6 +3656,20 @@ async function onAuthed(acc){
   document.getElementById('gate').style.display='none';
   // Resolve role and apply UI restrictions
   await resolveRole(currentUserEmail);
+  const member=authorisedMember(currentM365Profile,currentUserEmail);
+  if(!member){
+    isAuthed=false;
+    document.getElementById('gate').style.display='flex';
+    document.querySelector('#gate .gate-icon').textContent='⛔';
+    document.querySelector('#gate .gate-title').textContent='Access not enabled';
+    document.querySelector('#gate .gate-sub').textContent='This working dashboard is currently restricted to Kimberley, Perrin, Amelia and Ben.';
+    document.querySelector('#gate .gate-btn').style.display='none';
+    const preview=document.querySelectorAll('#gate .gate-btn')[1];if(preview)preview.style.display='none';
+    document.querySelector('#gate .gate-note').innerHTML='<button class="tb-btn" onclick="signOut()">Sign out</button>';
+    document.getElementById('userLabel').textContent='Access not enabled';
+    return false;
+  }
+  document.getElementById('userLabel').textContent=`${member.name} · ${member.role}`;
   // Restore this person's saved calendar view (Month/Week/Gantt/Venue Monthly/Overview) —
   // remembered per-user so everyone lands back where they left it, not always on Month.
   scheduleView=getUserPref('calView',scheduleView);
@@ -3544,6 +3695,7 @@ async function onAuthed(acc){
     if(defaultBtn){document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));defaultBtn.classList.add('active');}
     else{showPanel('overview');document.querySelector('.sb-item[data-p="overview"]').classList.add('active');}
   }
+  return true;
 }
 
 async function getToken(write=false){
@@ -4732,8 +4884,7 @@ async function loadM365Users(){
 
 function populateAssignDropdowns(){
   const dropdowns=['tAssignTo','tAssigned'];
-  const fallback=[{email:'kim@marlinhospitality.com.au',name:'Kim'},{email:'luca@marlinhospitality.com.au',name:'Luca'},{email:'perrin@marlinhospitality.com.au',name:'Perrin'},{email:'didier@marlinhospitality.com.au',name:'Didier'},{email:'amelia@marlinhospitality.com.au',name:'Amelia'},{email:'ben@marlinhospitality.com.au',name:'Ben'}];
-  const people=M365_USERS.length?M365_USERS:fallback;
+  const people=authorisedAssignableUsers();
   dropdowns.forEach(ddId=>{
     const dd=document.getElementById(ddId);
     if(!dd)return;
@@ -4751,7 +4902,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Budget <em>Tracker</em>',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'My <em>Tasks</em>',projects:'Marketing <em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>Event Idea</em>',myday:'My <em>Day</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Budget <em>Tracker</em>',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Team <em>Work Register</em>',operations:'Operations <em>Map</em>',projects:'Marketing <em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>Event Idea</em>',myday:'My <em>Day</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -4772,6 +4923,11 @@ function isCurrentUserAssignment(value){
   const name=(currentUser?.name||'').toLowerCase();
   return !!assigned&&(assigned===email||(local&&assigned.includes(local))||(name&&assigned.includes(name)));
 }
+function canEditTeamTask(task){
+  if(isPreviewMode||currentRole==='admin'||currentRole==='management')return true;
+  return !!task&&isCurrentUserAssignment(task.assignedTo);
+}
+function canDeleteTeamTask(){return isPreviewMode||currentRole==='admin';}
 
 function showPanel(id){
   if(!canAccessPanel(id)){
@@ -4784,7 +4940,7 @@ function showPanel(id){
   // Schedule consolidation: gantt/venuemonth/crossvenue are now sub-views of 'calendar', not standalone pages.
   // If navigating anywhere else, make sure none of them are left visibly showing.
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:renderCampaigns,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyTasks,submit:()=>{}};
+  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:renderCampaigns,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyTasks,submit:()=>{}};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
   if(p){const ca=p.querySelector('.ca');if(ca){ca.style.minHeight='calc(100vh - 90px)';ca.style.height='auto';ca.style.display='block';ca.style.flex='none';}}
@@ -7558,11 +7714,11 @@ function renderMyTasks(){
   ['tBadge','mydayTaskBadge'].forEach(id=>{const tb=document.getElementById(id);if(tb){tb.textContent=pending;tb.style.display=pending?'':'none';}});
 
   document.getElementById('myTaskStats').innerHTML=`
-    <div class="stat ${blocked>0?'hi':''}" onclick="pickTaskQueue(document.querySelector('[data-q=overdue]'))" style="cursor:pointer"><div class="stat-n">${blocked}</div><div class="stat-l">Blocked</div></div>
+    <div class="stat ${blocked>0?'hi':''}" onclick="pickTaskQueue(document.querySelector('[data-q=blocked]'))" style="cursor:pointer"><div class="stat-n">${blocked}</div><div class="stat-l">Blocked</div></div>
     <div class="stat ${overdue>0?'hi':''}" onclick="pickTaskQueue(document.querySelector('[data-q=overdue]'))" style="cursor:pointer"><div class="stat-n">${overdue}</div><div class="stat-l">Overdue</div></div>
     <div class="stat" onclick="pickTaskQueue(document.querySelector('[data-q=week]'))" style="cursor:pointer"><div class="stat-n">${dueToday}</div><div class="stat-l">Due Today</div></div>
     <div class="stat" onclick="pickTaskQueue(document.querySelector('[data-q=mine]'))" style="cursor:pointer"><div class="stat-n">${pending}</div><div class="stat-l">My Open</div></div>
-    <div class="stat" onclick="pickTaskQueue(document.querySelector('[data-q=all]'))" style="cursor:pointer"><div class="stat-n">${MY_TASKS.filter(t=>t.status!=='Done').length}</div><div class="stat-l">All Open</div></div>
+    <div class="stat" onclick="pickTaskQueue(document.querySelector('[data-q=blocked]'))" style="cursor:pointer"><div class="stat-n">${critical}</div><div class="stat-l">Critical</div></div>
   `;
 
   const priTag={Critical:'t-r',High:'t-o',Medium:'t-a',Normal:'t-g',Low:'t-gr'};
@@ -7571,8 +7727,8 @@ function renderMyTasks(){
         const isBlocked=t.status==='Blocked';const isDone=t.status==='Done';
         const isOverdue=t.due&&t.due<todayStr&&!isDone;
         return`<div class="task-item ${isBlocked?'blocked':t.priority==='Critical'&&!isDone?'critical':''}">
-          <div class="task-cb ${isDone?'done':''}" onclick="toggleTask('${t.id}')">${isDone?'✓':''}</div>
-          <div class="task-info" onclick="openEditTask('${t.id}')" style="cursor:pointer">
+          <div class="task-cb ${isDone?'done':''}" ${canEditTeamTask(t)?`onclick="toggleTask('${t.id}')" style="cursor:pointer"`:'title="View only"'}>${isDone?'✓':''}</div>
+          <div class="task-info" ${canEditTeamTask(t)?`onclick="openEditTask('${t.id}')" style="cursor:pointer"`:''}>
             <div class="task-name ${isDone?'done':''}">${t.title}</div>
             <div class="task-meta">
               ${t.campaignLookup?`<span style="color:var(--accent);font-size:10px">📎 ${t.campaignLookup}</span>`:''}
@@ -7584,7 +7740,7 @@ function renderMyTasks(){
           </div>
           <div class="task-right">
             ${t.priority?`<span class="tag ${priTag[t.priority]||'t-gr'}">${t.priority}</span>`:''}
-            ${queue==='archive'?`<button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deleteTaskPermanently('${t.id}')">Delete</button>`:`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditTask('${t.id}')">Edit</button>`}
+            ${queue==='archive'&&canDeleteTeamTask()?`<button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deleteTaskPermanently('${t.id}')">Delete</button>`:canEditTeamTask(t)?`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditTask('${t.id}')">Edit</button>`:'<span class="tag t-gr">View</span>'}
           </div>
         </div>`;
       }).join('')
@@ -7610,8 +7766,8 @@ function renderMyTasks(){
         </div>
         <div style="display:none">
           ${doneList.map(t=>`<div class="task-item" style="opacity:.55">
-            <div class="task-cb done" onclick="toggleTask('${t.id}')">✓</div>
-            <div class="task-info" onclick="openEditTask('${t.id}')" style="cursor:pointer">
+            <div class="task-cb done" ${canEditTeamTask(t)?`onclick="toggleTask('${t.id}')" style="cursor:pointer"`:'title="View only"'}>✓</div>
+            <div class="task-info" ${canEditTeamTask(t)?`onclick="openEditTask('${t.id}')" style="cursor:pointer"`:''}>
               <div class="task-name done">${t.title}</div>
               <div class="task-meta">
                 ${t.campaignLookup?`<span style="color:var(--accent);font-size:10px">📎 ${t.campaignLookup}</span>`:''}
@@ -7652,7 +7808,8 @@ async function loadTasks(){
           assetSpec:f.AssetSpec||''
         };
       });
-      if(!rolePermissions().canViewAll)MY_TASKS=MY_TASKS.filter(t=>isCurrentUserAssignment(t.assignedTo));
+      // The SharePoint list is the four-person work register. Load the complete authorised-team
+      // queue, then use the dashboard chips to switch between personal and team views.
       const note=document.getElementById('tasksSetupNote');
       if(note)note.style.display='none';
     }catch(e){console.error('Tasks load error:',e);}
@@ -7680,25 +7837,17 @@ function openAddTask(campaignId){
     campSel.appendChild(opt);
   });
 
-  // Populate assignee from M365 users
+  // Assignment is limited to the four authorised team members.
   const assignSel=document.getElementById('tAssignTo');
-  assignSel.innerHTML='<option value="">Unassigned</option>';
-  if(M365_USERS.length){
-    M365_USERS.forEach(u=>{
+  assignSel.innerHTML='';
+  assignSel.disabled=false;
+  authorisedAssignableUsers().forEach(u=>{
       const opt=document.createElement('option');
       opt.value=u.email;
       opt.textContent=u.name;
       if(u.email&&u.email.toLowerCase()===currentUserEmail)opt.selected=true;
       assignSel.appendChild(opt);
-    });
-  } else {
-    // Fallback to known people
-    [['kim@marlinhospitality.com.au','Kim (Marketing)'],['luca@marlinhospitality.com.au','Luca (Design)'],['perrin@marlinhospitality.com.au','Perrin (Ops)'],['didier@marlinhospitality.com.au','Didier (Web)']].forEach(([email,name])=>{
-      const opt=document.createElement('option');opt.value=email;opt.textContent=name;
-      if(email===currentUserEmail)opt.selected=true;
-      assignSel.appendChild(opt);
-    });
-  }
+  });
   document.getElementById('addTaskOv').classList.add('show');
 }
 
@@ -7723,12 +7872,14 @@ function openEditTask(taskId){
     campSel.appendChild(opt);
   });
 
-  // Populate assignee
+  if(!canEditTeamTask(t)){alert('You can view this task, but only its owner, management or Kimberley can edit it.');return;}
+  // Keep assignment within the four-person team.
   const assignSel=document.getElementById('tAssignTo');
-  assignSel.innerHTML='<option value="">Unassigned</option>';
-  (M365_USERS.length?M365_USERS.map(u=>({value:u.email,label:u.name})):[{value:'kim@marlinhospitality.com.au',label:'Kim'},{value:'luca@marlinhospitality.com.au',label:'Luca (Design)'},{value:'perrin@marlinhospitality.com.au',label:'Perrin (Ops)'},{value:'didier@marlinhospitality.com.au',label:'Didier (Web)'}]).forEach(u=>{
-    const opt=document.createElement('option');opt.value=u.value;opt.textContent=u.label;
-    if(u.value===t.assignedTo)opt.selected=true;
+  assignSel.innerHTML='';
+  assignSel.disabled=false;
+  authorisedAssignableUsers().forEach(u=>{
+    const opt=document.createElement('option');opt.value=u.email;opt.textContent=u.name;
+    if((u.email||'').toLowerCase()===(t.assignedTo||'').toLowerCase())opt.selected=true;
     assignSel.appendChild(opt);
   });
   document.getElementById('addTaskOv').classList.add('show');
@@ -7742,6 +7893,8 @@ async function saveTask(){
   const assignTo=document.getElementById('tAssignTo').value;
   const campaignSpId=document.getElementById('tCampaignLink').value;
   const isEdit=!!editId;
+  const existingTask=isEdit?MY_TASKS.find(t=>String(t.id)===String(editId)):null;
+  if(isEdit&&!canEditTeamTask(existingTask)){alert('You do not have permission to edit this task.');return;}
 
   const btn=document.querySelector('#addTaskOv .btn-p');
   if(btn){btn.disabled=true;btn.textContent='Saving…';}
@@ -7749,7 +7902,7 @@ async function saveTask(){
   // Preflight delegated email permission on the original click, before the
   // SharePoint save. Otherwise a first-time consent popup can be blocked.
   let taskMailToken=null,taskMailTokenError=null;
-  if(!isEdit&&assignTo&&assignTo.toLowerCase()!==(currentUserEmail||'').toLowerCase()){
+  if(TASK_SHARING_ENABLED&&!isEdit&&assignTo&&assignTo.toLowerCase()!==(currentUserEmail||'').toLowerCase()){
     try{taskMailToken=await getMailToken();}
     catch(e){taskMailTokenError=e;console.warn('Task assignment email permission unavailable:',e);}
   }
@@ -7768,7 +7921,7 @@ async function saveTask(){
 
   console.log('Saving task fields:',JSON.stringify(fields));
 
-  if(LIST_IDS.myTasks){
+  if(LIST_IDS.myTasks&&!isPreviewMode){
     try{
       const token=await getToken(true);
       let savedId=editId;
@@ -7807,7 +7960,7 @@ async function saveTask(){
         }
         MY_TASKS.push({id:savedId,title,status:'Not Started',priority:fields.Priority,category:fields.TaskType,due,notes,assignedTo:dropped.includes('AssignedTo')?'':assignTo,campaignLookup:''});
         // Notify whoever this was assigned to (only if the assignment actually saved)
-        if(assignTo&&!dropped.includes('AssignedTo')){
+        if(TASK_SHARING_ENABLED&&assignTo&&!dropped.includes('AssignedTo')){
           const person=M365_USERS.find(u=>u.email&&u.email.toLowerCase()===assignTo.toLowerCase());
           const assigneeName=person?person.name.replace(/\s*\([^)]*\)\s*/g,'').trim():assignTo;
           const who=currentUser?.name||currentUserEmail||'Someone';
@@ -7831,7 +7984,8 @@ async function saveTask(){
       return;
     }
   } else {
-    if(!isEdit)MY_TASKS.push({id:'T-'+Date.now(),title,status:'Not Started',priority:fields.Priority,category:fields.TaskType,due,notes,assignedTo:assignTo});
+    if(isEdit){const task=MY_TASKS.find(t=>String(t.id)===String(editId));if(task){task.title=title;task.priority=fields.Priority;task.category=fields.TaskType;task.due=due;task.notes=notes;task.assignedTo=assignTo;}}
+    else MY_TASKS.push({id:'T-'+Date.now(),title,status:'Not Started',priority:fields.Priority,category:fields.TaskType,due,notes,assignedTo:assignTo||currentUserEmail});
   }
   closeAddTask();
   if(btn){btn.disabled=false;btn.textContent='Save Task';}
@@ -7842,9 +7996,10 @@ async function saveTask(){
 async function toggleTask(id){
   const t=MY_TASKS.find(t=>t.id===id);
   if(!t)return;
+  if(!canEditTeamTask(t)){alert('You can view this task, but you cannot change it.');return;}
   const oldStatus=t.status;
   t.status=t.status==='Done'?'Not Started':'Done';
-  if(LIST_IDS.myTasks&&!String(id).startsWith('T-')){
+  if(LIST_IDS.myTasks&&!isPreviewMode&&!String(id).startsWith('T-')){
     try{
       const token=await getToken(true);
       const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items/${id}`,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:t.status}})});
@@ -7861,9 +8016,10 @@ async function toggleTask(id){
 async function deleteTaskPermanently(id){
   const t=MY_TASKS.find(t=>t.id===id);
   if(!t)return;
+  if(!canDeleteTeamTask()){alert('Only Kimberley can permanently delete tasks.');return;}
   if(!confirm(`Permanently delete "${t.title}"? This can't be undone.`))return;
   try{
-    if(LIST_IDS.myTasks&&!String(id).startsWith('T-')){
+    if(LIST_IDS.myTasks&&!isPreviewMode&&!String(id).startsWith('T-')){
       const token=await getToken(true);
       const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+token}});
       if(!res.ok&&res.status!==404)throw new Error('HTTP '+res.status);
@@ -7874,6 +8030,109 @@ async function deleteTaskPermanently(id){
     console.error('deleteTaskPermanently failed:',e);
     alert('Could not delete the task: '+e.message);
   }
+}
+
+// ═══════════════════════════════════════
+// OPERATIONS MAP — boss view + system dependencies
+// ═══════════════════════════════════════
+let _opsView='boss';
+function pickOpsView(el){
+  document.querySelectorAll('#opsTabs .chip').forEach(chip=>chip.classList.remove('on'));
+  el.classList.add('on');
+  _opsView=el.dataset.ops||'boss';
+  renderOperationsMap();
+}
+
+function taskOwnerLabel(value){
+  const raw=(value||'').toLowerCase();
+  const member=AUTHORISED_TEAM.find(person=>person.emailAliases.some(email=>raw.includes(email.split('@')[0]))||person.names.some(name=>raw.includes(name.split(' ')[0])));
+  return member?.name.split(' ')[0]||((value||'Unassigned').split('@')[0]);
+}
+
+function taskDependency(task){
+  const type=(task.category||'').toLowerCase();
+  const title=(task.title||'').toLowerCase();
+  if(type.includes('design'))return{needs:'Approved brief, copy and dimensions',feeds:'Web, social, print and venue assets'};
+  if(type.includes('web')||title.includes('website')||title.includes('landing page'))return{needs:'Final copy, artwork, URL and tracking plan',feeds:'Bookings, SEO, paid media and reporting'};
+  if(type.includes('edm')||title.includes('mail')||title.includes('newsletter'))return{needs:'Consent-safe segment, offer, links and creative',feeds:'Mailing platform, conversions and CRM history'};
+  if(type.includes('paid')||title.includes('meta')||title.includes('google ad'))return{needs:'Budget, audience, creative, landing page and tracking',feeds:'Meta or Google campaigns and performance reporting'};
+  if(type.includes('pos')||title.includes('pos')||title.includes('till'))return{needs:'Confirmed price, dates, product and venue approval',feeds:'POS setup, Loaded Rewards and in-venue delivery'};
+  if(type.includes('social'))return{needs:'Approved message, creative and live URL',feeds:'Organic social and campaign reach'};
+  return{needs:'Named owner, due date and a clear decision or input',feeds:'The next delivery step or completed outcome'};
+}
+
+function renderOperationsMap(){
+  if(!isAuthed)return;
+  const el=document.getElementById('operationsMapBody');if(!el)return;
+  const tasks=MY_TASKS.filter(task=>task.title&&task.title.trim());
+  const open=tasks.filter(task=>task.status!=='Done');
+  const today=toLocalISODate(new Date());
+  const overdue=open.filter(task=>task.due&&task.due<today);
+  const blocked=open.filter(task=>task.status==='Blocked'||task.blocker);
+  const critical=open.filter(task=>task.priority==='Critical');
+  const owners=AUTHORISED_TEAM.map(member=>{
+    const first=member.name.split(' ')[0].toLowerCase();
+    const assigned=open.filter(task=>(taskOwnerLabel(task.assignedTo)||'').toLowerCase()===first);
+    return{...member,open:assigned.length,blocked:assigned.filter(task=>task.status==='Blocked'||task.blocker).length};
+  });
+
+  if(_opsView==='boss'){
+    const decisions=[...blocked,...critical.filter(task=>!blocked.includes(task))].slice(0,8);
+    const byStream={};open.forEach(task=>{const key=task.category||'General';byStream[key]=(byStream[key]||0)+1;});
+    const streams=Object.entries(byStream).sort((a,b)=>b[1]-a[1]);
+    el.innerHTML=`
+      <div class="stats" style="margin-bottom:12px">
+        <div class="stat"><div class="stat-n">${open.length}</div><div class="stat-l">Open Work Items</div></div>
+        <div class="stat ${overdue.length?'hi':''}"><div class="stat-n">${overdue.length}</div><div class="stat-l">Overdue</div></div>
+        <div class="stat ${blocked.length?'hi':''}"><div class="stat-n">${blocked.length}</div><div class="stat-l">Blocked / Waiting</div></div>
+        <div class="stat"><div class="stat-n">${critical.length}</div><div class="stat-l">Critical</div></div>
+      </div>
+      <div class="ops-grid" style="margin-bottom:12px">
+        ${owners.map(member=>`<div class="ops-person ${member.key==='kimberley'?'owner':''}">
+          <div class="ops-person-name">${member.name}</div><div class="ops-person-role">${member.role}</div>
+          <div class="ops-perm"><span>●</span><span>${member.open} open item${member.open===1?'':'s'}${member.blocked?` · ${member.blocked} blocked`:''}</span></div>
+          <div class="ops-perm"><span>✓</span><span>${member.key==='kimberley'?'Full control, priorities, structure and deletion':member.key==='perrin'?'View shared work and update assigned operations/POS items':'View shared work and edit management items'}</span></div>
+        </div>`).join('')}
+      </div>
+      <div class="g2">
+        <div class="card"><div class="card-h"><span class="card-title">Work by stream</span><span class="card-act" onclick="navTo('mytasks')">Open register →</span></div><div class="card-body">
+          ${streams.length?streams.map(([name,count])=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:11.5px"><span>${escapeAttr(name)}</span><strong>${count}</strong></div>`).join(''):'<div style="font-size:12px;color:var(--text3)">No live task data loaded yet.</div>'}
+        </div></div>
+        <div class="card"><div class="card-h"><span class="card-title">Decisions and blockers</span></div><div class="card-body">
+          ${decisions.length?decisions.map(task=>`<div style="padding:7px 0;border-bottom:1px solid var(--border)"><div style="font-size:11.5px;font-weight:650;color:var(--text)">${escapeAttr(task.title)}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">${escapeAttr(task.blocker||task.priority||'Needs attention')} · ${escapeAttr(taskOwnerLabel(task.assignedTo))}</div></div>`).join(''):'<div style="font-size:12px;color:var(--text3)">No blocked or critical items.</div>'}
+        </div></div>
+      </div>`;
+    return;
+  }
+
+  if(_opsView==='flow'){
+    el.innerHTML=`<div class="team-banner"><span style="font-size:18px">↻</span><div><strong>One operating loop</strong><br>SharePoint is the source of truth. The OS organises the work, delivery channels execute it, and results feed back into planning and customer data.</div></div>
+      <div class="ops-flow">
+        <div class="ops-stage"><h3>1. Inputs</h3><ul><li>Flagged emails and direct task emails</li><li>Venue submissions and activity briefs</li><li>Supplier, offer and product information</li><li>Leadership decisions and deadlines</li></ul></div>
+        <div class="ops-arrow">→</div>
+        <div class="ops-stage core"><h3>2. SharePoint source of truth</h3><ul><li>My Tasks, four-person work register</li><li>Marketing &amp; Activations master list</li><li>Loaded Rewards and reference lists</li><li>Mailing CRM, consent and import history</li></ul></div>
+        <div class="ops-arrow">→</div>
+        <div class="ops-stage"><h3>3. Marlin OS workflow</h3><ul><li>Priority, owner and due-date control</li><li>Dependencies and approval gates</li><li>Activity, task and CRM dashboards</li><li>Inbox, comments and exception review</li></ul></div>
+        <div class="ops-arrow">→</div>
+        <div class="ops-stage"><h3>4. Delivery and feedback</h3><ul><li>Web, Meta, Google, EDM and social</li><li>POS, Loaded, print and venue execution</li><li>Bookings, ticketing and customer actions</li><li>Results return to reporting and planning ↻</li></ul></div>
+      </div>`;
+    return;
+  }
+
+  if(_opsView==='dependencies'){
+    const rows=open.slice().sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999')).slice(0,40);
+    el.innerHTML=`<div class="card"><div class="card-h"><span class="card-title">What relies on what</span><span style="font-size:10.5px;color:var(--text3)">Derived from the live work register</span></div><div style="overflow:auto"><table class="dep-table"><thead><tr><th>Work item</th><th>Owner</th><th>Needs first</th><th>Feeds next</th><th>Due</th></tr></thead><tbody>${rows.length?rows.map(task=>{const dep=taskDependency(task);return`<tr><td><strong>${escapeAttr(task.title)}</strong><br><span style="color:var(--text3)">${escapeAttr(task.category||'General')}</span></td><td>${escapeAttr(taskOwnerLabel(task.assignedTo))}</td><td>${escapeAttr(dep.needs)}</td><td>${escapeAttr(dep.feeds)}</td><td>${task.due?fmtDate(task.due):'Not set'}</td></tr>`;}).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sign in and load the SharePoint task list to populate dependencies.</td></tr>'}</tbody></table></div></div>`;
+    return;
+  }
+
+  el.innerHTML=`<div class="foundation-grid">
+    <div class="foundation-card"><strong>1. Restrict the SharePoint list to four users</strong><p>Kimberley needs Full Control. Perrin, Amelia and Ben need the agreed read/edit level. Remove broad site-member inheritance before treating the register as restricted.</p></div>
+    <div class="foundation-card"><strong>2. Use real Person columns</strong><p>Owner and Shared With should resolve actual Microsoft 365 identities. Free-text names are useful labels, but poor security controls and unreliable automation keys.</p></div>
+    <div class="foundation-card"><strong>3. Add explicit dependency fields</strong><p>Add Depends On, Blocks, Decision Required and Approval Owner. Without these, the map can infer relationships, but it cannot prove them.</p></div>
+    <div class="foundation-card"><strong>4. Finish the email-to-task flow</strong><p>Capture the original email link, sender, conversation ID and source. The flow should create the item without modifying or replying to the original email.</p></div>
+    <div class="foundation-card"><strong>5. Separate shared work from genuinely private tasks</strong><p>The four-person register is a work system. Personal or sensitive tasks should live in a separate private list, not rely on a hidden dashboard filter.</p></div>
+    <div class="foundation-card"><strong>6. Add production controls</strong><p>Test all four accounts, enable SharePoint version history, index owner/status/due date, document rollback, and keep development and production releases separate.</p></div>
+  </div>`;
 }
 
 // ═══════════════════════════════════════
@@ -8602,8 +8861,10 @@ async function loadCRMSetup(force=false){
   if(!isAuthed)return;
   const health=document.getElementById('crmHealth');if(health)health.innerHTML='<div class="loading"><div class="spinner"></div></div>';
   if(isPreviewMode){
-    if(health)health.innerHTML='<div style="padding:16px;color:var(--text2)"><strong>Preview mode</strong><br><span style="color:var(--text3)">Sign in with Microsoft 365 to check or create the SharePoint CRM database. No live customer data is loaded in this view.</span></div>';
-    const stats=document.getElementById('crmStats');if(stats)stats.innerHTML=[['Master customers','—'],['Sources connected','—'],['Imports','—'],['Live writes','Off']].map(([label,value])=>`<div class="stat"><div class="stat-n">${value}</div><div class="stat-l">${label}</div></div>`).join('');
+    seedCRMPreview();
+    if(health)health.innerHTML=Object.entries(CRM_LIST_NAMES).map(([,name])=>`<div class="crm-health-row"><strong>${escapeAttr(name)}</strong><strong style="color:var(--gold)">Demo</strong><span style="color:var(--text3)">Schema mapped. Live connection waits for SharePoint approval.</span></div>`).join('');
+    const stats=document.getElementById('crmStats');if(stats)stats.innerHTML=[['Demo customers',CRM_CUSTOMERS.length],['Source records',CRM_SOURCE_LINKS.length],['Held for review',CRM_CUSTOMERS.filter(c=>c.status==='Needs Review').length],['Live writes','Locked']].map(([label,value])=>`<div class="stat"><div class="stat-n">${value}</div><div class="stat-l">${label}</div></div>`).join('');
+    populateCRMVenueSelect();renderCRMSegments();renderCRMReview();
     return;
   }
   try{
@@ -8658,6 +8919,7 @@ function renderCRMHealth(){
 }
 
 async function createMissingCRMColumns(options={}){
+  if(!CRM_WRITE_ENABLED){alert('CRM schema writes are locked in this build. IT can add the approved columns directly in SharePoint, then use Check setup here.');return{created:0,failures:[],locked:true};}
   const {confirmWrite=true,announce=true}=options;
   const issues=crmSetupIssues().filter(issue=>issue.status==='Missing columns');
   const total=issues.reduce((sum,issue)=>sum+issue.missing.length,0);
@@ -8681,6 +8943,7 @@ async function createMissingCRMColumns(options={}){
 }
 
 async function createCRMDatabase(){
+  if(!CRM_WRITE_ENABLED){alert('CRM database creation is locked in this build. The existing SharePoint lists remain untouched.');return;}
   if(!isAuthed){alert('Sign in to Microsoft 365 first.');return;}
   await loadCRMSetup(true);
   const missing=Object.entries(CRM_LIST_NAMES).filter(([key])=>!CRM_LISTS[key]);
@@ -8717,6 +8980,9 @@ async function createCRMDatabase(){
 
 function renderCRM(){
   if(currentRole!=='admin')return;
+  const badge=document.getElementById('crmModeBadge');
+  if(badge){badge.textContent=isPreviewMode?'Demo data · writes locked':CRM_WRITE_ENABLED?'Live SharePoint':'SharePoint read-only';badge.className='crm-mode '+(CRM_WRITE_ENABLED?'live':'locked');}
+  if(isPreviewMode)seedCRMPreview();
   loadCRMSetup();
 }
 function pickCRMTab(button){
@@ -8724,6 +8990,8 @@ function pickCRMTab(button){
   document.querySelectorAll('.crm-section').forEach(section=>section.classList.remove('active'));
   document.getElementById('crm-'+button.dataset.crmTab)?.classList.add('active');
   if(button.dataset.crmTab==='customers')loadCRMCustomers();
+  if(button.dataset.crmTab==='review')renderCRMReview();
+  if(button.dataset.crmTab==='segments')renderCRMSegments();
   if(button.dataset.crmTab==='history')loadCRMHistory();
   if(button.dataset.crmTab==='connections')loadCRMConnections();
 }
@@ -8735,9 +9003,11 @@ async function crmFetchItems(listKey,token){
 function crmCustomerFromItem(item){
   const f=item.fields||{};
   const email=crmRead(f,'customers','PrimaryEmail')||'',phone=crmRead(f,'customers','PrimaryPhone')||'';
-  return{spId:String(item.id),title:crmRead(f,'customers','Title')||'',firstName:crmRead(f,'customers','FirstName')||'',lastName:crmRead(f,'customers','LastName')||'',email,emailNorm:crmRead(f,'customers','EmailNormalized')||normaliseCRMEmail(email),phone,phoneNorm:crmRead(f,'customers','PhoneNormalized')||normaliseCRMPhone(phone),status:crmRead(f,'customers','CustomerStatus')||'',sourceCount:Number(crmRead(f,'customers','SourceCount')||0),fields:f};
+  const suppressed=crmRead(f,'customers','MarketingSuppressed')===true;
+  return{spId:String(item.id),title:crmRead(f,'customers','Title')||'',firstName:crmRead(f,'customers','FirstName')||'',lastName:crmRead(f,'customers','LastName')||'',email,emailNorm:crmRead(f,'customers','EmailNormalized')||normaliseCRMEmail(email),phone,phoneNorm:crmRead(f,'customers','PhoneNormalized')||normaliseCRMPhone(phone),status:crmRead(f,'customers','CustomerStatus')||'',sourceCount:Number(crmRead(f,'customers','SourceCount')||0),venue:crmRead(f,'customers','PreferredVenue')||'',suppressed,consent:suppressed?'Suppressed':'Unknown',lastSeen:crmRead(f,'customers','LastSeen')||'',fields:f};
 }
 async function loadCRMCustomers(force=false){
+  if(isPreviewMode){seedCRMPreview();renderCRMCustomers();return;}
   if(!CRM_SETUP_LOADED)await loadCRMSetup();
   if(!CRM_LISTS.customers){renderCRMCustomers();return;}
   if(force||!CRM_CUSTOMERS.length){CRM_CUSTOMERS=(await crmFetchItems('customers')).map(crmCustomerFromItem);}
@@ -8745,10 +9015,37 @@ async function loadCRMCustomers(force=false){
 }
 function renderCRMCustomers(){
   const el=document.getElementById('crmCustomerList');if(!el)return;
-  if(!CRM_LISTS.customers){el.innerHTML='<div style="padding:24px;color:var(--red)">All Customer Data was not found on this SharePoint site.</div>';return;}
+  if(!CRM_LISTS.customers&&!isPreviewMode){el.innerHTML='<div style="padding:24px;color:var(--red)">All Customer Data was not found on this SharePoint site.</div>';return;}
   const q=normaliseImportText(document.getElementById('crmCustomerSearch')?.value||'');
-  const rows=CRM_CUSTOMERS.filter(customer=>!q||normaliseImportText([customer.title,customer.email,customer.phone,customer.spId].join(' ')).includes(q)).slice(0,300);
-  el.innerHTML=rows.length?`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Customer</th><th>Email</th><th>Phone</th><th>Sources</th><th>Status</th></tr></thead><tbody>${rows.map(customer=>`<tr><td><div class="tbl-name">${escapeAttr(customer.title||[customer.firstName,customer.lastName].filter(Boolean).join(' ')||'Unnamed customer')}</div><div class="tbl-sub">#${customer.spId}</div></td><td>${escapeAttr(customer.email)}</td><td>${escapeAttr(customer.phone)}</td><td>${customer.sourceCount||0}</td><td>${escapeAttr(customer.status||'Active')}</td></tr>`).join('')}</tbody></table></div>`:'<div style="padding:24px;color:var(--text3)">No matching customers.</div>';
+  const consentFilter=document.getElementById('crmConsentFilter')?.value||'';
+  const mailingState=customer=>customer.suppressed?'suppressed':customer.consent==='Opted In'&&customer.email?'mail':'hold';
+  const rows=CRM_CUSTOMERS.filter(customer=>(!q||normaliseImportText([customer.title,customer.email,customer.phone,customer.spId,customer.venue].join(' ')).includes(q))&&(!consentFilter||mailingState(customer)===consentFilter)).slice(0,300);
+  el.innerHTML=rows.length?`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Customer</th><th>Contact</th><th>Venue / source</th><th>Sources</th><th>Mailing status</th></tr></thead><tbody>${rows.map(customer=>{const state=mailingState(customer);const label=state==='mail'?'Safe to mail':state==='suppressed'?'Suppressed':'Hold / unknown';const colour=state==='mail'?'#15803d':state==='suppressed'?'var(--red)':'var(--gold)';return`<tr><td><div class="tbl-name">${escapeAttr(customer.title||[customer.firstName,customer.lastName].filter(Boolean).join(' ')||'Unnamed customer')}</div><div class="tbl-sub">#${customer.spId} · last seen ${escapeAttr(customer.lastSeen||'unknown')}</div></td><td>${escapeAttr(customer.email)}<div class="tbl-sub">${escapeAttr(customer.phone)}</div></td><td>${escapeAttr(customer.venue||'Group-wide')}<div class="tbl-sub">${escapeAttr(customer.source||'SharePoint')}</div></td><td>${customer.sourceCount||0}</td><td><strong style="color:${colour}">${label}</strong><div class="tbl-sub">${escapeAttr(customer.consent||'Unknown')}</div></td></tr>`;}).join('')}</tbody></table></div>`:'<div style="padding:24px;color:var(--text3)">No matching customers.</div>';
+}
+
+function crmMailingState(customer){return customer.suppressed?'suppressed':customer.consent==='Opted In'&&customer.email?'mail':'hold';}
+function renderCRMSegments(){
+  const el=document.getElementById('crmSegments');if(!el)return;if(isPreviewMode)seedCRMPreview();
+  const safe=CRM_CUSTOMERS.filter(c=>crmMailingState(c)==='mail'),held=CRM_CUSTOMERS.filter(c=>crmMailingState(c)==='hold'),suppressed=CRM_CUSTOMERS.filter(c=>crmMailingState(c)==='suppressed');
+  const venues=[...new Set(CRM_CUSTOMERS.map(c=>c.venue).filter(Boolean))];
+  el.innerHTML=`<div class="crm-segment" onclick="setCRMCustomerFilter('mail')"><strong>${safe.length}</strong><span>Safe to mail · explicit opt-in and valid email</span></div><div class="crm-segment" onclick="setCRMCustomerFilter('hold')"><strong>${held.length}</strong><span>Hold · consent missing or identity needs review</span></div><div class="crm-segment" onclick="setCRMCustomerFilter('suppressed')"><strong>${suppressed.length}</strong><span>Suppressed · excluded from every mailing export</span></div><div class="crm-segment"><strong>${venues.length}</strong><span>Venue audiences available for segmentation</span></div>`;
+}
+function setCRMCustomerFilter(value){const filter=document.getElementById('crmConsentFilter');if(filter)filter.value=value;const tab=document.querySelector('[data-crm-tab="customers"]');if(tab)pickCRMTab(tab);}
+function renderCRMReview(){
+  const el=document.getElementById('crmReviewQueue');if(!el)return;if(isPreviewMode)seedCRMPreview();
+  const preflightHeld=CRM_PREFLIGHT.map((item,index)=>({...item,index})).filter(item=>['review','conflict','invalid'].includes(item.status));
+  const masterHeld=CRM_CUSTOMERS.filter(customer=>customer.status==='Needs Review').map(customer=>({customer,reason:customer.consent==='Unknown'?'Consent is unknown, marketing remains suppressed.':'Customer identity needs review.'}));
+  const count=preflightHeld.length+masterHeld.length;const badge=document.getElementById('crmReviewBadge');if(badge)badge.textContent=count?`(${count})`:'';
+  const imported=preflightHeld.map(item=>`<div class="crm-review-card"><div style="flex:1"><strong>${escapeAttr(item.data?.fullName||'Import row '+(item.row?._csvRow||''))}</strong><div class="tbl-sub">${escapeAttr(item.data?.email||item.data?.phone||'No reliable identifier')}</div><div style="font-size:11px;color:var(--text2);margin-top:5px">${escapeAttr(item.reason)}</div></div>${isPreviewMode?`<div style="display:flex;gap:5px;flex-wrap:wrap"><button class="tb-btn" onclick="crmReviewDecision(${item.index},'new')">Treat as new</button><button class="tb-btn" onclick="crmReviewDecision(${item.index},'skip')">Keep held</button></div>`:''}</div>`).join('');
+  const masters=masterHeld.map(item=>`<div class="crm-review-card"><div style="flex:1"><strong>${escapeAttr(item.customer.title)}</strong><div class="tbl-sub">${escapeAttr(item.customer.email||item.customer.phone||'No contact detail')} · ${escapeAttr(item.customer.venue||'Group-wide')}</div><div style="font-size:11px;color:var(--text2);margin-top:5px">${escapeAttr(item.reason)}</div></div><span class="tag t-a">HOLD</span></div>`).join('');
+  el.innerHTML=imported+masters||'<div style="padding:24px;text-align:center;color:var(--text3)">Nothing needs review. Miracles do happen.</div>';
+}
+function crmReviewDecision(index,decision){const item=CRM_PREFLIGHT[index];if(!item)return;if(decision==='new'){item.status='new';item.reason='Manually approved as a new customer in simulation';}else{item.status='review';item.reason='Kept on hold for later review';}renderCRMPreflight();renderCRMReview();}
+function exportCRMSegment(kind='mail'){
+  const rows=CRM_CUSTOMERS.filter(customer=>crmMailingState(customer)===kind);if(!rows.length){alert('There are no customers in this segment.');return;}
+  const quote=value=>`"${String(value??'').replace(/"/g,'""')}"`;const headers=['Customer ID','First Name','Last Name','Email','Phone','Preferred Venue','Consent Status','Source Count'];
+  const csv=[headers.map(quote).join(','),...rows.map(c=>[c.spId,c.firstName,c.lastName,c.email,c.phone,c.venue,c.consent,c.sourceCount].map(quote).join(','))].join('\r\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`Marlin_CRM_${kind}_${toLocalISODate(new Date())}.csv`;link.click();URL.revokeObjectURL(link.href);
 }
 
 function populateCRMVenueSelect(){
@@ -8841,11 +9138,38 @@ function crmRowData(row){
   return{sourceId:crmMapped(row,'sourceId'),firstName,lastName,fullName:fullName||[firstName,lastName].filter(Boolean).join(' '),email,emailNorm:normaliseCRMEmail(email),phone,phoneNorm:normaliseCRMPhone(phone),dob:normaliseCRMDate(crmMapped(row,'dob')),venue:crmMapped(row,'venue')||document.getElementById('crmDefaultVenue')?.value||'',emailConsent:crmConsent(crmMapped(row,'emailConsent')),smsConsent:crmConsent(crmMapped(row,'smsConsent')),marketingEligibility:crmMapped(row,'marketingEligibility'),optInTime:normaliseCRMDateTime(crmMapped(row,'optInTime')),optInIp,optInIpQuality:crmIPQuality(optInIp),confirmTime:normaliseCRMDateTime(crmMapped(row,'confirmTime')),confirmIp,withdrawTime:normaliseCRMDateTime(crmMapped(row,'withdrawTime')),consentTextVersion:crmMapped(row,'consentTextVersion'),formIdOrUrl:crmMapped(row,'formIdOrUrl'),loyaltyTier:crmMapped(row,'loyaltyTier'),suburb:crmMapped(row,'suburb'),postcode:crmMapped(row,'postcode'),state:crmMapped(row,'state'),notes:crmMapped(row,'notes')};
 }
 
+function buildCRMPreviewPreflight(sourceSystem){
+  seedCRMPreview();
+  const emailIndex=new Map(),phoneIndex=new Map();
+  CRM_CUSTOMERS.forEach(customer=>{if(customer.emailNorm)(emailIndex.get(customer.emailNorm)||emailIndex.set(customer.emailNorm,[]).get(customer.emailNorm)).push(customer);if(customer.phoneNorm)(phoneIndex.get(customer.phoneNorm)||phoneIndex.set(customer.phoneNorm,[]).get(customer.phoneNorm)).push(customer);});
+  const fileGroups=new Map();
+  CRM_PREFLIGHT=CRM_ROWS.map(row=>{
+    const data=crmRowData(row),sourceKey=data.sourceId?`${normaliseImportText(sourceSystem)}|${normaliseImportText(data.sourceId)}`:'';
+    const emailMatches=data.emailNorm?(emailIndex.get(data.emailNorm)||[]):[],phoneMatches=data.phoneNorm?(phoneIndex.get(data.phoneNorm)||[]):[];
+    const candidates=[...new Map(emailMatches.concat(phoneMatches).map(c=>[c.spId,c])).values()];
+    let status='new',reason='No exact email, phone or source match',customer=null,matchMethod='New customer';
+    if(emailMatches.length&&phoneMatches.length&&emailMatches[0].spId!==phoneMatches[0].spId){status='conflict';reason=`Email points to #${emailMatches[0].spId}, phone points to #${phoneMatches[0].spId}`;matchMethod='Conflicting identifiers';}
+    else if(candidates.length===1){customer=candidates[0];status='update';reason=`Unique ${emailMatches.length?'email':'phone'} match to customer #${customer.spId}`;matchMethod=emailMatches.length?'Exact email':'Exact phone';}
+    else if(candidates.length>1){status='review';reason=`${candidates.length} possible customers share this contact detail`;matchMethod='Multiple candidates';}
+    if(status==='new'&&!data.emailNorm&&!data.phoneNorm&&!data.sourceId){status='invalid';reason='No valid email, phone or source record ID';matchMethod='Insufficient identity';}
+    const groupKey=data.emailNorm?`e:${data.emailNorm}`:data.phoneNorm?`p:${data.phoneNorm}`:sourceKey?`s:${normaliseImportText(sourceKey)}`:'';
+    if(status==='new'&&groupKey&&fileGroups.has(groupKey)){status='consolidate';reason=`Same identity as file row ${fileGroups.get(groupKey)}; both become one master customer`;matchMethod='Same-file exact identifier';}
+    if(status==='new'&&groupKey)fileGroups.set(groupKey,row._csvRow);
+    return{row,data,sourceKey,status,reason,customer,matchMethod,groupKey};
+  });
+  renderCRMPreflight();renderCRMReview();
+  const actionable=CRM_PREFLIGHT.filter(item=>['new','update','consolidate'].includes(item.status)).length;
+  document.getElementById('crmRunBtn').disabled=!actionable;
+  document.getElementById('crmExportHeldBtn').disabled=!CRM_PREFLIGHT.some(item=>['review','conflict','invalid'].includes(item.status));
+  crmSetMessage(`${actionable} confident rows pass the simulation. ${CRM_PREFLIGHT.length-actionable} are held or invalid. No SharePoint data has been changed.`,'ok');
+}
+
 async function preflightCRMImport(){
   const sourceSystem=document.getElementById('crmSourceSystem')?.value.trim();
   if(!sourceSystem){crmSetMessage('Enter the source system before checking matches.','err');return;}
   if(!CRM_ROWS.length){crmSetMessage('Choose a customer export first.','err');return;}
   const btn=document.getElementById('crmPreflightBtn');btn.disabled=true;btn.textContent='Checking master CRM…';
+  if(isPreviewMode){try{buildCRMPreviewPreflight(sourceSystem);}catch(e){crmSetMessage('CRM simulation failed: '+e.message,'err');}finally{btn.disabled=false;btn.textContent='Check against master CRM';}return;}
   try{
     await loadCRMSetup(true);
     const issues=crmSetupIssues();if(issues.length)throw new Error('CRM setup is incomplete. Open Overview and create the missing columns before importing.');
@@ -8881,7 +9205,8 @@ async function preflightCRMImport(){
     });
     renderCRMPreflight();
     const actionable=CRM_PREFLIGHT.filter(item=>['new','update','consolidate'].includes(item.status)).length;
-    document.getElementById('crmRunBtn').disabled=!actionable;
+    document.getElementById('crmRunBtn').disabled=!actionable||!CRM_WRITE_ENABLED;
+    document.getElementById('crmRunBtn').textContent=CRM_WRITE_ENABLED?'Import confident records':'Writes locked';
     document.getElementById('crmExportHeldBtn').disabled=!CRM_PREFLIGHT.some(item=>['review','conflict','invalid'].includes(item.status));
     crmSetMessage(`${actionable} confident rows can be imported. ${CRM_PREFLIGHT.length-actionable} are held or invalid and will not be written.`,'ok');
   }catch(e){crmSetMessage('CRM preflight failed: '+e.message,'err');}
@@ -8919,8 +9244,16 @@ function crmCustomerValues(data,now){return{Title:data.fullName||data.email||dat
 
 async function runCRMImport(){
   const actionable=CRM_PREFLIGHT.filter(item=>['new','update','consolidate'].includes(item.status));if(!actionable.length)return;
+  const button=document.getElementById('crmRunBtn');
+  if(isPreviewMode){
+    if(!confirm(`Simulate importing ${actionable.length} confident rows? This changes demo data only.`))return;
+    let created=0,updated=0;actionable.forEach((item,index)=>{const priorStatus=item.status;if(priorStatus==='update'){item.status='updated';updated++;}else{item.status='created';created++;if(priorStatus!=='consolidate'){const data=item.data;CRM_CUSTOMERS.push({spId:`SIM-${Date.now()}-${index}`,title:data.fullName||data.email||'Unnamed customer',firstName:data.firstName,lastName:data.lastName,email:data.email,emailNorm:data.emailNorm,phone:data.phone,phoneNorm:data.phoneNorm,status:crmMarketingSuppressed(data)?'Needs Review':'Active',sourceCount:1,venue:data.venue,source:document.getElementById('crmSourceSystem').value.trim(),consent:data.emailConsent||'Unknown',suppressed:crmMarketingSuppressed(data),lastSeen:toLocalISODate(new Date())});}item.reason='Simulated safe write, no SharePoint record created';}});
+    CRM_IMPORTS.unshift({demo:true,title:`Simulation · ${CRM_FILE_NAME||'customer export'}`,status:'Simulation complete',source:document.getElementById('crmSourceSystem').value.trim(),date:new Date().toLocaleString('en-AU'),rows:CRM_PREFLIGHT.length});
+    renderCRMPreflight();renderCRMSegments();renderCRMReview();crmSetMessage(`Simulation complete: ${created} would be created, ${updated} would be updated. SharePoint remains untouched.`,'ok');button.disabled=true;return;
+  }
+  if(!CRM_WRITE_ENABLED){crmSetMessage('SharePoint writes are locked in this build. The preflight results are safe to review or export.','err');return;}
   if(!confirm(`Import ${actionable.length} confident customer rows? Held, conflicting and invalid rows will remain untouched.`))return;
-  const button=document.getElementById('crmRunBtn');button.disabled=true;const token=await getToken(true);const sourceSystem=document.getElementById('crmSourceSystem').value.trim();const now=crmNow();
+  button.disabled=true;const token=await getToken(true);const sourceSystem=document.getElementById('crmSourceSystem').value.trim();const now=crmNow();
   let batch=null,created=0,updated=0,linked=0,failed=0;const groupCustomerIds=new Map();
   try{
     batch=await crmCreateItem('imports',crmPayload('imports',{Title:`${sourceSystem} · ${CRM_FILE_NAME} · ${new Date().toLocaleString('en-AU')}`,SourceSystem:sourceSystem,SourceVenue:document.getElementById('crmDefaultVenue').value,FileName:CRM_FILE_NAME,ImportedAt:now,ImportedBy:currentUser?.name||currentUserEmail,ImportStatus:'Running',RowsTotal:CRM_PREFLIGHT.length,MappingJSON:JSON.stringify(CRM_MAPPING)}),token);
@@ -8999,12 +9332,18 @@ function exportCRMHeldRows(){
 }
 
 async function loadCRMHistory(){
+  if(isPreviewMode){
+    seedCRMPreview();const importEl=document.getElementById('crmImportHistory'),changeEl=document.getElementById('crmChangeHistory');
+    importEl.innerHTML=CRM_IMPORTS.map(item=>`<div class="ev-row"><div class="ev-info"><div class="ev-name">${escapeAttr(item.title)}</div><div class="ev-meta"><span>${escapeAttr(item.status)}</span><span>${escapeAttr(item.source)}</span><span>${escapeAttr(item.date)}</span><span>${item.rows||0} rows</span></div></div></div>`).join('');
+    changeEl.innerHTML=CRM_CHANGES.map(item=>`<div class="ev-row"><div class="ev-info"><div class="ev-name">${escapeAttr(item.title)}</div><div class="ev-meta"><span>${escapeAttr(item.source)}</span><span>${escapeAttr(item.date)}</span></div></div></div>`).join('');return;
+  }
   if(!CRM_SETUP_LOADED)await loadCRMSetup();if(!CRM_LISTS.imports)return;const token=await getToken();
   const [imports,changes]=await Promise.all([crmFetchItems('imports',token),crmFetchItems('changeLog',token)]);CRM_IMPORTS=imports;CRM_CHANGES=changes;
   const importEl=document.getElementById('crmImportHistory');importEl.innerHTML=imports.slice(-100).reverse().map(item=>`<div class="ev-row"><div class="ev-info"><div class="ev-name">${escapeAttr(crmRead(item.fields,'imports','Title')||'Import')}</div><div class="ev-meta"><span>${escapeAttr(crmRead(item.fields,'imports','ImportStatus')||'')}</span><span>${escapeAttr(crmRead(item.fields,'imports','SourceSystem')||'')}</span><span>${escapeAttr(crmRead(item.fields,'imports','ImportedAt')||'')}</span></div></div></div>`).join('')||'<div style="padding:24px;color:var(--text3)">No imports yet.</div>';
   const changeEl=document.getElementById('crmChangeHistory');changeEl.innerHTML=changes.slice(-150).reverse().map(item=>`<div class="ev-row"><div class="ev-info"><div class="ev-name">${escapeAttr(crmRead(item.fields,'changeLog','Title')||'Change')}</div><div class="ev-meta"><span>${escapeAttr(crmRead(item.fields,'changeLog','SourceSystem')||'')}</span><span>${escapeAttr(crmRead(item.fields,'changeLog','ChangedAt')||'')}</span></div></div></div>`).join('')||'<div style="padding:24px;color:var(--text3)">No changes yet.</div>';
 }
 async function loadCRMConnections(){
+  if(isPreviewMode){const el=document.getElementById('crmConnectionsList');if(el)el.innerHTML=[['Manual file import','Available now','Browser preflight only'],['Now Book It','Planned','Power Automate or API'],['Loaded Rewards','Planned','Scheduled export or API'],['Mailchimp / mailing platform','Planned','Approved segments outbound only']].map(([name,status,note])=>`<div class="ev-row"><div class="ev-info"><div class="ev-name">${name}</div><div class="ev-meta"><span>${status}</span><span>${note}</span></div></div></div>`).join('');return;}
   if(!CRM_SETUP_LOADED)await loadCRMSetup();const el=document.getElementById('crmConnectionsList');if(!el||!CRM_LISTS.connections)return;const items=await crmFetchItems('connections');
   el.innerHTML=items.map(item=>`<div class="ev-row"><div class="ev-info"><div class="ev-name">${escapeAttr(crmRead(item.fields,'connections','Title')||crmRead(item.fields,'connections','SourceSystem')||'Connection')}</div><div class="ev-meta"><span>${escapeAttr(crmRead(item.fields,'connections','ConnectionType')||'')}</span><span>${escapeAttr(crmRead(item.fields,'connections','ConnectionStatus')||'')}</span><span>${escapeAttr(crmRead(item.fields,'connections','LastSync')||'Never synced')}</span></div></div></div>`).join('')||'<div style="padding:16px;color:var(--text3)">No automated connections configured yet. Manual imports are available now.</div>';
 }
