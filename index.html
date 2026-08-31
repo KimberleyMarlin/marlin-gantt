@@ -2239,12 +2239,10 @@ function authorisedMember(profile,email){
 }
 
 function authorisedAssignableUsers(){
-  const directory=M365_USERS.length?M365_USERS:AUTHORISED_TEAM.map(member=>({name:member.name,email:member.emailAliases[0]}));
-  return directory.filter(user=>{
-    const display=(user.name||'').trim().toLowerCase();
-    const email=(user.email||'').toLowerCase();
-    return AUTHORISED_TEAM.some(member=>member.names.includes(display)||member.emailAliases.includes(email));
-  });
+  // M365_USERS is already the curated ASSIGNABLE roster loaded from the tenant directory
+  // (see loadM365Users) — re-filtering it down to just AUTHORISED_TEAM left everyone else
+  // un-assignable. Fall back to the four head-office names only if the directory hasn't loaded.
+  return M365_USERS.length?M365_USERS:AUTHORISED_TEAM.map(member=>({name:member.name,email:member.emailAliases[0]}));
 }
 
 // Role → what they can see and do
@@ -2269,11 +2267,29 @@ const ROLE_CONFIG={
     canEdit:false, canApprove:false, canViewBudget:false, canViewAll:false,
     hidePanels:['crossvenue','pipeline','loaded','ticketing','workload','social','budget','venues','sponsorships','specials','projects','approvals','crm'], defaultPanel:'venuemonth'
   },
+  // Default for any signed-in Marlin M365 account that isn't in ROLE_MAP and doesn't match a
+  // job-title keyword. Everyone who can complete Microsoft sign-in against our tenant can submit
+  // activities, see all pages and edit — budget and the customer-data CRM stay restricted.
+  staff:{
+    canEdit:true, canApprove:false, canViewBudget:false, canViewAll:true,
+    hidePanels:['budget','crm'], defaultPanel:'overview'
+  },
   general:{
     canEdit:false, canApprove:false, canViewBudget:false, canViewAll:false,
     hidePanels:['crossvenue','pipeline','loaded','ticketing','workload','social','budget','venues','sponsorships','specials','projects','approvals','crm'], defaultPanel:'overview'
   }
 };
+
+// Named exceptions who can see budget/financial figures regardless of their Hub role — e.g. Perrin
+// holds the 'ops' role (so POS/ops task routing still finds him via ROLE_EMAILS.ops) but also needs
+// financial visibility. Add more emails here as Kim confirms who else needs financial access.
+const FINANCE_ACCESS=new Set([
+  'kimberley@marlinhospitality.com.au','kimberley@marlingroup.com.au','kim@marlinhospitality.com.au','kim@marlingroup.com.au',
+  'perrin@marlinhospitality.com.au',
+  'amelia@marlinhospitality.com.au',
+  'ben@marlinhospitality.com.au',
+]);
+function hasFinanceAccess(){return FINANCE_ACCESS.has((currentUserEmail||'').toLowerCase());}
 
 let currentRole='general'; // fail closed until the signed-in user is resolved
 let currentVenueAccess=null; // null = all venues
@@ -2347,7 +2363,10 @@ async function resolveRole(email){
     currentVenueAccess=mapped.venue||null;
   } else {
     const m365Role=await resolveRoleFromM365();
-    currentRole=m365Role?.role||'general';
+    // No exact ROLE_MAP entry and no title/department keyword match — this is any other
+    // authenticated Marlin M365 account. 'staff' (not 'general') lets them submit tickets and
+    // see all pages rather than failing closed to almost nothing.
+    currentRole=m365Role?.role||'staff';
     currentVenueAccess=m365Role?.venue||null;
   }
   applyRoleUI();
@@ -3730,22 +3749,14 @@ async function onAuthed(acc){
   document.getElementById('authLabel').textContent='Sign out';
   document.getElementById('userLabel').textContent=acc.name||acc.username;
   document.getElementById('gate').style.display='none';
-  // Resolve role and apply UI restrictions
+  // Resolve role and apply UI restrictions. Signing in at all already proves this account
+  // belongs to the Marlin Microsoft 365 tenant (MSAL is locked to our tenant ID), so anyone who
+  // gets this far is legitimate staff — the Hub role (resolved above) controls what they can see
+  // and do, it does not gate whether they can sign in.
   await resolveRole(currentUserEmail);
   const member=authorisedMember(currentM365Profile,currentUserEmail);
-  if(!member){
-    isAuthed=false;
-    document.getElementById('gate').style.display='flex';
-    document.querySelector('#gate .gate-icon').textContent='⛔';
-    document.querySelector('#gate .gate-title').textContent='Access not enabled';
-    document.querySelector('#gate .gate-sub').textContent='This working dashboard is currently restricted to Kimberley, Perrin, Amelia and Ben.';
-    document.querySelector('#gate .gate-btn').style.display='none';
-    const preview=document.querySelectorAll('#gate .gate-btn')[1];if(preview)preview.style.display='none';
-    document.querySelector('#gate .gate-note').innerHTML='<button class="tb-btn" onclick="signOut()">Sign out</button>';
-    document.getElementById('userLabel').textContent='Access not enabled';
-    return false;
-  }
-  document.getElementById('userLabel').textContent=`${member.name} · ${member.role}`;
+  const displayName=member?.name||currentM365Profile?.displayName||acc.name||acc.username;
+  document.getElementById('userLabel').textContent=`${displayName} · ${currentRole}`;
   // Restore this person's saved calendar view (Month/Week/Gantt/Venue Monthly/Overview) —
   // remembered per-user so everyone lands back where they left it, not always on Month.
   scheduleView=getUserPref('calView',scheduleView);
@@ -4989,7 +5000,11 @@ function nav(btn){
 }
 function navTo(id){const btn=document.querySelector(`.sb-item[data-p="${id}"]`);if(btn)nav(btn);else showPanel(id);}
 
-function rolePermissions(){return ROLE_CONFIG[currentRole]||ROLE_CONFIG.general;}
+function rolePermissions(){
+  const base=ROLE_CONFIG[currentRole]||ROLE_CONFIG.general;
+  if(!hasFinanceAccess()||base.canViewBudget)return base;
+  return{...base,canViewBudget:true,hidePanels:base.hidePanels.filter(panel=>panel!=='budget')};
+}
 function canAccessPanel(id){
   if(id==='personaltasks')return isPreviewMode||currentRole==='admin';
   if(id==='crm')return canAccessMailing();
