@@ -1653,53 +1653,36 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             </div>
           </div>
 
-          <div class="form-section-head"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fNeedsChannels" onchange="updateActivityConditionalSections()"> Marketing / promotion support required</label></div>
+          <div class="form-section-head">
+            <div style="display:flex;gap:20px;flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fNeedsChannels" onchange="updateActivityConditionalSections()"> Promote this activity</label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fNeedsDesign" onchange="updateActivityConditionalSections()"> Artwork / design needed</label>
+            </div>
+          </div>
           <div class="form-grid" id="fChannelsGroup" style="display:none">
             <div class="form-group full">
-              <div class="multiselect-dd" style="position:relative">
-                <button type="button" class="form-select" style="text-align:left;cursor:pointer;width:100%;display:flex;justify-content:space-between;align-items:center" onclick="toggleMultiSelectDD('ddChannels')">
-                  <span id="ddChannelsSummary">Select channels…</span><span style="opacity:.5">▾</span>
-                </button>
-                <div id="ddChannels" class="multiselect-panel" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:var(--sh-md);max-height:240px;overflow-y:auto;z-index:20;padding:8px;margin-top:2px">
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanWebsite" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> Website</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanMeta" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> Meta</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanNewsletter" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> Newsletter</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanLoaded" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> Loaded</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanGBP" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> Google Business Profile</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanGoogleAds" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> Google Ads</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanInVenue" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> In-venue</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanRadio" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> Radio</label>
-                </div>
+              <div class="field-help" style="margin-bottom:8px">Promoting somewhere and needing artwork made for it are different questions — tick both if you need both. A greyed column means that box above isn't ticked yet.</div>
+              <div style="overflow-x:auto">
+                <table class="tbl" style="min-width:420px">
+                  <thead><tr><th>Surface</th><th style="text-align:center">Promote</th><th style="text-align:center">Artwork</th></tr></thead>
+                  <tbody id="promoteArtworkMatrixBody">
+                    <tr><td>Website</td><td style="text-align:center"><input type="checkbox" id="fChanWebsite" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetWebsite" class="pa-artwork"></td></tr>
+                    <tr><td>Meta</td><td style="text-align:center"><input type="checkbox" id="fChanMeta" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetMeta" class="pa-artwork"></td></tr>
+                    <tr><td>Newsletter</td><td style="text-align:center"><input type="checkbox" id="fChanNewsletter" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetNewsletter" class="pa-artwork" onchange="updateAssetDetailVisibility()"></td></tr>
+                    <tr><td>In-venue</td><td style="text-align:center"><input type="checkbox" id="fChanInVenue" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetInVenue" class="pa-artwork"></td></tr>
+                    <tr><td>TVs</td><td style="text-align:center;color:var(--text3)">—</td><td style="text-align:center"><input type="checkbox" id="fAssetTVs" class="pa-artwork" onchange="updateAssetDetailVisibility()"></td></tr>
+                    <tr><td>Loaded app</td><td style="text-align:center"><input type="checkbox" id="fChanLoaded" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetLoaded" class="pa-artwork"></td></tr>
+                    <tr><td>Google Ads</td><td style="text-align:center"><input type="checkbox" id="fChanGoogleAds" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetPaidAd" class="pa-artwork"></td></tr>
+                    <tr><td>Google Business Profile</td><td style="text-align:center"><input type="checkbox" id="fChanGBP" class="pa-promote"></td><td style="text-align:center;color:var(--text3)">—</td></tr>
+                    <tr><td>Radio</td><td style="text-align:center"><input type="checkbox" id="fChanRadio" class="pa-promote"></td><td style="text-align:center;color:var(--text3)">—</td></tr>
+                    <tr><td>Staff / internal</td><td style="text-align:center;color:var(--text3)">—</td><td style="text-align:center"><input type="checkbox" id="fAssetStaff" class="pa-artwork"></td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
             <div class="form-group full"><label class="form-label">Other</label><input class="form-input" id="fChanOther" type="text" placeholder="Anywhere else customers might see this"></div>
-          </div>
-
-          <div class="form-section-head"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fNeedsDesign" onchange="updateActivityConditionalSections()"> Artwork / design required</label></div>
-          <div id="fAssetsGroup" style="display:none">
-          <div class="form-grid">
-            <div class="form-group full">
-              <div class="multiselect-dd" style="position:relative">
-                <button type="button" class="form-select" style="text-align:left;cursor:pointer;width:100%;display:flex;justify-content:space-between;align-items:center" onclick="toggleMultiSelectDD('ddAssets')">
-                  <span id="ddAssetsSummary">Select assets…</span><span style="opacity:.5">▾</span>
-                </button>
-                <div id="ddAssets" class="multiselect-panel" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:var(--sh-md);max-height:240px;overflow-y:auto;z-index:20;padding:8px;margin-top:2px">
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetWebsite" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Website assets</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetMeta" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Meta assets</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetNewsletter" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…');updateAssetDetailVisibility()"> Newsletter assets</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetTVs" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…');updateAssetDetailVisibility()"> TVs</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetInVenue" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> In-venue assets</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetLoaded" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Loaded assets</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetPaidAd" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Paid ad assets</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetStaff" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Staff / internal assets</label>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="form-grid" style="margin-top:8px">
             <div class="form-group full" id="fAssetTVsDetailGroup" style="display:none"><label class="form-label">TV sizes, orientation or venue screens</label><input class="form-input" id="fAssetTVsDetail" type="text" placeholder="e.g. 1920×1080 landscape, all venue TVs"></div>
             <div class="form-group full" id="fAssetNewsletterDetailGroup" style="display:none"><label class="form-label">Newsletter requirements</label><input class="form-input" id="fAssetNewsletterDetail" type="text" placeholder="e.g. hero image and short offer tile"></div>
-          </div>
           </div>
 
           <div class="form-section-head">Loop anyone else in?</div>
@@ -8840,10 +8823,21 @@ function updateActivityConditionalSections(){
   show('fRegularPriceGroup',showPricing);
   show('fLoadedPriceGroup',isLoaded||type==='Promotion / Offer');
   show('fTicketingGroup',isTicketed);
-  show('fChannelsGroup',needsChannels);
-  show('fAssetsGroup',needsDesign);
+  show('fChannelsGroup',needsChannels||needsDesign);
   show('fSupplierProductGroup',supplierInvolved);
+  updatePromoteArtworkColumns();
   updateAssetDetailVisibility();
+}
+
+// The Promote/Artwork matrix shares one table for both questions, so each column is disabled
+// (not just visually greyed via CSS) when its master checkbox is off — a ticked box in a
+// disabled column would otherwise silently not be read by submitFormActivity(), which checks
+// fNeedsChannels/fNeedsDesign before reading any fChan*/fAsset* checkbox.
+function updatePromoteArtworkColumns(){
+  const needsChannels=!!document.getElementById('fNeedsChannels')?.checked;
+  const needsDesign=!!document.getElementById('fNeedsDesign')?.checked;
+  document.querySelectorAll('#promoteArtworkMatrixBody .pa-promote').forEach(el=>{el.disabled=!needsChannels;});
+  document.querySelectorAll('#promoteArtworkMatrixBody .pa-artwork').forEach(el=>{el.disabled=!needsDesign;});
 }
 
 function updateAssetDetailVisibility(){
@@ -9997,8 +9991,6 @@ function clearForm(){
     const select=document.getElementById(`fLoaded_${key}`);if(select)select.value='';
     const custom=document.getElementById(`fLoaded_${key}_custom`);if(custom){custom.value='';custom.style.display='none';}
   });
-  updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…');
-  updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…');
   updateMultiSelectSummary('ddPeople','ddPeopleSummary','Select people…');
   populateLoadedOfferSubmitFields();
   updateActivityConditionalSections();
