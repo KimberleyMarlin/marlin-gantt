@@ -624,29 +624,31 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="sb-live"><span class="sb-live-dot"></span>Live · SharePoint</div>
   </div>
   <div class="sb-nav">
-    <div class="sb-sec">Main</div>
+    <div class="sb-sec">Today</div>
     <button class="sb-item active" data-p="overview" onclick="nav(this)"><span class="ico">⊞</span>Dashboard<span class="sb-badge" id="nBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="inbox" onclick="nav(this)"><span class="ico">📨</span>Inbox<span class="sb-badge" id="inboxBadge" style="display:none">0</span></button>
-    <button class="sb-item" data-p="calendar" onclick="nav(this)"><span class="ico">◻</span>Activity Calendar</button>
-    <button class="sb-item" data-p="submit" onclick="nav(this)"><span class="ico">＋</span>Submit</button>
-    <div class="sb-sec">Work</div>
-    <button class="sb-item" data-p="mytasks" onclick="nav(this)"><span class="ico">☐</span>Team Work<span class="sb-badge a" id="tBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="personaltasks" onclick="nav(this)"><span class="ico">🔒</span>Personal Tasks<span class="sb-badge" id="personalTaskBadge" style="display:none">0</span></button>
-    <button class="sb-item" data-p="operations" onclick="nav(this)"><span class="ico">⌘</span>Operations Map</button>
-    <button class="sb-item" data-p="campaigns" onclick="nav(this)"><span class="ico">◎</span>Activity Overview<span class="sb-badge" id="aBadge" style="display:none">0</span></button>
-    <button class="sb-item" data-p="loaded" onclick="nav(this)"><span class="ico">⭐</span>Loaded Rewards</button>
-    <button class="sb-item" data-p="crm" onclick="nav(this)"><span class="ico">◉</span>Mailing</button>
-    <button class="sb-item" data-p="ideas" onclick="nav(this)"><span class="ico">💡</span>Idea Bank</button>
-    <button class="sb-item" data-p="approvals" onclick="nav(this)"><span class="ico">✓</span>Submissions</button>
-    <div class="sb-sec">More</div>
+    <div class="sb-sec">Plan</div>
+    <button class="sb-item" data-p="calendar" onclick="nav(this)"><span class="ico">◻</span>Calendar</button>
+    <button class="sb-item" data-p="campaigns" onclick="nav(this)"><span class="ico">◎</span>Activities<span class="sb-badge" id="aBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="pipeline" onclick="nav(this)"><span class="ico">⇥</span>Pipeline</button>
-    <button class="sb-item" data-p="ticketing" onclick="nav(this)"><span class="ico">🎟</span>Ticketing</button>
-    <button class="sb-item" data-p="budget" onclick="nav(this)"><span class="ico">◈</span>Budget</button>
-    <button class="sb-item" data-p="workload" onclick="nav(this)"><span class="ico">👥</span>Workload</button>
+    <button class="sb-item" data-p="ideas" onclick="nav(this)"><span class="ico">💡</span>Idea Bank</button>
+    <button class="sb-item" data-p="submit" onclick="nav(this)"><span class="ico">＋</span>Submit</button>
+    <div class="sb-sec">Deliver</div>
+    <button class="sb-item" data-p="approvals" onclick="nav(this)"><span class="ico">✓</span>Submissions</button>
+    <button class="sb-item" data-p="mytasks" onclick="nav(this)"><span class="ico">☐</span>Work Register<span class="sb-badge a" id="tBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="design" onclick="nav(this)"><span class="ico">✦</span>Design Jobs</button>
-    <button class="sb-item" data-p="social" onclick="nav(this)"><span class="ico">◇</span>Social</button>
-    <button class="sb-item" data-p="venues" onclick="nav(this)"><span class="ico">◎</span>Venues</button>
+    <button class="sb-item" data-p="workload" onclick="nav(this)"><span class="ico">👥</span>Workload</button>
+    <div class="sb-sec">Programs</div>
+    <button class="sb-item" data-p="loaded" onclick="nav(this)"><span class="ico">⭐</span>Loaded Rewards</button>
+    <button class="sb-item" data-p="ticketing" onclick="nav(this)"><span class="ico">🎟</span>Ticketing</button>
     <button class="sb-item" data-p="specials" onclick="nav(this)"><span class="ico">✧</span>Specials</button>
+    <button class="sb-item" data-p="social" onclick="nav(this)"><span class="ico">◇</span>Social</button>
+    <div class="sb-sec">Business</div>
+    <button class="sb-item" data-p="crm" onclick="nav(this)"><span class="ico">◉</span>Contacts &amp; Mailing</button>
+    <button class="sb-item" data-p="venues" onclick="nav(this)"><span class="ico">◎</span>Venues</button>
+    <button class="sb-item" data-p="budget" onclick="nav(this)"><span class="ico">◈</span>Budget</button>
+    <button class="sb-item" data-p="operations" onclick="nav(this)"><span class="ico">⌘</span>Operations Map</button>
     <button class="sb-item" data-p="projects" onclick="nav(this)"><span class="ico">▣</span>Projects</button>
   </div>
   <div class="sb-submit-wrap">
@@ -1313,6 +1315,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="ca">
       <div class="privacy-banner"><span style="font-size:18px">🔒</span><div><strong>Separate private list</strong><br>This panel never reads from the shared Team Work list. Access must also be restricted to Kimberley in SharePoint.</div></div>
       <div class="stats" id="personalTaskStats" style="margin-bottom:12px"></div>
+      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:11px;color:var(--text3);font-weight:600">Workstream</label><select id="personalTaskWorkstreamFilter" class="form-select" style="width:auto;min-width:180px" onchange="renderPersonalTasks()"><option value="">All</option></select></div>
       <div id="personalTasksList"></div>
     </div>
   </div>
@@ -1650,53 +1653,36 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             </div>
           </div>
 
-          <div class="form-section-head"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fNeedsChannels" onchange="updateActivityConditionalSections()"> Marketing / promotion support required</label></div>
+          <div class="form-section-head">
+            <div style="display:flex;gap:20px;flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fNeedsChannels" onchange="updateActivityConditionalSections()"> Promote this activity</label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fNeedsDesign" onchange="updateActivityConditionalSections()"> Artwork / design needed</label>
+            </div>
+          </div>
           <div class="form-grid" id="fChannelsGroup" style="display:none">
             <div class="form-group full">
-              <div class="multiselect-dd" style="position:relative">
-                <button type="button" class="form-select" style="text-align:left;cursor:pointer;width:100%;display:flex;justify-content:space-between;align-items:center" onclick="toggleMultiSelectDD('ddChannels')">
-                  <span id="ddChannelsSummary">Select channels…</span><span style="opacity:.5">▾</span>
-                </button>
-                <div id="ddChannels" class="multiselect-panel" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:var(--sh-md);max-height:240px;overflow-y:auto;z-index:20;padding:8px;margin-top:2px">
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanWebsite" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> Website</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanMeta" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> Meta</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanNewsletter" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> Newsletter</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanLoaded" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> Loaded</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanGBP" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> Google Business Profile</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanGoogleAds" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> Google Ads</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanInVenue" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> In-venue</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fChanRadio" onchange="updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…')"> Radio</label>
-                </div>
+              <div class="field-help" style="margin-bottom:8px">Promoting somewhere and needing artwork made for it are different questions — tick both if you need both. A greyed column means that box above isn't ticked yet.</div>
+              <div style="overflow-x:auto">
+                <table class="tbl" style="min-width:420px">
+                  <thead><tr><th>Surface</th><th style="text-align:center">Promote</th><th style="text-align:center">Artwork</th></tr></thead>
+                  <tbody id="promoteArtworkMatrixBody">
+                    <tr><td>Website</td><td style="text-align:center"><input type="checkbox" id="fChanWebsite" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetWebsite" class="pa-artwork"></td></tr>
+                    <tr><td>Meta</td><td style="text-align:center"><input type="checkbox" id="fChanMeta" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetMeta" class="pa-artwork"></td></tr>
+                    <tr><td>Newsletter</td><td style="text-align:center"><input type="checkbox" id="fChanNewsletter" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetNewsletter" class="pa-artwork" onchange="updateAssetDetailVisibility()"></td></tr>
+                    <tr><td>In-venue</td><td style="text-align:center"><input type="checkbox" id="fChanInVenue" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetInVenue" class="pa-artwork"></td></tr>
+                    <tr><td>TVs</td><td style="text-align:center;color:var(--text3)">—</td><td style="text-align:center"><input type="checkbox" id="fAssetTVs" class="pa-artwork" onchange="updateAssetDetailVisibility()"></td></tr>
+                    <tr><td>Loaded app</td><td style="text-align:center"><input type="checkbox" id="fChanLoaded" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetLoaded" class="pa-artwork"></td></tr>
+                    <tr><td>Google Ads</td><td style="text-align:center"><input type="checkbox" id="fChanGoogleAds" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetPaidAd" class="pa-artwork"></td></tr>
+                    <tr><td>Google Business Profile</td><td style="text-align:center"><input type="checkbox" id="fChanGBP" class="pa-promote"></td><td style="text-align:center;color:var(--text3)">—</td></tr>
+                    <tr><td>Radio</td><td style="text-align:center"><input type="checkbox" id="fChanRadio" class="pa-promote"></td><td style="text-align:center;color:var(--text3)">—</td></tr>
+                    <tr><td>Staff / internal</td><td style="text-align:center;color:var(--text3)">—</td><td style="text-align:center"><input type="checkbox" id="fAssetStaff" class="pa-artwork"></td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
             <div class="form-group full"><label class="form-label">Other</label><input class="form-input" id="fChanOther" type="text" placeholder="Anywhere else customers might see this"></div>
-          </div>
-
-          <div class="form-section-head"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fNeedsDesign" onchange="updateActivityConditionalSections()"> Artwork / design required</label></div>
-          <div id="fAssetsGroup" style="display:none">
-          <div class="form-grid">
-            <div class="form-group full">
-              <div class="multiselect-dd" style="position:relative">
-                <button type="button" class="form-select" style="text-align:left;cursor:pointer;width:100%;display:flex;justify-content:space-between;align-items:center" onclick="toggleMultiSelectDD('ddAssets')">
-                  <span id="ddAssetsSummary">Select assets…</span><span style="opacity:.5">▾</span>
-                </button>
-                <div id="ddAssets" class="multiselect-panel" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:var(--sh-md);max-height:240px;overflow-y:auto;z-index:20;padding:8px;margin-top:2px">
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetWebsite" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Website assets</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetMeta" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Meta assets</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetNewsletter" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…');updateAssetDetailVisibility()"> Newsletter assets</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetTVs" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…');updateAssetDetailVisibility()"> TVs</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetInVenue" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> In-venue assets</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetLoaded" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Loaded assets</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetPaidAd" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Paid ad assets</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;padding:5px 4px"><input type="checkbox" id="fAssetStaff" onchange="updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…')"> Staff / internal assets</label>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="form-grid" style="margin-top:8px">
             <div class="form-group full" id="fAssetTVsDetailGroup" style="display:none"><label class="form-label">TV sizes, orientation or venue screens</label><input class="form-input" id="fAssetTVsDetail" type="text" placeholder="e.g. 1920×1080 landscape, all venue TVs"></div>
             <div class="form-group full" id="fAssetNewsletterDetailGroup" style="display:none"><label class="form-label">Newsletter requirements</label><input class="form-input" id="fAssetNewsletterDetail" type="text" placeholder="e.g. hero image and short offer tile"></div>
-          </div>
           </div>
 
           <div class="form-section-head">Loop anyone else in?</div>
@@ -8161,7 +8147,7 @@ async function loadPersonalTasks(){
   try{
     const token=await getToken();
     const items=await fetchGraphItems(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items?expand=fields&$top=200`,token);
-    PERSONAL_TASKS=items.map(item=>{const f=item.fields||{};return{id:String(item.id),title:f.Title||'',status:f.Status||f.Progress||'Not Started',priority:f.Priority||'Medium',category:f.Category||f.TaskType||'',due:f.DueDate?String(f.DueDate).split('T')[0]:'',notes:f.Notes||'',blocker:f.Blocker||f.BlockedReason||'',linkedCampaignId:f.LinkedCampaignID||''};});
+    PERSONAL_TASKS=items.map(item=>{const f=item.fields||{};return{id:String(item.id),title:f.Title||'',status:f.Status||f.Progress||'Not Started',priority:f.Priority||'Medium',workstream:f.Workstream||f.Category||f.TaskType||'',venue:f.Venue||'',due:f.DueDate?String(f.DueDate).split('T')[0]:'',notes:f.Notes||'',blocker:f.Blocker||f.BlockedReason||'',linkedCampaign:(typeof f.LinkedCampaign==='string'?f.LinkedCampaign:(f.LinkedCampaign?.LookupValue||f.LinkedCampaign?.Title))||f.LinkedCampaignID||''};});
     PERSONAL_TASKS_ERROR='';
   }catch(e){console.error('Personal tasks load error:',e);PERSONAL_TASKS_ERROR=e.message||'Unknown error';}
   renderPersonalTasks();
@@ -8182,11 +8168,21 @@ function renderPersonalTasks(){
   const done=PERSONAL_TASKS.filter(task=>task.status==='Done');
   const badge=document.getElementById('personalTaskBadge');if(badge){badge.textContent=open.length;badge.style.display=open.length?'':'none';}
   stats.innerHTML=`<div class="stat"><div class="stat-n">${open.length}</div><div class="stat-l">Open</div></div><div class="stat ${overdue.length?'hi':''}"><div class="stat-n">${overdue.length}</div><div class="stat-l">Overdue</div></div><div class="stat"><div class="stat-n">${done.length}</div><div class="stat-l">Completed</div></div>`;
-  const rows=PERSONAL_TASKS.slice().sort((a,b)=>(a.status==='Done')-(b.status==='Done')||(a.due||'9999').localeCompare(b.due||'9999'));
+  const workstreamSel=document.getElementById('personalTaskWorkstreamFilter');
+  if(workstreamSel){
+    const counts={};PERSONAL_TASKS.forEach(task=>{const w=task.workstream||'Uncategorised';counts[w]=(counts[w]||0)+1;});
+    const workstreams=Object.keys(counts).sort((a,b)=>a.localeCompare(b));
+    const current=workstreamSel.value;
+    workstreamSel.innerHTML='<option value="">All ('+PERSONAL_TASKS.length+')</option>'+workstreams.map(w=>`<option value="${escapeAttr(w)}"${w===current?' selected':''}>${escapeAttr(w)} (${counts[w]})</option>`).join('');
+    if(workstreams.includes(current))workstreamSel.value=current;
+  }
+  const activeWorkstream=workstreamSel?.value||'';
+  const filtered=activeWorkstream?PERSONAL_TASKS.filter(task=>(task.workstream||'Uncategorised')===activeWorkstream):PERSONAL_TASKS;
+  const rows=filtered.slice().sort((a,b)=>(a.status==='Done')-(b.status==='Done')||(a.due||'9999').localeCompare(b.due||'9999'));
   const emptyState=PERSONAL_TASKS_ERROR
     ?`<div class="card"><div class="card-body" style="padding:22px"><div style="font-size:14px;font-weight:700;color:var(--red);margin-bottom:7px">Could not load your personal tasks</div><div style="font-size:12px;color:var(--text2);line-height:1.55">${escapeAttr(PERSONAL_TASKS_ERROR)}</div></div></div>`
     :'<div style="padding:36px;text-align:center;color:var(--text3)">No personal tasks yet.</div>';
-  list.innerHTML=rows.length?rows.map(task=>{const isDone=task.status==='Done',isOverdue=!isDone&&task.due&&task.due<today;return`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right"><span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority||'Medium')}</span><button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;}).join(''):emptyState;
+  list.innerHTML=rows.length?rows.map(task=>{const isDone=task.status==='Done',isOverdue=!isDone&&task.due&&task.due<today;return`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${task.workstream?`<span class="tag t-gr" style="text-transform:none">${escapeAttr(task.workstream)}</span>`:''}${task.linkedCampaign?`<span>↳ ${escapeAttr(task.linkedCampaign)}</span>`:''}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right"><span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority||'Medium')}</span><button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;}).join(''):emptyState;
 }
 
 function openAddPersonalTask(){
@@ -8827,10 +8823,21 @@ function updateActivityConditionalSections(){
   show('fRegularPriceGroup',showPricing);
   show('fLoadedPriceGroup',isLoaded||type==='Promotion / Offer');
   show('fTicketingGroup',isTicketed);
-  show('fChannelsGroup',needsChannels);
-  show('fAssetsGroup',needsDesign);
+  show('fChannelsGroup',needsChannels||needsDesign);
   show('fSupplierProductGroup',supplierInvolved);
+  updatePromoteArtworkColumns();
   updateAssetDetailVisibility();
+}
+
+// The Promote/Artwork matrix shares one table for both questions, so each column is disabled
+// (not just visually greyed via CSS) when its master checkbox is off — a ticked box in a
+// disabled column would otherwise silently not be read by submitFormActivity(), which checks
+// fNeedsChannels/fNeedsDesign before reading any fChan*/fAsset* checkbox.
+function updatePromoteArtworkColumns(){
+  const needsChannels=!!document.getElementById('fNeedsChannels')?.checked;
+  const needsDesign=!!document.getElementById('fNeedsDesign')?.checked;
+  document.querySelectorAll('#promoteArtworkMatrixBody .pa-promote').forEach(el=>{el.disabled=!needsChannels;});
+  document.querySelectorAll('#promoteArtworkMatrixBody .pa-artwork').forEach(el=>{el.disabled=!needsDesign;});
 }
 
 function updateAssetDetailVisibility(){
@@ -9984,8 +9991,6 @@ function clearForm(){
     const select=document.getElementById(`fLoaded_${key}`);if(select)select.value='';
     const custom=document.getElementById(`fLoaded_${key}_custom`);if(custom){custom.value='';custom.style.display='none';}
   });
-  updateMultiSelectSummary('ddChannels','ddChannelsSummary','Select channels…');
-  updateMultiSelectSummary('ddAssets','ddAssetsSummary','Select assets…');
   updateMultiSelectSummary('ddPeople','ddPeopleSummary','Select people…');
   populateLoadedOfferSubmitFields();
   updateActivityConditionalSections();
