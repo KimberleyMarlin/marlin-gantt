@@ -2059,9 +2059,9 @@ const CRM_MAP_FIELDS=[
   {key:'notes',label:'Notes',aliases:['notes','comments','customer notes']}
 ];
 let CRM_LISTS={},CRM_COLUMNS={},CRM_SETUP_LOADED=false,CRM_ROWS=[],CRM_HEADERS=[],CRM_FILE_NAME='',CRM_MAPPING={},CRM_PREFLIGHT=[],CRM_CUSTOMERS=[],CRM_SOURCE_LINKS=[],CRM_VENUES=[],CRM_CUSTOMER_VENUES=[],CRM_CONSENT_EVENTS=[],CRM_IMPORTS=[],CRM_CHANGES=[];
-// Flip this only after the CRM SharePoint lists, columns and restricted permissions are approved.
-// Read-only checks and browser-side cleaning still work while it is false.
-const CRM_WRITE_ENABLED=false;
+// Enabled 2026-09-10 on Kimberley's explicit instruction, permissions to follow after.
+// Restrict the 8 CRM SharePoint lists to authorised staff as soon as possible.
+const CRM_WRITE_ENABLED=true;
 
 function seedCRMPreview(){
   if(CRM_CUSTOMERS.length)return;
