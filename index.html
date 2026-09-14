@@ -10153,7 +10153,11 @@ function renderActivityDetail(id,mode){
   if(ev.jobFolderUrl){
     h+=`<div style="display:flex;align-items:center;gap:8px"><a href="${ev.jobFolderUrl}" target="_blank" style="font-size:12px;color:var(--accent);font-weight:600;text-decoration:none">📁 Open artwork folder →</a></div>`;
   } else {
-    h+=`<input class="pop-edit-inp" data-field="JobFolderURL" data-original="" type="text" value="" onchange="markPopDirty()" placeholder="Paste SharePoint folder link for this job…" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">`;
+    // JobFolderURL is not yet a confirmed SharePoint column, so a manual paste here always fails
+    // to save (silently, since it's often the only changed field and there's nothing left to retry).
+    // Not offering it until the automatic folder-creation work lands is more honest than a box that
+    // can never actually save.
+    h+=`<div style="font-size:11.5px;color:var(--text3)">Not connected yet — folders will link here automatically once Team Work Register is built.</div>`;
   }
   if(ev.artworkFile)h+=`<div style="margin-top:4px"><a href="${ev.artworkFile}" target="_blank" style="font-size:11px;color:var(--accent)">🖼 Latest artwork →</a></div>`;
   h+=`</div>`;
