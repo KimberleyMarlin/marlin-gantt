@@ -9215,13 +9215,33 @@ function pickCRMTab(button){
   if(button.dataset.crmTab==='connections')loadCRMConnections();
 }
 
+async function crmFetchListItemsPageById(listUrl,cursor,pageSize,token){
+  const url=`${listUrl}/items?expand=fields&$filter=id gt ${cursor}&$orderby=id&$top=${pageSize}`;
+  const res=await fetch(url,{headers:{Authorization:'Bearer '+token}});
+  if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+  const data=await res.json();
+  return Array.isArray(data.value)?data.value:[];
+}
 async function crmFetchItems(listKey,token){
   const url=crmGraphListUrl(listKey);if(!url)return[];
+  token=token||await getToken();
+  // Page through by item ID (always index-backed in SharePoint) instead of the default
+  // $top/@odata.nextLink walk. Re-issuing "id gt <last seen id>" each round keeps every request
+  // scoped to an indexed column, so this keeps working no matter how large the list grows —
+  // it doesn't depend on Kimberley adding any indexed columns herself.
+  const items=[];let cursor=0;const pageSize=2000;
   try{
-    return await fetchGraphItems(`${url}/items?expand=fields&$top=999`,token||await getToken());
+    while(true){
+      const page=await crmFetchListItemsPageById(url,cursor,pageSize,token);
+      if(!page.length)break;
+      items.push(...page);
+      if(page.length<pageSize)break;
+      cursor=Math.max(...page.map(item=>Number(item.id)));
+    }
+    return items;
   }catch(e){
     if(/list view threshold/i.test(e.message)){
-      throw new Error(`${CRM_LIST_NAMES[listKey]||listKey} has grown past SharePoint's 5,000-item limit for reading a list without a filter. Fix: open the list in SharePoint → Settings → Indexed columns → add an index on Email, Phone and Venue. That lets filtered lookups keep working, but this "load everything" screen will need to become a search instead — tell Kimberley's Claude Code session to build that next.`);
+      throw new Error(`${CRM_LIST_NAMES[listKey]||listKey} hit SharePoint's list view threshold even with indexed paging. This usually means the list has an "Enforce unique values" column, or a lookup/person column, forcing a full scan. Ask IT to check the list's indexed/enforced-unique columns.`);
     }
     throw e;
   }
