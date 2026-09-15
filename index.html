@@ -9299,16 +9299,24 @@ async function readCRMImportFile(file){
       let waited=0;while(typeof XLSX==='undefined'&&waited<10000){await sleep(200);waited+=200;}
       if(typeof XLSX==='undefined')throw new Error('Excel reader did not load. Save the file as CSV or refresh and try again.');
       const workbook=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});
-      const sheetName=workbook.SheetNames[0];
-      CRM_ROWS=XLSX.utils.sheet_to_json(workbook.Sheets[sheetName],{defval:'',raw:false,dateNF:'yyyy-mm-dd'}).map((row,index)=>({...row,_csvRow:index+2}));
+      // Some exports put an instructions/cover sheet first and the real data on a later sheet —
+      // use the first sheet that actually has rows instead of always assuming sheet 1.
+      let sheetName=workbook.SheetNames[0],rows=[];
+      for(const candidate of workbook.SheetNames){
+        const candidateRows=XLSX.utils.sheet_to_json(workbook.Sheets[candidate],{defval:'',raw:false,dateNF:'yyyy-mm-dd'});
+        if(candidateRows.length){sheetName=candidate;rows=candidateRows;break;}
+      }
+      CRM_ROWS=rows.map((row,index)=>({...row,_csvRow:index+2}));
       document.getElementById('crmImportFileInfo').textContent=`${file.name} · sheet: ${sheetName}`;
     }
-    CRM_ROWS=CRM_ROWS.filter(row=>Object.entries(row).some(([key,value])=>key!=='_csvRow'&&String(value).trim()));
+    // Read the column headers before dropping blank rows, so a file with real headers but no
+    // data still shows its columns instead of looking like it failed to read at all.
     CRM_HEADERS=[...new Set(CRM_ROWS.flatMap(row=>Object.keys(row).filter(key=>key!=='_csvRow')))];
+    CRM_ROWS=CRM_ROWS.filter(row=>Object.entries(row).some(([key,value])=>key!=='_csvRow'&&String(value).trim()));
     CRM_MAPPING=autoMapCRMHeaders(CRM_HEADERS);renderCRMMapping();
     document.getElementById('crmPreflightBtn').disabled=!CRM_ROWS.length;
     document.getElementById('crmImportFileInfo').textContent=`${CRM_FILE_NAME} · ${CRM_ROWS.length} rows · ${CRM_HEADERS.length} columns`;
-    crmSetMessage(`${CRM_ROWS.length} customer rows loaded. Confirm the mapping, source and venue, then run the duplicate check.`,'ok');
+    crmSetMessage(CRM_ROWS.length?`${CRM_ROWS.length} customer rows loaded. Confirm the mapping, source and venue, then run the duplicate check.`:(CRM_HEADERS.length?`Found ${CRM_HEADERS.length} columns (${CRM_HEADERS.slice(0,5).join(', ')}${CRM_HEADERS.length>5?'…':''}) but no data rows below the header. Check the file has customers in it below row 1.`:'Could not find any columns in this file — check it has a header row and at least one data row.'),CRM_ROWS.length?'ok':'err');
   }catch(e){crmSetMessage('Could not read customer file: '+e.message,'err');renderCRMMapping();}
 }
 
