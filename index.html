@@ -1424,6 +1424,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
             <button class="btn btn-s" id="crmPreflightBtn" onclick="preflightCRMImport()" disabled>Check against master CRM</button>
             <button class="btn btn-p" id="crmRunBtn" onclick="runCRMImport()" disabled>Simulate safe import</button>
+            <button class="btn btn-s" id="crmCancelBtn" onclick="cancelCRMImport()" style="display:none">Cancel import</button>
             <button class="btn btn-s" id="crmExportHeldBtn" onclick="exportCRMHeldRows()" disabled>Export held rows</button>
           </div>
           <div class="import-summary" id="crmImportSummary" style="display:none"></div>
@@ -2058,7 +2059,7 @@ const CRM_MAP_FIELDS=[
   {key:'state',label:'State',aliases:['state','region']},
   {key:'notes',label:'Notes',aliases:['notes','comments','customer notes']}
 ];
-let CRM_LISTS={},CRM_COLUMNS={},CRM_SETUP_LOADED=false,CRM_ROWS=[],CRM_HEADERS=[],CRM_FILE_NAME='',CRM_MAPPING={},CRM_PREFLIGHT=[],CRM_CUSTOMERS=[],CRM_SOURCE_LINKS=[],CRM_VENUES=[],CRM_CUSTOMER_VENUES=[],CRM_CONSENT_EVENTS=[],CRM_IMPORTS=[],CRM_CHANGES=[];
+let CRM_LISTS={},CRM_COLUMNS={},CRM_SETUP_LOADED=false,CRM_ROWS=[],CRM_HEADERS=[],CRM_FILE_NAME='',CRM_MAPPING={},CRM_PREFLIGHT=[],CRM_CUSTOMERS=[],CRM_SOURCE_LINKS=[],CRM_VENUES=[],CRM_CUSTOMER_VENUES=[],CRM_CONSENT_EVENTS=[],CRM_IMPORTS=[],CRM_CHANGES=[],CRM_IMPORT_CANCELLED=false;
 // Enabled 2026-09-10 on Kimberley's explicit instruction, permissions to follow after.
 // Restrict the 8 CRM SharePoint lists to authorised staff as soon as possible.
 const CRM_WRITE_ENABLED=true;
@@ -9094,7 +9095,10 @@ async function loadCRMSetup(force=false){
       CRM_LISTS[key]=list;
       const colRes=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${list.id}/columns?$top=300`,{headers:{Authorization:'Bearer '+token}});
       if(!colRes.ok)throw new Error(`${displayName} columns HTTP ${colRes.status}: ${await colRes.text()}`);
-      CRM_COLUMNS[key]=((await colRes.json()).value||[]).filter(column=>!column.hidden);
+      // Exclude read-only/system columns — SharePoint's computed "LinkTitle" column also displays
+      // as "Title", so without this it can be matched instead of the real, writable Title column,
+      // producing a "Field 'LinkTitle' is read-only" error on every create.
+      CRM_COLUMNS[key]=((await colRes.json()).value||[]).filter(column=>!column.hidden&&!['ContentType','Attachments','Edit','LinkTitle','LinkTitleNoMenu','ItemChildCount','FolderChildCount','AppAuthor','AppEditor'].includes(column.name));
     }
     CRM_SETUP_LOADED=true;
     renderCRMHealth();
@@ -9469,11 +9473,14 @@ async function runCRMImport(){
   if(!CRM_WRITE_ENABLED){crmSetMessage('SharePoint writes are locked in this build. The preflight results are safe to review or export.','err');return;}
   if(!confirm(`Import ${actionable.length} confident customer rows? Held, conflicting and invalid rows will remain untouched.`))return;
   button.disabled=true;const token=await getToken(true);const sourceSystem=document.getElementById('crmSourceSystem').value.trim();const now=crmNow();
+  CRM_IMPORT_CANCELLED=false;
+  const cancelBtn=document.getElementById('crmCancelBtn');cancelBtn.style.display='';cancelBtn.disabled=false;cancelBtn.textContent='Cancel import';
   let batch=null,created=0,updated=0,linked=0,failed=0;const groupCustomerIds=new Map();
   try{
     batch=await crmCreateItem('imports',crmPayload('imports',{Title:`${sourceSystem} · ${CRM_FILE_NAME} · ${new Date().toLocaleString('en-AU')}`,SourceSystem:sourceSystem,SourceVenue:document.getElementById('crmDefaultVenue').value,FileName:CRM_FILE_NAME,ImportedAt:now,ImportedBy:currentUser?.name||currentUserEmail,ImportStatus:'Running',RowsTotal:CRM_PREFLIGHT.length,MappingJSON:JSON.stringify(CRM_MAPPING)}),token);
     [CRM_CUSTOMER_VENUES,CRM_CONSENT_EVENTS]=await Promise.all([crmFetchItems('customerVenues',token),crmFetchItems('consentEvents',token)]);
     for(let index=0;index<actionable.length;index++){
+      if(CRM_IMPORT_CANCELLED)break;
       const item=actionable[index];button.textContent=`Importing ${index+1} of ${actionable.length}…`;
       try{
         let customerId=item.customer?.spId||'';
@@ -9503,11 +9510,17 @@ async function runCRMImport(){
       renderCRMPreflight();
     }
     const held=CRM_PREFLIGHT.filter(item=>['review','conflict'].includes(item.status)).length,invalid=CRM_PREFLIGHT.filter(item=>item.status==='invalid').length;
-    await crmPatchItem('imports',batch.id,crmPayload('imports',{ImportStatus:failed?'Completed with errors':'Completed',CreatedCount:created,UpdatedCount:updated,LinkedCount:linked,ReviewCount:held,InvalidCount:invalid,FailedCount:failed,ErrorSummary:CRM_PREFLIGHT.filter(item=>item.status==='failed').map(item=>`Row ${item.row._csvRow}: ${item.reason}`).join('\n')}),token);
-    crmSetMessage(`CRM import complete: ${created} new customers, ${updated} updated or consolidated, ${held} held, ${invalid} invalid, ${failed} failed.`,failed?'err':'ok');
+    const cancelled=CRM_IMPORT_CANCELLED;
+    await crmPatchItem('imports',batch.id,crmPayload('imports',{ImportStatus:cancelled?'Cancelled by user':(failed?'Completed with errors':'Completed'),CreatedCount:created,UpdatedCount:updated,LinkedCount:linked,ReviewCount:held,InvalidCount:invalid,FailedCount:failed,ErrorSummary:CRM_PREFLIGHT.filter(item=>item.status==='failed').map(item=>`Row ${item.row._csvRow}: ${item.reason}`).join('\n')}),token);
+    crmSetMessage(cancelled?`CRM import cancelled: ${created} new customers, ${updated} updated or consolidated were written before you stopped it. Remaining rows were not touched.`:`CRM import complete: ${created} new customers, ${updated} updated or consolidated, ${held} held, ${invalid} invalid, ${failed} failed.`,cancelled||failed?'err':'ok');
     CRM_CUSTOMERS=[];CRM_SOURCE_LINKS=[];await loadCRMCustomers(true);
   }catch(e){crmSetMessage('CRM import stopped: '+e.message,'err');if(batch)try{await crmPatchItem('imports',batch.id,crmPayload('imports',{ImportStatus:'Failed',ErrorSummary:e.message}),token);}catch{} }
   button.textContent='Import confident records';button.disabled=true;
+  const doneCancelBtn=document.getElementById('crmCancelBtn');doneCancelBtn.style.display='none';doneCancelBtn.disabled=true;
+}
+function cancelCRMImport(){
+  CRM_IMPORT_CANCELLED=true;
+  const cancelBtn=document.getElementById('crmCancelBtn');cancelBtn.disabled=true;cancelBtn.textContent='Cancelling…';
 }
 
 async function ensureCRMVenue(title,token){
