@@ -9217,7 +9217,14 @@ function pickCRMTab(button){
 
 async function crmFetchItems(listKey,token){
   const url=crmGraphListUrl(listKey);if(!url)return[];
-  return fetchGraphItems(`${url}/items?expand=fields&$top=999`,token||await getToken());
+  try{
+    return await fetchGraphItems(`${url}/items?expand=fields&$top=999`,token||await getToken());
+  }catch(e){
+    if(/list view threshold/i.test(e.message)){
+      throw new Error(`${CRM_LIST_NAMES[listKey]||listKey} has grown past SharePoint's 5,000-item limit for reading a list without a filter. Fix: open the list in SharePoint → Settings → Indexed columns → add an index on Email, Phone and Venue. That lets filtered lookups keep working, but this "load everything" screen will need to become a search instead — tell Kimberley's Claude Code session to build that next.`);
+    }
+    throw e;
+  }
 }
 function crmCustomerFromItem(item){
   const f=item.fields||{};
@@ -9229,7 +9236,15 @@ async function loadCRMCustomers(force=false){
   if(isPreviewMode){seedCRMPreview();renderCRMCustomers();return;}
   if(!CRM_SETUP_LOADED)await loadCRMSetup();
   if(!CRM_LISTS.customers){renderCRMCustomers();return;}
-  if(force||!CRM_CUSTOMERS.length){CRM_CUSTOMERS=(await crmFetchItems('customers')).map(crmCustomerFromItem);}
+  if(force||!CRM_CUSTOMERS.length){
+    try{
+      CRM_CUSTOMERS=(await crmFetchItems('customers')).map(crmCustomerFromItem);
+    }catch(e){
+      const el=document.getElementById('crmCustomerList');
+      if(el)el.innerHTML=`<div style="padding:24px;color:var(--red)">${escapeAttr(e.message)}</div>`;
+      return;
+    }
+  }
   renderCRMCustomers();renderCRMHealth();
 }
 function renderCRMCustomers(){
