@@ -2123,9 +2123,20 @@ window.dumpLists=async function(){
     return out;
   }catch(e){console.error('dumpLists failed:',e.message);}
 };
-window.dumpCols=async function(listId){
+window.dumpCols=async function(listIdOrName){
+  if(!listIdOrName){console.log('Usage: dumpCols("All Customer Data") — a list display name, or a list GUID from dumpLists().');return;}
   try{
     const token=await getToken();
+    let listId=listIdOrName;
+    // Accept a display name too, not just a raw GUID, so you don't have to run dumpLists() first just to copy an ID.
+    if(!/^[0-9a-f-]{30,}$/i.test(listIdOrName)){
+      const listsRes=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists?$select=id,name,displayName&$top=200`,{headers:{Authorization:'Bearer '+token}});
+      const listsData=await listsRes.json();
+      if(listsData.error){console.error('Graph error:',listsData.error);return;}
+      const match=(listsData.value||[]).find(l=>(l.displayName||'').toLowerCase()===listIdOrName.toLowerCase()||(l.name||'').toLowerCase()===listIdOrName.toLowerCase());
+      if(!match){console.error(`No list found named "${listIdOrName}". Run dumpLists() to see the exact names.`);return;}
+      listId=match.id;
+    }
     const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/columns?$select=name,displayName,columnGroup`,{headers:{Authorization:'Bearer '+token}});
     const data=await res.json();
     if(data.error){console.error('Graph error:',data.error);return;}
