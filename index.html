@@ -9261,7 +9261,11 @@ function crmCustomerFromItem(item){
   const f=item.fields||{};
   const email=crmRead(f,'customers','PrimaryEmail')||'',phone=crmRead(f,'customers','PrimaryPhone')||'';
   const suppressed=crmRead(f,'customers','MarketingSuppressed')===true;
-  return{spId:String(item.id),title:crmRead(f,'customers','Title')||'',firstName:crmRead(f,'customers','FirstName')||'',lastName:crmRead(f,'customers','LastName')||'',email,emailNorm:crmRead(f,'customers','EmailNormalized')||normaliseCRMEmail(email),phone,phoneNorm:crmRead(f,'customers','PhoneNormalized')||normaliseCRMPhone(phone),status:crmRead(f,'customers','CustomerStatus')||'',sourceCount:Number(crmRead(f,'customers','SourceCount')||0),venue:crmRead(f,'customers','PreferredVenue')||'',suppressed,consent:suppressed?'Suppressed':'Unknown',lastSeen:crmRead(f,'customers','LastSeen')||'',fields:f};
+  // PreferredVenue is one text value; fall back to whichever venue tick-box(es) are actually
+  // ticked when it's blank, since that's the field the import writes.
+  const tickedVenues=Object.keys(CRM_VENUE_TICKBOX_COLUMNS).filter(column=>f[column]===true);
+  const venue=crmRead(f,'customers','PreferredVenue')||tickedVenues.map(column=>CRM_VENUE_TICKBOX_COLUMNS[column][0]).join(', ');
+  return{spId:String(item.id),title:crmRead(f,'customers','Title')||'',firstName:crmRead(f,'customers','FirstName')||'',lastName:crmRead(f,'customers','LastName')||'',email,emailNorm:crmRead(f,'customers','EmailNormalized')||normaliseCRMEmail(email),phone,phoneNorm:crmRead(f,'customers','PhoneNormalized')||normaliseCRMPhone(phone),status:crmRead(f,'customers','CustomerStatus')||'',sourceCount:Number(crmRead(f,'customers','SourceCount')||0),venue,suppressed,consent:suppressed?'Suppressed':'Unknown',lastSeen:crmRead(f,'customers','LastSeen')||'',fields:f};
 }
 async function loadCRMCustomers(force=false){
   if(isPreviewMode){seedCRMPreview();renderCRMCustomers();return;}
@@ -9513,7 +9517,36 @@ async function crmHash(value){
   }
   let hash=2166136261;for(let i=0;i<textValue.length;i++){hash^=textValue.charCodeAt(i);hash=Math.imul(hash,16777619);}return(hash>>>0).toString(16).padStart(8,'0');
 }
-function crmCustomerValues(data,now){return{Title:data.fullName||data.email||data.phone||'Unnamed customer',FirstName:data.firstName,LastName:data.lastName,PrimaryEmail:data.email,EmailNormalized:data.emailNorm,PrimaryPhone:data.phone,PhoneNormalized:data.phoneNorm,DateOfBirth:data.dob,Suburb:data.suburb,Postcode:data.postcode,State:data.state,Country:'Australia',CustomerStatus:'Active',MatchStatus:'Confirmed',MarketingSuppressed:crmMarketingSuppressed(data),FirstSeen:now,LastSeen:now,LastChanged:now,PreferredVenue:data.venue,SourceCount:1,Notes:data.notes};}
+// "All Customer Data" tracks venue membership as one tick-box column per venue (confirmed via
+// dumpCols()), not a single lookup/choice field — real internal names, not guessed.
+const CRM_VENUE_TICKBOX_COLUMNS={
+  HotelDarwin:['hotel darwin','darwin'],
+  Ravenswood:['ravenswood','the ravenswood','ravenswood hotel'],
+  WhitfordsBrewing:['whitfords brewing co','whitfords brewing','whitfords'],
+  LeftBank:['left bank','the left bank'],
+  MustangBar:['mustang bar','mustang']
+};
+// Only these two venues have their own opt-out column today (OPTOUT_RH / OPTOUT_LB) — confirmed
+// live, not assumed the other three venues have one too.
+const CRM_VENUE_OPTOUT_COLUMNS={Ravenswood:'OPTOUT_RH',LeftBank:'OPTOUT_LB'};
+function crmVenueTickboxField(venueName){
+  if(!venueName)return'';
+  const norm=crmNorm(venueName);
+  for(const[column,aliases]of Object.entries(CRM_VENUE_TICKBOX_COLUMNS)){
+    if(aliases.some(alias=>crmNorm(alias)===norm))return column;
+  }
+  return'';
+}
+function crmCustomerValues(data,now){
+  const venueColumn=crmVenueTickboxField(data.venue);
+  const values={Title:data.fullName||data.email||data.phone||'Unnamed customer',FirstName:data.firstName,LastName:data.lastName,PrimaryEmail:data.email,EmailNormalized:data.emailNorm,PrimaryPhone:data.phone,PhoneNormalized:data.phoneNorm,DateOfBirth:data.dob,Suburb:data.suburb,Postcode:data.postcode,State:data.state,Country:'Australia',CustomerStatus:'Active',MatchStatus:'Confirmed',MarketingSuppressed:crmMarketingSuppressed(data),FirstSeen:now,LastSeen:now,LastChanged:now,PreferredVenue:data.venue,SourceCount:1,Notes:data.notes,OPTIN_TIME:data.optInTime,OPTIN_IP:data.optInIp,CONFIRM_TIME:data.confirmTime,CONFIRM_IP:data.confirmIp};
+  if(venueColumn)values[venueColumn]=true;
+  if(data.emailConsent==='Opted Out'){
+    const optOutColumn=CRM_VENUE_OPTOUT_COLUMNS[venueColumn];
+    if(optOutColumn)values[optOutColumn]=true;
+  }
+  return values;
+}
 
 async function runCRMImport(){
   const actionable=CRM_PREFLIGHT.filter(item=>['new','update','consolidate'].includes(item.status));if(!actionable.length)return;
@@ -9545,9 +9578,17 @@ async function runCRMImport(){
           item.status='created';item.reason=`Created master customer #${customerId}`;
         }else{
           const customer=item.customer||CRM_CUSTOMERS.find(c=>c.spId===customerId);const patchValues={LastSeen:now,LastChanged:now};const sourceValues=crmCustomerValues(item.data,now);const fieldChanges=[];
-          const fillMap={FirstName:'firstName',LastName:'lastName',PrimaryEmail:'email',EmailNormalized:'emailNorm',PrimaryPhone:'phone',PhoneNormalized:'phoneNorm',DateOfBirth:'dob',Suburb:'suburb',Postcode:'postcode',State:'state',PreferredVenue:'venue',Notes:'notes'};
+          const fillMap={FirstName:'firstName',LastName:'lastName',PrimaryEmail:'email',EmailNormalized:'emailNorm',PrimaryPhone:'phone',PhoneNormalized:'phoneNorm',DateOfBirth:'dob',Suburb:'suburb',Postcode:'postcode',State:'state',PreferredVenue:'venue',Notes:'notes',OPTIN_TIME:'optInTime',OPTIN_IP:'optInIp',CONFIRM_TIME:'confirmTime',CONFIRM_IP:'confirmIp'};
           for(const [field] of Object.entries(fillMap)){const oldValue=customer?.fields?.[crmFieldKey('customers',field)]||'';if(sourceValues[field]&&!oldValue){patchValues[field]=sourceValues[field];fieldChanges.push({field,oldValue,newValue:sourceValues[field]});}}
           if(sourceValues.MarketingSuppressed===true&&customer?.fields?.[crmFieldKey('customers','MarketingSuppressed')]!==true){patchValues.MarketingSuppressed=true;fieldChanges.push({field:'MarketingSuppressed',oldValue:false,newValue:true});}
+          // A returning customer can pick up a new venue on re-import — tick that venue's box even
+          // though it's a boolean (so "already false" doesn't block it, unlike the text fillMap above).
+          const venueColumn=crmVenueTickboxField(item.data.venue);
+          if(venueColumn&&customer?.fields?.[crmFieldKey('customers',venueColumn)]!==true){patchValues[venueColumn]=true;fieldChanges.push({field:venueColumn,oldValue:false,newValue:true});}
+          if(item.data.emailConsent==='Opted Out'){
+            const optOutColumn=CRM_VENUE_OPTOUT_COLUMNS[venueColumn];
+            if(optOutColumn&&customer?.fields?.[crmFieldKey('customers',optOutColumn)]!==true){patchValues[optOutColumn]=true;fieldChanges.push({field:optOutColumn,oldValue:false,newValue:true});}
+          }
           patchValues.SourceCount=Math.max(1,Number(customer?.sourceCount||0)+(item.sourceKey&&!CRM_SOURCE_LINKS.some(link=>normaliseImportText(link.sourceKey)===normaliseImportText(item.sourceKey))?1:0));
           if(patchValues.SourceCount!==Number(customer?.sourceCount||0))fieldChanges.push({field:'SourceCount',oldValue:Number(customer?.sourceCount||0),newValue:patchValues.SourceCount});
           const customerPatch=crmPayload('customers',patchValues);await crmPatchItem('customers',customerId,customerPatch,token);if(customer){customer.fields={...(customer.fields||{}),...customerPatch};customer.sourceCount=patchValues.SourceCount;}for(const change of fieldChanges)await writeCRMChange(customerId,batch.id,sourceSystem,'Updated',change.field,change.oldValue,change.newValue,token,'Filled an empty master field from a confident source match');updated++;item.status='updated';item.reason=`Updated / linked master customer #${customerId}`;
