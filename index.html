@@ -2837,6 +2837,69 @@ function duplicateCampaign(evId){
   },100);
 }
 
+// Recurring items like "Beer of the Month" — each month is still its own real activity (own
+// design brief, own dates), but doesn't need to go through Intake/Review again since it's a
+// known, pre-approved series. This creates next month's instance already in "In Design" and
+// tags both activities with a shared SeriesId so they can be grouped later (e.g. on the Gantt).
+async function duplicateAsNextMonth(evId,btn){
+  const ev=EVENTS.find(e=>e.id===evId);
+  if(!ev)return;
+  if(!canEditCampaigns()){alert('You do not have permission to create activities.');return;}
+  if(!confirm(`Create next month's "${ev.title}"? It goes straight to In Design — no approval step, since this is a recurring series.`))return;
+  if(btn){btn.disabled=true;btn.textContent='Creating…';}
+  try{
+    const token=await getToken(true);
+    const shiftMonth=(dateStr)=>{
+      if(!dateStr)return dateStr;
+      const d=new Date(dateStr+'T00:00:00');
+      d.setMonth(d.getMonth()+1);
+      return toLocalISODate(d);
+    };
+    const newStart=shiftMonth(ev.start),newEnd=shiftMonth(ev.end||ev.start);
+    const seriesId=ev.seriesId?parseInt(ev.seriesId,10):Number(ev.spId);
+    const fields={
+      Title:ev.title,
+      Start:newStart+'T12:00:00Z',
+      End:(newEnd||newStart)+'T12:00:00Z',
+      WorkflowStage:'In Design',
+      Venue:ev.venue,
+      ActivityType:ev.activityType,
+      EventFormat:ev.eventFormat||'',
+      CampaignSilo:ev.marketingSilo||'',
+      BusinessStream:ev.businessStream||'',
+      SeriesId:seriesId
+    };
+    if(ev.description)fields.Description=ev.description;
+    let res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    let seriesColumnMissing=false;
+    if(!res.ok){
+      const errText=await res.text();
+      // SeriesId may not exist as a column yet — drop it and retry rather than failing outright.
+      if(/SeriesId/i.test(errText)){
+        seriesColumnMissing=true;
+        delete fields.SeriesId;
+        res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+      }
+      if(!res.ok)throw new Error('HTTP '+res.status+': '+(seriesColumnMissing?errText:await res.text()));
+    }
+    const created=await res.json();
+    // Give the original its own series anchor too, if it didn't have one, so it and this new
+    // instance are recognised as the same series from now on.
+    if(!ev.seriesId&&!seriesColumnMissing){
+      fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{SeriesId:seriesId}})}).catch(()=>{});
+    }
+    await loadCampaigns();
+    const newEv=EVENTS.find(e=>String(e.spId)===String(created.id));
+    closePop();
+    if(newEv)showActivityPage(newEv.id);
+    if(seriesColumnMissing)alert('Created next month\'s activity, but "SeriesId" isn\'t a column yet so it isn\'t linked as a series. Add a Number column named SeriesId via Schema Tools, then it\'ll link up on the next duplicate.');
+    else if(typeof showToast==='function')showToast(`Created "${ev.title}" for next month — update the details, no approval needed.`);
+  }catch(e){
+    alert("Could not create next month's instance: "+e.message);
+  }
+  if(btn){btn.disabled=false;btn.textContent='🔁 Duplicate as next month';}
+}
+
 // ═══════════════════════════════════════
 // DISCUSSION / COMMENTS (per item, with @mentions)
 // ═══════════════════════════════════════
@@ -4526,6 +4589,9 @@ async function loadCampaigns(){
         designBrief:f.DesignBrief||f.Design_x0020_Brief_x0020_Notes||'',
         designStatus:f.DesignStatus||'',
         jobFolderUrl:sharePointUrl(f.JobFolderURL),
+        // Recurring series link — set by "Duplicate as next month"; ties monthly instances of
+        // things like "Beer of the Month" together without them needing separate approval each time.
+        seriesId:f.SeriesId!=null&&f.SeriesId!==''?String(f.SeriesId):'',
         // Build channels (each: Not Required / To Do / In Progress / Done)
         webStatus:f.WebStatus||'',
         loadedStatus:f.LoadedStatus||'',
@@ -8443,6 +8509,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'RegularPrice',displayName:'Regular Price',type:'number'},
   {listKey:'campaigns',name:'LoadedBasePrice',displayName:'Loaded Base Price',type:'number'},
   {listKey:'campaigns',name:'JobFolderURL',displayName:'Job Folder URL',type:'text'},
+  {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number'},
   {listKey:'personalTasks',name:'ParentTaskId',displayName:'Parent Task Id',type:'number'},
   {listKey:'personalTasks',name:'LinkedActivityId',displayName:'Linked Activity Id',type:'number'}
 ];
@@ -10760,6 +10827,7 @@ function renderActivityDetail(id,mode){
     h+=`<button class="btn btn-s" onclick="closePop();openDesignBrief(${ev.spId})">✏️ Submit Design Brief</button>`;
   }
   h+=`<button class="btn btn-s" onclick="duplicateCampaign(${ev.id})">📋 Duplicate</button>`;
+  if(canEdit)h+=`<button class="btn btn-s" onclick="duplicateAsNextMonth(${ev.id},this)">🔁 Duplicate as next month</button>`;
   if(canEdit)h+=`<button onclick="savePopEdit(${ev.id},'${mode}')" class="btn btn-p pop-save-btn" style="display:none">Save changes</button>`;
   if(canEdit)h+=`<button class="btn btn-s" style="margin-left:auto;color:var(--red);border-color:#fca5a5" onclick="archiveCampaign(${ev.id},this)">🗑 Archive</button>`;
   if(mode==='popup')h+=`<button class="btn btn-s" onclick="closePop()">Close</button>`;
