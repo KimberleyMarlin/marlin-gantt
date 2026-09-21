@@ -1626,7 +1626,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <div class="form-group full" id="fLongDescriptionGroup" style="display:none"><label class="form-label">Long Description</label><textarea class="form-textarea" id="fLongDescription" placeholder="Full customer-facing copy for web, listings and campaign materials" style="min-height:90px"></textarea><div class="field-help" id="fLongDescriptionHelp">Master long-form copy. Loaded can use this by default, with an optional app-specific override below.</div></div>
             <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="fVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>All Venues</option></select></div>
             <div class="form-group"><label class="form-label">Marketing Funnel</label>
-              <select class="form-select" id="fStream">
+              <select class="form-select" id="fStream" onchange="updateActivityConditionalSections()">
                 <option value="">Select…</option>
                 <option>Venue Marketing</option><option>Loaded Rewards</option><option>Functions</option><option>Gift Cards</option><option>Events Program</option><option>Group / Brand Marketing</option>
               </select>
@@ -1669,11 +1669,9 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             </div>
           </div>
 
-          <div class="form-section-head">Loaded</div>
-          <div class="form-grid">
-            <div class="form-group full"><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="fIsLoaded" onchange="updateActivityConditionalSections()"> Will this be in Loaded Rewards?</label></div>
-          </div>
           <div id="fLoadedAppGroup" style="display:none">
+            <div class="form-section-head">⭐ Loaded Rewards Setup</div>
+            <div class="field-help" style="margin-bottom:8px">Shown automatically because Marketing Funnel is set to Loaded Rewards.</div>
             <div class="form-grid">
               <div class="form-group"><label class="form-label">Required in App?</label><select class="form-select" id="fAppRequired"><option value="">Select…</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
               <div class="form-group"><label class="form-label">Required in Newsletter?</label><select class="form-select" id="fNewsletterRequired"><option value="">Select…</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
@@ -2835,10 +2833,9 @@ function duplicateCampaign(evId){
       selectOpt('fActType',ev.activityType);
       updateSubmitForm();
       setTimeout(()=>selectOpt('fEventFormat',ev.eventFormat),50);
-      if(ev.loadedRewards){
-        const cb=document.getElementById('fIsLoaded');
-        if(cb){cb.checked=true;toggleFLoadedApp();}
-      }
+      // Loaded section is implied by Marketing Funnel — force it across even if the original was
+      // tagged Loaded through Brand/Department rather than BusinessStream specifically.
+      if(ev.loadedRewards){selectOpt('fStream','Loaded Rewards');updateActivityConditionalSections();}
       const msg=document.getElementById('fMsg');
       if(msg){msg.textContent='📋 Duplicated from "'+ev.title+'" — check the dates before submitting.';msg.className='form-msg ok';}
     },100);
@@ -9292,7 +9289,9 @@ function updateSubmitForm(){
 function updateActivityConditionalSections(){
   const type=document.getElementById('fActType')?.value||'';
   const format=document.getElementById('fEventFormat')?.value||'';
-  const isLoaded=!!document.getElementById('fIsLoaded')?.checked;
+  // Loaded Rewards setup only appears for an activity actually funded through that funnel —
+  // no separate yes/no question needed, it's implied by the Marketing Funnel choice.
+  const isLoaded=document.getElementById('fStream')?.value==='Loaded Rewards';
   const needsChannels=!!document.getElementById('fNeedsChannels')?.checked;
   const needsDesign=!!document.getElementById('fNeedsDesign')?.checked;
   const supplierInvolved=!!document.getElementById('fSupplierInvolved')?.checked;
@@ -9348,9 +9347,6 @@ document.addEventListener('click',(e)=>{
   document.querySelectorAll('.multiselect-panel').forEach(p=>p.style.display='none');
 });
 
-function toggleFLoadedApp(){
-  updateActivityConditionalSections();
-}
 function togglePOSDetails(){
   const on=!!document.getElementById('fPOSRequired')?.checked;
   const grp=document.getElementById('fPOSDetailsGroup');
@@ -9371,10 +9367,7 @@ function applyActivityTemplate(){
   (t.assets||[]).forEach(id=>{const el=document.getElementById(id);if(el)el.checked=true;});
   const needsChannels=document.getElementById('fNeedsChannels');if(needsChannels)needsChannels.checked=!!(t.channels||[]).length;
   const needsDesign=document.getElementById('fNeedsDesign');if(needsDesign)needsDesign.checked=!!(t.assets||[]).length;
-  if(t.isLoaded){
-    const cb=document.getElementById('fIsLoaded');
-    if(cb){cb.checked=true;toggleFLoadedApp();}
-  }
+  // Loaded section now follows Marketing Funnel (set above via t.stream) — no separate flag needed.
   if(t.appRequired)selectOpt('fAppRequired',t.appRequired);
   if(t.appHeading)set('fAppHeading',t.appHeading);
   if(t.posRequired){
@@ -10452,8 +10445,8 @@ async function submitEvent(){
       const ticketURL=document.getElementById('fTicketURL')?.value.trim();if(ticketURL)fields.TicketURL=ticketURL;
     }
 
-    // Loaded — is this a Loaded Rewards promo, and what's required to feature it?
-    const isLoaded=document.getElementById('fIsLoaded')?.checked;
+    // Loaded — implied by Marketing Funnel = Loaded Rewards, not a separate checkbox.
+    const isLoaded=stream==='Loaded Rewards';
     if(isLoaded){
       fields.Brand='Loaded Rewards';
       if(!fields.BusinessStream)fields.BusinessStream='Loaded Rewards';
@@ -10562,7 +10555,7 @@ function showFMsg(msg,type){const el=document.getElementById('fMsg');if(!el)retu
 function clearForm(){
   ['fTitle','fDesc','fLongDescription','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['fVenue','fActType','fEventFormat','fStream','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup','fProductLookup'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
-  ['fIsLoaded','fSupplierInvolved','fPOSRequired','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  ['fSupplierInvolved','fPOSRequired','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   togglePOSDetails();
   SUBMIT_PEOPLE_SELECTED.clear();
   const peopleSearch=document.getElementById('fPeopleSearch');if(peopleSearch)peopleSearch.value='';
