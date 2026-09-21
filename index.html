@@ -9516,7 +9516,10 @@ function pickCRMTab(button){
 }
 
 async function crmFetchListItemsPageById(listUrl,cursor,pageSize,token){
-  const url=`${listUrl}/items?expand=fields&$filter=id gt ${cursor}&$orderby=id&$top=${pageSize}`;
+  // Must filter/order on fields/ID (the real, numeric SharePoint ID column) — not the bare "id"
+  // resource property, which Graph treats as a STRING. String comparison breaks the moment IDs go
+  // multi-digit (e.g. "10" doesn't sort after "9" as text), silently dropping/skipping rows.
+  const url=`${listUrl}/items?expand=fields&$filter=fields/ID gt ${cursor}&$orderby=fields/ID&$top=${pageSize}`;
   const res=await fetch(url,{headers:{Authorization:'Bearer '+token}});
   if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
   const data=await res.json();
