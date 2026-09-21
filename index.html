@@ -4101,9 +4101,11 @@ function populateCampaignLookupSelects(error=''){
     if(!select)continue;
     const config=CAMPAIGN_LOOKUPS[kind];
     const options=LOOKUP_OPTIONS[kind]||[];
-    select.innerHTML='<option value="">None selected</option>'+options.map(option=>`<option value="${escapeAttr(option.id)}">${escapeAttr(option.label)}</option>`).join('');
+    select.multiple=!!config?.allowMultiple;
+    if(select.multiple){select.size=Math.min(Math.max(options.length,3),6);select.innerHTML=options.map(option=>`<option value="${escapeAttr(option.id)}">${escapeAttr(option.label)}</option>`).join('');}
+    else select.innerHTML='<option value="">None selected</option>'+options.map(option=>`<option value="${escapeAttr(option.id)}">${escapeAttr(option.label)}</option>`).join('');
     select.disabled=!config||!!error;
-    if(note)note.textContent=error?`Could not load lookup: ${error}`:!config?`${kind} is not configured as a SharePoint Lookup column on Marketing & Activations 2026.`:`Pulled live from the connected ${kind.toLowerCase()} list.`;
+    if(note)note.textContent=error?`Could not load lookup: ${error}`:!config?`${kind} is not configured as a SharePoint Lookup column on Marketing & Activations 2026.`:config.allowMultiple?`Pulled live from the connected ${kind.toLowerCase()} list — hold Ctrl (⌘ on Mac) to pick more than one, e.g. every drink in a bottomless package.`:`Pulled live from the connected ${kind.toLowerCase()} list.`;
   }
 }
 
@@ -10549,9 +10551,12 @@ async function submitEvent(){
     if(supplierInvolved){
       fields.SupplierInvolved=true;
       const supplierId=document.getElementById('fSupplierLookup')?.value;
-      const productId=document.getElementById('fProductLookup')?.value;
       if(supplierId&&supplierKey)fields[supplierKey]=parseInt(supplierId,10);
-      if(productId&&productKey)fields[productKey]=parseInt(productId,10);
+      const productSel=document.getElementById('fProductLookup');
+      const productIds=(productSel?[...productSel.selectedOptions]:[]).map(o=>o.value).filter(Boolean);
+      if(productIds.length&&productKey){
+        fields[productKey]=CAMPAIGN_LOOKUPS.Product?.allowMultiple?productIds.map(id=>parseInt(id,10)):parseInt(productIds[0],10);
+      }
     }
 
     // Ticketing fields only exist for a ticketed event. EventFormat remains the fallback flag if
@@ -10673,7 +10678,8 @@ async function submitEvent(){
 function showFMsg(msg,type){const el=document.getElementById('fMsg');if(!el)return;el.textContent=msg;el.className='form-msg '+type;el.scrollIntoView({behavior:'smooth',block:'nearest'});}
 function clearForm(){
   ['fTitle','fDesc','fLongDescription','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['fVenue','fActType','fEventFormat','fStream','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup','fProductLookup'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  ['fVenue','fActType','fEventFormat','fStream','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  const productSel=document.getElementById('fProductLookup');if(productSel)[...productSel.options].forEach(o=>o.selected=false);
   ['fSupplierInvolved','fPOSRequired','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   togglePOSDetails();
   SUBMIT_PEOPLE_SELECTED.clear();
