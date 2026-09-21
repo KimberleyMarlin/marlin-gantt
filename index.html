@@ -10579,9 +10579,14 @@ function renderActivityDetail(id,mode){
   h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">`;
   h+=editField('Booking / Ticket Link',ev.bookingUrl||ev.ticketUrl,'BookingURL','text');
   h+=editField('Landing Page URL',ev.landingPageUrl,'LandingPageURL','text');
-  h+=editField('Ticket Platform',ev.ticketPlatform,'TicketPlatform','select',['','Humanitix','TryBooking','Eventbrite','Oztix','Now Book It']);
-  h+=editField('Ticket Price ($)',ev.ticketPrice||'','TicketPrice','number');
-  h+=editField('Capacity',ev.capacity||'','Capacity','number');
+  // Ticket Platform/Price/Capacity only make sense for an actual ticketed event — showing them on
+  // every activity (a recurring promo, a maintenance update, etc.) is exactly the "irrelevant
+  // fields" clutter this popup gets flagged for. Same ev.ticketed gate the read-only summary uses.
+  if(ev.ticketed){
+    h+=editField('Ticket Platform',ev.ticketPlatform,'TicketPlatform','select',['','Humanitix','TryBooking','Eventbrite','Oztix','Now Book It']);
+    h+=editField('Ticket Price ($)',ev.ticketPrice||'','TicketPrice','number');
+    h+=editField('Capacity',ev.capacity||'','Capacity','number');
+  }
   h+=editField('RRP ($)',ev.regularPrice||'','RegularPrice','number');
   h+=editField('Discount / Member Price ($)',ev.loadedBasePrice||'','LoadedBasePrice','number');
   h+=`</div>`;
