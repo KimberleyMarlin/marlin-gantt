@@ -8959,12 +8959,8 @@ function renderOperationsMap(){
   }
 
   el.innerHTML=`<div class="foundation-grid">
-    <div class="foundation-card"><strong>1. Restrict the SharePoint list to four users</strong><p>Kimberley needs Full Control. Perrin, Amelia and Ben need the agreed read/edit level. Remove broad site-member inheritance before treating the register as restricted.</p></div>
-    <div class="foundation-card"><strong>2. Use real Person columns</strong><p>Owner and Shared With should resolve actual Microsoft 365 identities. Free-text names are useful labels, but poor security controls and unreliable automation keys.</p></div>
-    <div class="foundation-card"><strong>3. Add explicit dependency fields</strong><p>Add Depends On, Blocks, Decision Required and Approval Owner. Without these, the map can infer relationships, but it cannot prove them.</p></div>
-    <div class="foundation-card"><strong>4. Finish the email-to-task flow</strong><p>Capture the original email link, sender, conversation ID and source. The flow should create the item without modifying or replying to the original email.</p></div>
-    <div class="foundation-card" style="border-color:var(--accent);background:var(--accent-bg)"><strong>5. Separate shared work from genuinely private tasks ✓ Done</strong><p>Personal Tasks is now its own private SharePoint list (Kimberley-only access), completely separate from the four-person work register — not a filtered view of it.</p></div>
-    <div class="foundation-card"><strong>6. Add production controls</strong><p>Test all four accounts, enable SharePoint version history, index owner/status/due date, document rollback, and keep development and production releases separate.</p></div>
+    <div class="foundation-card" style="border-color:var(--accent);background:var(--accent-bg)"><strong>1. Separate shared work from genuinely private tasks ✓ Done</strong><p>Personal Tasks is now its own private SharePoint list (Kimberley-only access), completely separate from any shared work list — not a filtered view of one.</p></div>
+    <div class="foundation-card" style="opacity:.6"><strong>2. On hold — four-person Work Register</strong><p>Items 1–4 and 6 of this checklist (restricting the shared list, real Person columns, explicit dependency fields, the email-to-task flow, production controls) all assumed a shared four-person task list would get built out. That's on hold — workload and job assignment now run off Activities instead (see the Workload view).</p></div>
   </div>`;
 }
 
