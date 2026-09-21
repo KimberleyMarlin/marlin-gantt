@@ -4371,7 +4371,7 @@ async function loadCampaigns(){
     const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items?expand=fields&$top=500`;
     const items=await fetchGraphItems(url,token);
     const canViewBudget=!!rolePermissions().canViewBudget;
-    EVENTS=[];let id=1;
+    EVENTS=[];
     items.forEach(item=>{
       const f=item.fields;
       if(!f.Start){
@@ -4425,7 +4425,10 @@ async function loadCampaigns(){
         }
       }
       EVENTS.push({
-        id:id++,spId:item.id,
+        // The real SharePoint item ID, not a reload-local counter — a counter reassigns different
+        // ids to different activities every time this runs (fetch order isn't guaranteed stable
+        // across requests), which is exactly what made an Approve click "approve" the wrong item.
+        id:Number(item.id),spId:item.id,
         // Submission metadata — when it was created and by whom, straight from Graph item
         // metadata rather than parsed out of free-text, so it's reliable for sorting/filtering.
         submittedAt:item.createdDateTime||'',
