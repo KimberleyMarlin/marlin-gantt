@@ -3807,6 +3807,16 @@ async function initMSAL(){
   // they next reload. This keeps it reasonably live without needing a real push/notification backend.
   setInterval(async()=>{
     if(!isAuthed)return;
+    const knownIntakeIds=new Set(EVENTS.filter(e=>e.stage==='Intake').map(e=>String(e.id)));
+    await loadCampaigns();
+    const newSubmissions=EVENTS.filter(e=>e.stage==='Intake'&&!knownIntakeIds.has(String(e.id)));
+    if(newSubmissions.length){
+      const newest=newSubmissions[0];
+      showToast(newSubmissions.length>1?`${newSubmissions.length} new submissions`:'New submission',`${newest.title}${newest.venue?' — '+newest.venue:''}`,()=>navTo('approvals'));
+    }
+    renderApprovalsInline();
+    if(document.getElementById('p-approvals')?.classList.contains('active'))renderApprovals();
+    if(document.getElementById('p-overview')?.classList.contains('active'))renderCrossVenue&&renderCrossVenue();
     const knownIds=new Set(ALL_COMMENTS.map(comment=>String(comment.id)));
     await loadAllComments();
     const myName=(currentUser?.name||'').trim().toLowerCase();
