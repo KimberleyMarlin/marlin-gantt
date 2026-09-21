@@ -3489,14 +3489,12 @@ function renderInbox(){
   };
 
   // Once you're an author or recipient anywhere in a thread, show the whole public conversation.
-  // Private comments are still limited by canSeeComment(). Archived items' chat history still exists and is
-  // reachable via the item itself (Campaigns → Show Completed → open it), it just doesn't clutter here.
+  // Private comments are still limited by canSeeComment(). Archived/completed activities' chat
+  // history stays visible here too now — Kimberley wants historical conversations findable from
+  // the Inbox itself rather than only by opening the archived activity directly.
   const permitted=ALL_COMMENTS.filter(canSeeComment);
   const memberThreads=new Set(permitted.filter(c=>isMe(c.author)||isMe(c.recipient)).map(c=>String(c.campaignId)).filter(Boolean));
-  const visible=permitted.filter(c=>memberThreads.has(String(c.campaignId))).filter(c=>{
-    const ev=EVENTS.find(e=>String(e.spId)===String(c.campaignId));
-    return !ev||!isArchived(ev); // no matching event found = keep it visible rather than silently hide
-  });
+  const visible=permitted.filter(c=>memberThreads.has(String(c.campaignId)));
   const byThread={};
   visible.forEach(c=>{
     if(!c.campaignId)return;
