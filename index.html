@@ -631,7 +631,6 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="sb-sec">Plan</div>
     <button class="sb-item" data-p="calendar" onclick="nav(this)"><span class="ico">◻</span>Calendar</button>
     <button class="sb-item" data-p="campaigns" onclick="nav(this)"><span class="ico">◎</span>Activities<span class="sb-badge" id="aBadge" style="display:none">0</span></button>
-    <button class="sb-item" data-p="pipeline" onclick="nav(this)"><span class="ico">⇥</span>Pipeline</button>
     <button class="sb-item" data-p="ideas" onclick="nav(this)"><span class="ico">💡</span>Idea Bank</button>
     <div class="sb-sec">Deliver</div>
     <button class="sb-item" data-p="approvals" onclick="nav(this)"><span class="ico">✓</span>Submissions</button>
@@ -921,11 +920,15 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="ph">
       <div><div class="ph-eye">Activities</div><div class="ph-title">Activity <em>Overview</em></div></div>
       <div class="ph-right">
+        <div class="chips" id="actViewChips">
+          <div class="chip on" data-v="table" onclick="setActivitiesView(this)">Table</div>
+          <div class="chip" data-v="pipeline" onclick="setActivitiesView(this)">Pipeline</div>
+        </div>
         <button class="tb-btn p" onclick="openActivitySubmissionFromOverview()">＋ Add Activity</button>
         <button class="tb-btn" id="campArchiveToggle" onclick="toggleCampArchive()">Show Completed</button>
       </div>
     </div>
-    <div class="ca">
+    <div class="ca" id="campTableWrap">
       <div class="filters">
         <div class="fg"><label>Venue</label><select id="cVenue" onchange="renderCampaigns()"><option value="">All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option></select></div>
         <div class="fg"><label>Type</label><select id="cPType" onchange="renderCampaigns()"><option value="">All</option><option>Event</option><option>Promotion / Offer</option><option>Campaign</option><option>Maintenance / Update</option></select></div>
@@ -5035,10 +5038,14 @@ function showPanel(id){
   // Schedule consolidation: gantt/venuemonth/crossvenue are now sub-views of 'calendar', not standalone pages.
   // If navigating anywhere else, make sure none of them are left visibly showing.
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:renderCampaigns,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyTasks,submit:()=>{}};
+  // Activities consolidation: Pipeline is a sub-view of 'campaigns' now — hide it when navigating elsewhere.
+  if(id!=='campaigns'){const pipePanel=document.getElementById('p-pipeline');if(pipePanel)pipePanel.style.display='none';}
+  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyTasks,submit:()=>{}};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
-  if(p){const ca=p.querySelector('.ca');if(ca){ca.style.minHeight='calc(100vh - 90px)';ca.style.height='auto';ca.style.display='block';ca.style.flex='none';}}
+  // Skip this for 'campaigns' while its Pipeline sub-view is showing — that block just hid the
+  // table's .ca on purpose, and this would otherwise force it back to display:block.
+  if(p&&!(id==='campaigns'&&activitiesView==='pipeline')){const ca=p.querySelector('.ca');if(ca){ca.style.minHeight='calc(100vh - 90px)';ca.style.height='auto';ca.style.display='block';ca.style.flex='none';}}
 }
 function renderCurrentPanel(){const a=document.querySelector('.panel.active');if(a){const id=a.id.replace('p-','');showPanel(id);}}
 
@@ -5616,7 +5623,7 @@ function renderOverview(){
     <div class="stat ${newSubCount>0?'hi':''}" onclick="navTo('approvals')" style="cursor:pointer"><div class="stat-n" style="color:${newSubCount>0?'var(--accent)':'inherit'}">${newSubCount}</div><div class="stat-l">New Submissions</div>${newSubCount>0?'<div class="stat-tag st-up">Needs review</div>':''}</div>
     <div class="stat" onclick="navTo('campaigns')" style="cursor:pointer"><div class="stat-n">${active.length}</div><div class="stat-l">Active</div></div>
     <div class="stat" onclick="goToCampaignsFiltered('Live')" style="cursor:pointer"><div class="stat-n">${live}</div><div class="stat-l">Live Now</div><div class="stat-tag st-up">● Running</div></div>
-    <div class="stat" onclick="navTo('pipeline')" style="cursor:pointer"><div class="stat-n">${inPipe}</div><div class="stat-l">In Pipeline</div></div>
+    <div class="stat" onclick="navToActivitiesView('pipeline')" style="cursor:pointer"><div class="stat-n">${inPipe}</div><div class="stat-l">In Pipeline</div></div>
     <div class="stat ${atRisk>0?'hi':''}" onclick="goToAtRisk()" style="cursor:pointer"><div class="stat-n" style="color:${atRisk>0?'#c0392b':'inherit'}">${atRisk}</div><div class="stat-l">At Risk</div><div class="stat-tag ${atRisk>0?'st-alert':'st-up'}">${tight} tight</div></div>
     <div class="stat ${blocked>0?'hi':''}" onclick="goToBlockedTasks()" style="cursor:pointer"><div class="stat-n">${blocked}</div><div class="stat-l">Blocked</div></div>
   `;
@@ -6772,6 +6779,53 @@ function renderPipeline(){
 let calViewMode='month';
 let calWeekStart=null; // Date object for week view
 
+// Activities/Pipeline consolidation: Pipeline is a view toggle inside Activities, not its own
+// nav item — same pattern as the calendar's gantt/venuemonth/crossvenue sub-views below.
+let activitiesView='table';
+function setActivitiesView(el){
+  if(!el||!canAccessPanel(el.dataset.v==='pipeline'?'pipeline':'campaigns')){
+    console.warn('Blocked activities view for role',currentRole,':',el?.dataset?.v||'unknown');
+    return;
+  }
+  document.querySelectorAll('#actViewChips .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  activitiesView=el.dataset.v;
+  const tableWrap=document.getElementById('campTableWrap');
+  const pipePanel=document.getElementById('p-pipeline');
+  const campPanel=document.getElementById('p-campaigns');
+  if(activitiesView==='pipeline'){
+    if(tableWrap)tableWrap.style.display='none';
+    if(pipePanel){
+      pipePanel.style.display='flex';pipePanel.style.flexDirection='column';pipePanel.style.flex='1';
+      // Pipeline sits earlier in the DOM than Activities — place it right after so it renders
+      // below the unified Table/Pipeline switcher instead of above the whole page.
+      if(campPanel&&campPanel.nextElementSibling!==pipePanel)campPanel.insertAdjacentElement('afterend',pipePanel);
+      const subPh=pipePanel.querySelector(':scope > .ph > div:first-child');
+      if(subPh)subPh.style.display='none';
+      const pipeCa=pipePanel.querySelector('.ca');
+      if(pipeCa){pipeCa.style.minHeight='calc(100vh - 90px)';pipeCa.style.height='auto';pipeCa.style.display='block';pipeCa.style.flex='none';}
+    }
+    // p-campaigns is still the "active" panel (min-height ~100vh from the .active class) — collapse
+    // it to just its header so it doesn't leave a tall blank gap above the pipeline sub-panel.
+    if(campPanel){campPanel.style.minHeight='0';campPanel.style.flex='0 0 auto';}
+    renderPipeline();
+  } else {
+    if(tableWrap)tableWrap.style.display='';
+    if(pipePanel)pipePanel.style.display='none';
+    if(campPanel){campPanel.style.minHeight='';campPanel.style.flex='';}
+    renderCampaigns();
+  }
+}
+function initActivitiesView(){
+  const chip=document.querySelector(`#actViewChips .chip[data-v="${activitiesView}"]`)||document.querySelector('#actViewChips .chip[data-v="table"]');
+  if(chip)setActivitiesView(chip);
+  else renderCampaigns();
+}
+function navToActivitiesView(view){
+  navTo('campaigns');
+  const chip=document.querySelector(`#actViewChips .chip[data-v="${view}"]`);
+  if(chip)setActivitiesView(chip);
+}
 const SCHEDULE_SUBPANELS={gantt:'p-gantt',venuemonth:'p-venuemonth',crossvenue:'p-crossvenue'};
 const SCHEDULE_TITLES={gantt:'Event <em>Timeline</em>',venuemonth:'Venue <em>Monthly</em>',crossvenue:'Overview'};
 let scheduleView='month';
