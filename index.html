@@ -1368,6 +1368,29 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     </div>
   </div>
 
+  <!-- ADD/EDIT PROJECT OVERLAY -->
+  <div class="overlay" id="addProjectOv" onclick="if(event.target===this)closeAddProject()">
+    <div class="popup" style="max-width:600px">
+      <div class="pop-h"><div class="pop-title" id="addProjectTitle">New Project</div><button class="pop-close" onclick="closeAddProject()">✕</button></div>
+      <div class="pop-body">
+        <div id="projectFormMsg" class="form-msg"></div>
+        <div class="form-grid">
+          <div class="form-group full"><label class="form-label">Project Title <span class="req">*</span></label><input class="form-input" id="projTitle" type="text" placeholder="e.g. New Menu Launch"></div>
+          <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="projStatus"><option>Not Started</option><option>In Progress</option><option>On Hold</option><option>Done</option></select></div>
+          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="projPriority"><option>Normal</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></div>
+          <div class="form-group"><label class="form-label">Owner</label><select class="form-select" id="projOwner"></select></div>
+          <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="projDue" type="date"></div>
+          <div class="form-group"><label class="form-label">Progress (%)</label><input class="form-input" id="projProgress" type="number" min="0" max="100" placeholder="0"></div>
+          <div class="form-group full"><label class="form-label">Phase</label><input class="form-input" id="projPhase" list="projPhaseOptions" placeholder="e.g. Foundation, Systems, Strategy"><datalist id="projPhaseOptions"><option value="Foundation"><option value="Systems"><option value="Strategy"></datalist></div>
+          <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="projNotes" placeholder="What this project covers…" style="min-height:70px"></textarea></div>
+        </div>
+        <input type="hidden" id="projEditId" value="">
+        <div id="projLinkedActivities" style="margin-top:14px"></div>
+        <div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-p" onclick="saveProject()">Save Project</button><button class="btn btn-s" onclick="closeAddProject()">Cancel</button><button class="btn btn-s" id="projDeleteBtn" style="color:var(--red);display:none;margin-left:auto" onclick="deleteProjectConfirm()">Delete</button></div>
+      </div>
+    </div>
+  </div>
+
   <!-- SCHEMA TOOLS — Kimberley only. Adds SharePoint columns from inside the OS instead of SharePoint's own list settings. -->
   <div class="panel" id="p-schema">
     <div class="ph">
@@ -1428,7 +1451,9 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 
   <!-- PROJECTS -->
   <div class="panel" id="p-projects">
-    <div class="ph"><div><div class="ph-eye">Strategy</div><div class="ph-title">Marketing <em>Projects</em></div></div></div>
+    <div class="ph"><div><div class="ph-eye">Strategy</div><div class="ph-title">Marketing <em>Projects</em></div></div>
+      <div class="ph-right"><button class="tb-btn p" onclick="openAddProject()">+ New Project</button><button class="tb-btn" onclick="loadProjects().then(renderProjects)">↻</button></div>
+    </div>
     <div class="ca"><div id="projList"><div class="loading"><div class="spinner"></div></div></div></div>
   </div>
 
@@ -4556,6 +4581,7 @@ async function loadCampaigns(){
         // People
         owner:(typeof f.Assignee==='string'?f.Assignee:(f.Assignee?.LookupValue||f.Assignee?.Title))||'',
         ownerEmail:f.Assignee?.Email||'',
+        projectId:f.ProjectId!=null&&f.ProjectId!==''?String(f.ProjectId):'',
         designer:f.Designer?.LookupValue||f.Designer?.Title||'',
         // Brand
         brand:f.Brand||'', // internal name Brand, display Primary Brand
@@ -8684,6 +8710,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'LoadedBasePrice',displayName:'Loaded Base Price',type:'number'},
   {listKey:'campaigns',name:'JobFolderURL',displayName:'Job Folder URL',type:'text'},
   {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number'},
+  {listKey:'campaigns',name:'ProjectId',displayName:'Project Id',type:'number'},
   {listKey:'personalTasks',name:'ParentTaskId',displayName:'Parent Task Id',type:'number'},
   {listKey:'personalTasks',name:'LinkedActivityId',displayName:'Linked Activity Id',type:'number'}
 ];
@@ -9002,6 +9029,155 @@ async function loadProjects(){
   }
 }
 
+function openAddProject(){
+  if(!canEditCampaigns()){alert('You do not have permission to add projects.');return;}
+  ['projTitle','projDue','projProgress','projPhase','projNotes','projEditId'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('projStatus').value='Not Started';
+  document.getElementById('projPriority').value='Normal';
+  populateProjectOwnerSelect('');
+  document.getElementById('addProjectTitle').textContent='New Project';
+  document.getElementById('projectFormMsg').textContent='';
+  document.getElementById('projDeleteBtn').style.display='none';
+  document.getElementById('projLinkedActivities').innerHTML='';
+  document.getElementById('addProjectOv').classList.add('show');
+}
+function openEditProject(id){
+  const p=PROJECTS.find(item=>String(item.id)===String(id));if(!p)return;
+  document.getElementById('projTitle').value=p.title||'';
+  document.getElementById('projStatus').value=p.status||'Not Started';
+  document.getElementById('projPriority').value=p.priority||'Normal';
+  populateProjectOwnerSelect(p.owner||'');
+  document.getElementById('projDue').value=p.due||'';
+  document.getElementById('projProgress').value=p.progress||0;
+  document.getElementById('projPhase').value=p.phase||'';
+  document.getElementById('projNotes').value=p.notes||'';
+  document.getElementById('projEditId').value=p.id;
+  document.getElementById('addProjectTitle').textContent='Edit Project';
+  document.getElementById('projectFormMsg').textContent='';
+  document.getElementById('projDeleteBtn').style.display=canEditCampaigns()?'inline-block':'none';
+  renderProjectLinkedActivities(p.id);
+  document.getElementById('addProjectOv').classList.add('show');
+}
+function closeAddProject(){document.getElementById('addProjectOv').classList.remove('show');}
+
+function populateProjectOwnerSelect(preselect){
+  const sel=document.getElementById('projOwner');if(!sel)return;
+  const names=M365_USERS.length?M365_USERS.map(u=>u.name):AUTHORISED_TEAM.map(m=>m.name);
+  sel.innerHTML='<option value="">Unassigned</option>'+names.map(n=>`<option value="${escapeAttr(n)}">${escapeAttr(n)}</option>`).join('');
+  sel.value=preselect||'';
+}
+
+// Job tickets (activities) link to a project via ProjectId on the Campaigns list — the same
+// self-service graceful-column pattern used elsewhere (ParentTaskId, LinkedActivityId, etc.).
+function renderProjectLinkedActivities(projectId){
+  const el=document.getElementById('projLinkedActivities');if(!el)return;
+  const linked=EVENTS.filter(ev=>String(ev.projectId)===String(projectId));
+  const unlinked=EVENTS.filter(ev=>!ev.projectId).sort((a,b)=>new Date(a.start)-new Date(b.start));
+  el.innerHTML=`<div class="pop-section">Linked Job Tickets (Activities) — ${linked.length}</div>
+    ${linked.length?linked.map(ev=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><a href="#" onclick="event.preventDefault();closeAddProject();showPop(${ev.id})" style="color:var(--accent)">${escapeAttr(ev.title)}</a><span style="display:flex;align-items:center;gap:8px"><span class="tag t-gr" style="font-size:9px">${stageLabel(ev.stage)}</span><button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="unlinkActivityFromProject('${ev.id}')">Unlink</button></span></div>`).join(''):'<div style="font-size:12px;color:var(--text3);padding:4px 0">No activities linked yet.</div>'}
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <select class="form-select" id="projLinkActivitySelect" style="flex:1"><option value="">Link an existing activity…</option>${unlinked.map(ev=>`<option value="${ev.id}">${escapeAttr(ev.title)}</option>`).join('')}</select>
+      <button class="tb-btn" onclick="linkActivityToProject('${projectId}')">Link</button>
+    </div>`;
+}
+async function linkActivityToProject(projectId){
+  const activityId=document.getElementById('projLinkActivitySelect')?.value;
+  if(!activityId)return;
+  await setActivityProjectId(activityId,projectId);
+  renderProjectLinkedActivities(projectId);
+  renderProjects();
+}
+async function unlinkActivityFromProject(activityId){
+  const projectId=document.getElementById('projEditId')?.value;
+  await setActivityProjectId(activityId,'');
+  renderProjectLinkedActivities(projectId);
+  renderProjects();
+}
+async function setActivityProjectId(activityId,projectId){
+  const ev=EVENTS.find(item=>String(item.id)===String(activityId));if(!ev)return;
+  const old=ev.projectId;ev.projectId=projectId;
+  try{
+    const token=await getToken(true);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{ProjectId:projectId?parseInt(projectId,10):null}})});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+  }catch(e){
+    ev.projectId=old;
+    alert('Could not update that activity\'s project link — the ProjectId column may not exist in SharePoint yet. Create it from Schema Tools, then try again.');
+  }
+}
+
+async function saveProject(){
+  const title=document.getElementById('projTitle').value.trim();
+  const editId=document.getElementById('projEditId').value;
+  const msg=document.getElementById('projectFormMsg');
+  if(!title){msg.textContent='Please enter a project title.';msg.className='form-msg err';return;}
+  if(!LIST_IDS.projects){msg.textContent='Projects list is not connected.';msg.className='form-msg err';return;}
+  if(!canEditCampaigns()){msg.textContent='You do not have permission to save projects.';msg.className='form-msg err';return;}
+  const status=document.getElementById('projStatus').value;
+  const priority=document.getElementById('projPriority').value;
+  const owner=document.getElementById('projOwner').value;
+  const due=document.getElementById('projDue').value;
+  const progress=document.getElementById('projProgress').value;
+  const phase=document.getElementById('projPhase').value.trim();
+  const notes=document.getElementById('projNotes').value.trim();
+  const fields={Title:title};
+  if(status)fields.Status=status;
+  if(priority)fields.Priority=priority;
+  if(owner)fields.Owner=owner;
+  if(due)fields.DueDate=due+'T12:00:00Z';
+  if(progress!=='')fields.Progress=parseFloat(progress)||0;
+  if(phase)fields.Phase=phase;
+  if(notes)fields.Notes=notes;
+  try{
+    const token=await getToken(true);
+    const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.projects}/items${editId?'/'+editId:''}`;
+    // Same graceful drop-and-retry pattern as savePersonalTask — the exact SharePoint column names
+    // for a project (Owner/DueDate/Progress/Phase/Notes) haven't been schema-verified, so anything
+    // that isn't recognized gets dropped rather than failing the whole save.
+    const optional=['Priority','Owner','DueDate','Progress','Phase','Notes'];
+    let payload={...fields},res,created=null,lastError='';
+    for(let attempt=0;attempt<=optional.length;attempt++){
+      res=await fetch(url,{method:editId?'PATCH':'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:payload})});
+      if(res.ok){if(!editId)created=await res.json();break;}
+      lastError=await res.text();
+      if(attempt<optional.length)delete payload[optional[attempt]];
+    }
+    if(!res?.ok)throw new Error('HTTP '+res?.status+': '+lastError);
+    const skipped=Object.keys(fields).filter(k=>!payload.hasOwnProperty(k));
+    if(editId){
+      const p=PROJECTS.find(item=>String(item.id)===String(editId));
+      if(p)Object.assign(p,{title,status,priority,owner,due,progress:parseFloat(progress)||0,phase:phase||p.phase,notes});
+    }else{
+      PROJECTS.push({id:String(created.id),title,status,priority,owner,progress:parseFloat(progress)||0,due,notes,phase:phase||'Projects',tasks:[]});
+    }
+    renderProjects();
+    if(skipped.length){
+      msg.textContent=`Saved, but these fields weren't recognized in SharePoint yet: ${skipped.join(', ')}. Add them as columns (Schema Tools can help), then try again.`;
+      msg.className='form-msg err';
+    }else{
+      closeAddProject();
+    }
+  }catch(e){msg.textContent='Could not save: '+e.message;msg.className='form-msg err';}
+}
+
+async function deleteProjectConfirm(){
+  const id=document.getElementById('projEditId').value;if(!id)return;
+  if(!canEditCampaigns()){alert('You do not have permission to delete projects.');return;}
+  const p=PROJECTS.find(item=>String(item.id)===String(id));if(!p)return;
+  const linkedCount=EVENTS.filter(ev=>String(ev.projectId)===String(id)).length;
+  const warning=linkedCount?` ${linkedCount} linked activit${linkedCount===1?'y':'ies'} will be kept, just unlinked from this project.`:'';
+  if(!confirm(`Delete project "${p.title}"?${warning}`))return;
+  try{
+    const token=await getToken(true);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.projects}/items/${id}`,{method:'DELETE',headers:{Authorization:'Bearer '+token}});
+    if(!res.ok&&res.status!==404)throw new Error('HTTP '+res.status);
+    PROJECTS=PROJECTS.filter(item=>String(item.id)!==String(id));
+    EVENTS.filter(ev=>String(ev.projectId)===String(id)).forEach(ev=>ev.projectId='');
+    closeAddProject();
+    renderProjects();
+  }catch(e){alert('Could not delete project: '+e.message);}
+}
+
 function renderProjects(){
   if(!isAuthed)return;
   const priTag={Critical:'t-r',High:'t-o',Medium:'t-a',Normal:'t-g',Low:'t-gr'};
@@ -9028,12 +9204,13 @@ function renderProjects(){
       const today=new Date();today.setHours(0,0,0,0);
       const isOverdue=p.due&&new Date(p.due+'T00:00:00')<today&&p.status!=='Done';
       const tasksHtml=p.tasks&&p.tasks.length?`<div style="margin-top:8px;display:flex;flex-direction:column;gap:3px">${p.tasks.map(t=>`<div style="display:flex;gap:7px;font-size:11.5px;color:var(--text2);align-items:flex-start"><span style="color:var(--border2);flex-shrink:0;margin-top:1px">→</span>${t}</div>`).join('')}</div>`:'';
-      return`<div class="proj-item" style="margin-bottom:7px;${isOverdue?'border-left:3px solid var(--red);border-radius:0 var(--r) var(--r) 0':''}">
+      const linkedCount=EVENTS.filter(ev=>String(ev.projectId)===String(p.id)).length;
+      return`<div class="proj-item" style="margin-bottom:7px;cursor:pointer;${isOverdue?'border-left:3px solid var(--red);border-radius:0 var(--r) var(--r) 0':''}" onclick="openEditProject('${p.id}')">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;flex-wrap:wrap;gap:6px">
           <div class="proj-name">${p.title}${isOverdue?'<span style="font-size:9px;color:var(--red);font-weight:700;margin-left:6px;vertical-align:middle">OVERDUE</span>':''}</div>
           <div style="display:flex;gap:4px;flex-shrink:0">${p.priority?`<span class="tag ${priTag[p.priority]||'t-gr'}">${p.priority}</span>`:''}<span class="pill ${statPill[p.status]||'p-plan'}">${p.status}</span></div>
         </div>
-        <div class="proj-meta">${p.owner?`<span>👤 ${p.owner}</span>`:''} ${p.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">📅 ${fmtDate(p.due)}</span>`:''}</div>
+        <div class="proj-meta">${p.owner?`<span>👤 ${p.owner}</span>`:''} ${p.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">📅 ${fmtDate(p.due)}</span>`:''} ${linkedCount?`<span>🎫 ${linkedCount} job ticket${linkedCount===1?'':'s'}</span>`:''}</div>
         ${p.notes?`<div style="font-size:11.5px;color:var(--text3);margin-top:2px;margin-bottom:5px">${p.notes}</div>`:''}
         <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
           <div class="proj-prog-w" style="flex:1"><div class="proj-prog-f" style="width:${p.progress}%"></div></div>
@@ -10807,6 +10984,11 @@ function renderActivityDetail(id,mode){
       <option value="">Unassigned</option>
       ${peopleNames.map(n=>`<option value="${n}" ${n===ev.owner?'selected':''}>${n}</option>`).join('')}
     </select></div>`;
+  h+=`<div class="pop-field"><div class="pop-lbl">Project</div>
+    <select class="pop-edit-sel" data-field="ProjectId" data-original="${escapeAttr(ev.projectId||'')}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
+      <option value="">Not part of a project</option>
+      ${PROJECTS.map(p=>`<option value="${p.id}" ${String(p.id)===String(ev.projectId)?'selected':''}>${escapeAttr(p.title)}</option>`).join('')}
+    </select></div>`;
   h+=editField('Venue',ev.venue,'Venue','select',['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','All Venues']);
   if(rolePermissions().canViewBudget){
     h+=editField('Budget ($)',ev.budget||'','BudgetAllocated','number');
@@ -11027,7 +11209,7 @@ function markPopDirty(mode){
 // existing item can fail on these as a generic 500 "generalException" rather than the cleaner
 // 400 "Field 'X' is not recognized" — so they need to be tried as an explicit drop-and-retry,
 // not just caught by the regex below. Remove an entry here once its column has been created.
-const UNCONFIRMED_COLUMNS=['AppShortDescription','RegularPrice','LoadedBasePrice'];
+const UNCONFIRMED_COLUMNS=['AppShortDescription','RegularPrice','LoadedBasePrice','ProjectId'];
 
 async function savePopEdit(evId,mode){
   if(!canEditCampaigns()){alert('You do not have permission to edit campaigns.');return;}
@@ -11059,8 +11241,8 @@ async function savePopEdit(evId,mode){
         if(kind==='Supplier'){ev.supplierId=v;ev.supplierLookup=selected?.label||'';}
         if(kind==='Product'){ev.productId=v;ev.product=selected?.label||'';}
       }
-    } else if(f==='BudgetAllocated'||f==='ActualSpend'||f==='SupplierContribution'||f==='MarketingBudget'||f==='TicketPrice'||f==='Capacity'){
-      fields[f]=v?(f==='Capacity'?parseInt(v,10):parseFloat(v)):null;
+    } else if(f==='BudgetAllocated'||f==='ActualSpend'||f==='SupplierContribution'||f==='MarketingBudget'||f==='TicketPrice'||f==='Capacity'||f==='ProjectId'){
+      fields[f]=v?(f==='Capacity'||f==='ProjectId'?parseInt(v,10):parseFloat(v)):null;
     } else if(f==='Start'||f==='End'){
       // Noon UTC so the date doesn't shift back a day in Perth (UTC+8)
       fields[f]=v?(v.includes('T')?v:v+'T12:00:00Z'):null;
@@ -11084,13 +11266,14 @@ async function savePopEdit(evId,mode){
       'BookingURL':'bookingUrl','LandingPageURL':'landingPageUrl','TicketPlatform':'ticketPlatform',
       'TicketPrice':'ticketPrice','Capacity':'capacity',
       'AppRequired':'appRequired','NewsletterRequired':'newsletterRequired','AppHeading':'appHeading','AppDescription':'appDescription','AppShortDescription':'appShortDescription',
-      'RegularPrice':'regularPrice','LoadedBasePrice':'loadedBasePrice'
+      'RegularPrice':'regularPrice','LoadedBasePrice':'loadedBasePrice','ProjectId':'projectId'
     };
     const localKey=localMap[f];
     if(localKey){
       if(f==='Start'||f==='End')ev[localKey]=v;
       else if(['BudgetAllocated','MarketingBudget','ActualSpend','SupplierContribution','TicketPrice'].includes(f))ev[localKey]=parseFloat(v)||0;
       else if(f==='Capacity')ev[localKey]=parseInt(v)||0;
+      else if(f==='ProjectId')ev[localKey]=v||'';
       else ev[localKey]=v;
     }
     if(f===writableCampaignKey('LongDescription','Long Description'))ev.longDescription=v;
