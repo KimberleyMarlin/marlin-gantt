@@ -5202,21 +5202,22 @@ function shortVenue(v){if(!v||typeof v!=='string')return'';return v.replace('The
 // ── HEALTH CHECK ──
 // Calculates whether an activity is on track based on days-to-event vs stage vs lead time.
 // Returns {level:'green'|'amber'|'red', label:'...'}
-const STAGE_ORDER={'Intake':0,'In Design':1,'In Build':2,'Review':3,'Live':4,'Done':5};
+const STAGE_ORDER={'Intake':0,'In Design':1,'In Build':2,'Review':3,'Ready for Live':4,'Live':5,'Done':6};
 function healthCheck(ev){
   if(!ev||!ev.start)return{level:'green',label:'No date'};
   const stage=ev.stage||'Intake';
   const stageIdx=STAGE_ORDER[stage]!==undefined?STAGE_ORDER[stage]:0;
+  const liveIdx=STAGE_ORDER['Live'],doneIdx=STAGE_ORDER['Done'];
   // Done/complete = always green
-  if(stageIdx>=5)return{level:'green',label:'Complete'};
+  if(stageIdx>=doneIdx)return{level:'green',label:'Complete'};
   const daysOut=Math.round((new Date(ev.start+'T00:00:00')-new Date())/864e5);
   // Live stage: fine if event is near/now
-  if(stageIdx===4)return{level:'green',label:'Live'};
+  if(stageIdx===liveIdx)return{level:'green',label:'Live'};
   // Past event but not done = red
   if(daysOut<0)return{level:'red',label:'Overdue — event passed'};
   // Expected stage given time remaining: the closer the event, the further along it should be.
-  // Rough model: need ~1 week per remaining stage. Stages left to reach Live (4):
-  const stagesLeft=4-stageIdx;
+  // Rough model: need ~1 week per remaining stage.
+  const stagesLeft=liveIdx-stageIdx;
   const weeksOut=daysOut/7;
   const weeksNeeded=stagesLeft*1.2; // ~1.2 weeks buffer per remaining stage
   if(weeksOut>=weeksNeeded*1.3)return{level:'green',label:'On track'};
@@ -5224,8 +5225,8 @@ function healthCheck(ev){
   return{level:'red',label:'At risk — behind schedule'};
 }
 function healthColor(h){return h==='green'?'#15803d':h==='amber'?'#b8860b':'#c0392b';}
-// Map any legacy/messy WorkflowStage value to the canonical six.
-const CANONICAL_STAGES=['Intake','In Design','In Build','Review','Live','Done'];
+// Map any legacy/messy WorkflowStage value to the canonical stages.
+const CANONICAL_STAGES=['Intake','In Design','In Build','Review','Ready for Live','Live','Done'];
 // Display-only relabeling — the SharePoint WorkflowStage value stays "Intake"; this just changes what
 // shows on screen. Add other stage relabels here if needed later.
 const STAGE_LABELS={'Intake':'Submissions','In Design':'Planning'};
@@ -5241,7 +5242,8 @@ function normaliseStage(s){
   if(v.includes('design brief')||v.includes('in design')||v==='design'||v.includes('brief'))return'In Design';
   if(v.includes('build')||v.includes('web')&&!v.includes('review')||v.includes('progress')||v.includes('staff brief'))return'In Build';
   if(v.includes('review')||v.includes('approval')||v.includes('awaiting'))return'Review';
-  if(v.includes('live')||v.includes('ready for live')||v.includes('scheduled'))return'Live';
+  if(v.includes('ready for live')||v.includes('ready to go live'))return'Ready for Live';
+  if(v.includes('live')||v.includes('scheduled'))return'Live';
   if(v.includes('complete')||v.includes('done')||v.includes('reporting')||v.includes('archive'))return'Done';
   return'Intake';
 }
@@ -5270,7 +5272,7 @@ function pickCalType(el){document.querySelectorAll('[onclick*="pickCalType"]').f
 let _cvView='timeline';
 let _cvVenues=null; // null = all
 let _cvLoadedOnly=false; // dedicated Loaded Rewards filter (was mislabeled as a duplicate "All Venues" chip)
-const CV_STAGE_COLOR={'Intake':'#918d82','In Design':'#2a4272','In Build':'#b8860b','Review':'#6b4a8a','Live':'#15803d','Done':'#b4b0a4'};
+const CV_STAGE_COLOR={'Intake':'#918d82','In Design':'#2a4272','In Build':'#b8860b','Review':'#6b4a8a','Ready for Live':'#0d9488','Live':'#15803d','Done':'#b4b0a4'};
 const CV_CHAN_ICON={design:'✦',web:'◈',loaded:'★',pos:'▤'};
 
 function setCvView(el){
@@ -5425,7 +5427,7 @@ function cvRenderStats(data){
 }
 
 function cvLegend(){
-  const stages=['Intake','In Design','In Build','Review','Live','Done'];
+  const stages=['Intake','In Design','In Build','Review','Ready for Live','Live','Done'];
   return `<div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap;font-size:11.5px;color:var(--text2)">
     <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)">Health</span>
     <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#15803d"></span>On track</span>
@@ -5437,7 +5439,7 @@ function cvLegend(){
 }
 
 function cvRenderBoard(data){
-  const stages=['Intake','In Design','In Build','Review','Live','Done'];
+  const stages=['Intake','In Design','In Build','Review','Ready for Live','Live','Done'];
   return `<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:10px;align-items:flex-start">`+stages.map(stage=>{
     const items=data.filter(e=>e.stage===stage);
     return `<div ondragover="cvDragOver(event)" ondragleave="cvDragLeave(event)" ondrop="cvDrop(event,'${stage}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;min-width:270px;max-width:270px;flex-shrink:0;transition:.1s">
@@ -5785,7 +5787,7 @@ function renderDashThisMonth(){
     if(aEnded!==bEnded)return aEnded?1:-1;
     return a.start.localeCompare(b.start);
   });
-  const stageColor=(stage)=>({Intake:'var(--text3)',['In Design']:'#7c3aed',['In Build']:'#2563eb',Review:'#b8860b',Live:'#15803d',Done:'var(--text3)'}[stage]||'var(--text3)');
+  const stageColor=(stage)=>({Intake:'var(--text3)',['In Design']:'#7c3aed',['In Build']:'#2563eb',Review:'#b8860b',['Ready for Live']:'#0d9488',Live:'#15803d',Done:'var(--text3)'}[stage]||'var(--text3)');
   const ovCard=(ev)=>{
     const vc=vColor(ev.venue);
     const evEnd=new Date((ev.end||ev.start)+'T00:00:00');
@@ -5843,7 +5845,7 @@ function renderOverview(){
   const in14=new Date(today.getTime()+14*864e5);
   const active=allEvts.filter(e=>!isArchived(e));
   const live=active.filter(e=>e.stage==='Live').length;
-  const inPipe=active.filter(e=>['Intake','In Design','In Build','Review'].includes(e.stage)).length;
+  const inPipe=active.filter(e=>['Intake','In Design','In Build','Review','Ready for Live'].includes(e.stage)).length;
   const blocked=MY_TASKS.filter(t=>t.status==='Blocked').length;
   const briefsDue=allEvts.filter(e=>e.designBriefDue&&new Date(e.designBriefDue+'T00:00:00')>=today&&new Date(e.designBriefDue+'T00:00:00')<=new Date(Date.now()+7*864e5)&&!isArchived(e)).length;
   const atRisk=active.filter(e=>healthCheck(e).level==='red').length;
@@ -6887,13 +6889,14 @@ function renderPipeline(){
   if(!isAuthed)return;
   // Correct stage order — New Submission first, then approval flow
   // Canonical six stages
-  const stages=['Intake','In Design','In Build','Review','Live','Done'];
+  const stages=['Intake','In Design','In Build','Review','Ready for Live','Live','Done'];
 
   const colors={
     'Intake':'#918d82',
     'In Design':'#2a4272',
     'In Build':'#b8860b',
     'Review':'#6b4a8a',
+    'Ready for Live':'#0d9488',
     'Live':'#15803d',
     'Done':'#b4b0a4'
   };
@@ -7436,7 +7439,7 @@ function renderCampaigns(){
   })[key]||'';
   evts.sort((a,b)=>String(sortValue(a,campSortKey)).localeCompare(String(sortValue(b,campSortKey)),'en-AU',{numeric:true,sensitivity:'base'})*(campSortDir==='asc'?1:-1));
   updateCampaignSortHeaders();
-  const stageColors={'Intake':'#918d82','In Design':'#2a4272','In Build':'#b8860b','Review':'#6b4a8a','Live':'#15803d','Done':'#b4b0a4'};
+  const stageColors={'Intake':'#918d82','In Design':'#2a4272','In Build':'#b8860b','Review':'#6b4a8a','Ready for Live':'#0d9488','Live':'#15803d','Done':'#b4b0a4'};
   document.getElementById('campBody').innerHTML=evts.length
     ?evts.map(ev=>{
         const vc=vColor(ev.venue);
@@ -7815,7 +7818,7 @@ function renderLoaded(){
 
   document.getElementById('lrCampaigns').innerHTML=tierHtml+lr.map(ev=>{
     const variants=loadedVariantsForEvent(ev);
-    const stageColor={'Intake':'#918d82','In Design':'#2a4272','In Build':'#b8860b','Review':'#6b4a8a','Live':'#15803d','Done':'#b4b0a4'}[ev.stage]||'#918d82';
+    const stageColor={'Intake':'#918d82','In Design':'#2a4272','In Build':'#b8860b','Review':'#6b4a8a','Ready for Live':'#0d9488','Live':'#15803d','Done':'#b4b0a4'}[ev.stage]||'#918d82';
     const detail=activityDetailLabel(ev)||'Not supplied';
 
     return`<div class="lr-card" onclick="showPop(${ev.id})">
@@ -10744,7 +10747,7 @@ function renderActivityDetail(id,mode){
   h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="popEditFields">`;
   h+=editField('Start Date',ev.start,'Start','date');
   h+=editField('End Date',ev.end,'End','date');
-  h+=editField('Stage',ev.stage,'WorkflowStage','select',['Intake','In Design','In Build','Review','Live','Done']);
+  h+=editField('Stage',ev.stage,'WorkflowStage','select',['Intake','In Design','In Build','Review','Ready for Live','Live','Done']);
   h+=editField('Status',ev.status||'Active','Status','select',campaignColumnDefinition('Status')?.choice?.choices||['Active','Paused','Cancelled','Archive']);
   h+=editField('Activity Type',ev.activityType,'ActivityType','select',['Event','Promotion / Offer','Campaign','Maintenance / Update']);
   h+=editField('Event Format',ev.eventFormat,'EventFormat','select',['','Ticketed Event','Table Booking Event','Non-Ticketed Event','Live Music / Entertainment','Sporting Screening','Community Event','Private / Functions Event','Recurring Event']);
