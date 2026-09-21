@@ -1338,6 +1338,8 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <span id="personalTaskBulkCount" style="font-size:12px;font-weight:700;color:var(--text)"></span>
         <select id="ptBulkPriority" class="form-select" style="width:auto;min-width:130px"><option value="">Set priority…</option><option value="Critical">Critical</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select>
         <button class="tb-btn" onclick="bulkApplyPersonalTaskPriority()">Apply</button>
+        <select id="ptBulkParent" class="form-select" style="width:auto;min-width:170px"><option value="">Move under parent…</option></select>
+        <button class="tb-btn" onclick="bulkSetPersonalTaskParent()">Move</button>
         <button class="tb-btn" onclick="bulkMarkPersonalTasksDone()">Mark done</button>
         <button class="tb-btn" style="color:var(--red)" onclick="bulkDeletePersonalTasks()">Delete</button>
         <button class="tb-btn" onclick="clearPersonalTaskSelection()">Clear selection</button>
@@ -3807,6 +3809,16 @@ async function initMSAL(){
   // they next reload. This keeps it reasonably live without needing a real push/notification backend.
   setInterval(async()=>{
     if(!isAuthed)return;
+    const knownIntakeIds=new Set(EVENTS.filter(e=>e.stage==='Intake').map(e=>String(e.id)));
+    await loadCampaigns();
+    const newSubmissions=EVENTS.filter(e=>e.stage==='Intake'&&!knownIntakeIds.has(String(e.id)));
+    if(newSubmissions.length){
+      const newest=newSubmissions[0];
+      showToast(newSubmissions.length>1?`${newSubmissions.length} new submissions`:'New submission',`${newest.title}${newest.venue?' — '+newest.venue:''}`,()=>navTo('approvals'));
+    }
+    renderApprovalsInline();
+    if(document.getElementById('p-approvals')?.classList.contains('active'))renderApprovals();
+    if(document.getElementById('p-overview')?.classList.contains('active'))renderCrossVenue&&renderCrossVenue();
     const knownIds=new Set(ALL_COMMENTS.map(comment=>String(comment.id)));
     await loadAllComments();
     const myName=(currentUser?.name||'').trim().toLowerCase();
@@ -4091,9 +4103,11 @@ function populateCampaignLookupSelects(error=''){
     if(!select)continue;
     const config=CAMPAIGN_LOOKUPS[kind];
     const options=LOOKUP_OPTIONS[kind]||[];
-    select.innerHTML='<option value="">None selected</option>'+options.map(option=>`<option value="${escapeAttr(option.id)}">${escapeAttr(option.label)}</option>`).join('');
+    select.multiple=!!config?.allowMultiple;
+    if(select.multiple){select.size=Math.min(Math.max(options.length,3),6);select.innerHTML=options.map(option=>`<option value="${escapeAttr(option.id)}">${escapeAttr(option.label)}</option>`).join('');}
+    else select.innerHTML='<option value="">None selected</option>'+options.map(option=>`<option value="${escapeAttr(option.id)}">${escapeAttr(option.label)}</option>`).join('');
     select.disabled=!config||!!error;
-    if(note)note.textContent=error?`Could not load lookup: ${error}`:!config?`${kind} is not configured as a SharePoint Lookup column on Marketing & Activations 2026.`:`Pulled live from the connected ${kind.toLowerCase()} list.`;
+    if(note)note.textContent=error?`Could not load lookup: ${error}`:!config?`${kind} is not configured as a SharePoint Lookup column on Marketing & Activations 2026.`:config.allowMultiple?`Pulled live from the connected ${kind.toLowerCase()} list — hold Ctrl (⌘ on Mac) to pick more than one, e.g. every drink in a bottomless package.`:`Pulled live from the connected ${kind.toLowerCase()} list.`;
   }
 }
 
@@ -8583,6 +8597,30 @@ function updatePersonalTaskBulkBar(){
   const n=personalTaskSelected.size;
   bar.style.display=n?'flex':'none';
   count.textContent=n+' selected';
+  const parentSel=document.getElementById('ptBulkParent');
+  if(parentSel){
+    // Only top-level tasks not currently selected can be a bulk-move target — keeps subtasks one level deep.
+    const options=PERSONAL_TASKS.filter(task=>!task.parentId&&!personalTaskSelected.has(String(task.id)));
+    const current=parentSel.value;
+    parentSel.innerHTML='<option value="">Move under parent…</option><option value="__none__">— Remove parent (make top-level) —</option>'+options.map(task=>`<option value="${escapeAttr(task.id)}">${escapeAttr(task.title)}</option>`).join('');
+    if([...parentSel.options].some(o=>o.value===current))parentSel.value=current;
+  }
+}
+
+async function bulkSetPersonalTaskParent(){
+  const raw=document.getElementById('ptBulkParent')?.value;
+  if(!raw||!personalTaskSelected.size)return;
+  const newParentId=raw==='__none__'?'':raw;
+  if(newParentId&&personalTaskSelected.has(String(newParentId))){alert('Cannot move a task under another task that is itself selected.');return;}
+  for(const id of Array.from(personalTaskSelected)){
+    if(String(id)===String(newParentId))continue;
+    const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task)continue;
+    const old=task.parentId;task.parentId=newParentId;
+    try{if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(id).startsWith('PT-')){const token=await getToken(true);const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{ParentTaskId:newParentId?parseInt(newParentId,10):null}})});if(!res.ok)throw new Error('HTTP '+res.status);}}catch(e){task.parentId=old;}
+  }
+  if(newParentId)personalTaskExpanded.add(String(newParentId));
+  document.getElementById('ptBulkParent').value='';
+  renderPersonalTasks();
 }
 
 async function bulkApplyPersonalTaskPriority(){
@@ -10539,9 +10577,12 @@ async function submitEvent(){
     if(supplierInvolved){
       fields.SupplierInvolved=true;
       const supplierId=document.getElementById('fSupplierLookup')?.value;
-      const productId=document.getElementById('fProductLookup')?.value;
       if(supplierId&&supplierKey)fields[supplierKey]=parseInt(supplierId,10);
-      if(productId&&productKey)fields[productKey]=parseInt(productId,10);
+      const productSel=document.getElementById('fProductLookup');
+      const productIds=(productSel?[...productSel.selectedOptions]:[]).map(o=>o.value).filter(Boolean);
+      if(productIds.length&&productKey){
+        fields[productKey]=CAMPAIGN_LOOKUPS.Product?.allowMultiple?productIds.map(id=>parseInt(id,10)):parseInt(productIds[0],10);
+      }
     }
 
     // Ticketing fields only exist for a ticketed event. EventFormat remains the fallback flag if
@@ -10663,7 +10704,8 @@ async function submitEvent(){
 function showFMsg(msg,type){const el=document.getElementById('fMsg');if(!el)return;el.textContent=msg;el.className='form-msg '+type;el.scrollIntoView({behavior:'smooth',block:'nearest'});}
 function clearForm(){
   ['fTitle','fDesc','fLongDescription','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['fVenue','fActType','fEventFormat','fStream','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup','fProductLookup'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  ['fVenue','fActType','fEventFormat','fStream','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  const productSel=document.getElementById('fProductLookup');if(productSel)[...productSel.options].forEach(o=>o.selected=false);
   ['fSupplierInvolved','fPOSRequired','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   togglePOSDetails();
   SUBMIT_PEOPLE_SELECTED.clear();
