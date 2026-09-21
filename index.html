@@ -1019,13 +1019,15 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-right:4px">Type:</div>
       <div class="chips" id="calTypeChips">
         <div class="chip on" data-v="" onclick="pickCalCat(this)">All</div>
+        <div class="chip" data-v="Event" onclick="pickCalCat(this)"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#2563eb;margin-right:4px"></span>Event</div>
+        <div class="chip" data-v="Promotion / Offer" onclick="pickCalCat(this)"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#b8860b;margin-right:4px"></span>Promotion / Offer</div>
+        <div class="chip" data-v="Campaign" onclick="pickCalCat(this)"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#7c3aed;margin-right:4px"></span>Campaign</div>
+        <div class="chip" data-v="Maintenance / Update" onclick="pickCalCat(this)"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4a9e8e;margin-right:4px"></span>Maintenance / Update</div>
         <div class="chip" data-v="Ticketed Event" onclick="pickCalCat(this)">🎫 Ticketed</div>
-        <div class="chip" data-v="Live Music" onclick="pickCalCat(this)">🎵 Live Music</div>
-        <div class="chip" data-v="Venue Activation" onclick="pickCalCat(this)">🍸 Activation</div>
-        <div class="chip" data-v="Functions Campaign" onclick="pickCalCat(this)">🥂 Functions</div>
+        <div class="chip" data-v="Live Music / Entertainment" onclick="pickCalCat(this)">🎵 Live Music</div>
+        <div class="chip" data-v="Functions" onclick="pickCalCat(this)">🥂 Functions</div>
+        <div class="chip" data-v="Sporting Screening" onclick="pickCalCat(this)">🏆 Sport</div>
         <div class="chip" data-v="Loaded Rewards" onclick="pickCalCat(this)">⭐ Loaded</div>
-        <div class="chip" data-v="Supplier Activation" onclick="pickCalCat(this)">🤝 Supplier</div>
-        <div class="chip" data-v="Sporting Event" onclick="pickCalCat(this)">🏆 Sport</div>
         <div class="chip" data-v="holiday" onclick="pickCalCat(this)">📅 Holidays</div>
       </div>
     </div>
@@ -7189,18 +7191,20 @@ function pickCalCat(el){
 }
 
 // Category → colour mapping
+// Calendar colour maps 1:1 to the real ActivityType choices (Event/Promotion/Offer/Campaign/
+// Maintenance/Update) so a menu change (Maintenance / Update) looks nothing like an Event or a
+// Campaign at a glance — the previous version keyed off category strings that no longer matched
+// any live ActivityType/EventFormat/BusinessStream value, so almost everything silently fell back
+// to venue colour regardless of what kind of activity it was.
+const CAL_TYPE_COLOR={'Event':'#2563eb','Promotion / Offer':'#b8860b','Campaign':'#7c3aed','Maintenance / Update':'#4a9e8e'};
 function calEvtColor(ev){
-  // Status overrides category colour — historic items stay visible but styled distinctly
+  // Status overrides everything — historic items stay visible but styled distinctly
   if(ev.status==='Archive'||ev.status==='Archived')return'#9ca3af';
   if(ev.status==='Cancelled')return'#dc2626';
   const cat=ev.activityType||ev.eventFormat||'';
-  if(cat==='Loaded Rewards')return'#f4a57a';
-  if(cat==='Functions Campaign')return'#b8860b';
-  if(cat==='Supplier Activation')return'#4a9e8e';
-  if(cat==='Sporting Event')return'#1a3a6e';
-  if(cat==='Cultural Event'||cat==='Community Event')return'#7b5ea7';
   if(cat==='Public Holiday'||cat==='National Calendar Event'||cat==='School Holidays')return'#88887e';
-  // Default: venue colour
+  if(CAL_TYPE_COLOR[ev.activityType])return CAL_TYPE_COLOR[ev.activityType];
+  // No classified ActivityType yet — fall back to venue colour rather than an unlabelled default
   const vc=vColor(ev.venue);return vc.c;
 }
 
@@ -7213,6 +7217,10 @@ function calEvtOpacity(ev){
   if(cat==='Public Holiday'||cat==='National Calendar Event'||cat==='School Holidays')return'.5';
   return'1';
 }
+
+// Small venue-colour dot so venue stays visible at a glance even though the chip's main colour
+// now signals ActivityType instead.
+function calVenueDot(ev){return`<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${vColor(ev.venue).c};margin-right:3px;flex-shrink:0"></span>`;}
 
 // Calculate relative luminance of a hex colour and return black or white for contrast
 function contrastText(hex){
@@ -7317,7 +7325,7 @@ function renderCalendar(){
         const style=calEvtStyle(ev);
         const aType=ev.activityType||'';
         const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.ticketed?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':'';
-        return`<div class="cal-ev" style="${style};font-size:10px;font-weight:500" onclick="showPop(${ev.id})" title="${ev.title} — ${ev.venue}">${icon?icon+' ':''}${ev.title}</div>`;
+        return`<div class="cal-ev" style="${style};font-size:10px;font-weight:500" onclick="showPop(${ev.id})" title="${ev.title} — ${ev.venue}${ev.activityType?' · '+ev.activityType:''}">${calVenueDot(ev)}${icon?icon+' ':''}${ev.title}</div>`;
       }).join('')}
       ${extra>0?`<div class="cal-more" onclick="showCalDayPopup(event,${y},${m},${day})">+${extra} more</div>`:''}
     </div>`;
