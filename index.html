@@ -648,6 +648,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <button class="sb-item" data-p="budget" onclick="nav(this)"><span class="ico">◈</span>Finance</button>
     <button class="sb-item" data-p="operations" onclick="nav(this)"><span class="ico">⌘</span>Operations Map</button>
     <button class="sb-item" data-p="projects" onclick="nav(this)"><span class="ico">▣</span>Projects</button>
+    <button class="sb-item" data-p="schema" onclick="nav(this)"><span class="ico">🛠</span>Schema Tools</button>
   </div>
   <div class="sb-submit-wrap">
     <button class="sb-cta" onclick="navTo('submit')">＋ Submit</button>
@@ -1317,7 +1318,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="ca">
       <div class="privacy-banner"><span style="font-size:18px">🔒</span><div><strong>Separate private list</strong><br>This panel never reads from the shared Team Work list. Access must also be restricted to Kimberley in SharePoint.</div></div>
       <div class="stats" id="personalTaskStats" style="margin-bottom:12px"></div>
-      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:11px;color:var(--text3);font-weight:600">Workstream</label><select id="personalTaskWorkstreamFilter" class="form-select" style="width:auto;min-width:180px" onchange="renderPersonalTasks()"><option value="">All</option></select></div>
+      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:11px;color:var(--text3);font-weight:600">Workstream</label><select id="personalTaskWorkstreamFilter" class="form-select" style="width:auto;min-width:180px" onchange="renderPersonalTasks()"><option value="">All</option></select><label style="font-size:11px;color:var(--text3);font-weight:600">Sort by</label><select id="personalTaskSort" class="form-select" style="width:auto;min-width:150px" onchange="renderPersonalTasks()"><option value="due">Due date</option><option value="priority">Priority</option><option value="title">Title (A–Z)</option><option value="created">Recently added</option></select></div>
       <div id="personalTasksList"></div>
     </div>
   </div>
@@ -1337,6 +1338,38 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         </div>
         <input type="hidden" id="ptEditId" value="">
         <div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-p" onclick="savePersonalTask()">Save Personal Task</button><button class="btn btn-s" onclick="closeAddPersonalTask()">Cancel</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHEMA TOOLS — Kimberley only. Adds SharePoint columns from inside the OS instead of SharePoint's own list settings. -->
+  <div class="panel" id="p-schema">
+    <div class="ph">
+      <div><div class="ph-eye">Kimberley Only</div><div class="ph-title">Schema <em>Tools</em></div><div class="ph-sub">Add SharePoint columns straight from here — creates only, never changes existing data.</div></div>
+      <div class="ph-right"><button class="tb-btn" onclick="renderSchemaTools(true)">↻ Refresh</button></div>
+    </div>
+    <div class="ca">
+      <div id="schemaKnownGaps"></div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-h"><span class="card-title">Add a column to any list</span></div>
+        <div class="card-body">
+          <div id="schemaAddMsg" class="form-msg"></div>
+          <div class="form-grid">
+            <div class="form-group full"><label class="form-label">List</label><select class="form-select" id="schemaListSelect"></select></div>
+            <div class="form-group"><label class="form-label">Column name (internal)</label><input class="form-input" id="schemaColName" placeholder="e.g. ArtworkDueDate"><div class="field-help">Letters/numbers/underscore only, no spaces — permanent once created.</div></div>
+            <div class="form-group"><label class="form-label">Display name</label><input class="form-input" id="schemaColDisplay" placeholder="e.g. Artwork Due Date"></div>
+            <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="schemaColType" onchange="toggleSchemaChoiceInput()">
+              <option value="text">Single line of text</option>
+              <option value="multitext">Multiple lines of text</option>
+              <option value="number">Number</option>
+              <option value="date">Date</option>
+              <option value="yesno">Yes / No</option>
+              <option value="choice">Choice (dropdown)</option>
+            </select></div>
+            <div class="form-group full" id="schemaChoiceGroup" style="display:none"><label class="form-label">Choices</label><input class="form-input" id="schemaColChoices" placeholder="Comma-separated, e.g. Low, Medium, High"></div>
+          </div>
+          <button class="btn btn-p" style="margin-top:10px" onclick="createSchemaColumn()">Create column</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2405,6 +2438,11 @@ function applyRoleUI(){
   if(!canAccessPanel('personaltasks')){
     const personalBtn=document.querySelector('.sb-item[data-p="personaltasks"]');
     if(personalBtn)personalBtn.style.display='none';
+  }
+  // Schema Tools writes SharePoint columns directly — Kimberley only.
+  if(!canAccessPanel('schema')){
+    const schemaBtn=document.querySelector('.sb-item[data-p="schema"]');
+    if(schemaBtn)schemaBtn.style.display='none';
   }
   // Hide approve buttons for non-approvers
   if(!config.canApprove){
@@ -4993,7 +5031,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Team <em>Work Register</em>',personaltasks:'Personal <em>Tasks</em>',operations:'Operations <em>Map</em>',projects:'Marketing <em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>Event Idea</em>',myday:'My <em>Day</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Team <em>Work Register</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Schema <em>Tools</em>',operations:'Operations <em>Map</em>',projects:'Marketing <em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>Event Idea</em>',myday:'My <em>Day</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -5009,7 +5047,7 @@ function rolePermissions(){
   return{...base,canViewBudget:true,hidePanels:base.hidePanels.filter(panel=>panel!=='budget')};
 }
 function canAccessPanel(id){
-  if(id==='personaltasks')return isPreviewMode||currentRole==='admin';
+  if(id==='personaltasks'||id==='schema')return isPreviewMode||currentRole==='admin';
   if(id==='crm')return canAccessMailing();
   return !rolePermissions().hidePanels.includes(id);
 }
@@ -5041,7 +5079,7 @@ function showPanel(id){
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
   // Activities consolidation: Pipeline is a sub-view of 'campaigns' now — hide it when navigating elsewhere.
   if(id!=='campaigns'){const pipePanel=document.getElementById('p-pipeline');if(pipePanel)pipePanel.style.display='none';}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyTasks,submit:()=>{}};
+  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyTasks,submit:()=>{}};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
   // Skip this for 'campaigns' while its Pipeline sub-view is showing — that block just hid the
@@ -8244,7 +8282,16 @@ function renderPersonalTasks(){
   }
   const activeWorkstream=workstreamSel?.value||'';
   const filtered=activeWorkstream?PERSONAL_TASKS.filter(task=>(task.workstream||'Uncategorised')===activeWorkstream):PERSONAL_TASKS;
-  const sortTasks=list=>list.slice().sort((a,b)=>(a.status==='Done')-(b.status==='Done')||(a.due||'9999').localeCompare(b.due||'9999'));
+  const sortMode=document.getElementById('personalTaskSort')?.value||'due';
+  const priorityRank={Critical:0,High:1,Medium:2,Low:3};
+  const sortComparators={
+    due:(a,b)=>(a.due||'9999').localeCompare(b.due||'9999'),
+    priority:(a,b)=>(priorityRank[a.priority]??2)-(priorityRank[b.priority]??2),
+    title:(a,b)=>(a.title||'').localeCompare(b.title||''),
+    created:(a,b)=>Number(String(b.id).replace(/\D/g,'')||0)-Number(String(a.id).replace(/\D/g,'')||0)
+  };
+  // Done tasks always sink to the bottom regardless of sort mode; the chosen sort only orders within each group.
+  const sortTasks=list=>list.slice().sort((a,b)=>(a.status==='Done')-(b.status==='Done')||(sortComparators[sortMode]||sortComparators.due)(a,b));
   const topLevel=sortTasks(filtered.filter(task=>!task.parentId));
   const childrenOf=parentId=>sortTasks(PERSONAL_TASKS.filter(task=>String(task.parentId)===String(parentId)));
   const shownChildIds=new Set();
@@ -8343,6 +8390,132 @@ async function deletePersonalTask(id){
   const warning=subtaskCount?` It has ${subtaskCount} subtask${subtaskCount===1?'':'s'} — they'll be kept, just no longer linked to a parent.`:'';
   if(!confirm(`Delete "${task.title}"?${warning}`))return;
   try{if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(id).startsWith('PT-')){const token=await getToken(true);const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${id}`,{method:'DELETE',headers:{Authorization:'Bearer '+token}});if(!res.ok&&res.status!==404)throw new Error('HTTP '+res.status);}PERSONAL_TASKS=PERSONAL_TASKS.filter(item=>String(item.id)!==String(id));renderPersonalTasks();}catch(e){alert('Could not delete the personal task: '+e.message);}
+}
+
+// ═══════════════════════════════════════
+// SCHEMA TOOLS — Kimberley-only self-service SharePoint column creation.
+// Generalises the same create-a-column approach already used for the CRM lists (see
+// createMissingCRMColumns) to every list the OS talks to, plus a free-form "any list, any column"
+// form. Creates columns only — never touches existing rows.
+// ═══════════════════════════════════════
+const SCHEMA_TOOL_LISTS={
+  campaigns:{label:'Marketing & Activations 2026',listIdKey:'campaigns'},
+  personalTasks:{label:'My Tasks (personal)',listIdKey:'personalTasks'},
+  projects:{label:'Marketing Projects',listIdKey:'projects'},
+  ideas:{label:'Idea Bank',listIdKey:'ideas'},
+  suppliers:{label:'Suppliers',listIdKey:'suppliers'},
+  offerVariants:{label:'Offer Variants',listIdKey:'offerVariants'},
+  offerMechanics:{label:'Offer Mechanics',listIdKey:'offerMechanics'},
+  calendarRef:{label:'Calendar Reference',listIdKey:'calendarRef'}
+};
+// Columns the app already knows it wants but can't confirm exist everywhere — same idea as
+// UNCONFIRMED_COLUMNS for campaigns, extended to other lists (e.g. ParentTaskId for subtasks).
+const SCHEMA_KNOWN_GAPS=[
+  {listKey:'campaigns',name:'AppShortDescription',displayName:'App Short Description',type:'text'},
+  {listKey:'campaigns',name:'RegularPrice',displayName:'Regular Price',type:'number'},
+  {listKey:'campaigns',name:'LoadedBasePrice',displayName:'Loaded Base Price',type:'number'},
+  {listKey:'campaigns',name:'JobFolderURL',displayName:'Job Folder URL',type:'text'},
+  {listKey:'personalTasks',name:'ParentTaskId',displayName:'Parent Task Id',type:'number'}
+];
+let SCHEMA_TOOL_COLUMNS={};
+function schemaColumnDefinition(type,name,displayName,choicesRaw){
+  const base={name,displayName};
+  if(type==='text')return{...base,text:{}};
+  if(type==='multitext')return{...base,text:{allowMultipleLines:true}};
+  if(type==='number')return{...base,number:{}};
+  if(type==='date')return{...base,dateTime:{displayAs:'default',format:'dateOnly'}};
+  if(type==='yesno')return{...base,boolean:{}};
+  if(type==='choice'){
+    const choices=(choicesRaw||'').split(',').map(c=>c.trim()).filter(Boolean);
+    if(!choices.length)return null;
+    return{...base,choice:{choices,displayAs:'dropDownMenu',allowFillIn:false}};
+  }
+  return null;
+}
+async function fetchListColumnsRaw(listId,token){
+  const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/columns?$select=name,displayName&$top=300`,{headers:{Authorization:'Bearer '+token}});
+  const data=await res.json();
+  if(data.error)throw new Error(data.error.message||'Could not read columns');
+  return(data.value||[]).filter(c=>!c.name.startsWith('_')&&!['ContentType','Attachments','Edit','LinkTitle','LinkTitleNoMenu','ItemChildCount','FolderChildCount','AppAuthor','AppEditor'].includes(c.name));
+}
+function toggleSchemaChoiceInput(){
+  const type=document.getElementById('schemaColType')?.value;
+  const group=document.getElementById('schemaChoiceGroup');
+  if(group)group.style.display=type==='choice'?'':'none';
+}
+async function renderSchemaTools(forceRefresh){
+  if(!canAccessPanel('schema'))return;
+  const gapsEl=document.getElementById('schemaKnownGaps');
+  const listSelect=document.getElementById('schemaListSelect');
+  if(!gapsEl||!listSelect)return;
+  if(isPreviewMode){
+    gapsEl.innerHTML='<div class="card"><div class="card-body" style="padding:20px;color:var(--text3)">Schema Tools needs a live SharePoint connection — not available in preview mode.</div></div>';
+    listSelect.innerHTML='';
+    return;
+  }
+  const options=Object.entries(SCHEMA_TOOL_LISTS).filter(([,meta])=>LIST_IDS[meta.listIdKey]).map(([key,meta])=>`<option value="${key}">${escapeAttr(meta.label)}</option>`);
+  if(CRM_SETUP_LOADED)Object.entries(CRM_LIST_NAMES).filter(([key])=>CRM_LISTS[key]).forEach(([key,name])=>options.push(`<option value="crm:${key}">${escapeAttr(name)} (CRM)</option>`));
+  listSelect.innerHTML=options.join('');
+  gapsEl.innerHTML='<div class="card"><div class="card-body" style="padding:20px"><div class="loading"><div class="spinner"></div></div></div></div>';
+  try{
+    const token=await getToken();
+    const neededListKeys=[...new Set(SCHEMA_KNOWN_GAPS.map(g=>g.listKey))];
+    for(const listKey of neededListKeys){
+      const listId=LIST_IDS[SCHEMA_TOOL_LISTS[listKey].listIdKey];
+      if(!listId){SCHEMA_TOOL_COLUMNS[listKey]=[];continue;}
+      if(forceRefresh||!SCHEMA_TOOL_COLUMNS[listKey])SCHEMA_TOOL_COLUMNS[listKey]=await fetchListColumnsRaw(listId,token);
+    }
+    const rows=SCHEMA_KNOWN_GAPS.map(gap=>{
+      const cols=SCHEMA_TOOL_COLUMNS[gap.listKey]||[];
+      const exists=cols.some(c=>c.name===gap.name||c.displayName===gap.displayName);
+      return{...gap,exists,listLabel:SCHEMA_TOOL_LISTS[gap.listKey].label};
+    });
+    const missing=rows.filter(r=>!r.exists);
+    gapsEl.innerHTML=`<div class="card"><div class="card-h"><span class="card-title">Columns the OS already knows it wants</span></div><div class="card-body">${rows.map(r=>`<div class="crm-health-row"><strong>${escapeAttr(r.listLabel)} · ${escapeAttr(r.displayName)}</strong><strong style="color:${r.exists?'#15803d':'var(--gold)'}">${r.exists?'Ready':'Missing'}</strong></div>`).join('')}${missing.length?`<div style="padding:12px"><button class="btn btn-p" onclick="createKnownSchemaGaps()">Create ${missing.length} missing column${missing.length===1?'':'s'}</button></div>`:''}</div></div>`;
+  }catch(e){
+    gapsEl.innerHTML=`<div class="card"><div class="card-body" style="padding:20px;color:var(--red)">Could not check columns: ${escapeAttr(e.message)}</div></div>`;
+  }
+}
+async function createKnownSchemaGaps(){
+  const rows=SCHEMA_KNOWN_GAPS.map(gap=>{const cols=SCHEMA_TOOL_COLUMNS[gap.listKey]||[];return{...gap,exists:cols.some(c=>c.name===gap.name||c.displayName===gap.displayName)};});
+  const missing=rows.filter(r=>!r.exists);
+  if(!missing.length)return;
+  if(!confirm(`Create ${missing.length} column(s)? Existing rows won't be changed.`))return;
+  const token=await getToken(true);
+  let created=0;const failures=[];
+  for(const gap of missing){
+    const listId=LIST_IDS[SCHEMA_TOOL_LISTS[gap.listKey].listIdKey];
+    const def=schemaColumnDefinition(gap.type,gap.name,gap.displayName);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/columns`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(def)});
+    if(res.ok)created++;else failures.push(`${SCHEMA_TOOL_LISTS[gap.listKey].label}.${gap.name}: HTTP ${res.status} ${await res.text()}`);
+  }
+  alert(`Created ${created} column(s)${failures.length?`, ${failures.length} failed — see console.`:'.'}`);
+  failures.forEach(f=>console.error('Schema Tools:',f));
+  await renderSchemaTools(true);
+}
+async function createSchemaColumn(){
+  const msg=document.getElementById('schemaAddMsg');
+  const listValue=document.getElementById('schemaListSelect').value;
+  const name=document.getElementById('schemaColName').value.trim();
+  const displayName=document.getElementById('schemaColDisplay').value.trim()||name;
+  const type=document.getElementById('schemaColType').value;
+  const choices=document.getElementById('schemaColChoices').value;
+  if(!listValue){msg.textContent='Pick a list first.';msg.className='form-msg err';return;}
+  if(!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)){msg.textContent='Column name must start with a letter and contain only letters, numbers and underscores — no spaces.';msg.className='form-msg err';return;}
+  const definition=schemaColumnDefinition(type,name,displayName,choices);
+  if(!definition){msg.textContent='Enter at least one choice.';msg.className='form-msg err';return;}
+  const listId=listValue.startsWith('crm:')?CRM_LISTS[listValue.slice(4)]?.id:LIST_IDS[SCHEMA_TOOL_LISTS[listValue]?.listIdKey];
+  if(!listId){msg.textContent="Could not find that list's SharePoint ID.";msg.className='form-msg err';return;}
+  msg.textContent='Creating…';msg.className='form-msg';
+  try{
+    const token=await getToken(true);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/columns`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(definition)});
+    if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+    msg.textContent=`✓ Column "${displayName}" created.`;msg.className='form-msg ok';
+    document.getElementById('schemaColName').value='';document.getElementById('schemaColDisplay').value='';document.getElementById('schemaColChoices').value='';
+    if(listValue.startsWith('crm:'))delete CRM_COLUMNS[listValue.slice(4)];else delete SCHEMA_TOOL_COLUMNS[listValue];
+    renderSchemaTools(true);
+  }catch(e){msg.textContent='Could not create column: '+e.message;msg.className='form-msg err';}
 }
 
 // ═══════════════════════════════════════
