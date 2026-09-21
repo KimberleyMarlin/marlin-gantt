@@ -1338,6 +1338,8 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <span id="personalTaskBulkCount" style="font-size:12px;font-weight:700;color:var(--text)"></span>
         <select id="ptBulkPriority" class="form-select" style="width:auto;min-width:130px"><option value="">Set priority…</option><option value="Critical">Critical</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select>
         <button class="tb-btn" onclick="bulkApplyPersonalTaskPriority()">Apply</button>
+        <select id="ptBulkParent" class="form-select" style="width:auto;min-width:170px"><option value="">Move under parent…</option></select>
+        <button class="tb-btn" onclick="bulkSetPersonalTaskParent()">Move</button>
         <button class="tb-btn" onclick="bulkMarkPersonalTasksDone()">Mark done</button>
         <button class="tb-btn" style="color:var(--red)" onclick="bulkDeletePersonalTasks()">Delete</button>
         <button class="tb-btn" onclick="clearPersonalTaskSelection()">Clear selection</button>
@@ -8595,6 +8597,30 @@ function updatePersonalTaskBulkBar(){
   const n=personalTaskSelected.size;
   bar.style.display=n?'flex':'none';
   count.textContent=n+' selected';
+  const parentSel=document.getElementById('ptBulkParent');
+  if(parentSel){
+    // Only top-level tasks not currently selected can be a bulk-move target — keeps subtasks one level deep.
+    const options=PERSONAL_TASKS.filter(task=>!task.parentId&&!personalTaskSelected.has(String(task.id)));
+    const current=parentSel.value;
+    parentSel.innerHTML='<option value="">Move under parent…</option><option value="__none__">— Remove parent (make top-level) —</option>'+options.map(task=>`<option value="${escapeAttr(task.id)}">${escapeAttr(task.title)}</option>`).join('');
+    if([...parentSel.options].some(o=>o.value===current))parentSel.value=current;
+  }
+}
+
+async function bulkSetPersonalTaskParent(){
+  const raw=document.getElementById('ptBulkParent')?.value;
+  if(!raw||!personalTaskSelected.size)return;
+  const newParentId=raw==='__none__'?'':raw;
+  if(newParentId&&personalTaskSelected.has(String(newParentId))){alert('Cannot move a task under another task that is itself selected.');return;}
+  for(const id of Array.from(personalTaskSelected)){
+    if(String(id)===String(newParentId))continue;
+    const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task)continue;
+    const old=task.parentId;task.parentId=newParentId;
+    try{if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(id).startsWith('PT-')){const token=await getToken(true);const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{ParentTaskId:newParentId?parseInt(newParentId,10):null}})});if(!res.ok)throw new Error('HTTP '+res.status);}}catch(e){task.parentId=old;}
+  }
+  if(newParentId)personalTaskExpanded.add(String(newParentId));
+  document.getElementById('ptBulkParent').value='';
+  renderPersonalTasks();
 }
 
 async function bulkApplyPersonalTaskPriority(){
