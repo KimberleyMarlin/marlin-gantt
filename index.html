@@ -1365,6 +1365,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="ptDue" type="date"></div>
           <div class="form-group full"><label class="form-label">Parent task</label><select class="form-select" id="ptParent"><option value="">None — top-level task</option></select><div class="field-help">Only tasks that aren't themselves a subtask can be picked as a parent.</div></div>
           <div class="form-group full"><label class="form-label">Linked activity</label><select class="form-select" id="ptLinkedActivity"><option value="">Not linked to an activity</option></select></div>
+          <div class="form-group full"><label class="form-label">Project</label><select class="form-select" id="ptProject"><option value="">Not part of a project</option></select></div>
           <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="ptNotes" placeholder="Private context or next action…" style="min-height:80px"></textarea></div>
         </div>
         <input type="hidden" id="ptEditId" value="">
@@ -1391,6 +1392,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         </div>
         <input type="hidden" id="projEditId" value="">
         <div id="projLinkedActivities" style="margin-top:14px"></div>
+        <div id="projLinkedTasks" style="margin-top:14px"></div>
         <div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-p" onclick="saveProject()">Save Project</button><button class="btn btn-s" onclick="closeAddProject()">Cancel</button><button class="btn btn-s" id="projDeleteBtn" style="color:var(--red);display:none;margin-left:auto" onclick="deleteProjectConfirm()">Delete</button></div>
       </div>
     </div>
@@ -8452,7 +8454,7 @@ async function loadPersonalTasks(){
   try{
     const token=await getToken();
     const items=await fetchGraphItems(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items?expand=fields&$top=200`,token);
-    PERSONAL_TASKS=items.map(item=>{const f=item.fields||{};return{id:String(item.id),title:f.Title||'',status:f.Status||f.Progress||'Not Started',priority:f.Priority||'Medium',workstream:f.Workstream||f.Category||f.TaskType||'',venue:f.Venue||'',due:f.DueDate?String(f.DueDate).split('T')[0]:'',notes:f.Notes||'',blocker:f.Blocker||f.BlockedReason||'',linkedCampaign:(typeof f.LinkedCampaign==='string'?f.LinkedCampaign:(f.LinkedCampaign?.LookupValue||f.LinkedCampaign?.Title))||f.LinkedCampaignID||'',parentId:f.ParentTaskId!=null&&f.ParentTaskId!==''?String(f.ParentTaskId):'',linkedActivityId:f.LinkedActivityId!=null&&f.LinkedActivityId!==''?String(f.LinkedActivityId):'',sequence:f.Sequence!=null&&f.Sequence!==''?Number(f.Sequence):0};});
+    PERSONAL_TASKS=items.map(item=>{const f=item.fields||{};return{id:String(item.id),title:f.Title||'',status:f.Status||f.Progress||'Not Started',priority:f.Priority||'Medium',workstream:f.Workstream||f.Category||f.TaskType||'',venue:f.Venue||'',due:f.DueDate?String(f.DueDate).split('T')[0]:'',notes:f.Notes||'',blocker:f.Blocker||f.BlockedReason||'',linkedCampaign:(typeof f.LinkedCampaign==='string'?f.LinkedCampaign:(f.LinkedCampaign?.LookupValue||f.LinkedCampaign?.Title))||f.LinkedCampaignID||'',parentId:f.ParentTaskId!=null&&f.ParentTaskId!==''?String(f.ParentTaskId):'',linkedActivityId:f.LinkedActivityId!=null&&f.LinkedActivityId!==''?String(f.LinkedActivityId):'',projectId:f.ProjectId!=null&&f.ProjectId!==''?String(f.ProjectId):'',sequence:f.Sequence!=null&&f.Sequence!==''?Number(f.Sequence):0};});
     PERSONAL_TASKS_ERROR='';
   }catch(e){console.error('Personal tasks load error:',e);PERSONAL_TASKS_ERROR=e.message||'Unknown error';}
   renderPersonalTasks();
@@ -8509,6 +8511,8 @@ function renderPersonalTasks(){
     const linkedEvent=task.linkedActivityId?EVENTS.find(e=>String(e.id)===String(task.linkedActivityId)):null;
     const linkedLabel=linkedEvent?linkedEvent.title:task.linkedCampaign;
     const linkedHtml=linkedLabel?`<span>↳ ${linkedEvent?`<a href="#" onclick="event.stopPropagation();event.preventDefault();showActivityPage(${linkedEvent.id})" style="color:var(--accent)">${escapeAttr(linkedLabel)}</a>`:escapeAttr(linkedLabel)}</span>`:'';
+    const linkedProject=task.projectId?PROJECTS.find(p=>String(p.id)===String(task.projectId)):null;
+    const projectHtml=linkedProject?`<span>🗂 <a href="#" onclick="event.stopPropagation();event.preventDefault();openEditProject('${linkedProject.id}')" style="color:var(--accent)">${escapeAttr(linkedProject.title)}</a></span>`:'';
     const subtaskToggleHtml=subtasks.length?`<span class="pt-subtoggle" onclick="event.stopPropagation();togglePersonalTaskSubtasks('${task.id}')">${expanded?'▾':'▸'} ${subtasksDone}/${subtasks.length} subtasks</span>`:'';
     const isSelected=personalTaskSelected.has(String(task.id));
     // Drag-to-reorder only makes sense (and is only enabled) in the custom-order sort mode — in any
@@ -8516,7 +8520,7 @@ function renderPersonalTasks(){
     // get overwritten by the active sort the moment the row re-renders.
     const dragAttrs=sortMode==='custom'?`draggable="true" ondragstart="ptDragStart(event,'${task.id}')" ondragover="ptDragOver(event)" ondragleave="ptDragLeave(event)" ondrop="ptDrop(event,'${task.id}')" ondragend="ptDragEnd(event)"`:'';
     const dragHandle=sortMode==='custom'?'<span class="pt-drag-handle" title="Drag to reorder">⋮⋮</span>':'';
-    let row=`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${task.workstream?`<span class="tag t-gr" style="text-transform:none">${escapeAttr(task.workstream)}</span>`:''}${linkedHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right"><span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority||'Medium')}</span>${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
+    let row=`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${task.workstream?`<span class="tag t-gr" style="text-transform:none">${escapeAttr(task.workstream)}</span>`:''}${linkedHtml}${projectHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right"><span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority||'Medium')}</span>${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
     if(!isSubtask&&subtasks.length&&expanded){
       row+=`<div class="pt-subtasks">${subtasks.map(child=>{shownChildIds.add(child.id);return personalTaskRowHtml(child,true);}).join('')}</div>`;
     } else if(!isSubtask&&subtasks.length){
@@ -8549,15 +8553,23 @@ function populatePersonalTaskActivitySelect(preselect){
   sel.innerHTML='<option value="">Not linked to an activity</option>'+sorted.map(ev=>`<option value="${ev.id}">${escapeAttr(ev.title)} — ${escapeAttr(shortVenue(ev.venue))}</option>`).join('');
   sel.value=preselect||'';
 }
-function openAddPersonalTask(parentId,linkedActivityId){
+function populatePersonalTaskProjectSelect(preselect){
+  const sel=document.getElementById('ptProject');if(!sel)return;
+  const sorted=(PROJECTS||[]).slice().sort((a,b)=>(a.title||'').localeCompare(b.title||''));
+  sel.innerHTML='<option value="">Not part of a project</option>'+sorted.map(p=>`<option value="${p.id}">${escapeAttr(p.title)}</option>`).join('');
+  sel.value=preselect||'';
+}
+function openAddPersonalTask(parentId,linkedActivityId,projectId){
   if(!canAccessPanel('personaltasks'))return;
   ['ptTitle','ptDue','ptNotes','ptEditId'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('ptPriority').value='Medium';
   populatePersonalTaskParentSelect('',parentId||'');
   populatePersonalTaskActivitySelect(linkedActivityId||'');
+  populatePersonalTaskProjectSelect(projectId||'');
   const parentTask=parentId?PERSONAL_TASKS.find(item=>String(item.id)===String(parentId)):null;
   const linkedEvent=linkedActivityId?EVENTS.find(e=>String(e.id)===String(linkedActivityId)):null;
-  document.getElementById('addPersonalTaskTitle').textContent=parentTask?`New Subtask — ${parentTask.title}`:linkedEvent?`New Task — ${linkedEvent.title}`:'New Personal Task';
+  const linkedProject=projectId?PROJECTS.find(p=>String(p.id)===String(projectId)):null;
+  document.getElementById('addPersonalTaskTitle').textContent=parentTask?`New Subtask — ${parentTask.title}`:linkedEvent?`New Task — ${linkedEvent.title}`:linkedProject?`New Task — ${linkedProject.title}`:'New Personal Task';
   document.getElementById('personalTaskFormMsg').textContent='';
   document.getElementById('addPersonalTaskOv').classList.add('show');
 }
@@ -8566,6 +8578,7 @@ function openEditPersonalTask(id){
   document.getElementById('ptTitle').value=task.title||'';document.getElementById('ptDue').value=task.due||'';document.getElementById('ptNotes').value=task.notes||'';document.getElementById('ptPriority').value=task.priority||'Medium';document.getElementById('ptEditId').value=task.id;
   populatePersonalTaskParentSelect(task.id,task.parentId||'');
   populatePersonalTaskActivitySelect(task.linkedActivityId||'');
+  populatePersonalTaskProjectSelect(task.projectId||'');
   document.getElementById('addPersonalTaskTitle').textContent='Edit Personal Task';document.getElementById('personalTaskFormMsg').textContent='';document.getElementById('addPersonalTaskOv').classList.add('show');
 }
 function closeAddPersonalTask(){document.getElementById('addPersonalTaskOv').classList.remove('show');}
@@ -8575,14 +8588,15 @@ async function savePersonalTask(){
   const msg=document.getElementById('personalTaskFormMsg');
   if(!title){msg.textContent='Please enter a task title.';msg.className='form-msg err';return;}
   if(!LIST_IDS.personalTasks&&!isPreviewMode){msg.textContent='Create and connect the private SharePoint list before saving live personal tasks.';msg.className='form-msg err';return;}
-  const due=document.getElementById('ptDue').value,notes=document.getElementById('ptNotes').value,priority=document.getElementById('ptPriority').value,parentId=document.getElementById('ptParent').value,linkedActivityId=document.getElementById('ptLinkedActivity').value;
+  const due=document.getElementById('ptDue').value,notes=document.getElementById('ptNotes').value,priority=document.getElementById('ptPriority').value,parentId=document.getElementById('ptParent').value,linkedActivityId=document.getElementById('ptLinkedActivity').value,projectId=document.getElementById('ptProject').value;
   const existing=PERSONAL_TASKS.find(item=>String(item.id)===String(editId));
   if(parentId&&String(parentId)===String(editId)){msg.textContent='A task cannot be its own parent.';msg.className='form-msg err';return;}
   const fields={Title:title,Status:existing?.status||'Not Started',Priority:priority};if(due)fields.DueDate=due+'T12:00:00Z';if(notes)fields.Notes=notes;
-  // ParentTaskId, LinkedActivityId and Sequence are new, not-yet-confirmed columns on some
-  // SharePoint tenants — drop whichever fails and retry rather than failing the whole save.
+  // ParentTaskId, LinkedActivityId, ProjectId and Sequence are new, not-yet-confirmed columns on
+  // some SharePoint tenants — drop whichever fails and retry rather than failing the whole save.
   fields.ParentTaskId=parentId?parseInt(parentId,10):null;
   fields.LinkedActivityId=linkedActivityId?parseInt(linkedActivityId,10):null;
+  fields.ProjectId=projectId?parseInt(projectId,10):null;
   let newSequence=existing?.sequence;
   if(!existing){
     const siblings=PERSONAL_TASKS.filter(t=>String(t.parentId||'')===String(parentId||''));
@@ -8593,7 +8607,7 @@ async function savePersonalTask(){
     if(LIST_IDS.personalTasks&&!isPreviewMode){
       const token=await getToken(true);const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items${editId?'/'+editId:''}`;
       let payload={...fields},res,created=null,lastError='';
-      const optional=['Sequence','ParentTaskId','LinkedActivityId','Priority','Status'];
+      const optional=['Sequence','ParentTaskId','LinkedActivityId','ProjectId','Priority','Status'];
       for(let attempt=0;attempt<=optional.length;attempt++){
         res=await fetch(url,{method:editId?'PATCH':'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:payload})});
         if(res.ok){if(!editId)created=await res.json();break;}
@@ -8604,10 +8618,11 @@ async function savePersonalTask(){
       if(created)fields.id=String(created.id);
       var parentColumnMissing=!payload.hasOwnProperty('ParentTaskId');
       var activityColumnMissing=!payload.hasOwnProperty('LinkedActivityId');
+      var projectColumnMissing=!payload.hasOwnProperty('ProjectId');
     }
-    if(existing){Object.assign(existing,{title,due,notes,priority,parentId,linkedActivityId});}else PERSONAL_TASKS.push({id:fields.id||'PT-'+Date.now(),title,status:'Not Started',priority,due,notes,parentId,linkedActivityId,sequence:newSequence||0});
+    if(existing){Object.assign(existing,{title,due,notes,priority,parentId,linkedActivityId,projectId});}else PERSONAL_TASKS.push({id:fields.id||'PT-'+Date.now(),title,status:'Not Started',priority,due,notes,parentId,linkedActivityId,projectId,sequence:newSequence||0});
     renderPersonalTasks();
-    const missingColumns=[parentColumnMissing?'ParentTaskId':'',activityColumnMissing?'LinkedActivityId':''].filter(Boolean);
+    const missingColumns=[parentColumnMissing?'ParentTaskId':'',activityColumnMissing?'LinkedActivityId':'',projectColumnMissing?'ProjectId':''].filter(Boolean);
     if(missingColumns.length){
       // Leave the popup open so this is actually seen, instead of closing straight over it.
       msg.textContent=`Saved, but "${missingColumns.join('" and "')}" ${missingColumns.length>1?"aren't":"isn't"} a column on this list yet — that link didn't stick. Add ${missingColumns.length>1?'Number columns':'a Number column'} named ${missingColumns.join(' and ')} in SharePoint (or use Schema Tools), then try again.`;
@@ -8769,6 +8784,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'projects',name:'Phase',displayName:'Phase',type:'text'},
   {listKey:'personalTasks',name:'ParentTaskId',displayName:'Parent Task Id',type:'number'},
   {listKey:'personalTasks',name:'LinkedActivityId',displayName:'Linked Activity Id',type:'number'},
+  {listKey:'personalTasks',name:'ProjectId',displayName:'Project Id',type:'number'},
   {listKey:'personalTasks',name:'Sequence',displayName:'Sequence',type:'number'}
 ];
 let SCHEMA_TOOL_COLUMNS={};
@@ -9113,6 +9129,7 @@ function openEditProject(id){
   document.getElementById('projectFormMsg').textContent='';
   document.getElementById('projDeleteBtn').style.display=canEditCampaigns()?'inline-block':'none';
   renderProjectLinkedActivities(p.id);
+  renderProjectLinkedTasks(p.id);
   document.getElementById('addProjectOv').classList.add('show');
 }
 function closeAddProject(){document.getElementById('addProjectOv').classList.remove('show');}
@@ -9160,6 +9177,49 @@ async function setActivityProjectId(activityId,projectId){
   }catch(e){
     ev.projectId=old;
     alert('Could not update that activity\'s project link — the ProjectId column may not exist in SharePoint yet. Create it from Schema Tools, then try again.');
+  }
+}
+
+// Personal Tasks link to a project the same way (ProjectId on the private task list). Only
+// Kimberley/admin ever have PERSONAL_TASKS loaded — for anyone else this section stays empty
+// rather than exposing private task titles, since canAccessPanel gates whether it loads at all.
+function renderProjectLinkedTasks(projectId){
+  const el=document.getElementById('projLinkedTasks');if(!el)return;
+  if(!canAccessPanel('personaltasks')){el.innerHTML='';return;}
+  const linked=PERSONAL_TASKS.filter(t=>String(t.projectId)===String(projectId));
+  const unlinked=PERSONAL_TASKS.filter(t=>!t.projectId).sort((a,b)=>(a.title||'').localeCompare(b.title||''));
+  el.innerHTML=`<div class="pop-section">Linked Personal Tasks — ${linked.length}</div>
+    ${linked.length?linked.map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><a href="#" onclick="event.preventDefault();closeAddProject();openEditPersonalTask('${t.id}')" style="color:var(--accent)">${escapeAttr(t.title)}</a><span style="display:flex;align-items:center;gap:8px"><span class="tag ${t.status==='Done'?'t-g':'t-gr'}" style="font-size:9px">${escapeAttr(t.status)}</span><button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="unlinkPersonalTaskFromProject('${t.id}')">Unlink</button></span></div>`).join(''):'<div style="font-size:12px;color:var(--text3);padding:4px 0">No personal tasks linked yet.</div>'}
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <select class="form-select" id="projLinkTaskSelect" style="flex:1"><option value="">Link an existing personal task…</option>${unlinked.map(t=>`<option value="${t.id}">${escapeAttr(t.title)}</option>`).join('')}</select>
+      <button class="tb-btn" onclick="linkPersonalTaskToProject('${projectId}')">Link</button>
+    </div>
+    <button class="tb-btn" style="margin-top:6px" onclick="closeAddProject();openAddPersonalTask('','','${projectId}')">+ New personal task for this project</button>`;
+}
+async function linkPersonalTaskToProject(projectId){
+  const taskId=document.getElementById('projLinkTaskSelect')?.value;
+  if(!taskId)return;
+  await setPersonalTaskProjectId(taskId,projectId);
+  renderProjectLinkedTasks(projectId);
+}
+async function unlinkPersonalTaskFromProject(taskId){
+  const projectId=document.getElementById('projEditId')?.value;
+  await setPersonalTaskProjectId(taskId,'');
+  renderProjectLinkedTasks(projectId);
+}
+async function setPersonalTaskProjectId(taskId,projectId){
+  const task=PERSONAL_TASKS.find(item=>String(item.id)===String(taskId));if(!task)return;
+  const old=task.projectId;task.projectId=projectId;
+  try{
+    if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(taskId).startsWith('PT-')){
+      const token=await getToken(true);
+      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${taskId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{ProjectId:projectId?parseInt(projectId,10):null}})});
+      if(!res.ok)throw new Error('HTTP '+res.status);
+    }
+    renderPersonalTasks();
+  }catch(e){
+    task.projectId=old;
+    alert('Could not update that task\'s project link — the ProjectId column may not exist in SharePoint yet. Create it from Schema Tools, then try again.');
   }
 }
 
@@ -9221,8 +9281,12 @@ async function deleteProjectConfirm(){
   const id=document.getElementById('projEditId').value;if(!id)return;
   if(!canEditCampaigns()){alert('You do not have permission to delete projects.');return;}
   const p=PROJECTS.find(item=>String(item.id)===String(id));if(!p)return;
-  const linkedCount=EVENTS.filter(ev=>String(ev.projectId)===String(id)).length;
-  const warning=linkedCount?` ${linkedCount} linked activit${linkedCount===1?'y':'ies'} will be kept, just unlinked from this project.`:'';
+  const linkedActivityCount=EVENTS.filter(ev=>String(ev.projectId)===String(id)).length;
+  const linkedTaskCount=PERSONAL_TASKS.filter(t=>String(t.projectId)===String(id)).length;
+  const parts=[];
+  if(linkedActivityCount)parts.push(`${linkedActivityCount} linked activit${linkedActivityCount===1?'y':'ies'}`);
+  if(linkedTaskCount)parts.push(`${linkedTaskCount} linked personal task${linkedTaskCount===1?'':'s'}`);
+  const warning=parts.length?` ${parts.join(' and ')} will be kept, just unlinked from this project.`:'';
   if(!confirm(`Delete project "${p.title}"?${warning}`))return;
   try{
     const token=await getToken(true);
@@ -9230,6 +9294,7 @@ async function deleteProjectConfirm(){
     if(!res.ok&&res.status!==404)throw new Error('HTTP '+res.status);
     PROJECTS=PROJECTS.filter(item=>String(item.id)!==String(id));
     EVENTS.filter(ev=>String(ev.projectId)===String(id)).forEach(ev=>ev.projectId='');
+    PERSONAL_TASKS.filter(t=>String(t.projectId)===String(id)).forEach(t=>t.projectId='');
     closeAddProject();
     renderProjects();
   }catch(e){alert('Could not delete project: '+e.message);}
@@ -9262,12 +9327,13 @@ function renderProjects(){
       const isOverdue=p.due&&new Date(p.due+'T00:00:00')<today&&p.status!=='Done';
       const tasksHtml=p.tasks&&p.tasks.length?`<div style="margin-top:8px;display:flex;flex-direction:column;gap:3px">${p.tasks.map(t=>`<div style="display:flex;gap:7px;font-size:11.5px;color:var(--text2);align-items:flex-start"><span style="color:var(--border2);flex-shrink:0;margin-top:1px">→</span>${t}</div>`).join('')}</div>`:'';
       const linkedCount=EVENTS.filter(ev=>String(ev.projectId)===String(p.id)).length;
+      const linkedTaskCount=canAccessPanel('personaltasks')?PERSONAL_TASKS.filter(t=>String(t.projectId)===String(p.id)).length:0;
       return`<div class="proj-item" style="margin-bottom:7px;cursor:pointer;${isOverdue?'border-left:3px solid var(--red);border-radius:0 var(--r) var(--r) 0':''}" onclick="openEditProject('${p.id}')">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;flex-wrap:wrap;gap:6px">
           <div class="proj-name">${p.title}${isOverdue?'<span style="font-size:9px;color:var(--red);font-weight:700;margin-left:6px;vertical-align:middle">OVERDUE</span>':''}</div>
           <div style="display:flex;gap:4px;flex-shrink:0">${p.priority?`<span class="tag ${priTag[p.priority]||'t-gr'}">${p.priority}</span>`:''}<span class="pill ${statPill[p.status]||'p-plan'}">${p.status}</span></div>
         </div>
-        <div class="proj-meta">${p.owner?`<span>👤 ${p.owner}</span>`:''} ${p.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">📅 ${fmtDate(p.due)}</span>`:''} ${linkedCount?`<span>🎫 ${linkedCount} job ticket${linkedCount===1?'':'s'}</span>`:''}</div>
+        <div class="proj-meta">${p.owner?`<span>👤 ${p.owner}</span>`:''} ${p.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">📅 ${fmtDate(p.due)}</span>`:''} ${linkedCount?`<span>🎫 ${linkedCount} job ticket${linkedCount===1?'':'s'}</span>`:''} ${linkedTaskCount?`<span>✓ ${linkedTaskCount} task${linkedTaskCount===1?'':'s'}</span>`:''}</div>
         ${p.notes?`<div style="font-size:11.5px;color:var(--text3);margin-top:2px;margin-bottom:5px">${p.notes}</div>`:''}
         <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
           <div class="proj-prog-w" style="flex:1"><div class="proj-prog-f" style="width:${p.progress}%"></div></div>
