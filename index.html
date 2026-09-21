@@ -646,7 +646,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="sb-sec">Business</div>
     <button class="sb-item" data-p="crm" onclick="nav(this)"><span class="ico">◉</span>Contacts &amp; Mailing</button>
     <button class="sb-item" data-p="venues" onclick="nav(this)"><span class="ico">◎</span>Venues</button>
-    <button class="sb-item" data-p="budget" onclick="nav(this)"><span class="ico">◈</span>Budget</button>
+    <button class="sb-item" data-p="budget" onclick="nav(this)"><span class="ico">◈</span>Finance</button>
     <button class="sb-item" data-p="operations" onclick="nav(this)"><span class="ico">⌘</span>Operations Map</button>
     <button class="sb-item" data-p="projects" onclick="nav(this)"><span class="ico">▣</span>Projects</button>
   </div>
@@ -1219,7 +1219,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 
   <!-- BUDGET -->
   <div class="panel" id="p-budget">
-    <div class="ph"><div><div class="ph-eye">Finance</div><div class="ph-title">Budget <em>Tracker</em></div></div></div>
+    <div class="ph"><div><div class="ph-eye">Spend &amp; Budget</div><div class="ph-title">Finance</div></div></div>
     <div class="ca">
       <div class="stats" id="budgStats" style="margin-bottom:12px"></div>
       <div class="g2">
@@ -4989,7 +4989,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Budget <em>Tracker</em>',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Team <em>Work Register</em>',personaltasks:'Personal <em>Tasks</em>',operations:'Operations <em>Map</em>',projects:'Marketing <em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>Event Idea</em>',myday:'My <em>Day</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Team <em>Work Register</em>',personaltasks:'Personal <em>Tasks</em>',operations:'Operations <em>Map</em>',projects:'Marketing <em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>Event Idea</em>',myday:'My <em>Day</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
