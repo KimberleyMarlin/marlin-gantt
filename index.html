@@ -1372,6 +1372,15 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <button class="btn btn-p" style="margin-top:10px" onclick="createSchemaColumn()">Create column</button>
         </div>
       </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-h"><span class="card-title">Add an item to a list</span></div>
+        <div class="card-body">
+          <div id="schemaItemMsg" class="form-msg"></div>
+          <div class="form-group full"><label class="form-label">List</label><select class="form-select" id="schemaItemListSelect" onchange="populateSchemaItemFields()"></select></div>
+          <div id="schemaItemFields" class="form-grid" style="margin-top:10px"></div>
+          <button class="btn btn-p" style="margin-top:10px" id="schemaItemSaveBtn" onclick="createSchemaItem()" disabled>Create item</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -8451,11 +8460,86 @@ function schemaColumnDefinition(type,name,displayName,choicesRaw){
   }
   return null;
 }
+const SCHEMA_SYSTEM_COLUMNS=['ContentType','Attachments','Edit','LinkTitle','LinkTitleNoMenu','ItemChildCount','FolderChildCount','AppAuthor','AppEditor'];
 async function fetchListColumnsRaw(listId,token){
   const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/columns?$select=name,displayName&$top=300`,{headers:{Authorization:'Bearer '+token}});
   const data=await res.json();
   if(data.error)throw new Error(data.error.message||'Could not read columns');
-  return(data.value||[]).filter(c=>!c.name.startsWith('_')&&!['ContentType','Attachments','Edit','LinkTitle','LinkTitleNoMenu','ItemChildCount','FolderChildCount','AppAuthor','AppEditor'].includes(c.name));
+  return(data.value||[]).filter(c=>!c.name.startsWith('_')&&!SCHEMA_SYSTEM_COLUMNS.includes(c.name));
+}
+// Full column definitions (type info included) — needed to render the right kind of input per
+// column for the "Add an item" form. fetchListColumnsRaw above stays lightweight for the simpler
+// "does this column exist" checks so those don't pay for the extra payload.
+async function fetchListColumnsFull(listId,token){
+  const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/columns?$top=300`,{headers:{Authorization:'Bearer '+token}});
+  const data=await res.json();
+  if(data.error)throw new Error(data.error.message||'Could not read columns');
+  return(data.value||[]).filter(c=>!c.name.startsWith('_')&&!SCHEMA_SYSTEM_COLUMNS.includes(c.name)&&!c.readOnly&&!c.hidden);
+}
+function schemaListOptionsHtml(){
+  const options=Object.entries(SCHEMA_TOOL_LISTS).filter(([,meta])=>LIST_IDS[meta.listIdKey]).map(([key,meta])=>`<option value="${key}">${escapeAttr(meta.label)}</option>`);
+  if(CRM_SETUP_LOADED)Object.entries(CRM_LIST_NAMES).filter(([key])=>CRM_LISTS[key]).forEach(([key,name])=>options.push(`<option value="crm:${key}">${escapeAttr(name)} (CRM)</option>`));
+  return options.join('');
+}
+function schemaListId(listValue){
+  return listValue.startsWith('crm:')?CRM_LISTS[listValue.slice(4)]?.id:LIST_IDS[SCHEMA_TOOL_LISTS[listValue]?.listIdKey];
+}
+function schemaItemFieldInputHtml(column){
+  const id=`schemaItemField__${column.name}`;
+  const label=column.displayName||column.name;
+  if(column.choice?.choices?.length)return`<div class="form-group"><label class="form-label">${escapeAttr(label)}</label><select class="form-select" id="${id}" data-col="${escapeAttr(column.name)}" data-kind="choice"><option value="">—</option>${column.choice.choices.map(c=>`<option value="${escapeAttr(c)}">${escapeAttr(c)}</option>`).join('')}</select></div>`;
+  if(column.boolean)return`<div class="form-group" style="display:flex;align-items:center;gap:6px;padding-top:22px"><input type="checkbox" id="${id}" data-col="${escapeAttr(column.name)}" data-kind="boolean"><label class="form-label" style="margin:0" for="${id}">${escapeAttr(label)}</label></div>`;
+  if(column.number||column.currency)return`<div class="form-group"><label class="form-label">${escapeAttr(label)}</label><input class="form-input" type="number" id="${id}" data-col="${escapeAttr(column.name)}" data-kind="number"></div>`;
+  if(column.dateTime)return`<div class="form-group"><label class="form-label">${escapeAttr(label)}</label><input class="form-input" type="date" id="${id}" data-col="${escapeAttr(column.name)}" data-kind="date"></div>`;
+  if(column.lookup)return`<div class="form-group"><label class="form-label">${escapeAttr(label)} (item ID)</label><input class="form-input" type="number" id="${id}" data-col="${escapeAttr(column.name)}LookupId" data-kind="lookup"><div class="field-help">Numeric ID of the related item — open it to check.</div></div>`;
+  const multiline=column.text?.allowMultipleLines;
+  return`<div class="form-group${multiline?' full':''}"><label class="form-label">${escapeAttr(label)}</label>${multiline?`<textarea class="form-textarea" id="${id}" data-col="${escapeAttr(column.name)}" data-kind="text" style="min-height:60px"></textarea>`:`<input class="form-input" type="text" id="${id}" data-col="${escapeAttr(column.name)}" data-kind="text">`}</div>`;
+}
+async function populateSchemaItemFields(){
+  const listValue=document.getElementById('schemaItemListSelect').value;
+  const fieldsEl=document.getElementById('schemaItemFields');
+  const saveBtn=document.getElementById('schemaItemSaveBtn');
+  const msg=document.getElementById('schemaItemMsg');
+  msg.textContent='';msg.className='form-msg';
+  if(!listValue){fieldsEl.innerHTML='';saveBtn.disabled=true;return;}
+  fieldsEl.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  saveBtn.disabled=true;
+  try{
+    const listId=schemaListId(listValue);
+    if(!listId)throw new Error("Could not find that list's SharePoint ID.");
+    const token=await getToken();
+    const columns=await fetchListColumnsFull(listId,token);
+    if(!columns.length){fieldsEl.innerHTML='<div style="font-size:12px;color:var(--text3)">No editable columns found on this list.</div>';return;}
+    fieldsEl.innerHTML=columns.map(schemaItemFieldInputHtml).join('');
+    saveBtn.disabled=false;
+  }catch(e){
+    fieldsEl.innerHTML=`<div style="font-size:12px;color:var(--red)">Could not load fields: ${escapeAttr(e.message)}</div>`;
+  }
+}
+async function createSchemaItem(){
+  const msg=document.getElementById('schemaItemMsg');
+  const listValue=document.getElementById('schemaItemListSelect').value;
+  const listId=schemaListId(listValue);
+  if(!listId){msg.textContent="Could not find that list's SharePoint ID.";msg.className='form-msg err';return;}
+  const fields={};
+  document.querySelectorAll('#schemaItemFields [data-col]').forEach(el=>{
+    const col=el.dataset.col,kind=el.dataset.kind;
+    if(kind==='boolean'){fields[col]=el.checked;return;}
+    const value=el.value;
+    if(value===''||value==null)return;
+    if(kind==='number'||kind==='lookup')fields[col]=Number(value);
+    else if(kind==='date')fields[col]=value+'T12:00:00Z';
+    else fields[col]=value;
+  });
+  if(!Object.keys(fields).length){msg.textContent='Fill in at least one field (usually Title).';msg.className='form-msg err';return;}
+  msg.textContent='Creating…';msg.className='form-msg';
+  try{
+    const token=await getToken(true);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+    msg.textContent='✓ Item created.';msg.className='form-msg ok';
+    document.querySelectorAll('#schemaItemFields [data-col]').forEach(el=>{if(el.dataset.kind==='boolean')el.checked=false;else el.value='';});
+  }catch(e){msg.textContent='Could not create item: '+e.message;msg.className='form-msg err';}
 }
 function toggleSchemaChoiceInput(){
   const type=document.getElementById('schemaColType')?.value;
@@ -8466,15 +8550,17 @@ async function renderSchemaTools(forceRefresh){
   if(!canAccessPanel('schema'))return;
   const gapsEl=document.getElementById('schemaKnownGaps');
   const listSelect=document.getElementById('schemaListSelect');
+  const itemListSelect=document.getElementById('schemaItemListSelect');
   if(!gapsEl||!listSelect)return;
   if(isPreviewMode){
     gapsEl.innerHTML='<div class="card"><div class="card-body" style="padding:20px;color:var(--text3)">Schema Tools needs a live SharePoint connection — not available in preview mode.</div></div>';
     listSelect.innerHTML='';
+    if(itemListSelect)itemListSelect.innerHTML='';
     return;
   }
-  const options=Object.entries(SCHEMA_TOOL_LISTS).filter(([,meta])=>LIST_IDS[meta.listIdKey]).map(([key,meta])=>`<option value="${key}">${escapeAttr(meta.label)}</option>`);
-  if(CRM_SETUP_LOADED)Object.entries(CRM_LIST_NAMES).filter(([key])=>CRM_LISTS[key]).forEach(([key,name])=>options.push(`<option value="crm:${key}">${escapeAttr(name)} (CRM)</option>`));
-  listSelect.innerHTML=options.join('');
+  const optionsHtml=`<option value="">Choose a list…</option>${schemaListOptionsHtml()}`;
+  listSelect.innerHTML=schemaListOptionsHtml();
+  if(itemListSelect)itemListSelect.innerHTML=optionsHtml;
   gapsEl.innerHTML='<div class="card"><div class="card-body" style="padding:20px"><div class="loading"><div class="spinner"></div></div></div></div>';
   try{
     const token=await getToken();
@@ -8523,7 +8609,7 @@ async function createSchemaColumn(){
   if(!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)){msg.textContent='Column name must start with a letter and contain only letters, numbers and underscores — no spaces.';msg.className='form-msg err';return;}
   const definition=schemaColumnDefinition(type,name,displayName,choices);
   if(!definition){msg.textContent='Enter at least one choice.';msg.className='form-msg err';return;}
-  const listId=listValue.startsWith('crm:')?CRM_LISTS[listValue.slice(4)]?.id:LIST_IDS[SCHEMA_TOOL_LISTS[listValue]?.listIdKey];
+  const listId=schemaListId(listValue);
   if(!listId){msg.textContent="Could not find that list's SharePoint ID.";msg.className='form-msg err';return;}
   msg.textContent='Creating…';msg.className='form-msg';
   try{
