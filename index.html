@@ -1623,7 +1623,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <div class="form-group full"><label class="form-label">Activation <span class="req">*</span></label><input class="form-input" id="fTitle" type="text" placeholder="e.g. Beer of the Month"><div class="field-help">The repeatable promotion or event name. The month is taken from Start Date.</div></div>
             <div class="form-group full"><label class="form-label">Submitted By</label><div id="fSubmittedBy" style="font-size:13px;color:var(--text2);padding:8px 0">—</div></div>
             <div class="form-group full"><label class="form-label">Activity Detail</label><textarea class="form-textarea" id="fDesc" placeholder="e.g. Cheeky Monkey pints" style="min-height:70px"></textarea><div class="field-help">The specific product, offer or execution for this occurrence.</div></div>
-            <div class="form-group full"><label class="form-label">Long Description</label><textarea class="form-textarea" id="fLongDescription" placeholder="Full customer-facing copy for web, listings and campaign materials" style="min-height:90px"></textarea><div class="field-help" id="fLongDescriptionHelp">Master long-form copy. Loaded can use this by default, with an optional app-specific override below.</div></div>
+            <div class="form-group full" id="fLongDescriptionGroup" style="display:none"><label class="form-label">Long Description</label><textarea class="form-textarea" id="fLongDescription" placeholder="Full customer-facing copy for web, listings and campaign materials" style="min-height:90px"></textarea><div class="field-help" id="fLongDescriptionHelp">Master long-form copy. Loaded can use this by default, with an optional app-specific override below.</div></div>
             <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="fVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>All Venues</option></select></div>
             <div class="form-group"><label class="form-label">Marketing Funnel</label>
               <select class="form-select" id="fStream">
@@ -9299,6 +9299,9 @@ function updateActivityConditionalSections(){
   const isTicketed=format==='Ticketed Event';
   const showPricing=isLoaded||type==='Promotion / Offer'||isTicketed||format==='Table Booking Event';
   const show=(id,on)=>{const el=document.getElementById(id);if(el)el.style.display=on?'':'none';};
+  // Long Description is customer-facing marketing copy — only worth asking for once there's
+  // actually a promotion, design work or Loaded listing that would use it.
+  show('fLongDescriptionGroup',isLoaded||needsChannels||needsDesign);
   show('fLoadedAppGroup',isLoaded);
   show('fRegularPriceGroup',showPricing);
   show('fLoadedPriceGroup',isLoaded||type==='Promotion / Offer');
