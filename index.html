@@ -406,6 +406,36 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .proj-meta{font-size:11px;color:var(--text3);display:flex;gap:10px;margin-bottom:7px}
 .proj-prog-w{background:var(--surface2);border-radius:3px;height:4px}
 .proj-prog-f{height:100%;border-radius:3px;background:var(--accent)}
+.core-nav-note{padding:7px 10px 3px;font-size:9px;font-weight:700;color:rgba(255,255,255,.18);text-transform:uppercase;letter-spacing:.1em}
+.sb-more{margin-top:5px;border-top:1px solid rgba(255,255,255,.07);padding-top:5px}
+.sb-more summary{list-style:none;padding:7px 10px;color:rgba(255,255,255,.32);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer}
+.sb-more summary::-webkit-details-marker{display:none}
+.sb-more summary:before{content:'▸';display:inline-block;margin-right:7px;transition:transform .15s}
+.sb-more[open] summary:before{transform:rotate(90deg)}
+.mw-toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.mw-toolbar .form-select,.mw-toolbar .form-input{width:auto;min-width:130px;padding:6px 9px;font-size:11.5px}
+.mw-table{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.mw-head,.mw-row{display:grid;grid-template-columns:minmax(260px,2fr) minmax(120px,.9fr) 82px 92px 72px;gap:10px;align-items:center;padding:9px 13px}
+.mw-head{background:var(--surface2);border-bottom:1px solid var(--border);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
+.mw-row{border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;transition:var(--tr)}
+.mw-row:last-child{border-bottom:0}.mw-row:hover{background:var(--surface2)}
+.mw-kind{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:10px;display:inline-flex;align-items:center}
+.mw-kind.personal{background:#fdf3e0;color:#8a6410}.mw-kind.shared{background:#e8f5ee;color:var(--accent)}
+.mw-context-link{display:block;max-width:100%;border:0;background:none;padding:0;color:var(--accent);font:inherit;font-size:11px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}.mw-context-link+*{margin-top:2px}.mw-context-link:hover{text-decoration:underline}
+.art-controls{position:sticky;top:50px;z-index:8;background:var(--bg);padding:8px 0 10px;display:flex;gap:7px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:12px}
+.art-month{margin-bottom:28px}.art-month-head{position:sticky;top:101px;z-index:7;background:var(--bg);padding:8px 0;display:flex;align-items:baseline;gap:10px}
+.art-month-title{font-family:'DM Serif Display',serif;font-size:20px;letter-spacing:-.02em}.art-month-count{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)}
+.art-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:12px}
+.art-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:var(--tr);display:flex;flex-direction:column;min-width:0}
+.art-card:hover{border-color:var(--border2);box-shadow:var(--sh);transform:translateY(-1px)}
+.art-img{height:190px;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--text3);font-size:11px;text-align:center;padding:14px}
+.art-img img{width:100%;height:100%;object-fit:cover;display:block}.art-body{padding:10px 12px;display:flex;flex-direction:column;gap:5px}
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start}
+.proj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:var(--tr)}
+.proj-card:hover{border-color:var(--border2);box-shadow:var(--sh)}
+.risk-reason{font-size:10.5px;color:#9b3a2a;background:var(--red-bg);border-radius:5px;padding:4px 7px;line-height:1.35}
+.project-activity{display:flex;align-items:center;gap:7px;padding:6px 0;border-top:1px solid var(--border);font-size:11px;min-width:0}
+@media(max-width:760px){.mw-head{display:none}.mw-row{grid-template-columns:1fr auto}.mw-row>*:nth-child(2),.mw-row>*:nth-child(4){display:none}.art-controls{top:42px}.art-month-head{top:94px}}
 
 /* ── FORM ── */
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
@@ -634,34 +664,35 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="sb-live"><span class="sb-live-dot"></span>Live · SharePoint</div>
   </div>
   <div class="sb-nav">
-    <div class="sb-sec">Today</div>
-    <button class="sb-item active" data-p="overview" onclick="nav(this)"><span class="ico">⊞</span>Dashboard<span class="sb-badge" id="nBadge" style="display:none">0</span></button>
-    <button class="sb-item" data-p="inbox" onclick="nav(this)"><span class="ico">📨</span>Inbox<span class="sb-badge" id="inboxBadge" style="display:none">0</span></button>
-    <button class="sb-item" data-p="personaltasks" onclick="nav(this)"><span class="ico">🔒</span>Personal Tasks<span class="sb-badge" id="personalTaskBadge" style="display:none">0</span></button>
-    <div class="sb-sec">Plan</div>
-    <button class="sb-item" data-p="calendar" onclick="nav(this)"><span class="ico">◻</span>Calendar</button>
-    <button class="sb-item" data-p="campaigns" onclick="nav(this)"><span class="ico">◎</span>Activities<span class="sb-badge" id="aBadge" style="display:none">0</span></button>
-    <button class="sb-item" data-p="ideas" onclick="nav(this)"><span class="ico">💡</span>Idea Bank</button>
-    <div class="sb-sec">Deliver</div>
+    <div class="core-nav-note">Marlin Hub</div>
+    <button class="sb-item active" data-p="calendar" onclick="nav(this)"><span class="ico">◻</span>Calendar</button>
     <button class="sb-item" data-p="approvals" onclick="nav(this)"><span class="ico">✓</span>Submissions</button>
-    <button class="sb-item" data-p="mytasks" onclick="nav(this)"><span class="ico">☐</span>Work Register<span class="sb-badge a" id="tBadge" style="display:none">0</span></button>
-    <button class="sb-item" data-p="design" onclick="nav(this)"><span class="ico">✦</span>Design Jobs</button>
-    <button class="sb-item" data-p="workload" onclick="nav(this)"><span class="ico">👥</span>Workload</button>
-    <div class="sb-sec">Programs</div>
-    <button class="sb-item" data-p="loaded" onclick="nav(this)"><span class="ico">⭐</span>Loaded Rewards</button>
-    <button class="sb-item" data-p="ticketing" onclick="nav(this)"><span class="ico">🎟</span>Ticketing</button>
-    <button class="sb-item" data-p="specials" onclick="nav(this)"><span class="ico">✧</span>Specials</button>
-    <button class="sb-item" data-p="social" onclick="nav(this)"><span class="ico">◇</span>Social</button>
-    <div class="sb-sec">Business</div>
-    <button class="sb-item" data-p="crm" onclick="nav(this)"><span class="ico">◉</span>Contacts &amp; Mailing</button>
-    <button class="sb-item" data-p="venues" onclick="nav(this)"><span class="ico">◎</span>Venues</button>
-    <button class="sb-item" data-p="budget" onclick="nav(this)"><span class="ico">◈</span>Finance</button>
-    <button class="sb-item" data-p="operations" onclick="nav(this)"><span class="ico">⌘</span>Operations Map</button>
     <button class="sb-item" data-p="projects" onclick="nav(this)"><span class="ico">▣</span>Projects</button>
-    <button class="sb-item" data-p="schema" onclick="nav(this)"><span class="ico">🛠</span>Schema Tools</button>
+    <button class="sb-item" data-p="artwork" onclick="nav(this)"><span class="ico">▧</span>Artwork</button>
+    <button class="sb-item" data-p="mywork" onclick="nav(this)"><span class="ico">☐</span>My Work<span class="sb-badge a" id="myWorkBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="operations" onclick="nav(this)"><span class="ico">⌘</span>Oversight</button>
+    <details class="sb-more">
+      <summary>More tools</summary>
+      <button class="sb-item" data-p="inbox" onclick="nav(this)"><span class="ico">📨</span>Inbox<span class="sb-badge" id="inboxBadge" style="display:none">0</span></button>
+      <button class="sb-item" data-p="campaigns" onclick="nav(this)"><span class="ico">◎</span>Activities<span class="sb-badge" id="aBadge" style="display:none">0</span></button>
+      <button class="sb-item" data-p="personaltasks" onclick="nav(this)"><span class="ico">🔒</span>Personal Tasks<span class="sb-badge" id="personalTaskBadge" style="display:none">0</span></button>
+      <button class="sb-item" data-p="mytasks" onclick="nav(this)"><span class="ico">☷</span>Shared Work Setup<span class="sb-badge a" id="tBadge" style="display:none">0</span></button>
+      <button class="sb-item" data-p="design" onclick="nav(this)"><span class="ico">✦</span>Design Jobs</button>
+      <button class="sb-item" data-p="workload" onclick="nav(this)"><span class="ico">👥</span>Workload</button>
+      <button class="sb-item" data-p="ideas" onclick="nav(this)"><span class="ico">💡</span>Idea Bank</button>
+      <button class="sb-item" data-p="loaded" onclick="nav(this)"><span class="ico">⭐</span>Loaded Rewards</button>
+      <button class="sb-item" data-p="ticketing" onclick="nav(this)"><span class="ico">🎟</span>Ticketing</button>
+      <button class="sb-item" data-p="specials" onclick="nav(this)"><span class="ico">✧</span>Specials</button>
+      <button class="sb-item" data-p="social" onclick="nav(this)"><span class="ico">◇</span>Social</button>
+      <button class="sb-item" data-p="crm" onclick="nav(this)"><span class="ico">◉</span>Contacts &amp; Mailing</button>
+      <button class="sb-item" data-p="venues" onclick="nav(this)"><span class="ico">◎</span>Venues</button>
+      <button class="sb-item" data-p="budget" onclick="nav(this)"><span class="ico">◈</span>Finance</button>
+      <button class="sb-item" data-p="overview" onclick="nav(this)"><span class="ico">⊞</span>Legacy Dashboard<span class="sb-badge" id="nBadge" style="display:none">0</span></button>
+      <button class="sb-item" data-p="schema" onclick="nav(this)"><span class="ico">🛠</span>Admin &amp; Schema</button>
+    </details>
   </div>
   <div class="sb-submit-wrap">
-    <button class="sb-cta" onclick="navTo('submit')">＋ Submit</button>
+    <button class="sb-cta" onclick="navTo('submit')">＋ Submit something</button>
   </div>
   <div class="sb-foot">
     <button class="sb-auth" id="authBtn" onclick="toggleAuth()"><span>⊕</span><span id="authLabel">Sign in with M365</span></button>
@@ -672,7 +703,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 <!-- ═══ MAIN ═══ -->
 <main class="main" id="mainArea">
   <div class="topbar">
-    <div class="tb-title" id="tbTitle">Dashboard <em>Overview</em></div>
+    <div class="tb-title" id="tbTitle">Activity <em>Calendar</em></div>
     <div class="tb-date" id="tbDate"></div>
     <div class="sw"><input type="search" placeholder="Search activities…" id="gSearch" oninput="doSearch(this.value)" onkeydown="if(event.key==='Escape')clearGlobalSearch()"><div class="search-results" id="globalSearchResults"></div></div>
     <span style="font-size:9px;color:var(--accent);font-weight:700;background:var(--accent-bg);padding:2px 6px;border-radius:4px;flex-shrink:0" title="Build version">v18</span>
@@ -1253,6 +1284,29 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     </div>
   </div>
 
+  <!-- MY WORK — one view over shared assignments and Kimberley's private list -->
+  <div class="panel" id="p-mywork">
+    <div class="ph">
+      <div><div class="ph-eye">Today and upcoming</div><div class="ph-title">My <em>Work</em></div><div class="ph-sub">Shared assignments and private tasks stay separate in SharePoint, but can be planned together here.</div></div>
+      <div class="ph-right"><button class="tb-btn p" id="myWorkAddPersonal" onclick="openAddPersonalTask()">+ Personal task</button><button class="tb-btn" onclick="refreshMyWork()">↻</button></div>
+    </div>
+    <div class="ca">
+      <div class="stats" id="myWorkStats" style="margin-bottom:12px"></div>
+      <div class="mw-toolbar">
+        <select class="form-select" id="myWorkWhen" onchange="renderMyWork()"><option value="open">Open</option><option value="today">Today</option><option value="upcoming">Upcoming</option><option value="overdue">Overdue</option><option value="done">Completed</option><option value="all">All</option></select>
+        <select class="form-select" id="myWorkKind" onchange="renderMyWork()"><option value="all">Personal + Shared</option><option value="personal">Personal only</option><option value="shared">Shared only</option></select>
+        <select class="form-select" id="myWorkProject" onchange="renderMyWork()"><option value="">All projects</option></select>
+        <select class="form-select" id="myWorkActivity" onchange="renderMyWork()"><option value="">All activities</option></select>
+        <select class="form-select" id="myWorkVenue" onchange="renderMyWork()"><option value="">All venues</option></select>
+        <select class="form-select" id="myWorkPriority" onchange="renderMyWork()"><option value="">Any priority</option><option>High</option><option>Medium</option><option>Low</option></select>
+        <select class="form-select" id="myWorkStatus" onchange="renderMyWork()"><option value="">Any status</option></select>
+        <input class="form-input" id="myWorkSearch" type="search" placeholder="Search my work" oninput="renderMyWork()">
+      </div>
+      <div id="myWorkConfig"></div>
+      <div id="myWorkList"></div>
+    </div>
+  </div>
+
   <!-- TEAM WORK — shared four-person queue -->
   <div class="panel" id="p-mytasks">
     <div class="ph">
@@ -1305,8 +1359,8 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           </div>
           <div class="form-group"><label class="form-label">Priority</label>
             <select class="form-select" id="tPriority">
+              <option value="">No priority</option>
               <option value="Medium">Medium</option>
-              <option value="Critical">Critical</option>
               <option value="High">High</option>
               <option value="Low">Low</option>
             </select>
@@ -1341,7 +1395,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:11px;color:var(--text3);font-weight:600">Workstream</label><select id="personalTaskWorkstreamFilter" class="form-select" style="width:auto;min-width:180px" onchange="renderPersonalTasks()"><option value="">All</option></select><label style="font-size:11px;color:var(--text3);font-weight:600">Sort by</label><select id="personalTaskSort" class="form-select" style="width:auto;min-width:150px" onchange="renderPersonalTasks()"><option value="due">Due date</option><option value="priority">Priority</option><option value="title">Title (A–Z)</option><option value="created">Recently added</option><option value="custom">My order (drag to reorder)</option></select></div>
       <div id="personalTaskBulkBar" style="display:none;margin-bottom:10px;padding:8px 12px;background:var(--surface);border:1px solid var(--accent);border-radius:var(--r);display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span id="personalTaskBulkCount" style="font-size:12px;font-weight:700;color:var(--text)"></span>
-        <select id="ptBulkPriority" class="form-select" style="width:auto;min-width:130px"><option value="">Set priority…</option><option value="Critical">Critical</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select>
+        <select id="ptBulkPriority" class="form-select" style="width:auto;min-width:130px"><option value="">Set priority…</option><option value="__none__">No priority</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select>
         <button class="tb-btn" onclick="bulkApplyPersonalTaskPriority()">Apply</button>
         <select id="ptBulkParent" class="form-select" style="width:auto;min-width:170px"><option value="">Move under parent…</option></select>
         <button class="tb-btn" onclick="bulkSetPersonalTaskParent()">Move</button>
@@ -1361,7 +1415,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <div id="personalTaskFormMsg" class="form-msg"></div>
         <div class="form-grid">
           <div class="form-group full"><label class="form-label">Task Title <span class="req">*</span></label><input class="form-input" id="ptTitle" type="text" placeholder="What do I need to remember or complete?"></div>
-          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="ptPriority"><option>Medium</option><option>Critical</option><option>High</option><option>Low</option></select></div>
+          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="ptPriority"><option value="">No priority</option><option>Medium</option><option>High</option><option>Low</option></select></div>
           <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="ptDue" type="date"></div>
           <div class="form-group full"><label class="form-label">Parent task</label><select class="form-select" id="ptParent"><option value="">None — top-level task</option></select><div class="field-help">Only tasks that aren't themselves a subtask can be picked as a parent.</div></div>
           <div class="form-group full"><label class="form-label">Linked activity</label><select class="form-select" id="ptLinkedActivity"><option value="">Not linked to an activity</option></select></div>
@@ -1383,7 +1437,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <div class="form-grid">
           <div class="form-group full"><label class="form-label">Project Title <span class="req">*</span></label><input class="form-input" id="projTitle" type="text" placeholder="e.g. New Menu Launch"></div>
           <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="projStatus"><option>Not Started</option><option>In Progress</option><option>On Hold</option><option>Done</option></select></div>
-          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="projPriority"><option>Normal</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></div>
+          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="projPriority"><option value="">No priority</option><option>High</option><option>Medium</option><option>Low</option></select></div>
           <div class="form-group"><label class="form-label">Owner</label><select class="form-select" id="projOwner"></select></div>
           <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="projDue" type="date"></div>
           <div class="form-group"><label class="form-label">Progress (%)</label><input class="form-input" id="projProgress" type="number" min="0" max="100" placeholder="0"></div>
@@ -1423,6 +1477,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
               <option value="choice">Choice (dropdown)</option>
             </select></div>
             <div class="form-group full" id="schemaChoiceGroup" style="display:none"><label class="form-label">Choices</label><input class="form-input" id="schemaColChoices" placeholder="Comma-separated, e.g. Low, Medium, High"></div>
+            <div class="form-group full"><label class="form-label">Purpose</label><input class="form-input" id="schemaColPurpose" placeholder="Why this field is required and where the Hub uses it"><div class="field-help">Required. You will see the complete proposal before SharePoint is changed.</div></div>
           </div>
           <button class="btn btn-p" style="margin-top:10px" onclick="createSchemaColumn()">Create column</button>
         </div>
@@ -1458,10 +1513,36 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 
   <!-- PROJECTS -->
   <div class="panel" id="p-projects">
-    <div class="ph"><div><div class="ph-eye">Strategy</div><div class="ph-title">Marketing <em>Projects</em></div></div>
+    <div class="ph"><div><div class="ph-eye">Parent workspaces</div><div class="ph-title"><em>Projects</em></div><div class="ph-sub">Each Project holds its Activities, dates, people, work, files and risks.</div></div>
       <div class="ph-right"><button class="tb-btn p" onclick="openAddProject()">+ New Project</button><button class="tb-btn" onclick="loadProjects().then(renderProjects)">↻</button></div>
     </div>
-    <div class="ca"><div id="projList"><div class="loading"><div class="spinner"></div></div></div></div>
+    <div class="ca">
+      <div class="stats" id="projectStats" style="margin-bottom:12px"></div>
+      <div class="mw-toolbar">
+        <input class="form-input" id="projectSearch" type="search" placeholder="Search projects" oninput="renderProjects()">
+        <select class="form-select" id="projectStatusFilter" onchange="renderProjects()"><option value="">All statuses</option><option>Not Started</option><option>In Progress</option><option>On Hold</option><option>Done</option></select>
+        <select class="form-select" id="projectOwnerFilter" onchange="renderProjects()"><option value="">All owners</option></select>
+        <select class="form-select" id="projectRiskFilter" onchange="renderProjects()"><option value="">All health</option><option value="risk">At risk</option><option value="clear">No current risk</option></select>
+      </div>
+      <div id="projList"><div class="loading"><div class="spinner"></div></div></div>
+      <div id="unassignedActivities"></div>
+    </div>
+  </div>
+
+  <!-- ARTWORK — live Activity images grouped by launch/effective month -->
+  <div class="panel" id="p-artwork">
+    <div class="ph"><div><div class="ph-eye">Approved creative</div><div class="ph-title"><em>Artwork</em></div><div class="ph-sub">A month-by-month visual feed. Upload and approval remain inside each Activity's design workflow.</div></div></div>
+    <div class="ca">
+      <div class="stats" id="artworkStats" style="margin-bottom:12px"></div>
+      <div class="art-controls">
+        <select class="form-select" id="artworkYear" onchange="renderArtwork()"><option value="">All years</option></select>
+        <select class="form-select" id="artworkVenue" onchange="renderArtwork()"><option value="">All venues</option></select>
+        <select class="form-select" id="artworkProject" onchange="renderArtwork()"><option value="">All projects</option></select>
+        <select class="form-select" id="artworkState" onchange="renderArtwork()"><option value="featured">Featured artwork</option><option value="missing">Missing artwork</option><option value="all">All activities</option></select>
+        <input class="form-input" id="artworkSearch" type="search" placeholder="Search artwork or activity" oninput="renderArtwork()" style="width:auto;min-width:190px">
+      </div>
+      <div id="artworkFeed"></div>
+    </div>
   </div>
 
   <!-- APPROVALS -->
@@ -1866,7 +1947,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
                 <option value="Admin">Admin</option>
               </select>
             </div>
-            <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="fJobPriority"><option value="Medium">Medium</option><option value="High">High</option><option value="Critical">Critical</option><option value="Low">Low</option></select></div>
+            <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="fJobPriority"><option value="">No priority</option><option value="Medium">Medium</option><option value="High">High</option><option value="Low">Low</option></select></div>
             <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="fJobDue" type="date"></div>
             <div class="form-group"><label class="form-label">Assign To</label><select class="form-select" id="fJobAssign"><option value="">Unassigned</option></select></div>
             <div class="form-group full"><label class="form-label">Notes / Requirements</label><textarea class="form-textarea" id="fJobNotes" placeholder="Any context, specs, or links…" style="min-height:70px"></textarea></div>
@@ -2190,7 +2271,7 @@ function seedTaskPreview(){
   if(MY_TASKS.length)return;
   const dateFromNow=days=>{const d=new Date();d.setDate(d.getDate()+days);return toLocalISODate(d);};
   MY_TASKS=[
-    {id:'T-DEMO-1',title:'Finalise CRM SharePoint permissions',status:'Not Started',priority:'Critical',category:'Admin',due:dateFromNow(0),notes:'Restrict all CRM lists before importing customer data.',assignedTo:currentUserEmail,campaignLookup:''},
+    {id:'T-DEMO-1',title:'Finalise CRM SharePoint permissions',status:'Not Started',priority:'High',category:'Admin',due:dateFromNow(0),notes:'Restrict all CRM lists before importing customer data.',assignedTo:currentUserEmail,campaignLookup:''},
     {id:'T-DEMO-2',title:'Prepare boss CRM demonstration',status:'In Progress',priority:'High',category:'General',due:dateFromNow(1),notes:'Use synthetic contacts only.',assignedTo:'ben@marlinhospitality.com.au',campaignLookup:''},
     {id:'T-DEMO-3',title:'Confirm January to June campaign priorities',status:'Not Started',priority:'High',category:'General',due:dateFromNow(3),notes:'Supplier and venue priorities.',assignedTo:'ben@marlinhospitality.com.au',campaignLookup:''},
     {id:'T-DEMO-4',title:'Complete POS setup for next Loaded offer',status:'Blocked',priority:'Medium',category:'POS Update',due:dateFromNow(5),blocker:'Waiting for confirmed offer pricing',notes:'',assignedTo:'perrin@marlinhospitality.com.au',campaignLookup:'Loaded Rewards · September'},
@@ -2634,7 +2715,7 @@ const PLAYBOOK_TEMPLATES={
     {title:'Push notification copy approved',          taskType:'Admin',            assignKey:'marketing',leadDays:7,  priority:'High'},
     {title:'Web banner — Loaded offer live',           taskType:'Web Update',       assignKey:'web',      leadDays:10, priority:'High'},
     {title:'Staff brief — Loaded offer details',       taskType:'Admin',            assignKey:'ops',      leadDays:3,  priority:'High'},
-    {title:'POS pricing update',                       taskType:'POS Update',       assignKey:'ops',      leadDays:7,  priority:'Critical'},
+    {title:'POS pricing update',                       taskType:'POS Update',       assignKey:'ops',      leadDays:7,  priority:'High'},
     {title:'EDM — member offer announcement',          taskType:'EDM / Newsletter', assignKey:'marketing',leadDays:7,  priority:'Medium'},
   ],
   'Supplier Activation':[
@@ -2664,8 +2745,8 @@ const PLAYBOOK_TEMPLATES={
     {title:'EDM',                                      taskType:'EDM / Newsletter', assignKey:'marketing',leadDays:10, priority:'Medium'},
   ],
   'Hero Campaign':[
-    {title:'Design Brief — hero campaign',             taskType:'Design Asset',    assignKey:'designer', leadDays:42, priority:'Critical'},
-    {title:'Landing page brief to Didier',             taskType:'Web Update',       assignKey:'web',      leadDays:35, priority:'Critical'},
+    {title:'Design Brief — hero campaign',             taskType:'Design Asset',    assignKey:'designer', leadDays:42, priority:'High'},
+    {title:'Landing page brief to Didier',             taskType:'Web Update',       assignKey:'web',      leadDays:35, priority:'High'},
     {title:'EDM — hero campaign announcement',         taskType:'EDM / Newsletter', assignKey:'marketing',leadDays:28, priority:'High'},
     {title:'Meta campaign setup',                      taskType:'Paid Ad',          assignKey:'marketing',leadDays:28, priority:'High'},
     {title:'Google Ads setup',                         taskType:'Paid Ad',          assignKey:'marketing',leadDays:21, priority:'High'},
@@ -2695,6 +2776,7 @@ let ROLE_EMAILS={designer:'',web:'',marketing:'',ops:''};
 async function runPlaybook(ev){
   if(!canApproveCampaigns())return{created:0,errors:['You do not have permission to approve campaigns.']};
   if(!isAuthed||!ev?.spId)return{created:0,errors:[]};
+  if(!LIST_IDS.myTasks)return{created:0,errors:['Shared Work Items are not connected yet. No workflow tasks were created. Configure the approved SharePoint list before running this playbook.']};
   // Auto-select template from ActivityType + Silo + EventFormat
   const templateKey=autoSelectPlaybook(ev);
   const template=PLAYBOOK_TEMPLATES[templateKey]||PLAYBOOK_TEMPLATES['default'];
@@ -3908,9 +3990,9 @@ function previewMode(){
   resolveRole(currentUserEmail);
   const who=document.getElementById('myTasksWho');
   if(who)who.textContent='Showing tasks for UI Preview';
-  showPanel('overview');
+  showPanel('calendar');
   document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
-  document.querySelector('.sb-item[data-p="overview"]')?.classList.add('active');
+  document.querySelector('.sb-item[data-p="calendar"]')?.classList.add('active');
   // Populate whatever doesn't require a network call, so panels aren't blank
   SPONSORSHIPS=[...STATIC_SPONSORSHIPS];
   seedTaskPreview();
@@ -3941,7 +4023,7 @@ async function onAuthed(acc){
   const who=document.getElementById('myTasksWho');
   if(who)who.textContent=`Showing tasks for ${acc.name||acc.username}`;
   // Default panel based on role
-  const defaultPanel='overview'; // Dashboard is always the landing page on login, regardless of role
+  const defaultPanel='calendar'; // Calendar is the group operating view and default landing page.
   if(Object.keys(SCHEDULE_SUBPANELS).includes(defaultPanel)){
     // Sub-views (gantt/venuemonth/crossvenue) now live inside the consolidated Schedule page.
     // IMPORTANT: don't render yet — EVENTS isn't populated until loadAll() runs right after this.
@@ -3957,7 +4039,7 @@ async function onAuthed(acc){
     showPanel(defaultPanel);
     const defaultBtn=document.querySelector(`.sb-item[data-p="${defaultPanel}"]`);
     if(defaultBtn){document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));defaultBtn.classList.add('active');}
-    else{showPanel('overview');document.querySelector('.sb-item[data-p="overview"]').classList.add('active');}
+    else{showPanel('calendar');document.querySelector('.sb-item[data-p="calendar"]').classList.add('active');}
   }
   return true;
 }
@@ -5186,7 +5268,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Team <em>Work Register</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Schema <em>Tools</em>',operations:'Operations <em>Map</em>',projects:'Marketing <em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>Event Idea</em>',myday:'My <em>Day</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>'};
+const PANEL_TITLES={overview:'Legacy <em>Dashboard</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -5201,8 +5283,12 @@ function rolePermissions(){
   if(!hasFinanceAccess()||base.canViewBudget)return base;
   return{...base,canViewBudget:true,hidePanels:base.hidePanels.filter(panel=>panel!=='budget')};
 }
+function canAccessPrivatePersonalTasks(){
+  return isPreviewMode||authorisedMember(currentUser,currentUserEmail)?.key==='kimberley';
+}
 function canAccessPanel(id){
-  if(id==='personaltasks'||id==='schema')return isPreviewMode||currentRole==='admin';
+  if(id==='personaltasks')return canAccessPrivatePersonalTasks();
+  if(id==='schema')return isPreviewMode||currentRole==='admin';
   if(id==='crm')return canAccessMailing();
   return !rolePermissions().hidePanels.includes(id);
 }
@@ -5234,7 +5320,7 @@ function showPanel(id){
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
   // Activities consolidation: Pipeline is a sub-view of 'campaigns' now — hide it when navigating elsewhere.
   if(id!=='campaigns'){const pipePanel=document.getElementById('p-pipeline');if(pipePanel)pipePanel.style.display='none';}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyTasks,submit:()=>{}};
+  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{}};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
   // Skip this for 'campaigns' while its Pipeline sub-view is showing — that block just hid the
@@ -6416,6 +6502,10 @@ async function saveDesignBrief(btn){
   const type=document.getElementById('bType').value;
   if(!title||!campaign||!venue||!type){
     document.getElementById('briefFormMsg').textContent='Please fill in title, campaign, venue and job type.';
+    document.getElementById('briefFormMsg').className='form-msg err';return;
+  }
+  if(!LIST_IDS.myTasks&&!isPreviewMode){
+    document.getElementById('briefFormMsg').textContent='Shared Work Items are not connected yet. Nothing was saved.';
     document.getElementById('briefFormMsg').className='form-msg err';return;
   }
   const platforms=Array.from(document.querySelectorAll('#bPlatformPills input:checked')).map(i=>i.value).join(', ');
@@ -8070,6 +8160,149 @@ function renderSpecials(){
 }
 
 // ═══════════════════════════════════════
+// MY WORK — a read-through view over two deliberately separate stores.
+// Shared Work Items never fall back to Kimberley's private list, and the private list is only
+// included for the admin account already allowed to access the Personal Tasks panel.
+// ═══════════════════════════════════════
+async function refreshMyWork(){
+  await loadTasks();
+  if(canAccessPanel('personaltasks'))await loadPersonalTasks();
+  renderMyWork();
+}
+
+function renderMyWork(){
+  if(!isAuthed)return;
+  const list=document.getElementById('myWorkList'),stats=document.getElementById('myWorkStats'),config=document.getElementById('myWorkConfig');
+  if(!list||!stats||!config)return;
+  const canSeePersonal=canAccessPanel('personaltasks');
+  const addPersonal=document.getElementById('myWorkAddPersonal');if(addPersonal)addPersonal.style.display=canSeePersonal?'':'none';
+  const kindSelect=document.getElementById('myWorkKind');
+  if(kindSelect){
+    const personalOption=[...kindSelect.options].find(o=>o.value==='personal');
+    if(personalOption)personalOption.disabled=!canSeePersonal;
+    if(!canSeePersonal&&kindSelect.value==='personal')kindSelect.value='shared';
+  }
+  const today=toLocalISODate(new Date());
+  const projectById=id=>PROJECTS.find(p=>String(p.id)===String(id));
+  const eventById=id=>EVENTS.find(e=>String(e.id)===String(id)||String(e.spId)===String(id));
+  const eventByTitle=title=>EVENTS.find(e=>(e.title||'').toLowerCase()===(title||'').toLowerCase());
+  const personal=canSeePersonal?PERSONAL_TASKS.map(t=>{
+    const ev=t.linkedActivityId?eventById(t.linkedActivityId):null;
+    const project=projectById(t.projectId||ev?.projectId);
+    return{...t,kind:'personal',source:'Manual',projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.linkedCampaign||'',venue:ev?.venue||'',open:()=>openEditPersonalTask(t.id)};
+  }):[];
+  const shared=MY_TASKS.filter(t=>t.assignedTo&&isCurrentUserAssignment(t.assignedTo)).map(t=>{
+    const ev=eventByTitle(t.campaignLookup);
+    const project=projectById(ev?.projectId);
+    return{...t,kind:'shared',source:t.source||'Activity workflow',projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:ev?.venue||'',open:()=>openEditTask(t.id)};
+  });
+  const all=[...personal,...shared];
+  let rows=[...all];
+  const refillSelect=(id,placeholder,values)=>{
+    const el=document.getElementById(id);if(!el)return'';const current=el.value;
+    el.innerHTML=`<option value="">${placeholder}</option>`+[...new Set(values.filter(Boolean))].sort().map(value=>`<option value="${escapeAttr(value)}">${escapeAttr(value)}</option>`).join('');
+    if([...el.options].some(o=>o.value===current))el.value=current;return el.value;
+  };
+  const projectSelect=document.getElementById('myWorkProject');
+  if(projectSelect){
+    const current=projectSelect.value;
+    projectSelect.innerHTML='<option value="">All projects</option>'+PROJECTS.slice().sort((a,b)=>(a.title||'').localeCompare(b.title||'')).map(p=>`<option value="${escapeAttr(String(p.id))}">${escapeAttr(p.title)}</option>`).join('');
+    if([...projectSelect.options].some(o=>o.value===current))projectSelect.value=current;
+  }
+  const when=document.getElementById('myWorkWhen')?.value||'open';
+  const kind=kindSelect?.value||'all';
+  const projectId=projectSelect?.value||'';
+  const activity=refillSelect('myWorkActivity','All activities',all.map(t=>t.activity));
+  const venue=refillSelect('myWorkVenue','All venues',all.map(t=>t.venue));
+  const priority=document.getElementById('myWorkPriority')?.value||'';
+  const status=refillSelect('myWorkStatus','Any status',all.map(t=>t.status));
+  const query=(document.getElementById('myWorkSearch')?.value||'').trim().toLowerCase();
+  rows=rows.filter(t=>{
+    const done=t.status==='Done'||t.status==='Complete'||t.status==='Completed';
+    if(when==='open'&&done)return false;
+    if(when==='done'&&!done)return false;
+    if(when==='today'&&(done||t.due!==today))return false;
+    if(when==='overdue'&&(done||!t.due||t.due>=today))return false;
+    if(when==='upcoming'&&(done||!t.due||t.due<=today))return false;
+    if(kind!=='all'&&t.kind!==kind)return false;
+    if(projectId&&String(t.projectId)!==String(projectId))return false;
+    if(activity&&t.activity!==activity)return false;
+    if(venue&&t.venue!==venue)return false;
+    if(priority&&t.priority!==priority)return false;
+    if(status&&t.status!==status)return false;
+    if(query&&!`${t.title||''} ${t.project||''} ${t.activity||''} ${t.notes||''}`.toLowerCase().includes(query))return false;
+    return true;
+  });
+  const rank={Critical:0,High:1,Medium:2,Low:3};
+  rows.sort((a,b)=>(a.status==='Done')-(b.status==='Done')||String(a.due||'9999').localeCompare(String(b.due||'9999'))||(rank[a.priority]??4)-(rank[b.priority]??4));
+  const open=all.filter(t=>!['Done','Complete','Completed'].includes(t.status));
+  const overdue=open.filter(t=>t.due&&t.due<today),dueToday=open.filter(t=>t.due===today),completed=all.length-open.length;
+  stats.innerHTML=`<div class="stat"><div class="stat-n">${open.length}</div><div class="stat-l">Open</div></div><div class="stat ${dueToday.length?'hi':''}"><div class="stat-n">${dueToday.length}</div><div class="stat-l">Due today</div></div><div class="stat ${overdue.length?'hi':''}"><div class="stat-n">${overdue.length}</div><div class="stat-l">Overdue</div></div><div class="stat"><div class="stat-n">${completed}</div><div class="stat-l">Completed</div></div>`;
+  const badge=document.getElementById('myWorkBadge');if(badge){badge.textContent=open.length;badge.style.display=open.length?'':'none';}
+  const configNotes=[];
+  if(!LIST_IDS.myTasks&&!isPreviewMode)configNotes.push('<strong>Shared Work Items are not connected yet.</strong> Your private tasks still work normally. Shared assignments will appear here once their own SharePoint list is approved and connected.');
+  if(canSeePersonal&&PERSONAL_TASKS_ERROR)configNotes.push('<strong>Personal Tasks could not be loaded.</strong> '+escapeAttr(PERSONAL_TASKS_ERROR));
+  config.innerHTML=configNotes.length?`<div style="background:var(--gold-bg);border:1px solid #ead9a3;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:11.5px;color:var(--text2);line-height:1.5">${configNotes.join('<br>')}</div>`:'';
+  if(!rows.length){list.innerHTML='<div style="padding:38px;text-align:center;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:var(--r)"><div style="font-size:20px;margin-bottom:7px">◇</div><div style="font-size:12.5px;font-weight:600;color:var(--text2)">Nothing matches this view</div><div style="font-size:11px;margin-top:3px">Change a filter or add a personal task.</div></div>';return;}
+  const priTag={Critical:'t-r',High:'t-o',Medium:'t-a',Low:'t-gr'};
+  list.innerHTML=`<div class="mw-table"><div class="mw-head"><div>Work</div><div>Project / Activity</div><div>Priority</div><div>Status</div><div>Due</div></div>${rows.map(t=>{
+    const done=['Done','Complete','Completed'].includes(t.status),late=!done&&t.due&&t.due<today;
+    const projectContext=t.project?`<button class="mw-context-link" onclick="event.stopPropagation();openEditProject('${escapeAttr(String(t.projectId))}')">${escapeAttr(t.project)}</button>`:'<span style="font-size:11px">Unassigned project</span>';
+    const activityContext=t.activity?`${t.activityId?`<button class="mw-context-link" onclick="event.stopPropagation();showPop(Number('${escapeAttr(String(t.activityId))}'))">${escapeAttr(t.activity)}</button>`:`<span style="font-size:10px;color:var(--text3)">${escapeAttr(t.activity)}</span>`}`:'';
+    return`<div class="mw-row" onclick="${t.kind==='personal'?`openEditPersonalTask('${escapeAttr(String(t.id))}')`:`openEditTask('${escapeAttr(String(t.id))}')`}"><div style="min-width:0"><div style="font-weight:600;line-height:1.35;${done?'text-decoration:line-through;color:var(--text3)':''}">${escapeAttr(t.title||'Untitled')}</div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px"><span class="mw-kind ${t.kind}">${t.kind==='personal'?'Personal':'Shared'}</span><span style="font-size:10px;color:var(--text3)">${escapeAttr(t.source)}</span></div></div><div style="min-width:0">${projectContext}${activityContext?`<div>${activityContext}</div>`:''}</div><div>${t.priority?`<span class="tag ${priTag[t.priority]||'t-gr'}">${escapeAttr(t.priority)}</span>`:'<span style="color:var(--text3)">—</span>'}</div><div style="font-size:11px;color:var(--text2)">${escapeAttr(t.status||'Not Started')}</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:${late?'var(--red)':'var(--text3)'};font-weight:${late?'700':'400'}">${t.due?escapeAttr(fmtShort(t.due)):'—'}</div></div>`;
+  }).join('')}</div>`;
+}
+
+function renderMyWorkIfVisible(){
+  if(document.getElementById('p-mywork')?.classList.contains('active'))renderMyWork();
+}
+
+// ═══════════════════════════════════════
+// ARTWORK — current live featured pointers only. This page never uploads and does not claim that
+// a legacy Image/EventImageURL is design-approved; approval metadata can be added later without
+// replacing the feed or duplicating files.
+// ═══════════════════════════════════════
+function renderArtwork(){
+  if(!isAuthed)return;
+  const feed=document.getElementById('artworkFeed'),stats=document.getElementById('artworkStats');if(!feed||!stats)return;
+  const active=EVENTS.filter(e=>!isArchived(e)&&e.start);
+  const imageFor=e=>e.eventImageUrl||e.artworkFile||'';
+  const fillSelect=(id,placeholder,values)=>{
+    const el=document.getElementById(id);if(!el)return'';const current=el.value;
+    el.innerHTML=`<option value="">${placeholder}</option>`+values.map(([v,l])=>`<option value="${escapeAttr(String(v))}">${escapeAttr(l)}</option>`).join('');
+    if([...el.options].some(o=>o.value===current))el.value=current;return el.value;
+  };
+  const years=[...new Set(active.map(e=>String(e.start).slice(0,4)))].sort().reverse().map(y=>[y,y]);
+  const venues=[...new Set(active.map(e=>e.venue).filter(Boolean))].sort().map(v=>[v,v]);
+  const projects=PROJECTS.slice().sort((a,b)=>(a.title||'').localeCompare(b.title||'')).map(p=>[String(p.id),p.title]);
+  const year=fillSelect('artworkYear','All years',years),venue=fillSelect('artworkVenue','All venues',venues),projectId=fillSelect('artworkProject','All projects',projects);
+  const state=document.getElementById('artworkState')?.value||'featured';
+  const query=(document.getElementById('artworkSearch')?.value||'').trim().toLowerCase();
+  let items=active.filter(e=>{
+    const has=!!imageFor(e);
+    if(year&&!String(e.start).startsWith(year))return false;
+    if(venue&&e.venue!==venue)return false;
+    if(projectId&&String(e.projectId)!==String(projectId))return false;
+    if(state==='featured'&&!has)return false;
+    if(state==='missing'&&has)return false;
+    if(query&&!`${e.title||''} ${e.venue||''} ${PROJECTS.find(p=>String(p.id)===String(e.projectId))?.title||''}`.toLowerCase().includes(query))return false;
+    return true;
+  }).sort((a,b)=>String(b.start).localeCompare(String(a.start))||(a.title||'').localeCompare(b.title||''));
+  const withImage=active.filter(e=>imageFor(e)).length,missing=active.length-withImage,monthCount=new Set(active.map(e=>String(e.start).slice(0,7))).size;
+  stats.innerHTML=`<div class="stat"><div class="stat-n">${withImage}</div><div class="stat-l">Featured images</div></div><div class="stat ${missing?'hi':''}"><div class="stat-n">${missing}</div><div class="stat-l">No featured image</div></div><div class="stat"><div class="stat-n">${monthCount}</div><div class="stat-l">Activity months</div></div>`;
+  if(!items.length){feed.innerHTML='<div style="padding:42px;text-align:center;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:var(--r)"><div style="font-size:22px;margin-bottom:7px">▧</div><div style="font-size:12.5px;font-weight:600;color:var(--text2)">No artwork matches these filters</div></div>';return;}
+  const groups={};items.forEach(e=>{const key=String(e.start).slice(0,7);(groups[key]||(groups[key]=[])).push(e);});
+  feed.innerHTML=Object.keys(groups).sort().reverse().map(key=>{
+    const monthDate=new Date(key+'-01T00:00:00');const label=monthDate.toLocaleDateString('en-AU',{month:'long',year:'numeric'});
+    return`<section class="art-month"><div class="art-month-head"><div class="art-month-title">${escapeAttr(label)}</div><div class="art-month-count">${groups[key].length} activit${groups[key].length===1?'y':'ies'}</div></div><div class="art-grid">${groups[key].map(e=>{
+      const url=imageFor(e),project=PROJECTS.find(p=>String(p.id)===String(e.projectId)),health=healthCheck(e);
+      const image=url?`<img loading="lazy" src="${escapeAttr(url)}" alt="${escapeAttr(e.title||'Activity artwork')}" onerror="this.remove();this.parentElement.textContent='Image unavailable — open the Activity to check its SharePoint link.'">`:'<span>No featured artwork selected<br><small>Open the Activity to review its design status.</small></span>';
+      return`<article class="art-card" onclick="showActivityPage(${e.id})"><div class="art-img">${image}</div><div class="art-body"><div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text3)"><span style="width:7px;height:7px;border-radius:50%;background:${vColor(e.venue).c};flex-shrink:0"></span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(e.venue||'No venue')}</span></div><div style="font-size:12.5px;font-weight:600;line-height:1.35">${escapeAttr(e.title)}</div><div style="font-size:10.5px;color:var(--text3)">${project?escapeAttr(project.title)+' · ':''}${escapeAttr(fmtShort(e.start))}</div><div style="display:flex;gap:5px;flex-wrap:wrap"><span class="tag t-gr">${escapeAttr(stageLabel(e.stage))}</span>${health.level!=='green'?`<span class="tag ${health.level==='red'?'t-r':'t-o'}">${escapeAttr(health.label)}</span>`:''}</div></div></article>`;
+    }).join('')}</div></section>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
 // MY TASKS — filtered by current user
 // ═══════════════════════════════════════
 let _taskQueue='mine';
@@ -8282,7 +8515,7 @@ function openEditTask(taskId){
   document.getElementById('tDue').value=t.due||'';
   document.getElementById('tNotes').value=t.notes||'';
   document.getElementById('tEditId').value=t.id;
-  document.getElementById('tPriority').value=t.priority||'Medium';
+  document.getElementById('tPriority').value=['High','Medium','Low'].includes(t.priority)?t.priority:'';
   document.getElementById('tCategory').value=t.category||'General';
   document.getElementById('taskFormMsg').textContent='';
 
@@ -8312,6 +8545,11 @@ function closeAddTask(){document.getElementById('addTaskOv').classList.remove('s
 async function saveTask(){
   const title=document.getElementById('tTitle').value.trim();
   if(!title){document.getElementById('taskFormMsg').textContent='Please enter a title.';document.getElementById('taskFormMsg').className='form-msg err';return;}
+  if(!LIST_IDS.myTasks&&!isPreviewMode){
+    document.getElementById('taskFormMsg').textContent='Shared Work Items are not connected to a SharePoint list yet. Nothing was saved.';
+    document.getElementById('taskFormMsg').className='form-msg err';
+    return;
+  }
   const editId=document.getElementById('tEditId').value;
   const assignTo=document.getElementById('tAssignTo').value;
   const campaignSpId=document.getElementById('tCampaignLink').value;
@@ -8413,6 +8651,7 @@ async function saveTask(){
   closeAddTask();
   if(btn){btn.disabled=false;btn.textContent='Save Task';}
   renderMyTasks();
+  renderMyWorkIfVisible();
   renderMyDay();
 }
 
@@ -8434,6 +8673,7 @@ async function toggleTask(id){
     }
   }
   renderMyTasks();
+  renderMyWorkIfVisible();
 }
 
 async function deleteTaskPermanently(id){
@@ -8449,6 +8689,7 @@ async function deleteTaskPermanently(id){
     }
     MY_TASKS=MY_TASKS.filter(t=>t.id!==id);
     renderMyTasks();
+    renderMyWorkIfVisible();
   }catch(e){
     console.error('deleteTaskPermanently failed:',e);
     alert('Could not delete the task: '+e.message);
@@ -8460,8 +8701,8 @@ async function deleteTaskPermanently(id){
 // ═══════════════════════════════════════
 async function loadPersonalTasks(){
   if(!canAccessPanel('personaltasks'))return;
-  if(isPreviewMode){seedPersonalTaskPreview();renderPersonalTasks();return;}
-  if(!LIST_IDS.personalTasks){PERSONAL_TASKS=[];renderPersonalTasks();return;}
+  if(isPreviewMode){seedPersonalTaskPreview();renderPersonalTasks();renderMyWorkIfVisible();return;}
+  if(!LIST_IDS.personalTasks){PERSONAL_TASKS=[];renderPersonalTasks();renderMyWorkIfVisible();return;}
   try{
     const token=await getToken();
     const items=await fetchGraphItems(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items?expand=fields&$top=200`,token);
@@ -8469,6 +8710,7 @@ async function loadPersonalTasks(){
     PERSONAL_TASKS_ERROR='';
   }catch(e){console.error('Personal tasks load error:',e);PERSONAL_TASKS_ERROR=e.message||'Unknown error';}
   renderPersonalTasks();
+  renderMyWorkIfVisible();
 }
 
 function renderPersonalTasks(){
@@ -8530,7 +8772,7 @@ function renderPersonalTasks(){
     // (see ptDrop) rather than requiring that mode to be picked first, which wasn't obvious.
     const dragAttrs=`draggable="true" ondragstart="ptDragStart(event,'${task.id}')" ondragover="ptDragOver(event)" ondragleave="ptDragLeave(event)" ondrop="ptDrop(event,'${task.id}')" ondragend="ptDragEnd(event)"`;
     const dragHandle='<span class="pt-drag-handle" title="Drag to reorder">⋮⋮</span>';
-    let row=`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${task.workstream?`<span class="tag t-gr" style="text-transform:none">${escapeAttr(task.workstream)}</span>`:''}${linkedHtml}${projectHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right"><span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority||'Medium')}</span>${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
+    let row=`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${task.workstream?`<span class="tag t-gr" style="text-transform:none">${escapeAttr(task.workstream)}</span>`:''}${linkedHtml}${projectHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right">${task.priority?`<span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority)}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
     if(!isSubtask&&subtasks.length&&expanded){
       row+=`<div class="pt-subtasks">${subtasks.map(child=>{shownChildIds.add(child.id);return personalTaskRowHtml(child,true);}).join('')}</div>`;
     } else if(!isSubtask&&subtasks.length){
@@ -8547,6 +8789,7 @@ function renderPersonalTasks(){
     ?`<div class="card"><div class="card-body" style="padding:22px"><div style="font-size:14px;font-weight:700;color:var(--red);margin-bottom:7px">Could not load your personal tasks</div><div style="font-size:12px;color:var(--text2);line-height:1.55">${escapeAttr(PERSONAL_TASKS_ERROR)}</div></div></div>`
     :'<div style="padding:36px;text-align:center;color:var(--text3)">No personal tasks yet.</div>';
   list.innerHTML=rowsHtml||emptyState;
+  renderMyWorkIfVisible();
 }
 
 // Only top-level tasks (no parent of their own) can be picked as a parent — keeps subtasks one
@@ -8585,7 +8828,7 @@ function openAddPersonalTask(parentId,linkedActivityId,projectId){
 }
 function openEditPersonalTask(id){
   const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task)return;
-  document.getElementById('ptTitle').value=task.title||'';document.getElementById('ptDue').value=task.due||'';document.getElementById('ptNotes').value=task.notes||'';document.getElementById('ptPriority').value=task.priority||'Medium';document.getElementById('ptEditId').value=task.id;
+  document.getElementById('ptTitle').value=task.title||'';document.getElementById('ptDue').value=task.due||'';document.getElementById('ptNotes').value=task.notes||'';document.getElementById('ptPriority').value=['High','Medium','Low'].includes(task.priority)?task.priority:'';document.getElementById('ptEditId').value=task.id;
   populatePersonalTaskParentSelect(task.id,task.parentId||'');
   populatePersonalTaskActivitySelect(task.linkedActivityId||'');
   populatePersonalTaskProjectSelect(task.projectId||'');
@@ -8601,12 +8844,13 @@ async function savePersonalTask(){
   const due=document.getElementById('ptDue').value,notes=document.getElementById('ptNotes').value,priority=document.getElementById('ptPriority').value,parentId=document.getElementById('ptParent').value,linkedActivityId=document.getElementById('ptLinkedActivity').value,projectId=document.getElementById('ptProject').value;
   const existing=PERSONAL_TASKS.find(item=>String(item.id)===String(editId));
   if(parentId&&String(parentId)===String(editId)){msg.textContent='A task cannot be its own parent.';msg.className='form-msg err';return;}
-  const fields={Title:title,Status:existing?.status||'Not Started',Priority:priority};if(due)fields.DueDate=due+'T12:00:00Z';if(notes)fields.Notes=notes;
-  // ParentTaskId, LinkedActivityId, ProjectId and Sequence are new, not-yet-confirmed columns on
-  // some SharePoint tenants — drop whichever fails and retry rather than failing the whole save.
-  fields.ParentTaskId=parentId?parseInt(parentId,10):null;
-  fields.LinkedActivityId=linkedActivityId?parseInt(linkedActivityId,10):null;
-  fields.ProjectId=projectId?parseInt(projectId,10):null;
+  const fields={
+    Status:existing?.status||'Not Started',Priority:priority,
+    DueDate:due?due+'T12:00:00Z':null,Notes:notes||null,
+    ParentTaskId:parentId?parseInt(parentId,10):null,
+    LinkedActivityId:linkedActivityId?parseInt(linkedActivityId,10):null,
+    ProjectId:projectId?parseInt(projectId,10):null
+  };
   let newSequence=existing?.sequence;
   if(!existing){
     const siblings=PERSONAL_TASKS.filter(t=>String(t.parentId||'')===String(parentId||''));
@@ -8615,31 +8859,29 @@ async function savePersonalTask(){
   }
   try{
     if(LIST_IDS.personalTasks&&!isPreviewMode){
-      const token=await getToken(true);const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items${editId?'/'+editId:''}`;
-      let payload={...fields},res,created=null,lastError='';
-      const optional=['Sequence','ParentTaskId','LinkedActivityId','ProjectId','Priority','Status'];
-      for(let attempt=0;attempt<=optional.length;attempt++){
-        res=await fetch(url,{method:editId?'PATCH':'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:payload})});
-        if(res.ok){if(!editId)created=await res.json();break;}
-        lastError=await res.text();
-        if(attempt<optional.length)delete payload[optional[attempt]];
+      const token=await getToken(true);
+      const listUrl=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items`;
+      let itemId=editId;
+      if(editId){
+        const coreRes=await fetch(`${listUrl}/${editId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Title:title}})});
+        if(!coreRes.ok)throw new Error('HTTP '+coreRes.status+': '+await coreRes.text());
+      }else{
+        const coreRes=await fetch(listUrl,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Title:title}})});
+        if(!coreRes.ok)throw new Error('HTTP '+coreRes.status+': '+await coreRes.text());
+        itemId=String((await coreRes.json()).id);
       }
-      if(!res?.ok)throw new Error('HTTP '+res?.status+': '+lastError);
-      if(created)fields.id=String(created.id);
-      var parentColumnMissing=!payload.hasOwnProperty('ParentTaskId');
-      var activityColumnMissing=!payload.hasOwnProperty('LinkedActivityId');
-      var projectColumnMissing=!payload.hasOwnProperty('ProjectId');
+      const optionalResult=await patchImportOptionalFields(`${listUrl}/${itemId}`,token,fields);
+      await loadPersonalTasks();
+      renderPersonalTasks();
+      if(optionalResult.failed.length){
+        msg.textContent=`Task saved, but these fields were not accepted by SharePoint: ${optionalResult.failed.map(item=>item.field).join(', ')}. Other valid fields were preserved; review the proposed columns in Schema Tools.`;
+        msg.className='form-msg err';
+      }else closeAddPersonalTask();
+      return;
     }
-    if(existing){Object.assign(existing,{title,due,notes,priority,parentId,linkedActivityId,projectId});}else PERSONAL_TASKS.push({id:fields.id||'PT-'+Date.now(),title,status:'Not Started',priority,due,notes,parentId,linkedActivityId,projectId,sequence:newSequence||0});
+    if(existing){Object.assign(existing,{title,due,notes,priority,parentId,linkedActivityId,projectId});}else PERSONAL_TASKS.push({id:'PT-'+Date.now(),title,status:'Not Started',priority,due,notes,parentId,linkedActivityId,projectId,sequence:newSequence||0});
     renderPersonalTasks();
-    const missingColumns=[parentColumnMissing?'ParentTaskId':'',activityColumnMissing?'LinkedActivityId':'',projectColumnMissing?'ProjectId':''].filter(Boolean);
-    if(missingColumns.length){
-      // Leave the popup open so this is actually seen, instead of closing straight over it.
-      msg.textContent=`Saved, but "${missingColumns.join('" and "')}" ${missingColumns.length>1?"aren't":"isn't"} a column on this list yet — that link didn't stick. Add ${missingColumns.length>1?'Number columns':'a Number column'} named ${missingColumns.join(' and ')} in SharePoint (or use Schema Tools), then try again.`;
-      msg.className='form-msg err';
-    } else {
-      closeAddPersonalTask();
-    }
+    closeAddPersonalTask();
   }catch(e){msg.textContent='Could not save: '+e.message;msg.className='form-msg err';}
 }
 
@@ -8724,20 +8966,29 @@ async function ptDrop(e,targetId){
   if(fromIdx===-1||toIdx===-1)return;
   siblings.splice(toIdx,0,siblings.splice(fromIdx,1)[0]);
   const changed=[];
-  siblings.forEach((t,i)=>{const newSeq=(i+1)*10;if(t.sequence!==newSeq){t.sequence=newSeq;changed.push(t);}});
+  siblings.forEach((t,i)=>{const newSeq=(i+1)*10;if(t.sequence!==newSeq){changed.push({task:t,oldSequence:t.sequence});t.sequence=newSeq;}});
   // A drop is only meaningful as a manual reorder, so switch the sort dropdown to "My order" itself
   // rather than requiring it to be picked first — otherwise the drop looks like it silently failed
   // (the list would just get recomputed back into due/priority/etc. order on the next render).
   const sortSel=document.getElementById('personalTaskSort');if(sortSel)sortSel.value='custom';
   renderPersonalTasks();
-  for(const t of changed){
-    try{if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(t.id).startsWith('PT-')){const token=await getToken(true);const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${t.id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Sequence:t.sequence}})});if(!res.ok)throw new Error('HTTP '+res.status);}}catch(e){console.error('Could not save new task order:',e);}
+  let failed=false;
+  for(const change of changed){
+    const t=change.task;
+    try{if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(t.id).startsWith('PT-')){const token=await getToken(true);const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${t.id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Sequence:t.sequence}})});if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());}}catch(error){failed=true;console.error('Could not save new task order:',error);break;}
+  }
+  if(failed){
+    if(LIST_IDS.personalTasks&&!isPreviewMode)await loadPersonalTasks();
+    else changed.forEach(change=>{change.task.sequence=change.oldSequence;});
+    renderPersonalTasks();
+    alert('The new task order could not be fully saved, so the list was restored from SharePoint. Check that the Sequence column exists, then try again.');
   }
 }
 
 async function bulkApplyPersonalTaskPriority(){
-  const priority=document.getElementById('ptBulkPriority')?.value;
-  if(!priority||!personalTaskSelected.size)return;
+  const selectedPriority=document.getElementById('ptBulkPriority')?.value;
+  if(!selectedPriority||!personalTaskSelected.size)return;
+  const priority=selectedPriority==='__none__'?'':selectedPriority;
   for(const id of Array.from(personalTaskSelected)){
     const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task)continue;
     const old=task.priority;task.priority=priority;
@@ -8786,20 +9037,20 @@ const SCHEMA_TOOL_LISTS={
 // Columns the app already knows it wants but can't confirm exist everywhere — same idea as
 // UNCONFIRMED_COLUMNS for campaigns, extended to other lists (e.g. ParentTaskId for subtasks).
 const SCHEMA_KNOWN_GAPS=[
-  {listKey:'campaigns',name:'AppShortDescription',displayName:'App Short Description',type:'text'},
-  {listKey:'campaigns',name:'RegularPrice',displayName:'Regular Price',type:'number'},
-  {listKey:'campaigns',name:'LoadedBasePrice',displayName:'Loaded Base Price',type:'number'},
-  {listKey:'campaigns',name:'JobFolderURL',displayName:'Job Folder URL',type:'text'},
-  {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number'},
-  {listKey:'campaigns',name:'ProjectId',displayName:'Project Id',type:'number'},
-  {listKey:'projects',name:'Priority',displayName:'Priority',type:'text'},
-  {listKey:'projects',name:'Owner',displayName:'Owner',type:'text'},
-  {listKey:'projects',name:'Progress',displayName:'Progress',type:'number'},
-  {listKey:'projects',name:'Phase',displayName:'Phase',type:'text'},
-  {listKey:'personalTasks',name:'ParentTaskId',displayName:'Parent Task Id',type:'number'},
-  {listKey:'personalTasks',name:'LinkedActivityId',displayName:'Linked Activity Id',type:'number'},
-  {listKey:'personalTasks',name:'ProjectId',displayName:'Project Id',type:'number'},
-  {listKey:'personalTasks',name:'Sequence',displayName:'Sequence',type:'number'}
+  {listKey:'campaigns',name:'AppShortDescription',displayName:'App Short Description',type:'text',purpose:'Short copy for the Loaded app.'},
+  {listKey:'campaigns',name:'RegularPrice',displayName:'Regular Price',type:'number',purpose:'Standard price used for offer comparisons.'},
+  {listKey:'campaigns',name:'LoadedBasePrice',displayName:'Loaded Base Price',type:'number',purpose:'Loaded member price used for offer comparisons.'},
+  {listKey:'campaigns',name:'JobFolderURL',displayName:'Job Folder URL',type:'text',purpose:'Folder link written back by the existing Power Automate flow.'},
+  {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number',purpose:'Groups Activities that belong to one recurring series.'},
+  {listKey:'campaigns',name:'ProjectId',displayName:'Project Id',type:'number',purpose:'Links each Activity to its one parent Project.'},
+  {listKey:'projects',name:'Priority',displayName:'Priority',type:'text',purpose:'High, Medium, Low, or blank planning priority.'},
+  {listKey:'projects',name:'Owner',displayName:'Owner',type:'text',purpose:'Names the one accountable Project owner.'},
+  {listKey:'projects',name:'Progress',displayName:'Progress',type:'number',purpose:'Stores the Project completion percentage.'},
+  {listKey:'projects',name:'Phase',displayName:'Phase',type:'text',purpose:'Groups Projects into a planning phase when needed.'},
+  {listKey:'personalTasks',name:'ParentTaskId',displayName:'Parent Task Id',type:'number',purpose:'Links Kimberley’s private subtask to its parent task.'},
+  {listKey:'personalTasks',name:'LinkedActivityId',displayName:'Linked Activity Id',type:'number',purpose:'Optionally links a private task to one Activity.'},
+  {listKey:'personalTasks',name:'ProjectId',displayName:'Project Id',type:'number',purpose:'Optionally links a private task to one Project.'},
+  {listKey:'personalTasks',name:'Sequence',displayName:'Sequence',type:'number',purpose:'Persists Kimberley’s drag-and-drop task order.'}
 ];
 let SCHEMA_TOOL_COLUMNS={};
 function schemaColumnDefinition(type,name,displayName,choicesRaw){
@@ -8932,7 +9183,7 @@ async function renderSchemaTools(forceRefresh){
       return{...gap,exists,listLabel:SCHEMA_TOOL_LISTS[gap.listKey].label};
     });
     const missing=rows.filter(r=>!r.exists);
-    gapsEl.innerHTML=`<div class="card"><div class="card-h"><span class="card-title">Columns the OS already knows it wants</span></div><div class="card-body">${rows.map(r=>`<div class="crm-health-row"><strong>${escapeAttr(r.listLabel)} · ${escapeAttr(r.displayName)}</strong><strong style="color:${r.exists?'#15803d':'var(--gold)'}">${r.exists?'Ready':'Missing'}</strong></div>`).join('')}${missing.length?`<div style="padding:12px"><button class="btn btn-p" onclick="createKnownSchemaGaps()">Create ${missing.length} missing column${missing.length===1?'':'s'}</button></div>`:''}</div></div>`;
+    gapsEl.innerHTML=`<div class="card"><div class="card-h"><span class="card-title">Proposed SharePoint columns</span></div><div class="card-body" style="overflow:auto"><div style="min-width:760px"><div style="display:grid;grid-template-columns:1.35fr 1fr 1fr .65fr 1.7fr .55fr;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text3)"><span>List</span><span>Field</span><span>Internal name</span><span>Type</span><span>Purpose</span><span>Status</span></div>${rows.map(r=>`<div style="display:grid;grid-template-columns:1.35fr 1fr 1fr .65fr 1.7fr .55fr;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);font-size:10.5px;align-items:start"><strong>${escapeAttr(r.listLabel)}</strong><span>${escapeAttr(r.displayName)}</span><code>${escapeAttr(r.name)}</code><span>${escapeAttr(r.type)}</span><span style="color:var(--text2)">${escapeAttr(r.purpose)}</span><strong style="color:${r.exists?'#15803d':'var(--gold)'}">${r.exists?'Ready':'Missing'}</strong></div>`).join('')}</div>${missing.length?`<div style="padding:12px"><button class="btn btn-p" onclick="createKnownSchemaGaps()">Review &amp; create ${missing.length} missing column${missing.length===1?'':'s'}</button></div>`:''}</div></div>`;
   }catch(e){
     gapsEl.innerHTML=`<div class="card"><div class="card-body" style="padding:20px;color:var(--red)">Could not check columns: ${escapeAttr(e.message)}</div></div>`;
   }
@@ -8941,7 +9192,8 @@ async function createKnownSchemaGaps(){
   const rows=SCHEMA_KNOWN_GAPS.map(gap=>{const cols=SCHEMA_TOOL_COLUMNS[gap.listKey]||[];return{...gap,exists:cols.some(c=>c.name===gap.name||c.displayName===gap.displayName)};});
   const missing=rows.filter(r=>!r.exists);
   if(!missing.length)return;
-  if(!confirm(`Create ${missing.length} column(s)? Existing rows won't be changed.`))return;
+  const proposal=missing.map(gap=>`${SCHEMA_TOOL_LISTS[gap.listKey].label}\n  ${gap.displayName} (${gap.name}) · ${gap.type}\n  ${gap.purpose}`).join('\n\n');
+  if(!confirm(`Review the proposed SharePoint columns:\n\n${proposal}\n\nCreate these ${missing.length} column(s)? Existing rows won't be changed.`))return;
   const token=await getToken(true);
   let created=0;const failures=[];
   for(const gap of missing){
@@ -8961,19 +9213,23 @@ async function createSchemaColumn(){
   const displayName=document.getElementById('schemaColDisplay').value.trim()||name;
   const type=document.getElementById('schemaColType').value;
   const choices=document.getElementById('schemaColChoices').value;
+  const purpose=document.getElementById('schemaColPurpose').value.trim();
   if(!listValue){msg.textContent='Pick a list first.';msg.className='form-msg err';return;}
   if(!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)){msg.textContent='Column name must start with a letter and contain only letters, numbers and underscores — no spaces.';msg.className='form-msg err';return;}
+  if(!purpose){msg.textContent='Describe the purpose before creating a column.';msg.className='form-msg err';return;}
   const definition=schemaColumnDefinition(type,name,displayName,choices);
   if(!definition){msg.textContent='Enter at least one choice.';msg.className='form-msg err';return;}
   const listId=schemaListId(listValue);
   if(!listId){msg.textContent="Could not find that list's SharePoint ID.";msg.className='form-msg err';return;}
+  const listLabel=listValue.startsWith('crm:')?(CRM_LIST_NAMES[listValue.slice(4)]||listValue):(SCHEMA_TOOL_LISTS[listValue]?.label||listValue);
+  if(!confirm(`Review the proposed SharePoint column:\n\nList: ${listLabel}\nField: ${displayName}\nInternal name: ${name}\nType: ${type}\nPurpose: ${purpose}\n\nCreate this column?`))return;
   msg.textContent='Creating…';msg.className='form-msg';
   try{
     const token=await getToken(true);
     const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/columns`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(definition)});
     if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
     msg.textContent=`✓ Column "${displayName}" created.`;msg.className='form-msg ok';
-    document.getElementById('schemaColName').value='';document.getElementById('schemaColDisplay').value='';document.getElementById('schemaColChoices').value='';
+    document.getElementById('schemaColName').value='';document.getElementById('schemaColDisplay').value='';document.getElementById('schemaColChoices').value='';document.getElementById('schemaColPurpose').value='';
     if(listValue.startsWith('crm:'))delete CRM_COLUMNS[listValue.slice(4)];else delete SCHEMA_TOOL_COLUMNS[listValue];
     renderSchemaTools(true);
   }catch(e){msg.textContent='Could not create column: '+e.message;msg.className='form-msg err';}
@@ -9120,7 +9376,7 @@ function openAddProject(){
   if(!canEditCampaigns()){alert('You do not have permission to add projects.');return;}
   ['projTitle','projDue','projProgress','projPhase','projNotes','projEditId'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('projStatus').value='Not Started';
-  document.getElementById('projPriority').value='Normal';
+  document.getElementById('projPriority').value='';
   populateProjectOwnerSelect('');
   document.getElementById('addProjectTitle').textContent='New Project';
   document.getElementById('projectFormMsg').textContent='';
@@ -9132,7 +9388,7 @@ function openEditProject(id){
   const p=PROJECTS.find(item=>String(item.id)===String(id));if(!p)return;
   document.getElementById('projTitle').value=p.title||'';
   document.getElementById('projStatus').value=p.status||'Not Started';
-  document.getElementById('projPriority').value=p.priority||'Normal';
+  document.getElementById('projPriority').value=['High','Medium','Low'].includes(p.priority)?p.priority:'';
   populateProjectOwnerSelect(p.owner||'');
   document.getElementById('projDue').value=p.due||'';
   document.getElementById('projProgress').value=p.progress||0;
@@ -9251,43 +9507,26 @@ async function saveProject(){
   const progress=document.getElementById('projProgress').value;
   const phase=document.getElementById('projPhase').value.trim();
   const notes=document.getElementById('projNotes').value.trim();
-  const fields={Title:title};
-  if(status)fields.Status=status;
-  if(priority)fields.Priority=priority;
-  if(owner)fields.Owner=owner;
-  if(due)fields.DueDate=due+'T12:00:00Z';
-  if(progress!=='')fields.Progress=parseFloat(progress)||0;
-  if(phase)fields.Phase=phase;
-  if(notes)fields.Notes=notes;
+  const fields={Status:status||null,Priority:priority||null,Owner:owner||null,DueDate:due?due+'T12:00:00Z':null,Progress:progress!==''?(parseFloat(progress)||0):null,Phase:phase||null,Notes:notes||null};
   try{
     const token=await getToken(true);
-    const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.projects}/items${editId?'/'+editId:''}`;
-    // Same graceful drop-and-retry pattern as savePersonalTask — the exact SharePoint column names
-    // for a project (Owner/DueDate/Progress/Phase/Notes) haven't been schema-verified, so anything
-    // that isn't recognized gets dropped rather than failing the whole save.
-    const optional=['Priority','Owner','DueDate','Progress','Phase','Notes'];
-    let payload={...fields},res,created=null,lastError='';
-    for(let attempt=0;attempt<=optional.length;attempt++){
-      res=await fetch(url,{method:editId?'PATCH':'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:payload})});
-      if(res.ok){if(!editId)created=await res.json();break;}
-      lastError=await res.text();
-      if(attempt<optional.length)delete payload[optional[attempt]];
-    }
-    if(!res?.ok)throw new Error('HTTP '+res?.status+': '+lastError);
-    const skipped=Object.keys(fields).filter(k=>!payload.hasOwnProperty(k));
+    const listUrl=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.projects}/items`;
+    let itemId=editId;
     if(editId){
-      const p=PROJECTS.find(item=>String(item.id)===String(editId));
-      if(p)Object.assign(p,{title,status,priority,owner,due,progress:parseFloat(progress)||0,phase:phase||p.phase,notes});
+      const coreRes=await fetch(`${listUrl}/${editId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Title:title}})});
+      if(!coreRes.ok)throw new Error('HTTP '+coreRes.status+': '+await coreRes.text());
     }else{
-      PROJECTS.push({id:String(created.id),title,status,priority,owner,progress:parseFloat(progress)||0,due,notes,phase:phase||'Projects',tasks:[]});
+      const coreRes=await fetch(listUrl,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Title:title}})});
+      if(!coreRes.ok)throw new Error('HTTP '+coreRes.status+': '+await coreRes.text());
+      itemId=String((await coreRes.json()).id);
     }
+    const optionalResult=await patchImportOptionalFields(`${listUrl}/${itemId}`,token,fields);
+    await loadProjects();
     renderProjects();
-    if(skipped.length){
-      msg.textContent=`Saved, but these fields weren't recognized in SharePoint yet: ${skipped.join(', ')}. Add them as columns (Schema Tools can help), then try again.`;
+    if(optionalResult.failed.length){
+      msg.textContent=`Project saved, but these fields were not accepted by SharePoint: ${optionalResult.failed.map(item=>item.field).join(', ')}. Other valid fields were preserved; review the proposed columns in Schema Tools.`;
       msg.className='form-msg err';
-    }else{
-      closeAddProject();
-    }
+    }else closeAddProject();
   }catch(e){msg.textContent='Could not save: '+e.message;msg.className='form-msg err';}
 }
 
@@ -9300,64 +9539,92 @@ async function deleteProjectConfirm(){
   const parts=[];
   if(linkedActivityCount)parts.push(`${linkedActivityCount} linked activit${linkedActivityCount===1?'y':'ies'}`);
   if(linkedTaskCount)parts.push(`${linkedTaskCount} linked personal task${linkedTaskCount===1?'':'s'}`);
-  const warning=parts.length?` ${parts.join(' and ')} will be kept, just unlinked from this project.`:'';
+  const warning=parts.length?` ${parts.join(' and ')} will be kept and must be successfully unlinked in SharePoint before the Project is deleted.`:'';
   if(!confirm(`Delete project "${p.title}"?${warning}`))return;
   try{
     const token=await getToken(true);
+    const linkedActivities=EVENTS.filter(ev=>String(ev.projectId)===String(id));
+    const linkedPersonalTasks=PERSONAL_TASKS.filter(t=>String(t.projectId)===String(id));
+    for(const ev of linkedActivities){
+      if(!ev.spId)throw new Error(`Activity "${ev.title}" has no SharePoint item ID and could not be unlinked.`);
+      const unlinkRes=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{ProjectId:null}})});
+      if(!unlinkRes.ok)throw new Error(`Could not unlink Activity "${ev.title}": HTTP ${unlinkRes.status} ${await unlinkRes.text()}`);
+    }
+    if(LIST_IDS.personalTasks){
+      for(const task of linkedPersonalTasks){
+        if(String(task.id).startsWith('PT-'))continue;
+        const unlinkRes=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${task.id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{ProjectId:null}})});
+        if(!unlinkRes.ok)throw new Error(`Could not unlink Personal Task "${task.title}": HTTP ${unlinkRes.status} ${await unlinkRes.text()}`);
+      }
+    }
     const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.projects}/items/${id}`,{method:'DELETE',headers:{Authorization:'Bearer '+token}});
     if(!res.ok&&res.status!==404)throw new Error('HTTP '+res.status);
     PROJECTS=PROJECTS.filter(item=>String(item.id)!==String(id));
-    EVENTS.filter(ev=>String(ev.projectId)===String(id)).forEach(ev=>ev.projectId='');
-    PERSONAL_TASKS.filter(t=>String(t.projectId)===String(id)).forEach(t=>t.projectId='');
+    linkedActivities.forEach(ev=>ev.projectId='');
+    linkedPersonalTasks.forEach(t=>t.projectId='');
     closeAddProject();
     renderProjects();
-  }catch(e){alert('Could not delete project: '+e.message);}
+  }catch(e){
+    console.error('Project delete/unlink failed:',e);
+    try{await loadCampaigns();if(canAccessPanel('personaltasks'))await loadPersonalTasks();}catch(reloadError){console.error('Could not refresh after failed Project delete:',reloadError);}
+    renderProjects();
+    alert('Could not delete the Project. SharePoint may have unlinked some children before the failure, and the screen has been refreshed to show the server state. '+e.message);
+  }
 }
 
 function renderProjects(){
   if(!isAuthed)return;
-  const priTag={Critical:'t-r',High:'t-o',Medium:'t-a',Normal:'t-g',Low:'t-gr'};
-  const statPill={'In Progress':'p-prog','Not Started':'p-idea','Done':'p-done','On Hold':'p-aware'};
+  const list=document.getElementById('projList'),stats=document.getElementById('projectStats'),unassignedEl=document.getElementById('unassignedActivities');
+  if(!list)return;
   if(PROJECTS_ERROR){
-    document.getElementById('projList').innerHTML=`<div class="err-box"><div class="err-title">Could not load Projects</div><div class="err-msg">${PROJECTS_ERROR.replace(/</g,'&lt;')}</div></div>`;
+    list.innerHTML=`<div class="err-box"><div class="err-title">Could not load Projects</div><div class="err-msg">${PROJECTS_ERROR.replace(/</g,'&lt;')}</div></div>`;
     return;
   }
   if(!PROJECTS.length){
-    document.getElementById('projList').innerHTML='<div style="padding:36px;text-align:center;color:var(--text3)">No projects found in the connected SharePoint Projects list.</div>';
+    if(stats)stats.innerHTML='';
+    list.innerHTML='<div style="padding:36px;text-align:center;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:var(--r)">No projects found in the connected SharePoint Projects list.</div>';
     return;
   }
-  const preferred=['Foundation','Systems','Strategy'];
-  const discovered=[...new Set(PROJECTS.map(p=>p.phase||'Projects'))];
-  const phases=[...preferred.filter(p=>discovered.includes(p)),...discovered.filter(p=>!preferred.includes(p))];
-  const phaseLabel={'Foundation':'Phase 1 — Foundation (overdue, catch up now)','Systems':'Phase 2 — Systems (May–June)','Strategy':'Phase 3 — Strategy (June–August)'};
-  const phaseColor={'Foundation':'var(--red)','Systems':'var(--gold)','Strategy':'var(--accent)'};
-  let html='';
-  phases.forEach(phase=>{
-    const items=PROJECTS.filter(p=>p.phase===phase);
-    if(!items.length)return;
-    html+=`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${phaseColor[phase]||'var(--accent)'};margin:16px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--border)">${phaseLabel[phase]||phase}</div>`;
-    html+=items.map(p=>{
-      const today=new Date();today.setHours(0,0,0,0);
-      const isOverdue=p.due&&new Date(p.due+'T00:00:00')<today&&p.status!=='Done';
-      const tasksHtml=p.tasks&&p.tasks.length?`<div style="margin-top:8px;display:flex;flex-direction:column;gap:3px">${p.tasks.map(t=>`<div style="display:flex;gap:7px;font-size:11.5px;color:var(--text2);align-items:flex-start"><span style="color:var(--border2);flex-shrink:0;margin-top:1px">→</span>${t}</div>`).join('')}</div>`:'';
-      const linkedCount=EVENTS.filter(ev=>String(ev.projectId)===String(p.id)).length;
-      const linkedTaskCount=canAccessPanel('personaltasks')?PERSONAL_TASKS.filter(t=>String(t.projectId)===String(p.id)).length:0;
-      return`<div class="proj-item" style="margin-bottom:7px;cursor:pointer;${isOverdue?'border-left:3px solid var(--red);border-radius:0 var(--r) var(--r) 0':''}" onclick="openEditProject('${p.id}')">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;flex-wrap:wrap;gap:6px">
-          <div class="proj-name">${p.title}${isOverdue?'<span style="font-size:9px;color:var(--red);font-weight:700;margin-left:6px;vertical-align:middle">OVERDUE</span>':''}</div>
-          <div style="display:flex;gap:4px;flex-shrink:0">${p.priority?`<span class="tag ${priTag[p.priority]||'t-gr'}">${p.priority}</span>`:''}<span class="pill ${statPill[p.status]||'p-plan'}">${p.status}</span></div>
-        </div>
-        <div class="proj-meta">${p.owner?`<span>👤 ${p.owner}</span>`:''} ${p.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">📅 ${fmtDate(p.due)}</span>`:''} ${linkedCount?`<span>🎫 ${linkedCount} job ticket${linkedCount===1?'':'s'}</span>`:''} ${linkedTaskCount?`<span>✓ ${linkedTaskCount} task${linkedTaskCount===1?'':'s'}</span>`:''}</div>
-        ${p.notes?`<div style="font-size:11.5px;color:var(--text3);margin-top:2px;margin-bottom:5px">${p.notes}</div>`:''}
-        <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
-          <div class="proj-prog-w" style="flex:1"><div class="proj-prog-f" style="width:${p.progress}%"></div></div>
-          <span style="font-size:10px;font-weight:700;color:var(--text3);white-space:nowrap">${p.progress}%</span>
-        </div>
-        ${tasksHtml}
-      </div>`;
-    }).join('');
-  });
-  document.getElementById('projList').innerHTML=html;
+  const today=toLocalISODate(new Date());
+  const linkedFor=p=>EVENTS.filter(ev=>String(ev.projectId)===String(p.id));
+  const risksFor=(p,linked)=>{
+    const reasons=[];
+    if(!p.owner)reasons.push('Project owner missing');
+    if(!linked.length)reasons.push('No Activities linked');
+    if(p.due&&p.due<today&&p.status!=='Done')reasons.push(`Project due date passed ${fmtShort(p.due)}`);
+    const missingOwners=linked.filter(ev=>!ev.owner&&ev.stage!=='Done');
+    if(missingOwners.length)reasons.push(`${missingOwners.length} Activit${missingOwners.length===1?'y has':'ies have'} no owner`);
+    const risky=linked.filter(ev=>healthCheck(ev).level==='red');
+    if(risky.length)reasons.push(`${risky.length} Activit${risky.length===1?'y is':'ies are'} at risk`);
+    return reasons;
+  };
+  const ownerSelect=document.getElementById('projectOwnerFilter');
+  if(ownerSelect){
+    const current=ownerSelect.value,owners=[...new Set(PROJECTS.map(p=>p.owner).filter(Boolean))].sort();
+    ownerSelect.innerHTML='<option value="">All owners</option>'+owners.map(o=>`<option value="${escapeAttr(o)}">${escapeAttr(o)}</option>`).join('');
+    if(owners.includes(current))ownerSelect.value=current;
+  }
+  const query=(document.getElementById('projectSearch')?.value||'').trim().toLowerCase();
+  const statusFilter=document.getElementById('projectStatusFilter')?.value||'';
+  const ownerFilter=ownerSelect?.value||'';
+  const riskFilter=document.getElementById('projectRiskFilter')?.value||'';
+  const shaped=PROJECTS.map(p=>{const linked=linkedFor(p);return{p,linked,risks:risksFor(p,linked)};});
+  const shown=shaped.filter(({p,linked,risks})=>{
+    if(query&&!`${p.title||''} ${p.owner||''} ${p.notes||''} ${linked.map(e=>e.title).join(' ')}`.toLowerCase().includes(query))return false;
+    if(statusFilter&&p.status!==statusFilter)return false;
+    if(ownerFilter&&p.owner!==ownerFilter)return false;
+    if(riskFilter==='risk'&&!risks.length)return false;
+    if(riskFilter==='clear'&&risks.length)return false;
+    return true;
+  }).sort((a,b)=>(b.risks.length-a.risks.length)||(a.p.due||'9999').localeCompare(b.p.due||'9999')||(a.p.title||'').localeCompare(b.p.title||''));
+  const allLinked=EVENTS.filter(e=>e.projectId).length,atRisk=shaped.filter(x=>x.risks.length).length,active=PROJECTS.filter(p=>p.status!=='Done').length,unassigned=EVENTS.filter(e=>!e.projectId&&!isArchived(e));
+  if(stats)stats.innerHTML=`<div class="stat"><div class="stat-n">${active}</div><div class="stat-l">Active Projects</div></div><div class="stat ${atRisk?'hi':''}"><div class="stat-n">${atRisk}</div><div class="stat-l">Need attention</div></div><div class="stat"><div class="stat-n">${allLinked}</div><div class="stat-l">Linked Activities</div></div><div class="stat ${unassigned.length?'hi':''}"><div class="stat-n">${unassigned.length}</div><div class="stat-l">Unassigned Activities</div></div>`;
+  const priTag={Critical:'t-r',High:'t-o',Medium:'t-a',Normal:'t-g',Low:'t-gr'},statPill={'In Progress':'p-prog','Not Started':'p-idea','Done':'p-done','On Hold':'p-aware'};
+  list.innerHTML=shown.length?`<div class="proj-grid">${shown.map(({p,linked,risks})=>{
+    const workCount=(canAccessPanel('personaltasks')?PERSONAL_TASKS.filter(t=>String(t.projectId)===String(p.id)&&t.status!=='Done').length:0)+MY_TASKS.filter(t=>t.status!=='Done'&&linked.some(e=>(e.title||'').toLowerCase()===(t.campaignLookup||'').toLowerCase())).length;
+    return`<article class="proj-card" onclick="openEditProject('${escapeAttr(String(p.id))}')" style="${risks.length?'border-left:3px solid var(--red)':''}"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="min-width:0"><div style="font-size:14px;font-weight:700;line-height:1.3">${escapeAttr(p.title)}</div><div style="font-size:10.5px;color:var(--text3);margin-top:3px">${escapeAttr(p.phase||'Project')}</div></div><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">${p.priority?`<span class="tag ${priTag[p.priority]||'t-gr'}">${escapeAttr(p.priority)}</span>`:''}<span class="pill ${statPill[p.status]||'p-plan'}">${escapeAttr(p.status)}</span></div></div><div style="display:flex;gap:10px;flex-wrap:wrap;font-size:10.5px;color:var(--text3);margin:9px 0"><span>${p.owner?'👤 '+escapeAttr(p.owner):'👤 Owner missing'}</span>${p.due?`<span>📅 ${escapeAttr(fmtShort(p.due))}</span>`:''}<span>◎ ${linked.length} Activit${linked.length===1?'y':'ies'}</span><span>☐ ${workCount} open</span></div>${risks.length?`<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px">${risks.slice(0,3).map(r=>`<div class="risk-reason">${escapeAttr(r)}</div>`).join('')}</div>`:''}<div style="display:flex;align-items:center;gap:8px;margin:7px 0 9px"><div class="proj-prog-w" style="flex:1"><div class="proj-prog-f" style="width:${p.progress||0}%"></div></div><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${p.progress||0}%</span></div>${linked.slice(0,4).map(ev=>{const health=healthCheck(ev);return`<div class="project-activity"><span style="width:7px;height:7px;border-radius:50%;background:${health.level==='red'?'var(--red)':health.level==='amber'?'var(--gold)':'var(--accent)'};flex-shrink:0"></span><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(ev.title)}</span><span style="color:var(--text3)">${escapeAttr(stageLabel(ev.stage))}</span><span style="font-family:'DM Mono',monospace;color:var(--text3)">${escapeAttr(fmtShort(ev.start))}</span></div>`;}).join('')}${linked.length>4?`<div style="font-size:10px;color:var(--text3);padding-top:6px">+ ${linked.length-4} more Activities</div>`:''}</article>`;
+  }).join('')}</div>`:'<div style="padding:36px;text-align:center;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:var(--r)">No Projects match these filters.</div>';
+  if(unassignedEl)unassignedEl.innerHTML=unassigned.length?`<div style="margin-top:22px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><div style="font-size:12px;font-weight:700">Unassigned Activities</div><div style="font-size:10.5px;color:var(--text3)">Place these into a Project when their parent is known.</div></div><div class="card">${unassigned.slice(0,12).map(ev=>`<div class="project-activity" style="padding:8px 12px;cursor:pointer" onclick="showActivityPage(${ev.id})"><span style="width:7px;height:7px;border-radius:50%;background:${vColor(ev.venue).c};flex-shrink:0"></span><span style="flex:1;font-weight:600">${escapeAttr(ev.title)}</span><span style="color:var(--text3)">${escapeAttr(shortVenue(ev.venue))}</span><span style="font-family:'DM Mono',monospace;color:var(--text3)">${escapeAttr(fmtShort(ev.start))}</span></div>`).join('')}</div></div>`:'';
 }
 
 // ═══════════════════════════════════════
@@ -9873,6 +10140,7 @@ async function submitIdeaNew(){
 async function submitJob(){
   const title=document.getElementById('fJobTitle').value.trim();
   if(!title){const m=document.getElementById('fJobMsg');m.textContent='Please enter a title.';m.className='form-msg err';return;}
+  if(!LIST_IDS.myTasks&&!isPreviewMode){const m=document.getElementById('fJobMsg');m.textContent='Shared Work Items are not connected yet. Nothing was saved.';m.className='form-msg err';return;}
   const btn=document.querySelector('#submitFormJob .btn-p');
   if(btn){btn.disabled=true;btn.textContent='Submitting…';}
   const fields={
@@ -11204,11 +11472,9 @@ function renderActivityDetail(id,mode){
   if(ev.jobFolderUrl){
     h+=`<div style="display:flex;align-items:center;gap:8px"><a href="${ev.jobFolderUrl}" target="_blank" style="font-size:12px;color:var(--accent);font-weight:600;text-decoration:none">📁 Open artwork folder →</a></div>`;
   } else {
-    // JobFolderURL is not yet a confirmed SharePoint column, so a manual paste here always fails
-    // to save (silently, since it's often the only changed field and there's nothing left to retry).
-    // Not offering it until the automatic folder-creation work lands is more honest than a box that
-    // can never actually save.
-    h+=`<div style="font-size:11.5px;color:var(--text3)">Not connected yet — folders will link here automatically once Team Work Register is built.</div>`;
+    // The existing Power Automate flow owns folder creation and writes JobFolderURL back later.
+    // The Hub must not claim it creates or rolls back folders itself.
+    h+=`<div style="font-size:11.5px;color:var(--text3)">Folder pending — the Power Automate flow will place the link here after approval.</div>`;
   }
   if(ev.artworkFile)h+=`<div style="margin-top:4px"><a href="${ev.artworkFile}" target="_blank" style="font-size:11px;color:var(--accent)">🖼 Latest artwork →</a></div>`;
   h+=`</div>`;
