@@ -1129,7 +1129,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   </div>
 
   <!-- DESIGN BRIEF OVERLAY -->
-  <div class="overlay" id="designBriefOv" onclick="if(event.target===this)closeDesignBrief()">
+  <div class="overlay" id="designBriefOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closeDesignBrief()">
     <div class="popup" style="max-width:640px">
       <div class="pop-h"><div class="pop-title">✏️ Submit Design Brief</div><button class="pop-close" onclick="closeDesignBrief()">✕</button></div>
       <div class="pop-body">
@@ -1183,7 +1183,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   </div>
 
   <!-- POST-CAMPAIGN REPORT OVERLAY -->
-  <div class="overlay" id="postCampaignOv" onclick="if(event.target===this)closePostCampaign()">
+  <div class="overlay" id="postCampaignOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closePostCampaign()">
     <div class="popup" style="max-width:560px">
       <div class="pop-h"><div class="pop-title">📊 Post-Campaign Report</div><button class="pop-close" onclick="closePostCampaign()">✕</button></div>
       <div class="pop-body">
@@ -1278,7 +1278,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   </div>
 
   <!-- ADD TASK OVERLAY -->
-  <div class="overlay" id="addTaskOv" onclick="if(event.target===this)closeAddTask()">
+  <div class="overlay" id="addTaskOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closeAddTask()">
     <div class="popup" style="max-width:580px">
       <div class="pop-h"><div class="pop-title" id="addTaskTitle">New Task</div><button class="pop-close" onclick="closeAddTask()">✕</button></div>
       <div class="pop-body">
@@ -1354,7 +1354,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   </div>
 
   <!-- ADD PERSONAL TASK OVERLAY -->
-  <div class="overlay" id="addPersonalTaskOv" onclick="if(event.target===this)closeAddPersonalTask()">
+  <div class="overlay" id="addPersonalTaskOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closeAddPersonalTask()">
     <div class="popup" style="max-width:560px">
       <div class="pop-h"><div class="pop-title" id="addPersonalTaskTitle">New Personal Task</div><button class="pop-close" onclick="closeAddPersonalTask()">✕</button></div>
       <div class="pop-body">
@@ -1375,7 +1375,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   </div>
 
   <!-- ADD/EDIT PROJECT OVERLAY -->
-  <div class="overlay" id="addProjectOv" onclick="if(event.target===this)closeAddProject()">
+  <div class="overlay" id="addProjectOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closeAddProject()">
     <div class="popup" style="max-width:600px">
       <div class="pop-h"><div class="pop-title" id="addProjectTitle">New Project</div><button class="pop-close" onclick="closeAddProject()">✕</button></div>
       <div class="pop-body">
@@ -1571,7 +1571,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   </div>
 
   <!-- NEW CONVERSATION -->
-  <div class="overlay" id="newConvOv" onclick="if(event.target===this)closeNewConversation()">
+  <div class="overlay" id="newConvOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closeNewConversation()">
     <div class="popup" style="max-width:520px">
       <div class="pop-h"><div class="pop-title">💬 New Conversation</div><button class="pop-close" onclick="closeNewConversation()">✕</button></div>
       <div class="pop-body">
@@ -2028,7 +2028,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   </div>
 
   <!-- ADD IDEA OVERLAY -->
-  <div class="overlay" id="addIdeaOv" onclick="if(event.target===this)closeAddIdea()">
+  <div class="overlay" id="addIdeaOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closeAddIdea()">
     <div class="popup" style="max-width:600px">
       <div class="pop-h"><div class="pop-title">💡 New Activation Idea</div><button class="pop-close" onclick="closeAddIdea()">✕</button></div>
       <div class="pop-body">
@@ -2062,7 +2062,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 </div>
 
 <!-- POPUP -->
-<div class="overlay" id="evOv" onclick="if(event.target===this)closePop()">
+<div class="overlay" id="evOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closePop()">
   <div class="popup">
     <div class="pop-h"><div class="pop-title" id="popTitle" style="flex:1;min-width:0"></div><button class="pop-close" onclick="closePop()">✕</button></div>
     <div class="pop-body" id="popBody"></div>
@@ -4311,7 +4311,8 @@ function openKeyDatesManager(){
   ov.id='kdManagerOv';
   ov.className='overlay show';
   ov.style.cssText='display:flex;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:600;align-items:center;justify-content:center;backdrop-filter:blur(2px);padding:16px';
-  ov.onclick=e=>{if(e.target===ov)closeKeyDatesManager();};
+  ov.onmousedown=e=>{overlayMouseDown(e);};
+  ov.onclick=e=>{if(e.target===ov&&_overlayMouseDownOnBackdrop)closeKeyDatesManager();};
   ov.innerHTML=`<div style="background:var(--surface);border-radius:var(--r-lg);max-width:640px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:var(--sh-lg)">
     <div class="pop-head" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)">
       <div style="font-weight:700;font-size:15px">📅 Manage Key Dates</div>
@@ -4910,7 +4911,8 @@ function openIdeaDetail(id){
   const ov=document.createElement('div');
   ov.id='ideaDetailOv';
   ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px';
-  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  ov.onmousedown=e=>{overlayMouseDown(e);};
+  ov.onclick=e=>{if(e.target===ov&&_overlayMouseDownOnBackdrop)ov.remove();};
 
   let inner='<div style="background:var(--surface);border-radius:14px;max-width:540px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.3)">';
   if(idea.imageUrl)inner+='<div style="height:200px;overflow:hidden;border-radius:14px 14px 0 0"><img src="'+idea.imageUrl+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display=\'none\'"></div>';
@@ -5051,6 +5053,14 @@ function cleanPersonName(name){
 function escapeAttr(value){
   return String(value??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+// Popups close on "click outside the box" via onclick + event.target===this on the backdrop —
+// but a click-drag that starts inside the popup (selecting text, dragging across a multi-select
+// listbox) can end with mouseup landing back on the backdrop, and the resulting click's target is
+// still the backdrop, closing the popup mid-selection. Only close when the mousedown that started
+// this click was ALSO directly on the backdrop, not carried over from a drag that began inside.
+let _overlayMouseDownOnBackdrop=false;
+function overlayMouseDown(e){_overlayMouseDownOnBackdrop=(e.target===e.currentTarget);}
 
 function renderSubmitPeopleSelected(){
   const el=document.getElementById('fPeopleSelected');
@@ -7359,7 +7369,8 @@ function showCalDayPopup(evt,y,m,day){
   const ov=document.createElement('div');
   ov.id='calDayOv';
   ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center';
-  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  ov.onmousedown=e=>{overlayMouseDown(e);};
+  ov.onclick=e=>{if(e.target===ov&&_overlayMouseDownOnBackdrop)ov.remove();};
   ov.innerHTML=`<div style="background:var(--surface);border-radius:12px;padding:20px;max-width:400px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <div style="font-weight:600;font-size:14px">${dateStr}</div>
