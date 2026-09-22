@@ -8515,11 +8515,10 @@ function renderPersonalTasks(){
     const projectHtml=linkedProject?`<span>🗂 <a href="#" onclick="event.stopPropagation();event.preventDefault();openEditProject('${linkedProject.id}')" style="color:var(--accent)">${escapeAttr(linkedProject.title)}</a></span>`:'';
     const subtaskToggleHtml=subtasks.length?`<span class="pt-subtoggle" onclick="event.stopPropagation();togglePersonalTaskSubtasks('${task.id}')">${expanded?'▾':'▸'} ${subtasksDone}/${subtasks.length} subtasks</span>`:'';
     const isSelected=personalTaskSelected.has(String(task.id));
-    // Drag-to-reorder only makes sense (and is only enabled) in the custom-order sort mode — in any
-    // other mode the list is recomputed from due/priority/etc. on every render, so a drop would just
-    // get overwritten by the active sort the moment the row re-renders.
-    const dragAttrs=sortMode==='custom'?`draggable="true" ondragstart="ptDragStart(event,'${task.id}')" ondragover="ptDragOver(event)" ondragleave="ptDragLeave(event)" ondrop="ptDrop(event,'${task.id}')" ondragend="ptDragEnd(event)"`:'';
-    const dragHandle=sortMode==='custom'?'<span class="pt-drag-handle" title="Drag to reorder">⋮⋮</span>':'';
+    // Dragging is always available — dropping switches the sort dropdown to "My order" itself
+    // (see ptDrop) rather than requiring that mode to be picked first, which wasn't obvious.
+    const dragAttrs=`draggable="true" ondragstart="ptDragStart(event,'${task.id}')" ondragover="ptDragOver(event)" ondragleave="ptDragLeave(event)" ondrop="ptDrop(event,'${task.id}')" ondragend="ptDragEnd(event)"`;
+    const dragHandle='<span class="pt-drag-handle" title="Drag to reorder">⋮⋮</span>';
     let row=`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${task.workstream?`<span class="tag t-gr" style="text-transform:none">${escapeAttr(task.workstream)}</span>`:''}${linkedHtml}${projectHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right"><span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority||'Medium')}</span>${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
     if(!isSubtask&&subtasks.length&&expanded){
       row+=`<div class="pt-subtasks">${subtasks.map(child=>{shownChildIds.add(child.id);return personalTaskRowHtml(child,true);}).join('')}</div>`;
@@ -8715,6 +8714,10 @@ async function ptDrop(e,targetId){
   siblings.splice(toIdx,0,siblings.splice(fromIdx,1)[0]);
   const changed=[];
   siblings.forEach((t,i)=>{const newSeq=(i+1)*10;if(t.sequence!==newSeq){t.sequence=newSeq;changed.push(t);}});
+  // A drop is only meaningful as a manual reorder, so switch the sort dropdown to "My order" itself
+  // rather than requiring it to be picked first — otherwise the drop looks like it silently failed
+  // (the list would just get recomputed back into due/priority/etc. order on the next render).
+  const sortSel=document.getElementById('personalTaskSort');if(sortSel)sortSel.value='custom';
   renderPersonalTasks();
   for(const t of changed){
     try{if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(t.id).startsWith('PT-')){const token=await getToken(true);const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${t.id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Sequence:t.sequence}})});if(!res.ok)throw new Error('HTTP '+res.status);}}catch(e){console.error('Could not save new task order:',e);}
