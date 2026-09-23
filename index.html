@@ -664,32 +664,33 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="sb-live"><span class="sb-live-dot"></span>Live · SharePoint</div>
   </div>
   <div class="sb-nav">
-    <div class="core-nav-note">Marlin Hub</div>
+    <div class="sb-sec">Today</div>
+    <button class="sb-item" data-p="overview" onclick="nav(this)"><span class="ico">⊞</span>Dashboard<span class="sb-badge" id="nBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="mywork" onclick="nav(this)"><span class="ico">☐</span>My Work<span class="sb-badge a" id="myWorkBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="inbox" onclick="nav(this)"><span class="ico">📨</span>Inbox<span class="sb-badge" id="inboxBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="personaltasks" onclick="nav(this)"><span class="ico">🔒</span>Personal Tasks<span class="sb-badge" id="personalTaskBadge" style="display:none">0</span></button>
+    <div class="sb-sec">Plan</div>
     <button class="sb-item active" data-p="calendar" onclick="nav(this)"><span class="ico">◻</span>Calendar</button>
+    <button class="sb-item" data-p="campaigns" onclick="nav(this)"><span class="ico">◎</span>Activities<span class="sb-badge" id="aBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="artwork" onclick="nav(this)"><span class="ico">▧</span>Artwork</button>
+    <button class="sb-item" data-p="ideas" onclick="nav(this)"><span class="ico">💡</span>Idea Bank</button>
+    <div class="sb-sec">Deliver</div>
     <button class="sb-item" data-p="approvals" onclick="nav(this)"><span class="ico">✓</span>Submissions</button>
     <button class="sb-item" data-p="projects" onclick="nav(this)"><span class="ico">▣</span>Projects</button>
-    <button class="sb-item" data-p="artwork" onclick="nav(this)"><span class="ico">▧</span>Artwork</button>
-    <button class="sb-item" data-p="mywork" onclick="nav(this)"><span class="ico">☐</span>My Work<span class="sb-badge a" id="myWorkBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="mytasks" onclick="nav(this)"><span class="ico">☷</span>Shared Work Setup<span class="sb-badge a" id="tBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="design" onclick="nav(this)"><span class="ico">✦</span>Design Jobs</button>
+    <button class="sb-item" data-p="workload" onclick="nav(this)"><span class="ico">👥</span>Workload</button>
+    <div class="sb-sec">Programs</div>
+    <button class="sb-item" data-p="loaded" onclick="nav(this)"><span class="ico">⭐</span>Loaded Rewards</button>
+    <button class="sb-item" data-p="ticketing" onclick="nav(this)"><span class="ico">🎟</span>Ticketing</button>
+    <button class="sb-item" data-p="specials" onclick="nav(this)"><span class="ico">✧</span>Specials</button>
+    <button class="sb-item" data-p="social" onclick="nav(this)"><span class="ico">◇</span>Social</button>
+    <div class="sb-sec">Business</div>
+    <button class="sb-item" data-p="crm" onclick="nav(this)"><span class="ico">◉</span>Contacts &amp; Mailing</button>
+    <button class="sb-item" data-p="venues" onclick="nav(this)"><span class="ico">◎</span>Venues</button>
+    <button class="sb-item" data-p="budget" onclick="nav(this)"><span class="ico">◈</span>Finance</button>
     <button class="sb-item" data-p="operations" onclick="nav(this)"><span class="ico">⌘</span>Oversight</button>
-    <details class="sb-more">
-      <summary>More tools</summary>
-      <button class="sb-item" data-p="inbox" onclick="nav(this)"><span class="ico">📨</span>Inbox<span class="sb-badge" id="inboxBadge" style="display:none">0</span></button>
-      <button class="sb-item" data-p="campaigns" onclick="nav(this)"><span class="ico">◎</span>Activities<span class="sb-badge" id="aBadge" style="display:none">0</span></button>
-      <button class="sb-item" data-p="personaltasks" onclick="nav(this)"><span class="ico">🔒</span>Personal Tasks<span class="sb-badge" id="personalTaskBadge" style="display:none">0</span></button>
-      <button class="sb-item" data-p="mytasks" onclick="nav(this)"><span class="ico">☷</span>Shared Work Setup<span class="sb-badge a" id="tBadge" style="display:none">0</span></button>
-      <button class="sb-item" data-p="design" onclick="nav(this)"><span class="ico">✦</span>Design Jobs</button>
-      <button class="sb-item" data-p="workload" onclick="nav(this)"><span class="ico">👥</span>Workload</button>
-      <button class="sb-item" data-p="ideas" onclick="nav(this)"><span class="ico">💡</span>Idea Bank</button>
-      <button class="sb-item" data-p="loaded" onclick="nav(this)"><span class="ico">⭐</span>Loaded Rewards</button>
-      <button class="sb-item" data-p="ticketing" onclick="nav(this)"><span class="ico">🎟</span>Ticketing</button>
-      <button class="sb-item" data-p="specials" onclick="nav(this)"><span class="ico">✧</span>Specials</button>
-      <button class="sb-item" data-p="social" onclick="nav(this)"><span class="ico">◇</span>Social</button>
-      <button class="sb-item" data-p="crm" onclick="nav(this)"><span class="ico">◉</span>Contacts &amp; Mailing</button>
-      <button class="sb-item" data-p="venues" onclick="nav(this)"><span class="ico">◎</span>Venues</button>
-      <button class="sb-item" data-p="budget" onclick="nav(this)"><span class="ico">◈</span>Finance</button>
-      <button class="sb-item" data-p="overview" onclick="nav(this)"><span class="ico">⊞</span>Legacy Dashboard<span class="sb-badge" id="nBadge" style="display:none">0</span></button>
-      <button class="sb-item" data-p="schema" onclick="nav(this)"><span class="ico">🛠</span>Admin &amp; Schema</button>
-    </details>
+    <button class="sb-item" data-p="schema" onclick="nav(this)"><span class="ico">🛠</span>Admin &amp; Schema</button>
   </div>
   <div class="sb-submit-wrap">
     <button class="sb-cta" onclick="navTo('submit')">＋ Submit something</button>
@@ -1368,6 +1369,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div class="form-group"><label class="form-label">Priority</label>
             <select class="form-select" id="tPriority">
               <option value="">No priority</option>
+              <option value="Critical">Critical</option>
               <option value="Medium">Medium</option>
               <option value="High">High</option>
               <option value="Low">Low</option>
@@ -1403,7 +1405,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:11px;color:var(--text3);font-weight:600">Workstream</label><select id="personalTaskWorkstreamFilter" class="form-select" style="width:auto;min-width:180px" onchange="renderPersonalTasks()"><option value="">All</option></select><label style="font-size:11px;color:var(--text3);font-weight:600">Sort by</label><select id="personalTaskSort" class="form-select" style="width:auto;min-width:150px" onchange="renderPersonalTasks()"><option value="due">Due date</option><option value="priority">Priority</option><option value="title">Title (A–Z)</option><option value="created">Recently added</option><option value="custom">My order (drag to reorder)</option></select></div>
       <div id="personalTaskBulkBar" style="display:none;margin-bottom:10px;padding:8px 12px;background:var(--surface);border:1px solid var(--accent);border-radius:var(--r);display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span id="personalTaskBulkCount" style="font-size:12px;font-weight:700;color:var(--text)"></span>
-        <select id="ptBulkPriority" class="form-select" style="width:auto;min-width:130px"><option value="">Set priority…</option><option value="__none__">No priority</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select>
+        <select id="ptBulkPriority" class="form-select" style="width:auto;min-width:130px"><option value="">Set priority…</option><option value="__none__">No priority</option><option value="Critical">Critical</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select>
         <button class="tb-btn" onclick="bulkApplyPersonalTaskPriority()">Apply</button>
         <select id="ptBulkParent" class="form-select" style="width:auto;min-width:170px"><option value="">Move under parent…</option></select>
         <button class="tb-btn" onclick="bulkSetPersonalTaskParent()">Move</button>
@@ -1423,7 +1425,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <div id="personalTaskFormMsg" class="form-msg"></div>
         <div class="form-grid">
           <div class="form-group full"><label class="form-label">Task Title <span class="req">*</span></label><input class="form-input" id="ptTitle" type="text" placeholder="What do I need to remember or complete?"></div>
-          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="ptPriority"><option value="">No priority</option><option>Medium</option><option>High</option><option>Low</option></select></div>
+          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="ptPriority"><option value="">No priority</option><option>Critical</option><option>Medium</option><option>High</option><option>Low</option></select></div>
           <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="ptDue" type="date"></div>
           <div class="form-group full"><label class="form-label">Parent task</label><select class="form-select" id="ptParent"><option value="">None — top-level task</option></select><div class="field-help">Only tasks that aren't themselves a subtask can be picked as a parent.</div></div>
           <div class="form-group full"><label class="form-label">Linked activity</label><select class="form-select" id="ptLinkedActivity"><option value="">Not linked to an activity</option></select></div>
@@ -1445,7 +1447,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <div class="form-grid">
           <div class="form-group full"><label class="form-label">Project Title <span class="req">*</span></label><input class="form-input" id="projTitle" type="text" placeholder="e.g. New Menu Launch"></div>
           <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="projStatus"><option>Not Started</option><option>In Progress</option><option>On Hold</option><option>Done</option></select></div>
-          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="projPriority"><option value="">No priority</option><option>High</option><option>Medium</option><option>Low</option></select></div>
+          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="projPriority"><option value="">No priority</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></div>
           <div class="form-group"><label class="form-label">Owner</label><select class="form-select" id="projOwner"></select></div>
           <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="projDue" type="date"></div>
           <div class="form-group"><label class="form-label">Progress (%)</label><input class="form-input" id="projProgress" type="number" min="0" max="100" placeholder="0"></div>
@@ -1955,7 +1957,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
                 <option value="Admin">Admin</option>
               </select>
             </div>
-            <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="fJobPriority"><option value="">No priority</option><option value="Medium">Medium</option><option value="High">High</option><option value="Low">Low</option></select></div>
+            <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="fJobPriority"><option value="">No priority</option><option value="Critical">Critical</option><option value="Medium">Medium</option><option value="High">High</option><option value="Low">Low</option></select></div>
             <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="fJobDue" type="date"></div>
             <div class="form-group"><label class="form-label">Assign To</label><select class="form-select" id="fJobAssign"><option value="">Unassigned</option></select></div>
             <div class="form-group full"><label class="form-label">Notes / Requirements</label><textarea class="form-textarea" id="fJobNotes" placeholder="Any context, specs, or links…" style="min-height:70px"></textarea></div>
@@ -2279,7 +2281,7 @@ function seedTaskPreview(){
   if(MY_TASKS.length)return;
   const dateFromNow=days=>{const d=new Date();d.setDate(d.getDate()+days);return toLocalISODate(d);};
   MY_TASKS=[
-    {id:'T-DEMO-1',title:'Finalise CRM SharePoint permissions',status:'Not Started',priority:'High',category:'Admin',due:dateFromNow(0),notes:'Restrict all CRM lists before importing customer data.',assignedTo:currentUserEmail,campaignLookup:''},
+    {id:'T-DEMO-1',title:'Finalise CRM SharePoint permissions',status:'Not Started',priority:'Critical',category:'Admin',due:dateFromNow(0),notes:'Restrict all CRM lists before importing customer data.',assignedTo:currentUserEmail,campaignLookup:''},
     {id:'T-DEMO-2',title:'Prepare boss CRM demonstration',status:'In Progress',priority:'High',category:'General',due:dateFromNow(1),notes:'Use synthetic contacts only.',assignedTo:'ben@marlinhospitality.com.au',campaignLookup:''},
     {id:'T-DEMO-3',title:'Confirm January to June campaign priorities',status:'Not Started',priority:'High',category:'General',due:dateFromNow(3),notes:'Supplier and venue priorities.',assignedTo:'ben@marlinhospitality.com.au',campaignLookup:''},
     {id:'T-DEMO-4',title:'Complete POS setup for next Loaded offer',status:'Blocked',priority:'Medium',category:'POS Update',due:dateFromNow(5),blocker:'Waiting for confirmed offer pricing',notes:'',assignedTo:'perrin@marlinhospitality.com.au',campaignLookup:'Loaded Rewards · September'},
@@ -2723,7 +2725,7 @@ const PLAYBOOK_TEMPLATES={
     {title:'Push notification copy approved',          taskType:'Admin',            assignKey:'marketing',leadDays:7,  priority:'High'},
     {title:'Web banner — Loaded offer live',           taskType:'Web Update',       assignKey:'web',      leadDays:10, priority:'High'},
     {title:'Staff brief — Loaded offer details',       taskType:'Admin',            assignKey:'ops',      leadDays:3,  priority:'High'},
-    {title:'POS pricing update',                       taskType:'POS Update',       assignKey:'ops',      leadDays:7,  priority:'High'},
+    {title:'POS pricing update',                       taskType:'POS Update',       assignKey:'ops',      leadDays:7,  priority:'Critical'},
     {title:'EDM — member offer announcement',          taskType:'EDM / Newsletter', assignKey:'marketing',leadDays:7,  priority:'Medium'},
   ],
   'Supplier Activation':[
@@ -2753,8 +2755,8 @@ const PLAYBOOK_TEMPLATES={
     {title:'EDM',                                      taskType:'EDM / Newsletter', assignKey:'marketing',leadDays:10, priority:'Medium'},
   ],
   'Hero Campaign':[
-    {title:'Design Brief — hero campaign',             taskType:'Design Asset',    assignKey:'designer', leadDays:42, priority:'High'},
-    {title:'Landing page brief to Didier',             taskType:'Web Update',       assignKey:'web',      leadDays:35, priority:'High'},
+    {title:'Design Brief — hero campaign',             taskType:'Design Asset',    assignKey:'designer', leadDays:42, priority:'Critical'},
+    {title:'Landing page brief to Didier',             taskType:'Web Update',       assignKey:'web',      leadDays:35, priority:'Critical'},
     {title:'EDM — hero campaign announcement',         taskType:'EDM / Newsletter', assignKey:'marketing',leadDays:28, priority:'High'},
     {title:'Meta campaign setup',                      taskType:'Paid Ad',          assignKey:'marketing',leadDays:28, priority:'High'},
     {title:'Google Ads setup',                         taskType:'Paid Ad',          assignKey:'marketing',leadDays:21, priority:'High'},
@@ -5276,7 +5278,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Legacy <em>Dashboard</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -8647,7 +8649,7 @@ function openEditTask(taskId){
   document.getElementById('tDue').value=t.due||'';
   document.getElementById('tNotes').value=t.notes||'';
   document.getElementById('tEditId').value=t.id;
-  document.getElementById('tPriority').value=['High','Medium','Low'].includes(t.priority)?t.priority:'';
+  document.getElementById('tPriority').value=['Critical','High','Medium','Low'].includes(t.priority)?t.priority:'';
   document.getElementById('tCategory').value=t.category||'General';
   document.getElementById('taskFormMsg').textContent='';
 
@@ -8960,7 +8962,7 @@ function openAddPersonalTask(parentId,linkedActivityId,projectId){
 }
 function openEditPersonalTask(id){
   const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task)return;
-  document.getElementById('ptTitle').value=task.title||'';document.getElementById('ptDue').value=task.due||'';document.getElementById('ptNotes').value=task.notes||'';document.getElementById('ptPriority').value=['High','Medium','Low'].includes(task.priority)?task.priority:'';document.getElementById('ptEditId').value=task.id;
+  document.getElementById('ptTitle').value=task.title||'';document.getElementById('ptDue').value=task.due||'';document.getElementById('ptNotes').value=task.notes||'';document.getElementById('ptPriority').value=['Critical','High','Medium','Low'].includes(task.priority)?task.priority:'';document.getElementById('ptEditId').value=task.id;
   populatePersonalTaskParentSelect(task.id,task.parentId||'');
   populatePersonalTaskActivitySelect(task.linkedActivityId||'');
   populatePersonalTaskProjectSelect(task.projectId||'');
@@ -9520,7 +9522,7 @@ function openEditProject(id){
   const p=PROJECTS.find(item=>String(item.id)===String(id));if(!p)return;
   document.getElementById('projTitle').value=p.title||'';
   document.getElementById('projStatus').value=p.status||'Not Started';
-  document.getElementById('projPriority').value=['High','Medium','Low'].includes(p.priority)?p.priority:'';
+  document.getElementById('projPriority').value=['Critical','High','Medium','Low'].includes(p.priority)?p.priority:'';
   populateProjectOwnerSelect(p.owner||'');
   document.getElementById('projDue').value=p.due||'';
   document.getElementById('projProgress').value=p.progress||0;
