@@ -1284,26 +1284,34 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     </div>
   </div>
 
-  <!-- MY WORK — one view over shared assignments and Kimberley's private list -->
+  <!-- MY WORK — bucket board over shared assignments and Kimberley's private list -->
   <div class="panel" id="p-mywork">
     <div class="ph">
-      <div><div class="ph-eye">Today and upcoming</div><div class="ph-title">My <em>Work</em></div><div class="ph-sub">Shared assignments and private tasks stay separate in SharePoint, but can be planned together here.</div></div>
+      <div><div class="ph-eye">Today and upcoming</div><div class="ph-title">My <em>Work</em></div><div class="ph-sub">Shared assignments and private tasks stay separate in SharePoint. Dragging a Shared item only saves your own view of it — never anyone else's priority, due date or stage.</div></div>
       <div class="ph-right"><button class="tb-btn p" id="myWorkAddPersonal" onclick="openAddPersonalTask()">+ Personal task</button><button class="tb-btn" onclick="refreshMyWork()">↻</button></div>
     </div>
     <div class="ca">
       <div class="stats" id="myWorkStats" style="margin-bottom:12px"></div>
-      <div class="mw-toolbar">
-        <select class="form-select" id="myWorkWhen" onchange="renderMyWork()"><option value="open">Open</option><option value="today">Today</option><option value="upcoming">Upcoming</option><option value="overdue">Overdue</option><option value="done">Completed</option><option value="all">All</option></select>
-        <select class="form-select" id="myWorkKind" onchange="renderMyWork()"><option value="all">Personal + Shared</option><option value="personal">Personal only</option><option value="shared">Shared only</option></select>
-        <select class="form-select" id="myWorkProject" onchange="renderMyWork()"><option value="">All projects</option></select>
-        <select class="form-select" id="myWorkActivity" onchange="renderMyWork()"><option value="">All activities</option></select>
-        <select class="form-select" id="myWorkVenue" onchange="renderMyWork()"><option value="">All venues</option></select>
-        <select class="form-select" id="myWorkPriority" onchange="renderMyWork()"><option value="">Any priority</option><option>High</option><option>Medium</option><option>Low</option></select>
-        <select class="form-select" id="myWorkStatus" onchange="renderMyWork()"><option value="">Any status</option></select>
-        <input class="form-input" id="myWorkSearch" type="search" placeholder="Search my work" oninput="renderMyWork()">
+      <div style="display:flex;align-items:center;border-bottom:1px solid var(--border);margin-bottom:14px;gap:4px;flex-wrap:wrap">
+        <button id="myWorkTabToday" onclick="pickMyWorkTab('today')" style="background:none;border:none;padding:9px 4px;margin-right:18px;font-size:13px;font-weight:600;cursor:pointer">Today</button>
+        <button id="myWorkTabAll" onclick="pickMyWorkTab('all')" style="background:none;border:none;padding:9px 4px;font-size:13px;font-weight:600;cursor:pointer">All work</button>
+        <div style="flex:1;min-width:20px"></div>
+        <input class="form-input" id="myWorkSearch" type="search" placeholder="Search my work" oninput="renderMyWork()" style="width:auto;min-width:170px;margin-bottom:8px">
       </div>
       <div id="myWorkConfig"></div>
-      <div id="myWorkList"></div>
+      <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
+        <div style="flex:2 1 480px;min-width:0">
+          <div id="myWorkTodayWidget"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;flex-wrap:wrap">
+            <div style="font-size:10.5px;color:var(--text3)">Drag any task between buckets. Drop on a task to place it above that one.</div>
+            <button class="tb-btn" onclick="addMyWorkBucket()">+ Add bucket</button>
+          </div>
+          <div id="myWorkBuckets"></div>
+        </div>
+        <div style="flex:1 1 260px;min-width:240px">
+          <div class="card"><div class="card-h"><span class="card-title">Going live next</span></div><div class="card-body" id="myWorkGoingLive" style="padding:4px 0"></div></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -8170,18 +8178,43 @@ async function refreshMyWork(){
   renderMyWork();
 }
 
+// Bucket board state. Bucket placement is a purely local, per-user planning preference
+// (localStorage) — it never writes to SharePoint. That's deliberate: dragging a Shared Work Item
+// between buckets must not silently change its real priority, due date, stage or ordering for
+// anyone else. Personal Tasks keep their own real Sequence-backed drag-reorder on the Personal
+// Tasks page untouched; this board is a separate, local organising layer on top of both sources.
+let _mwTab='today';
+const MW_DEFAULT_BUCKETS=[
+  {id:'_blocked',name:'Needs a decision',why:'Blocked and waiting on you. Smallest list, biggest effect.',mark:'!',color:'#c0392b'},
+  {id:'_overdue',name:'Overdue',why:'Past their due date and not done.',mark:'●',color:'#c0392b'},
+  {id:'_today',name:'Due today',why:'Due today — needs finishing before it slips.',mark:'●',color:'#b8860b'},
+  {id:'_week',name:'This week',why:'Due in the next 7 days.',mark:'●',color:'#0a6640'},
+  {id:'_later',name:'Later / no date',why:'Everything else, and anything without a due date.',mark:'○',color:'#88887e'}
+];
+function myWorkPrefsKey(){return 'marlin_mywork_'+(currentUserEmail||'anon').toLowerCase();}
+function loadMyWorkPrefs(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(myWorkPrefsKey())||'{}');
+    return {buckets:raw.buckets||[],placement:raw.placement||{},order:raw.order||{},today:raw.today||[null,null,null],collapsed:raw.collapsed||{}};
+  }catch(e){return{buckets:[],placement:{},order:{},today:[null,null,null],collapsed:{}};}
+}
+function saveMyWorkPrefs(p){try{localStorage.setItem(myWorkPrefsKey(),JSON.stringify(p));}catch(e){console.warn('Could not save My Work layout preference:',e);}}
+function mwAutoBucket(t,today){
+  if(['Done','Complete','Completed'].includes(t.status))return null;
+  if(t.status==='Blocked')return '_blocked';
+  if(t.due&&t.due<today)return '_overdue';
+  if(t.due===today)return '_today';
+  if(t.due){const days=(new Date(t.due+'T00:00:00')-new Date(today+'T00:00:00'))/864e5;if(days<=7)return '_week';}
+  return '_later';
+}
+function pickMyWorkTab(tab){_mwTab=tab;renderMyWork();}
+
 function renderMyWork(){
   if(!isAuthed)return;
-  const list=document.getElementById('myWorkList'),stats=document.getElementById('myWorkStats'),config=document.getElementById('myWorkConfig');
-  if(!list||!stats||!config)return;
+  const stats=document.getElementById('myWorkStats'),bucketsEl=document.getElementById('myWorkBuckets'),goingLiveEl=document.getElementById('myWorkGoingLive'),todayWidgetEl=document.getElementById('myWorkTodayWidget'),configEl=document.getElementById('myWorkConfig');
+  if(!stats||!bucketsEl)return;
   const canSeePersonal=canAccessPanel('personaltasks');
   const addPersonal=document.getElementById('myWorkAddPersonal');if(addPersonal)addPersonal.style.display=canSeePersonal?'':'none';
-  const kindSelect=document.getElementById('myWorkKind');
-  if(kindSelect){
-    const personalOption=[...kindSelect.options].find(o=>o.value==='personal');
-    if(personalOption)personalOption.disabled=!canSeePersonal;
-    if(!canSeePersonal&&kindSelect.value==='personal')kindSelect.value='shared';
-  }
   const today=toLocalISODate(new Date());
   const projectById=id=>PROJECTS.find(p=>String(p.id)===String(id));
   const eventById=id=>EVENTS.find(e=>String(e.id)===String(id)||String(e.spId)===String(id));
@@ -8189,69 +8222,168 @@ function renderMyWork(){
   const personal=canSeePersonal?PERSONAL_TASKS.map(t=>{
     const ev=t.linkedActivityId?eventById(t.linkedActivityId):null;
     const project=projectById(t.projectId||ev?.projectId);
-    return{...t,kind:'personal',source:'Manual',projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.linkedCampaign||'',venue:ev?.venue||'',open:()=>openEditPersonalTask(t.id)};
+    return{...t,kind:'personal',key:'personal:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.linkedCampaign||'',venue:ev?.venue||''};
   }):[];
   const shared=MY_TASKS.filter(t=>t.assignedTo&&isCurrentUserAssignment(t.assignedTo)).map(t=>{
     const ev=eventByTitle(t.campaignLookup);
     const project=projectById(ev?.projectId);
-    return{...t,kind:'shared',source:t.source||'Activity workflow',projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:ev?.venue||'',open:()=>openEditTask(t.id)};
+    return{...t,kind:'shared',key:'shared:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:ev?.venue||''};
   });
   const all=[...personal,...shared];
-  let rows=[...all];
-  const refillSelect=(id,placeholder,values)=>{
-    const el=document.getElementById(id);if(!el)return'';const current=el.value;
-    el.innerHTML=`<option value="">${placeholder}</option>`+[...new Set(values.filter(Boolean))].sort().map(value=>`<option value="${escapeAttr(value)}">${escapeAttr(value)}</option>`).join('');
-    if([...el.options].some(o=>o.value===current))el.value=current;return el.value;
-  };
-  const projectSelect=document.getElementById('myWorkProject');
-  if(projectSelect){
-    const current=projectSelect.value;
-    projectSelect.innerHTML='<option value="">All projects</option>'+PROJECTS.slice().sort((a,b)=>(a.title||'').localeCompare(b.title||'')).map(p=>`<option value="${escapeAttr(String(p.id))}">${escapeAttr(p.title)}</option>`).join('');
-    if([...projectSelect.options].some(o=>o.value===current))projectSelect.value=current;
-  }
-  const when=document.getElementById('myWorkWhen')?.value||'open';
-  const kind=kindSelect?.value||'all';
-  const projectId=projectSelect?.value||'';
-  const activity=refillSelect('myWorkActivity','All activities',all.map(t=>t.activity));
-  const venue=refillSelect('myWorkVenue','All venues',all.map(t=>t.venue));
-  const priority=document.getElementById('myWorkPriority')?.value||'';
-  const status=refillSelect('myWorkStatus','Any status',all.map(t=>t.status));
-  const query=(document.getElementById('myWorkSearch')?.value||'').trim().toLowerCase();
-  rows=rows.filter(t=>{
-    const done=t.status==='Done'||t.status==='Complete'||t.status==='Completed';
-    if(when==='open'&&done)return false;
-    if(when==='done'&&!done)return false;
-    if(when==='today'&&(done||t.due!==today))return false;
-    if(when==='overdue'&&(done||!t.due||t.due>=today))return false;
-    if(when==='upcoming'&&(done||!t.due||t.due<=today))return false;
-    if(kind!=='all'&&t.kind!==kind)return false;
-    if(projectId&&String(t.projectId)!==String(projectId))return false;
-    if(activity&&t.activity!==activity)return false;
-    if(venue&&t.venue!==venue)return false;
-    if(priority&&t.priority!==priority)return false;
-    if(status&&t.status!==status)return false;
-    if(query&&!`${t.title||''} ${t.project||''} ${t.activity||''} ${t.notes||''}`.toLowerCase().includes(query))return false;
-    return true;
-  });
-  const rank={Critical:0,High:1,Medium:2,Low:3};
-  rows.sort((a,b)=>(a.status==='Done')-(b.status==='Done')||String(a.due||'9999').localeCompare(String(b.due||'9999'))||(rank[a.priority]??4)-(rank[b.priority]??4));
+  const byKey={};all.forEach(t=>byKey[t.key]=t);
+
   const open=all.filter(t=>!['Done','Complete','Completed'].includes(t.status));
-  const overdue=open.filter(t=>t.due&&t.due<today),dueToday=open.filter(t=>t.due===today),completed=all.length-open.length;
-  stats.innerHTML=`<div class="stat"><div class="stat-n">${open.length}</div><div class="stat-l">Open</div></div><div class="stat ${dueToday.length?'hi':''}"><div class="stat-n">${dueToday.length}</div><div class="stat-l">Due today</div></div><div class="stat ${overdue.length?'hi':''}"><div class="stat-n">${overdue.length}</div><div class="stat-l">Overdue</div></div><div class="stat"><div class="stat-n">${completed}</div><div class="stat-l">Completed</div></div>`;
+  const overdue=open.filter(t=>t.due&&t.due<today),dueToday=open.filter(t=>t.due===today),completed=all.length-open.length,blocked=open.filter(t=>t.status==='Blocked');
+  stats.innerHTML=`<div class="stat"><div class="stat-n">${open.length}</div><div class="stat-l">Open</div></div><div class="stat ${blocked.length?'hi':''}"><div class="stat-n">${blocked.length}</div><div class="stat-l">Blocked</div></div><div class="stat ${overdue.length?'hi':''}"><div class="stat-n">${overdue.length}</div><div class="stat-l">Overdue</div></div><div class="stat"><div class="stat-n">${completed}</div><div class="stat-l">Completed</div></div>`;
   const badge=document.getElementById('myWorkBadge');if(badge){badge.textContent=open.length;badge.style.display=open.length?'':'none';}
+
   const configNotes=[];
   if(!LIST_IDS.myTasks&&!isPreviewMode)configNotes.push('<strong>Shared Work Items are not connected yet.</strong> Your private tasks still work normally. Shared assignments will appear here once their own SharePoint list is approved and connected.');
   if(canSeePersonal&&PERSONAL_TASKS_ERROR)configNotes.push('<strong>Personal Tasks could not be loaded.</strong> '+escapeAttr(PERSONAL_TASKS_ERROR));
-  config.innerHTML=configNotes.length?`<div style="background:var(--gold-bg);border:1px solid #ead9a3;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:11.5px;color:var(--text2);line-height:1.5">${configNotes.join('<br>')}</div>`:'';
-  if(!rows.length){list.innerHTML='<div style="padding:38px;text-align:center;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:var(--r)"><div style="font-size:20px;margin-bottom:7px">◇</div><div style="font-size:12.5px;font-weight:600;color:var(--text2)">Nothing matches this view</div><div style="font-size:11px;margin-top:3px">Change a filter or add a personal task.</div></div>';return;}
+  if(configEl)configEl.innerHTML=configNotes.length?`<div style="background:var(--gold-bg);border:1px solid #ead9a3;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:11.5px;color:var(--text2);line-height:1.5">${configNotes.join('<br>')}</div>`:'';
+
+  const tabToday=document.getElementById('myWorkTabToday'),tabAll=document.getElementById('myWorkTabAll');
+  if(tabToday)tabToday.style.cssText=`background:none;border:none;padding:9px 4px;margin-right:18px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid ${_mwTab==='today'?'var(--accent)':'transparent'};color:${_mwTab==='today'?'var(--text)':'var(--text3)'}`;
+  if(tabAll)tabAll.style.cssText=`background:none;border:none;padding:9px 4px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid ${_mwTab==='all'?'var(--accent)':'transparent'};color:${_mwTab==='all'?'var(--text)':'var(--text3)'}`;
+
+  const query=(document.getElementById('myWorkSearch')?.value||'').trim().toLowerCase();
+  const searched=query?all.filter(t=>`${t.title||''} ${t.project||''} ${t.activity||''} ${t.notes||''}`.toLowerCase().includes(query)):all;
+
+  const prefs=loadMyWorkPrefs();
+  Object.keys(prefs.placement).forEach(k=>{if(!byKey[k])delete prefs.placement[k];});
+  Object.keys(prefs.order).forEach(bid=>{prefs.order[bid]=(prefs.order[bid]||[]).filter(k=>byKey[k]);});
+  prefs.today=(prefs.today||[null,null,null]).map(k=>k&&byKey[k]?k:null);
+  const customBuckets=prefs.buckets||[];
+  const allBuckets=[...MW_DEFAULT_BUCKETS,...customBuckets];
+  const bucketOf=t=>prefs.placement[t.key]||mwAutoBucket(t,today);
+  const scoped=_mwTab==='today'
+    ?searched.filter(t=>{const b=bucketOf(t);return b==='_overdue'||b==='_blocked'||b==='_today'||customBuckets.some(c=>c.id===b);})
+    :searched.filter(t=>bucketOf(t)!==null);
+
+  if(todayWidgetEl){
+    if(_mwTab==='today'){
+      const filled=prefs.today.filter(Boolean).length;
+      const slots=[0,1,2].map(i=>{
+        const key=prefs.today[i];const t=key?byKey[key]:null;
+        return`<div ondragover="mwDragOverToday(event)" ondrop="mwDropOnToday(event,${i})" style="flex:1;min-width:150px;background:${t?'rgba(255,255,255,.08)':'rgba(255,255,255,.04)'};border:1px solid rgba(255,255,255,.14);border-radius:var(--r);padding:10px 12px;font-size:12px;display:flex;align-items:center;gap:8px;cursor:${t?'pointer':'default'}"${t?` onclick="mwOpenItem('${t.key}')"`:''}>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.4);flex-shrink:0">${i+1}</span>
+          ${t?`<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:#fff">${escapeAttr(t.title)}</span><button onclick="event.stopPropagation();mwClearTodaySlot(${i})" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:13px;flex-shrink:0">×</button>`:'<span style="color:rgba(255,255,255,.4)">Drag a task here</span>'}
+        </div>`;
+      }).join('');
+      todayWidgetEl.innerHTML=`<div style="background:var(--chrome);color:#fff;border-radius:var(--r);padding:14px 16px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.6)">Today, three things</div><div style="font-size:11px;color:rgba(255,255,255,.5)">${filled} of 3</div></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">${slots}</div>
+      </div>`;
+    }else todayWidgetEl.innerHTML='';
+  }
+
   const priTag={Critical:'t-r',High:'t-o',Medium:'t-a',Low:'t-gr'};
-  list.innerHTML=`<div class="mw-table"><div class="mw-head"><div>Work</div><div>Project / Activity</div><div>Priority</div><div>Status</div><div>Due</div></div>${rows.map(t=>{
-    const done=['Done','Complete','Completed'].includes(t.status),late=!done&&t.due&&t.due<today;
-    const projectContext=t.project?`<button class="mw-context-link" onclick="event.stopPropagation();openEditProject('${escapeAttr(String(t.projectId))}')">${escapeAttr(t.project)}</button>`:'<span style="font-size:11px">Unassigned project</span>';
-    const activityContext=t.activity?`${t.activityId?`<button class="mw-context-link" onclick="event.stopPropagation();showPop(Number('${escapeAttr(String(t.activityId))}'))">${escapeAttr(t.activity)}</button>`:`<span style="font-size:10px;color:var(--text3)">${escapeAttr(t.activity)}</span>`}`:'';
-    return`<div class="mw-row" onclick="${t.kind==='personal'?`openEditPersonalTask('${escapeAttr(String(t.id))}')`:`openEditTask('${escapeAttr(String(t.id))}')`}"><div style="min-width:0"><div style="font-weight:600;line-height:1.35;${done?'text-decoration:line-through;color:var(--text3)':''}">${escapeAttr(t.title||'Untitled')}</div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px"><span class="mw-kind ${t.kind}">${t.kind==='personal'?'Personal':'Shared'}</span><span style="font-size:10px;color:var(--text3)">${escapeAttr(t.source)}</span></div></div><div style="min-width:0">${projectContext}${activityContext?`<div>${activityContext}</div>`:''}</div><div>${t.priority?`<span class="tag ${priTag[t.priority]||'t-gr'}">${escapeAttr(t.priority)}</span>`:'<span style="color:var(--text3)">—</span>'}</div><div style="font-size:11px;color:var(--text2)">${escapeAttr(t.status||'Not Started')}</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:${late?'var(--red)':'var(--text3)'};font-weight:${late?'700':'400'}">${t.due?escapeAttr(fmtShort(t.due)):'—'}</div></div>`;
-  }).join('')}</div>`;
+  bucketsEl.innerHTML=allBuckets.map(bucket=>{
+    const isCustom=!bucket.id.startsWith('_');
+    let items=scoped.filter(t=>bucketOf(t)===bucket.id);
+    const manualOrder=prefs.order[bucket.id]||[];
+    items.sort((a,b)=>{
+      const ia=manualOrder.indexOf(a.key),ib=manualOrder.indexOf(b.key);
+      if(ia!==-1&&ib!==-1)return ia-ib;
+      if(ia!==-1)return -1;if(ib!==-1)return 1;
+      return String(a.due||'9999').localeCompare(String(b.due||'9999'));
+    });
+    const collapsed=!!prefs.collapsed[bucket.id];
+    const rowsHtml=items.map(t=>{
+      const done=['Done','Complete','Completed'].includes(t.status),late=!done&&t.due&&t.due<today;
+      return`<div draggable="true" ondragstart="mwDragStart(event,'${t.key}')" ondragend="mwDragEnd(event)" ondragover="mwDragOverRow(event)" ondrop="mwDropOnRow(event,'${bucket.id}','${t.key}')" onclick="mwOpenItem('${t.key}')" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-top:1px solid var(--border);cursor:pointer">
+        <span style="color:#d0d0c8;font-size:11px;cursor:grab;flex-shrink:0" title="Drag to move">⠿</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:12.5px;line-height:1.3;${done?'text-decoration:line-through;color:var(--text3)':''}">${escapeAttr(t.title||'Untitled')}</div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:3px">
+            <span class="mw-kind ${t.kind}">${t.kind==='personal'?'Personal':'Shared'}</span>
+            ${t.venue?`<span style="font-size:10px;color:var(--text3)">${escapeAttr(shortVenue(t.venue))}</span>`:''}
+            ${t.project?`<span style="font-size:10px;color:var(--text3)">${escapeAttr(t.project)}</span>`:''}
+          </div>
+        </div>
+        ${t.priority?`<span class="tag ${priTag[t.priority]||'t-gr'}" style="flex-shrink:0">${escapeAttr(t.priority)}</span>`:''}
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:${late?'var(--red)':'var(--text3)'};font-weight:${late?'700':'400'};flex-shrink:0;min-width:44px;text-align:right">${t.due?escapeAttr(fmtShort(t.due)):'—'}</span>
+      </div>`;
+    }).join('');
+    return`<div ondragover="mwDragOverBucket(event)" ondrop="mwDropOnBucket(event,'${bucket.id}')" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--surface2)">
+        <button onclick="mwToggleBucket('${bucket.id}')" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;flex:1;min-width:0;text-align:left;padding:0">
+          <span style="width:20px;height:20px;border-radius:50%;background:${bucket.color}22;color:${bucket.color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${bucket.mark}</span>
+          <span style="min-width:0;flex:1">
+            <div style="font-size:13px;font-weight:700;line-height:1.25;color:var(--text)">${escapeAttr(bucket.name)}</div>
+            <div style="font-size:10.5px;color:var(--text3);margin-top:1px">${escapeAttr(bucket.why||'')}</div>
+          </span>
+          <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text3);flex-shrink:0">${items.length}</span>
+          <span style="font-size:10px;color:var(--text3);flex-shrink:0;width:10px;text-align:center">${collapsed?'▸':'▾'}</span>
+        </button>
+        ${isCustom?`<button onclick="event.stopPropagation();mwRemoveBucket('${bucket.id}')" title="Remove this bucket" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px;line-height:1;padding:4px 6px;flex-shrink:0">×</button>`:''}
+      </div>
+      ${collapsed?'':(items.length?rowsHtml:'<div style="padding:14px;text-align:center;color:var(--text3);font-size:11.5px">Drag a task here.</div>')}
+    </div>`;
+  }).join('');
+
+  if(goingLiveEl){
+    const upcoming=EVENTS.filter(e=>!isArchived(e)&&e.stage!=='Done'&&e.start>=today).sort((a,b)=>String(a.start).localeCompare(String(b.start))).slice(0,6);
+    goingLiveEl.innerHTML=upcoming.length?upcoming.map(e=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-top:1px solid var(--border);cursor:pointer" onclick="showActivityPage(${e.id})"><span style="width:3px;align-self:stretch;border-radius:2px;background:${vColor(e.venue).c};flex-shrink:0"></span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(e.title)}</div><div style="font-size:10.5px;color:var(--text3)">${escapeAttr(shortVenue(e.venue))}</div></div><div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);white-space:nowrap">${escapeAttr(fmtShort(e.start))}</div></div>`).join(''):'<div style="padding:14px;text-align:center;color:var(--text3);font-size:11.5px">Nothing scheduled yet.</div>';
+  }
 }
+
+let _mwDragKey=null;
+function mwDragStart(e,key){_mwDragKey=key;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',key);e.currentTarget.style.opacity='.4';}
+function mwDragEnd(e){e.currentTarget.style.opacity='';}
+function mwDragOverBucket(e){e.preventDefault();e.dataTransfer.dropEffect='move';}
+function mwDragOverRow(e){e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect='move';}
+function mwDragOverToday(e){e.preventDefault();e.dataTransfer.dropEffect='move';}
+function mwDropOnBucket(e,bucketId){
+  e.preventDefault();
+  const key=_mwDragKey;_mwDragKey=null;if(!key)return;
+  const prefs=loadMyWorkPrefs();
+  prefs.placement[key]=bucketId;
+  Object.keys(prefs.order).forEach(bid=>{prefs.order[bid]=(prefs.order[bid]||[]).filter(k=>k!==key);});
+  prefs.order[bucketId]=[...(prefs.order[bucketId]||[]),key];
+  saveMyWorkPrefs(prefs);renderMyWork();
+}
+function mwDropOnRow(e,bucketId,targetKey){
+  e.preventDefault();e.stopPropagation();
+  const key=_mwDragKey;_mwDragKey=null;if(!key||key===targetKey)return;
+  const prefs=loadMyWorkPrefs();
+  prefs.placement[key]=bucketId;
+  Object.keys(prefs.order).forEach(bid=>{prefs.order[bid]=(prefs.order[bid]||[]).filter(k=>k!==key);});
+  const order=prefs.order[bucketId]||(prefs.order[bucketId]=[]);
+  if(!order.includes(targetKey))order.push(targetKey);
+  order.splice(order.indexOf(targetKey),0,key);
+  saveMyWorkPrefs(prefs);renderMyWork();
+}
+function mwToggleBucket(bucketId){const prefs=loadMyWorkPrefs();prefs.collapsed[bucketId]=!prefs.collapsed[bucketId];saveMyWorkPrefs(prefs);renderMyWork();}
+function addMyWorkBucket(){
+  const name=prompt('Name this bucket (e.g. "Waiting on Perrin"):');
+  if(!name||!name.trim())return;
+  const prefs=loadMyWorkPrefs();
+  prefs.buckets=[...(prefs.buckets||[]),{id:'custom-'+Date.now(),name:name.trim(),why:'Your own bucket — drag tasks in.',mark:'★',color:'#0a6640'}];
+  saveMyWorkPrefs(prefs);renderMyWork();
+}
+function mwRemoveBucket(bucketId){
+  if(!confirm('Remove this bucket? Tasks in it go back to their automatic bucket.'))return;
+  const prefs=loadMyWorkPrefs();
+  prefs.buckets=(prefs.buckets||[]).filter(b=>b.id!==bucketId);
+  Object.keys(prefs.placement).forEach(k=>{if(prefs.placement[k]===bucketId)delete prefs.placement[k];});
+  delete prefs.order[bucketId];
+  saveMyWorkPrefs(prefs);renderMyWork();
+}
+function mwOpenItem(key){
+  const idx=key.indexOf(':');const kind=key.slice(0,idx),id=key.slice(idx+1);
+  if(kind==='personal')openEditPersonalTask(id);else openEditTask(id);
+}
+function mwDropOnToday(e,slotIndex){
+  e.preventDefault();
+  const key=_mwDragKey;_mwDragKey=null;if(!key)return;
+  const prefs=loadMyWorkPrefs();
+  const arr=prefs.today||(prefs.today=[null,null,null]);
+  for(let i=0;i<3;i++)if(arr[i]===key)arr[i]=null;
+  arr[slotIndex]=key;prefs.today=arr;
+  saveMyWorkPrefs(prefs);renderMyWork();
+}
+function mwClearTodaySlot(i){const prefs=loadMyWorkPrefs();if(prefs.today)prefs.today[i]=null;saveMyWorkPrefs(prefs);renderMyWork();}
 
 function renderMyWorkIfVisible(){
   if(document.getElementById('p-mywork')?.classList.contains('active'))renderMyWork();
