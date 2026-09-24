@@ -818,7 +818,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div id="ovNewSubmissions"><div class="loading"><div class="spinner"></div></div></div>
         </details>
         <details class="dash-card" open>
-          <summary class="card-h"><span class="card-title">☐ My Tasks</span><span class="card-act" onclick="event.preventDefault();navTo('mytasks')">All tasks →</span></summary>
+          <summary class="card-h"><span class="card-title">☐ My Tasks</span><span class="card-act" onclick="event.preventDefault();navTo('mywork')">All tasks →</span></summary>
           <div id="ovMyTasks"><div class="loading"><div class="spinner"></div></div></div>
         </details>
         </div>
@@ -1336,7 +1336,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       </div>
     </div>
     <div class="ca">
-      <div class="team-banner" id="tasksPrivacyBanner"><span style="font-size:18px">👥</span><div><strong>Shared with four authorised users</strong><br>Kimberley, Perrin, Amelia and Ben can view this work register. Kimberley controls the system, management can edit shared work, and Perrin can update work assigned to him. SharePoint list permissions remain the security boundary.</div></div>
+      <div class="team-banner" id="tasksPrivacyBanner"><span style="font-size:18px">👥</span><div><strong>Visible to the whole team</strong><br>Anyone signed in can see and be assigned open jobs here. Kimberley and management can edit any task; everyone else can edit tasks assigned to them. Only Kimberley's Personal Tasks stay private — those live on a separate list nobody else can see.</div></div>
       <div class="stats" id="myTaskStats" style="margin-bottom:12px"></div>
       <div id="tasksList"></div>
     </div>
@@ -1381,7 +1381,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <select class="form-select" id="tAssignTo">
               <option value="">Me</option>
             </select>
-            <div class="field-help">Only the four authorised team members are available here. Assignment controls responsibility, while SharePoint controls actual access.</div>
+            <div class="field-help">Anyone in the Marlin directory can be assigned. Assignment controls responsibility, while SharePoint permissions control actual access.</div>
           </div>
           <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="tDue" type="date"></div>
           <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="tNotes" placeholder="Additional context or requirements…" style="min-height:60px"></textarea></div>
@@ -1398,7 +1398,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <!-- PERSONAL TASKS — separate private SharePoint list, Kimberley only -->
   <div class="panel" id="p-personaltasks">
     <div class="ph">
-      <div><div class="ph-eye">Kimberley Only</div><div class="ph-title">Personal <em>Tasks</em></div><div class="ph-sub">Private work and reminders, stored separately from the four-person Team Work register.</div></div>
+      <div><div class="ph-eye">Kimberley Only</div><div class="ph-title">Personal <em>Tasks</em></div><div class="ph-sub">Private work and reminders, stored separately from the whole-team Work Register.</div></div>
       <div class="ph-right"><button class="tb-btn p" onclick="openAddPersonalTask()">+ New Personal Task</button><button class="tb-btn" onclick="loadPersonalTasks()">↻</button></div>
     </div>
     <div class="ca">
@@ -6306,17 +6306,19 @@ function renderOverview(){
     }).join('')}
   </div>`;
 
-  // My tasks (top 5 open)
-  const myEmail=(currentUserEmail||'').toLowerCase();
-  const emailPart=myEmail.split('@')[0];
-  const myTasks=MY_TASKS.filter(t=>t.title&&t.title.trim()&&t.status!=='Done'&&(!t.assignedTo||t.assignedTo.toLowerCase().includes(emailPart))).sort((a,b)=>(a.due||'').localeCompare(b.due||'')).slice(0,5);
+  // My tasks (top 5 open) — same combined source as My Work (Personal Tasks + Shared Work Items
+  // assigned to you + owned/flagged Activities), so this card doesn't sit permanently empty just
+  // because Shared Work Items has no data in it yet.
   const todayStr=toLocalISODate(today);
+  const myTasks=myWorkItems().filter(t=>!['Done','Complete','Completed'].includes(t.status)).sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))).slice(0,5);
   document.getElementById('ovMyTasks').innerHTML=myTasks.length
-    ?myTasks.map(t=>{const isOverdue=t.due&&t.due<todayStr;return`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:0.5px solid var(--border)">
-        <div onclick="toggleTask('${t.id}')" style="width:16px;height:16px;border-radius:50%;border:2px solid var(--border2);cursor:pointer;flex-shrink:0"></div>
-        <div onclick="openEditTask('${t.id}')" style="flex:1;min-width:0;cursor:pointer"><div style="font-size:12px;font-weight:500">${t.title}</div>${t.due?`<div style="font-size:10px;color:${isOverdue?'#dc2626':'var(--text3)'};font-weight:${isOverdue?'700':'400'}">${isOverdue?'Overdue: ':'Due: '}${fmtShort(t.due)}</div>`:''}
+    ?myTasks.map(t=>{
+      const isOverdue=t.due&&t.due<todayStr;
+      const openFn=t.kind==='personal'?`openEditPersonalTask('${t.id}')`:t.kind==='activity'?`showPop(${Number(t.activityId)})`:`openEditTask('${t.id}')`;
+      return`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:0.5px solid var(--border);cursor:pointer" onclick="${openFn}">
+        <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500">${escapeAttr(t.title)}</div>${t.due?`<div style="font-size:10px;color:${isOverdue?'#dc2626':'var(--text3)'};font-weight:${isOverdue?'700':'400'}">${isOverdue?'Overdue: ':'Due: '}${fmtShort(t.due)}</div>`:''}
         </div>
-        ${t.priority?`<span style="font-size:9px;font-weight:700;color:var(--text3)">${t.priority}</span>`:''}
+        ${t.priority?`<span style="font-size:9px;font-weight:700;color:var(--text3)">${escapeAttr(t.priority)}</span>`:''}
       </div>`;}).join('')
     :'<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">All tasks done ✓</div>';
 
@@ -8553,13 +8555,11 @@ function mwAutoBucket(t,today){
 }
 function pickMyWorkTab(tab){_mwTab=tab;renderMyWork();}
 
-function renderMyWork(){
-  if(!isAuthed)return;
-  const stats=document.getElementById('myWorkStats'),bucketsEl=document.getElementById('myWorkBuckets'),goingLiveEl=document.getElementById('myWorkGoingLive'),todayWidgetEl=document.getElementById('myWorkTodayWidget'),configEl=document.getElementById('myWorkConfig');
-  if(!stats||!bucketsEl)return;
+// Shared by My Work (the full bucket board) and the Dashboard's "My Tasks" widget — one combined,
+// de-duplicated list of Personal Tasks, Shared Work Items assigned to the signed-in user, and
+// owned/flagged Activities (with any live readiness/action alert attached as a reason).
+function myWorkItems(){
   const canSeePersonal=canAccessPanel('personaltasks');
-  const addPersonal=document.getElementById('myWorkAddPersonal');if(addPersonal)addPersonal.style.display=canSeePersonal?'':'none';
-  const today=toLocalISODate(new Date());
   const projectById=id=>PROJECTS.find(p=>String(p.id)===String(id));
   const eventById=id=>EVENTS.find(e=>String(e.id)===String(id)||String(e.spId)===String(id));
   const eventByTitle=title=>EVENTS.find(e=>(e.title||'').toLowerCase()===(title||'').toLowerCase());
@@ -8573,10 +8573,10 @@ function renderMyWork(){
     const project=projectById(ev?.projectId);
     return{...t,kind:'shared',key:'shared:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:ev?.venue||''};
   });
-  // Tagged Activities + automated to-dos — Activities from the main list where Kimberley (or
-  // whoever's signed in) is Owner/Designer, merged with any live readiness/action alert
-  // (generateNotifications' NOTIFS) that already points at that same Activity, so the same
-  // campaign doesn't show up twice with two different reasons attached.
+  // Tagged Activities + automated to-dos — Activities from the main list where the signed-in
+  // user is Owner/Designer, merged with any live readiness/action alert (generateNotifications'
+  // NOTIFS) that already points at that same Activity, so the same campaign doesn't show up
+  // twice with two different reasons attached.
   const notifReasonsByEvent={};
   NOTIFS.filter(n=>n.eventId&&(n.category==='action'||n.category==='readiness')).forEach(n=>{
     (notifReasonsByEvent[n.eventId]=notifReasonsByEvent[n.eventId]||[]).push(n.text);
@@ -8585,7 +8585,17 @@ function renderMyWork(){
     const project=projectById(e.projectId);
     return{id:'activity:'+e.id,key:'activity:'+e.id,kind:'activity',title:e.title,status:e.stage==='Review'?'Blocked':'Active',due:e.stage==='Done'?null:e.start,priority:'',projectId:String(project?.id||''),project:project?.title||'',activityId:e.id,activity:'',venue:e.venue||'',reasons:notifReasonsByEvent[e.id]||[]};
   });
-  const all=[...personal,...shared,...tagged];
+  return[...personal,...shared,...tagged];
+}
+
+function renderMyWork(){
+  if(!isAuthed)return;
+  const stats=document.getElementById('myWorkStats'),bucketsEl=document.getElementById('myWorkBuckets'),goingLiveEl=document.getElementById('myWorkGoingLive'),todayWidgetEl=document.getElementById('myWorkTodayWidget'),configEl=document.getElementById('myWorkConfig');
+  if(!stats||!bucketsEl)return;
+  const canSeePersonal=canAccessPanel('personaltasks');
+  const addPersonal=document.getElementById('myWorkAddPersonal');if(addPersonal)addPersonal.style.display=canSeePersonal?'':'none';
+  const today=toLocalISODate(new Date());
+  const all=myWorkItems();
   const byKey={};all.forEach(t=>byKey[t.key]=t);
 
   const open=all.filter(t=>!['Done','Complete','Completed'].includes(t.status));
@@ -8810,7 +8820,7 @@ function renderMyTasks(){
     MY_TASKS=[];
     const who=document.getElementById('myTasksWho');if(who)who.textContent='Shared register waiting for its own SharePoint list';
     const stats=document.getElementById('myTaskStats');if(stats)stats.innerHTML='';
-    const list=document.getElementById('tasksList');if(list)list.innerHTML=`<div class="card"><div class="card-body" style="padding:22px"><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:7px">Shared Team Work list not connected</div><div style="font-size:12px;color:var(--text2);line-height:1.55">Kimberley’s existing <b>My Tasks</b> list is private and is now used only by Personal Tasks. Create a separate SharePoint list for the four-person register, then connect its GUID here. Until then, no personal item can appear in Team Work.</div></div></div>`;
+    const list=document.getElementById('tasksList');if(list)list.innerHTML=`<div class="card"><div class="card-body" style="padding:22px"><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:7px">Work Register list not connected</div><div style="font-size:12px;color:var(--text2);line-height:1.55">This is meant to be open to everyone — a shared job board for the whole team, separate from Kimberley's private Personal Tasks list. It needs its own SharePoint list created and its GUID connected here before any task can appear.</div></div></div>`;
     ['tBadge','mydayTaskBadge'].forEach(id=>{const badge=document.getElementById(id);if(badge)badge.style.display='none';});
     return;
   }
@@ -8955,8 +8965,8 @@ async function loadTasks(){
           assetSpec:f.AssetSpec||''
         };
       });
-      // The SharePoint list is the four-person work register. Load the complete authorised-team
-      // queue, then use the dashboard chips to switch between personal and team views.
+      // The SharePoint list is the whole-team work register — load every item, then use the
+      // page's own chips to switch between "My Tasks" and "All Team" views.
       const note=document.getElementById('tasksSetupNote');
       if(note)note.style.display='none';
     }catch(e){console.error('Tasks load error:',e);}
@@ -8984,7 +8994,8 @@ function openAddTask(campaignId){
     campSel.appendChild(opt);
   });
 
-  // Assignment is limited to the four authorised team members.
+  // Assignable to anyone in the Marlin directory (authorisedAssignableUsers falls back to the
+  // four head-office names only while the tenant directory hasn't loaded yet).
   const assignSel=document.getElementById('tAssignTo');
   assignSel.innerHTML='';
   assignSel.disabled=false;
@@ -9020,7 +9031,7 @@ function openEditTask(taskId){
   });
 
   if(!canEditTeamTask(t)){alert('You can view this task, but only its owner, management or Kimberley can edit it.');return;}
-  // Keep assignment within the four-person team.
+  // Assignable to anyone in the Marlin directory.
   const assignSel=document.getElementById('tAssignTo');
   assignSel.innerHTML='';
   assignSel.disabled=false;
