@@ -420,7 +420,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .mw-row{border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;transition:var(--tr)}
 .mw-row:last-child{border-bottom:0}.mw-row:hover{background:var(--surface2)}
 .mw-kind{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:10px;display:inline-flex;align-items:center}
-.mw-kind.personal{background:#fdf3e0;color:#8a6410}.mw-kind.shared{background:#e8f5ee;color:var(--accent)}
+.mw-kind.personal{background:#fdf3e0;color:#8a6410}.mw-kind.shared{background:#e8f5ee;color:var(--accent)}.mw-kind.activity{background:#eaeef7;color:#2a4272}
 .mw-context-link{display:block;max-width:100%;border:0;background:none;padding:0;color:var(--accent);font:inherit;font-size:11px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}.mw-context-link+*{margin-top:2px}.mw-context-link:hover{text-decoration:underline}
 .art-controls{position:sticky;top:50px;z-index:8;background:var(--bg);padding:8px 0 10px;display:flex;gap:7px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:12px}
 .art-month{margin-bottom:28px}.art-month-head{position:sticky;top:101px;z-index:7;background:var(--bg);padding:8px 0;display:flex;align-items:baseline;gap:10px}
@@ -8573,7 +8573,19 @@ function renderMyWork(){
     const project=projectById(ev?.projectId);
     return{...t,kind:'shared',key:'shared:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:ev?.venue||''};
   });
-  const all=[...personal,...shared];
+  // Tagged Activities + automated to-dos — Activities from the main list where Kimberley (or
+  // whoever's signed in) is Owner/Designer, merged with any live readiness/action alert
+  // (generateNotifications' NOTIFS) that already points at that same Activity, so the same
+  // campaign doesn't show up twice with two different reasons attached.
+  const notifReasonsByEvent={};
+  NOTIFS.filter(n=>n.eventId&&(n.category==='action'||n.category==='readiness')).forEach(n=>{
+    (notifReasonsByEvent[n.eventId]=notifReasonsByEvent[n.eventId]||[]).push(n.text);
+  });
+  const tagged=EVENTS.filter(e=>!isArchived(e)&&(notifReasonsByEvent[e.id]?.length||(e.stage!=='Done'&&isAssignedToMe(e)))).map(e=>{
+    const project=projectById(e.projectId);
+    return{id:'activity:'+e.id,key:'activity:'+e.id,kind:'activity',title:e.title,status:e.stage==='Review'?'Blocked':'Active',due:e.stage==='Done'?null:e.start,priority:'',projectId:String(project?.id||''),project:project?.title||'',activityId:e.id,activity:'',venue:e.venue||'',reasons:notifReasonsByEvent[e.id]||[]};
+  });
+  const all=[...personal,...shared,...tagged];
   const byKey={};all.forEach(t=>byKey[t.key]=t);
 
   const open=all.filter(t=>!['Done','Complete','Completed'].includes(t.status));
@@ -8640,10 +8652,11 @@ function renderMyWork(){
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:12.5px;line-height:1.3;${done?'text-decoration:line-through;color:var(--text3)':''}">${escapeAttr(t.title||'Untitled')}</div>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:3px">
-            <span class="mw-kind ${t.kind}">${t.kind==='personal'?'Personal':'Shared'}</span>
+            <span class="mw-kind ${t.kind}">${({personal:'Personal',shared:'Shared',activity:'Activity'})[t.kind]||'Task'}</span>
             ${t.venue?`<span style="font-size:10px;color:var(--text3)">${escapeAttr(shortVenue(t.venue))}</span>`:''}
             ${t.project?`<span style="font-size:10px;color:var(--text3)">${escapeAttr(t.project)}</span>`:''}
           </div>
+          ${t.reasons&&t.reasons.length?`<div style="font-size:10px;color:var(--red);margin-top:3px" title="${escapeAttr(t.reasons.join(' · '))}">⚠ ${escapeAttr(t.reasons[0])}${t.reasons.length>1?` (+${t.reasons.length-1} more)`:''}</div>`:''}
         </div>
         ${t.priority?`<span class="tag ${priTag[t.priority]||'t-gr'}" style="flex-shrink:0">${escapeAttr(t.priority)}</span>`:''}
         <span style="font-family:'DM Mono',monospace;font-size:10px;color:${late?'var(--red)':'var(--text3)'};font-weight:${late?'700':'400'};flex-shrink:0;min-width:44px;text-align:right">${t.due?escapeAttr(fmtShort(t.due)):'—'}</span>
@@ -8716,7 +8729,9 @@ function mwRemoveBucket(bucketId){
 }
 function mwOpenItem(key){
   const idx=key.indexOf(':');const kind=key.slice(0,idx),id=key.slice(idx+1);
-  if(kind==='personal')openEditPersonalTask(id);else openEditTask(id);
+  if(kind==='personal')openEditPersonalTask(id);
+  else if(kind==='activity')showPop(Number(id));
+  else openEditTask(id);
 }
 function mwDropOnToday(e,slotIndex){
   e.preventDefault();
@@ -10233,6 +10248,21 @@ function saveReadNotif(key){try{const r=getReadNotifs();if(!r.includes(key)){r.p
 function getUserPref(key,fallback){try{const v=localStorage.getItem('marlin_pref_'+key+'_'+currentUserEmail);return v===null?fallback:v;}catch{return fallback;}}
 function setUserPref(key,value){try{localStorage.setItem('marlin_pref_'+key+'_'+currentUserEmail,value);}catch{}}
 
+// Shared by generateNotifications and My Work's "tagged" activities — is this activity Kimberley's
+// (or the current user's) to look after, going by Owner/Designer rather than a dedicated task record.
+function isAssignedToMe(ev){
+  const myEmail=(currentUserEmail||'').toLowerCase();
+  const myName=(currentUser?.name||'').toLowerCase();
+  // If no owner/designer set, show to everyone (unassigned = everyone's responsibility)
+  if(!ev.owner&&!ev.designer)return true;
+  const owner=(ev.owner||'').toLowerCase();
+  const designer=(ev.designer||'').toLowerCase();
+  const emailPart=myEmail.split('@')[0].toLowerCase();
+  const firstName=(myName.split(' ')[0]||'').toLowerCase();
+  return owner.includes(emailPart)||designer.includes(emailPart)||
+         (firstName.length>2&&(owner.includes(firstName)||designer.includes(firstName)));
+}
+
 function generateNotifications(){
   NOTIFS=[];
   const today=new Date();today.setHours(0,0,0,0);
@@ -10242,17 +10272,6 @@ function generateNotifications(){
   const readKeys=getReadNotifs();
   const myEmail=currentUserEmail.toLowerCase();
   const myName=(currentUser?.name||'').toLowerCase();
-
-  function isAssignedToMe(ev){
-    // If no owner/designer set, show to everyone (unassigned = everyone's responsibility)
-    if(!ev.owner&&!ev.designer)return true;
-    const owner=(ev.owner||'').toLowerCase();
-    const designer=(ev.designer||'').toLowerCase();
-    const emailPart=myEmail.split('@')[0].toLowerCase();
-    const firstName=(myName.split(' ')[0]||'').toLowerCase();
-    return owner.includes(emailPart)||designer.includes(emailPart)||
-           (firstName.length>2&&(owner.includes(firstName)||designer.includes(firstName)));
-  }
 
   // ── CAMPAIGN READINESS ALERTS ──────────────────
   // Check upcoming campaigns for missing required fields based on lead time
