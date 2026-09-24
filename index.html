@@ -4396,8 +4396,23 @@ async function loadKeyDates(){
 // stored in SharePoint — they can't be edited/deleted here. Only manually-added entries
 // (source:'sharepoint', e.g. "Pride Month") live in the list and are editable below.
 // ═══════════════════════════════════════
-const KD_DATE_TYPES=['National Calendar Event','Cultural Event','Community Event','School Holidays','Sporting Event','Public Holiday'];
+const KD_DATE_TYPES=['National Calendar Event','Cultural Event','Community Event','School Holidays','Sporting Event','Public Holiday','Cruise Ship / Visitor Arrival'];
 const KD_OPPORTUNITY=['None','Optional','Recommended','Required'];
+
+// ── Spreadsheet import — "dump a loose export, map its columns, review, then write" ──
+// Same pattern as the CRM importer (autoMapCRMHeaders/preflightCRMImport): read the file,
+// guess a column mapping from header names, let the user correct it, show every row's
+// outcome before anything is written, and never write a held/invalid row silently.
+const KD_IMPORT_FIELDS=[
+  {key:'title',label:'Title (event / ship / vessel name)',aliases:['title','event','event name','name','ship','ship name','vessel','vessel name','description','activity']},
+  {key:'start',label:'Start date (or arrival)',aliases:['start','start date','startdate','date','arrival','arrival date','eta','from','from date']},
+  {key:'end',label:'End date (or departure)',aliases:['end','end date','enddate','departure','departure date','etd','to','to date']},
+  {key:'dateType',label:'Type',aliases:['type','date type','category','event type']},
+  {key:'marketingOpportunity',label:'Marketing opportunity',aliases:['marketing opportunity','opportunity','priority']},
+  {key:'appliesToVenues',label:'Applies to venues / port / berth',aliases:['venue','venues','applies to venues','location','port','berth']},
+  {key:'notes',label:'Notes',aliases:['notes','comments','remarks','details']}
+];
+let KD_IMPORT_ROWS=[],KD_IMPORT_HEADERS=[],KD_IMPORT_MAPPING={},KD_IMPORT_PREFLIGHT=[],KD_IMPORT_FILE_NAME='',KD_IMPORT_CANCELLED=false;
 
 function openKeyDatesManager(){
   if(document.getElementById('kdManagerOv'))return;
@@ -4414,7 +4429,11 @@ function openKeyDatesManager(){
     </div>
     <div style="padding:14px 18px">
       <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Add hospitality-relevant calendar moments (e.g. Pride Month, Mother's Day, State of Origin) so they show up as 📅 badges across the Calendar and dashboard. Australian public holidays are pulled in automatically and aren't editable here.</div>
-      <button class="btn btn-p" style="padding:6px 14px;font-size:12px;margin-bottom:10px" onclick="showKeyDateForm()">+ Add Key Date</button>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="btn btn-p" style="padding:6px 14px;font-size:12px" onclick="showKeyDateForm()">+ Add Key Date</button>
+        <button class="tb-btn" style="padding:6px 14px;font-size:12px" onclick="showKeyDateImportForm()">⤒ Import spreadsheet</button>
+      </div>
+      <div id="kdImportWrap"></div>
       <div id="kdFormWrap"></div>
       <div id="kdList"></div>
     </div>
@@ -4527,6 +4546,168 @@ async function deleteKeyDateEntry(id){
   }catch(e){
     console.error('Key date delete failed:',e);
     alert('Could not delete: '+e.message);
+  }
+}
+
+function showKeyDateImportForm(){
+  const wrap=document.getElementById('kdImportWrap');
+  if(!wrap)return;
+  if(!LIST_IDS.calendarRef){wrap.innerHTML=`<div style="padding:12px;color:var(--red);font-size:12px">The "Calendar Reference" list isn't connected yet — ask whoever manages the SharePoint site to create it before importing.</div>`;return;}
+  KD_IMPORT_ROWS=[];KD_IMPORT_HEADERS=[];KD_IMPORT_MAPPING={};KD_IMPORT_PREFLIGHT=[];KD_IMPORT_FILE_NAME='';
+  wrap.innerHTML=`<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;background:var(--surface2)">
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Upload a CSV or Excel file in whatever format it already comes in — a cruise ship schedule, a tourism board's events list, anything with a date column. Match its columns below, review every row, then import. Nothing is written to SharePoint until you confirm.</div>
+    <input class="form-input" id="kdImportFile" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange="readKeyDateImportFile(this.files?.[0])">
+    <div id="kdImportFileInfo" style="font-size:11px;color:var(--text3);margin-top:8px"></div>
+    <div id="kdImportMappingWrap" style="display:none;margin-top:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:6px">COLUMN MAPPING</div>
+      <div id="kdImportMapping" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+      <div style="font-size:10.5px;color:var(--text3);margin-top:6px">Any column left mapped to "Not supplied" isn't lost — its value is appended to Notes so nothing gets silently dropped.</div>
+      <button class="btn btn-p" style="padding:6px 14px;font-size:12px;margin-top:10px" id="kdImportPreflightBtn" disabled onclick="buildKeyDateImportPreflight()">Preview import</button>
+    </div>
+    <div id="kdImportSummary" style="display:none;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px"></div>
+    <div id="kdImportPreview" style="display:none;max-height:320px;overflow-y:auto;margin-top:10px;font-size:11px"></div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-p" style="padding:6px 14px;font-size:12px" id="kdImportRunBtn" disabled onclick="runKeyDateImport()">Import ready rows</button>
+      <button class="tb-btn" style="padding:6px 14px;font-size:12px;display:none" id="kdImportCancelBtn" onclick="cancelKeyDateImport()">Cancel</button>
+      <button class="tb-btn" style="padding:6px 14px;font-size:12px" onclick="document.getElementById('kdImportWrap').innerHTML=''">Close</button>
+    </div>
+    <div id="kdImportMsg" style="font-size:11px;margin-top:8px"></div>
+  </div>`;
+}
+
+function kdImportSetMessage(textValue,type='ok'){const el=document.getElementById('kdImportMsg');if(el){el.textContent=textValue;el.style.color=type==='err'?'var(--red)':(type==='ok'?'var(--accent)':'var(--text3)');}}
+
+async function readKeyDateImportFile(file){
+  KD_IMPORT_ROWS=[];KD_IMPORT_HEADERS=[];KD_IMPORT_MAPPING={};KD_IMPORT_PREFLIGHT=[];KD_IMPORT_FILE_NAME='';
+  document.getElementById('kdImportPreflightBtn').disabled=true;document.getElementById('kdImportRunBtn').disabled=true;
+  document.getElementById('kdImportSummary').style.display='none';document.getElementById('kdImportPreview').style.display='none';
+  if(!file){document.getElementById('kdImportMappingWrap').style.display='none';return;}
+  try{
+    KD_IMPORT_FILE_NAME=file.name;
+    if(/\.csv$/i.test(file.name))KD_IMPORT_ROWS=parseCsvText(await file.text());
+    else{
+      let waited=0;while(typeof XLSX==='undefined'&&waited<10000){await sleep(200);waited+=200;}
+      if(typeof XLSX==='undefined')throw new Error('Excel reader did not load. Save the file as CSV or refresh and try again.');
+      const workbook=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});
+      let sheetName=workbook.SheetNames[0],rows=[];
+      for(const candidate of workbook.SheetNames){
+        const candidateRows=XLSX.utils.sheet_to_json(workbook.Sheets[candidate],{defval:'',raw:false,dateNF:'yyyy-mm-dd'});
+        if(candidateRows.length){sheetName=candidate;rows=candidateRows;break;}
+      }
+      KD_IMPORT_ROWS=rows.map((row,index)=>({...row,_csvRow:index+2}));
+      document.getElementById('kdImportFileInfo').textContent=`${file.name} · sheet: ${sheetName}`;
+    }
+    KD_IMPORT_HEADERS=[...new Set(KD_IMPORT_ROWS.flatMap(row=>Object.keys(row).filter(key=>key!=='_csvRow')))];
+    KD_IMPORT_ROWS=KD_IMPORT_ROWS.filter(row=>Object.entries(row).some(([key,value])=>key!=='_csvRow'&&String(value).trim()));
+    KD_IMPORT_MAPPING=autoMapKeyDateHeaders(KD_IMPORT_HEADERS);
+    renderKeyDateImportMapping();
+    document.getElementById('kdImportPreflightBtn').disabled=!KD_IMPORT_ROWS.length;
+    document.getElementById('kdImportFileInfo').textContent=`${KD_IMPORT_FILE_NAME} · ${KD_IMPORT_ROWS.length} rows · ${KD_IMPORT_HEADERS.length} columns`;
+    kdImportSetMessage(KD_IMPORT_ROWS.length?`${KD_IMPORT_ROWS.length} rows loaded. Confirm the mapping below, then preview.`:'Found columns but no data rows below the header row.',KD_IMPORT_ROWS.length?'ok':'err');
+  }catch(e){kdImportSetMessage('Could not read that file: '+e.message,'err');}
+}
+
+function autoMapKeyDateHeaders(headers){
+  const mapping={};
+  KD_IMPORT_FIELDS.forEach(field=>{
+    const aliases=field.aliases.map(crmNorm);
+    mapping[field.key]=headers.find(header=>aliases.includes(crmNorm(header)))||'';
+  });
+  return mapping;
+}
+
+function renderKeyDateImportMapping(){
+  const mapWrap=document.getElementById('kdImportMappingWrap'),el=document.getElementById('kdImportMapping');
+  if(!mapWrap||!el)return;
+  mapWrap.style.display=KD_IMPORT_HEADERS.length?'block':'none';
+  el.innerHTML=KD_IMPORT_FIELDS.map(field=>`<div><label style="font-size:10.5px;color:var(--text3);display:block;margin-bottom:2px">${escapeAttr(field.label)}</label><select class="form-select" style="font-size:12px" data-kd-map="${field.key}" onchange="KD_IMPORT_MAPPING[this.dataset.kdMap]=this.value">
+    <option value="">Not supplied</option>${KD_IMPORT_HEADERS.map(header=>`<option value="${escapeAttr(header)}"${KD_IMPORT_MAPPING[field.key]===header?' selected':''}>${escapeAttr(header)}</option>`).join('')}</select></div>`).join('');
+}
+
+function kdImportMapped(row,key){const header=KD_IMPORT_MAPPING[key];return header?String(row[header]??'').trim():'';}
+
+function buildKeyDateImportPreflight(){
+  const existing=KEY_DATES.filter(k=>k.source==='sharepoint').map(k=>({title:normaliseImportText(k.title),start:k.start}));
+  const mappedHeaders=new Set(Object.values(KD_IMPORT_MAPPING).filter(Boolean));
+  const unmappedHeaders=KD_IMPORT_HEADERS.filter(header=>!mappedHeaders.has(header));
+  const seenInFile=new Set();
+  KD_IMPORT_PREFLIGHT=KD_IMPORT_ROWS.map(row=>{
+    const title=kdImportMapped(row,'title')||'Key Date';
+    const start=normaliseCRMDate(kdImportMapped(row,'start'));
+    const endRaw=kdImportMapped(row,'end');
+    const end=endRaw?(normaliseCRMDate(endRaw)||''):'';
+    const typeRaw=kdImportMapped(row,'dateType');
+    const dateType=KD_DATE_TYPES.find(t=>crmNorm(t)===crmNorm(typeRaw))||typeRaw||'National Calendar Event';
+    const marketingOpportunity=KD_OPPORTUNITY.find(o=>crmNorm(o)===crmNorm(kdImportMapped(row,'marketingOpportunity')))||'Optional';
+    const appliesToVenues=kdImportMapped(row,'appliesToVenues');
+    const leftoverNotes=unmappedHeaders.map(header=>{const value=String(row[header]??'').trim();return value?`${header}: ${value}`:'';}).filter(Boolean);
+    const notes=[kdImportMapped(row,'notes'),...leftoverNotes].filter(Boolean).join(' · ');
+    let status='ready',reason='Has a title and a valid start date';
+    if(!start){status='invalid';reason=kdImportMapped(row,'start')?`Could not read "${kdImportMapped(row,'start')}" as a date`:'No start date in this row';}
+    else if(end&&end<start){status='invalid';reason='End date is before the start date';}
+    else{
+      const key=`${normaliseImportText(title)}|${start}`;
+      if(existing.some(e=>e.title===normaliseImportText(title)&&e.start===start)){status='duplicate';reason='A Key Date with this title and start date already exists';}
+      else if(seenInFile.has(key)){status='duplicate';reason='Same title and start date repeated earlier in this file';}
+      seenInFile.add(key);
+    }
+    return{row,title,start,end,dateType,marketingOpportunity,appliesToVenues,notes,status,reason};
+  });
+  renderKeyDateImportPreflight();
+}
+
+function renderKeyDateImportPreflight(){
+  const counts={ready:0,duplicate:0,invalid:0,created:0,failed:0};
+  KD_IMPORT_PREFLIGHT.forEach(item=>counts[item.status]=(counts[item.status]||0)+1);
+  const summary=document.getElementById('kdImportSummary');summary.style.display='grid';
+  summary.innerHTML=[['Ready to import',counts.ready,'var(--accent)'],['Duplicate (skipped)',counts.duplicate,'var(--gold)'],['Invalid (skipped)',counts.invalid+counts.failed,'var(--red)']].map(([label,value,color])=>`<div class="import-stat"><strong style="color:${color}">${value}</strong><span>${label}</span></div>`).join('');
+  const preview=document.getElementById('kdImportPreview');preview.style.display='block';
+  const colours={ready:'var(--accent)',duplicate:'var(--gold)',invalid:'var(--red)',created:'#15803d',failed:'var(--red)'};
+  preview.innerHTML=KD_IMPORT_PREFLIGHT.map(item=>`<div style="display:flex;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border)"><strong style="min-width:64px;color:${colours[item.status]||'var(--text3)'}">${escapeAttr(item.status.toUpperCase())}</strong><span style="flex:1;min-width:0">${escapeAttr(item.title)}<br><small style="color:var(--text3)">${escapeAttr(item.start||'no date')}${item.end&&item.end!==item.start?' – '+escapeAttr(item.end):''} · ${escapeAttr(item.reason)}</small></span></div>`).join('');
+  document.getElementById('kdImportRunBtn').disabled=!counts.ready;
+  kdImportSetMessage(`${counts.ready} row(s) ready to import. ${counts.duplicate} duplicate, ${counts.invalid} invalid — neither will be written. Nothing has been saved to SharePoint yet.`,'ok');
+}
+
+function cancelKeyDateImport(){KD_IMPORT_CANCELLED=true;}
+
+async function runKeyDateImport(){
+  const ready=KD_IMPORT_PREFLIGHT.filter(item=>item.status==='ready');
+  if(!ready.length)return;
+  if(!confirm(`Import ${ready.length} key date(s) into the Calendar Reference list? This can't be bulk-undone.`))return;
+  KD_IMPORT_CANCELLED=false;
+  const runBtn=document.getElementById('kdImportRunBtn'),cancelBtn=document.getElementById('kdImportCancelBtn');
+  runBtn.disabled=true;cancelBtn.style.display='inline-block';
+  try{
+    const token=await getToken(true);
+    const fieldMap=await getCalendarRefFieldMap(token);
+    let done=0,failed=0;
+    for(const item of ready){
+      if(KD_IMPORT_CANCELLED)break;
+      try{
+        const fields={};
+        fields[fieldMap.title]=item.title;
+        fields[fieldMap.start]=item.start+'T00:00:00Z';
+        if(fieldMap.end)fields[fieldMap.end]=(item.end||item.start)+'T00:00:00Z';
+        if(fieldMap.dateType)fields[fieldMap.dateType]=item.dateType;
+        if(fieldMap.marketingOpportunity)fields[fieldMap.marketingOpportunity]=item.marketingOpportunity;
+        if(fieldMap.appliesToVenues&&item.appliesToVenues)fields[fieldMap.appliesToVenues]=item.appliesToVenues;
+        if(fieldMap.notes&&item.notes)fields[fieldMap.notes]=item.notes;
+        if(fieldMap.isPublicHoliday)fields[fieldMap.isPublicHoliday]=item.dateType==='Public Holiday';
+        const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.calendarRef}/items`,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+        if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+        item.status='created';done++;
+      }catch(e){item.status='failed';item.reason='Import failed: '+e.message;failed++;}
+      renderKeyDateImportPreflight();
+      runBtn.textContent=`Importing… ${done+failed}/${ready.length}`;
+    }
+    kdImportSetMessage(KD_IMPORT_CANCELLED?`Stopped after ${done} row(s). ${ready.length-done-failed} were not attempted.`:`Imported ${done} row(s).${failed?' '+failed+' failed — see reasons above.':''}`,failed?'err':'ok');
+    await loadKeyDates();
+    renderKeyDatesManagerList();
+    renderCurrentPanel();
+  }catch(e){
+    kdImportSetMessage('Import failed: '+e.message,'err');
+  }finally{
+    runBtn.disabled=true;runBtn.textContent='Import ready rows';cancelBtn.style.display='none';
   }
 }
 
