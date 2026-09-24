@@ -5593,6 +5593,14 @@ function vColor(v){
   else if(v!=null)key=String(v);
   if(_vColorCache[key])return _vColorCache[key];
   const vl=key.toLowerCase();
+  // Loaded Rewards is its own tag, not a physical venue — doesn't belong in VENUES_DATA (which
+  // also feeds real venue budget/CRM pages), but still deserves its own colour instead of
+  // falling into the same generic grey as a plain "All Venues" item.
+  if(vl.includes('loaded rewards')){
+    const result={c:'#b8860b',acc:'#96700a',cls:'vc-loaded'};
+    _vColorCache[key]=result;
+    return result;
+  }
   const vd=VENUES_DATA.find(vv=>vl.includes(vv.key));
   const result=vd?{c:vd.primary,acc:vd.accent,cls:vd.cls}:{c:'#374151',acc:'#6b7280',cls:'vc-all'};
   _vColorCache[key]=result;
@@ -11886,6 +11894,22 @@ function renderActivityDetail(id,mode){
   h+=editField('RRP ($)',ev.regularPrice||'','RegularPrice','number');
   h+=editField('Discount / Member Price ($)',ev.loadedBasePrice||'','LoadedBasePrice','number');
   h+=`</div>`;
+  // Recurring Event only: which day(s) it actually runs on. Without this set, the Calendar has
+  // nothing to filter by and falls back to showing the activity on every day of its Start–End
+  // range — e.g. a weekly members' lounge night rendering as if it ran daily all month.
+  if(ev.eventFormat==='Recurring Event'){
+    const dayDefs=[['Monday','Mon'],['Tuesday','Tue'],['Wednesday','Wed'],['Thursday','Thu'],['Friday','Fri'],['Saturday','Sat'],['Sunday','Sun']];
+    const currentDays=(ev.recurringDay||[]).map(d=>String(d||''));
+    const currentDaysLower=currentDays.map(d=>d.toLowerCase());
+    const freqChoices=campaignColumnDefinition('RecurringFrequency')?.choice?.choices||['Weekly','Fortnightly','Monthly'];
+    h+=`<div class="pop-section">↻ Recurring Schedule</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Start/End above is the whole run. Tick the day(s) it actually happens on — the Calendar only shows it on these days within that range.</div>
+      <div id="recurringDayBox-${ev.id}" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        ${dayDefs.map(([full,short])=>`<label style="display:flex;align-items:center;gap:4px;font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;cursor:pointer"><input type="checkbox" value="${full}" ${currentDaysLower.includes(full.toLowerCase())?'checked':''} onchange="syncRecurringDayField(${ev.id})" style="margin:0">${short}</label>`).join('')}
+        <input type="hidden" class="pop-edit-inp" data-field="RecurringDay" data-original="${escapeAttr(currentDays.join(','))}" value="${escapeAttr(currentDays.join(','))}">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr;gap:6px">${editField('Recurring Frequency',ev.recurringFrequency,'RecurringFrequency','select',['',...freqChoices])}</div>`;
+  }
   if(ev.posRequired){
     h+=`<div style="display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px">`;
     h+=editField('POS Changes / Requirements',ev.posNotes,'POSNotes','text');
@@ -12076,6 +12100,17 @@ function markPopDirty(mode){
   activityEditRoots(mode).forEach(root=>root.querySelectorAll('.pop-save-btn').forEach(btn=>btn.style.display='inline-block'));
 }
 
+// Recurring-day checkboxes have no single input value, so they're collected into one hidden
+// .pop-edit-inp (data-field="RecurringDay") that savePopEdit already knows how to read.
+function syncRecurringDayField(evId){
+  const box=document.getElementById('recurringDayBox-'+evId);
+  if(!box)return;
+  const checked=[...box.querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.value);
+  const hidden=box.querySelector('input[type=hidden]');
+  if(hidden)hidden.value=checked.join(',');
+  markPopDirty();
+}
+
 // Columns we've added to the UI ahead of the matching SharePoint column existing. PATCH on an
 // existing item can fail on these as a generic 500 "generalException" rather than the cleaner
 // 400 "Field 'X' is not recognized" — so they need to be tried as an explicit drop-and-retry,
@@ -12112,6 +12147,9 @@ async function savePopEdit(evId,mode){
         if(kind==='Supplier'){ev.supplierId=v;ev.supplierLookup=selected?.label||'';}
         if(kind==='Product'){ev.productId=v;ev.product=selected?.label||'';}
       }
+    } else if(f==='RecurringDay'){
+      fields[f]=v?v.split(',').map(s=>s.trim()).filter(Boolean):[];
+      ev.recurringDay=fields[f];
     } else if(f==='BudgetAllocated'||f==='ActualSpend'||f==='SupplierContribution'||f==='MarketingBudget'||f==='TicketPrice'||f==='Capacity'||f==='ProjectId'){
       fields[f]=v?(f==='Capacity'||f==='ProjectId'?parseInt(v,10):parseFloat(v)):null;
     } else if(f==='Start'||f==='End'){
@@ -12137,7 +12175,8 @@ async function savePopEdit(evId,mode){
       'BookingURL':'bookingUrl','LandingPageURL':'landingPageUrl','TicketPlatform':'ticketPlatform',
       'TicketPrice':'ticketPrice','Capacity':'capacity',
       'AppRequired':'appRequired','NewsletterRequired':'newsletterRequired','AppHeading':'appHeading','AppDescription':'appDescription','AppShortDescription':'appShortDescription',
-      'RegularPrice':'regularPrice','LoadedBasePrice':'loadedBasePrice','ProjectId':'projectId'
+      'RegularPrice':'regularPrice','LoadedBasePrice':'loadedBasePrice','ProjectId':'projectId',
+      'RecurringFrequency':'recurringFrequency'
     };
     const localKey=localMap[f];
     if(localKey){
