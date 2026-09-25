@@ -5480,7 +5480,11 @@ function rolePermissions(){
   return{...base,canViewBudget:true,hidePanels:base.hidePanels.filter(panel=>panel!=='budget')};
 }
 function canAccessPrivatePersonalTasks(){
-  return isPreviewMode||authorisedMember(currentUser,currentUserEmail)?.key==='kimberley';
+  // Was passing currentUser (the MSAL account — has .name/.username, not .mail/.displayName/
+  // .userPrincipalName) where authorisedMember() expects the Graph profile. That silently dropped
+  // the .mail/.userPrincipalName checks and left only a name-match against .name, which is why a
+  // display-name or UPN mismatch (see ROLE_MAP fix) could hide Personal Tasks entirely.
+  return isPreviewMode||authorisedMember(currentM365Profile,currentUserEmail)?.key==='kimberley';
 }
 function canAccessPanel(id){
   if(id==='personaltasks')return canAccessPrivatePersonalTasks();
