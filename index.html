@@ -2284,10 +2284,10 @@ function seedTaskPreview(){
   const dateFromNow=days=>{const d=new Date();d.setDate(d.getDate()+days);return toLocalISODate(d);};
   MY_TASKS=[
     {id:'T-DEMO-1',title:'Finalise CRM SharePoint permissions',status:'Not Started',priority:'Critical',category:'Admin',due:dateFromNow(0),notes:'Restrict all CRM lists before importing customer data.',assignedTo:currentUserEmail,campaignLookup:''},
-    {id:'T-DEMO-2',title:'Prepare boss CRM demonstration',status:'In Progress',priority:'High',category:'General',due:dateFromNow(1),notes:'Use synthetic contacts only.',assignedTo:'ben@marlinhospitality.com.au',campaignLookup:''},
-    {id:'T-DEMO-3',title:'Confirm January to June campaign priorities',status:'Not Started',priority:'High',category:'General',due:dateFromNow(3),notes:'Supplier and venue priorities.',assignedTo:'ben@marlinhospitality.com.au',campaignLookup:''},
-    {id:'T-DEMO-4',title:'Complete POS setup for next Loaded offer',status:'Blocked',priority:'Medium',category:'POS Update',due:dateFromNow(5),blocker:'Waiting for confirmed offer pricing',notes:'',assignedTo:'perrin@marlinhospitality.com.au',campaignLookup:'Loaded Rewards · September'},
-    {id:'T-DEMO-5',title:'Review Loaded Rewards August results',status:'Not Started',priority:'Medium',category:'Paid Ad',due:dateFromNow(7),notes:'',assignedTo:'amelia@marlinhospitality.com.au',campaignLookup:'Loaded Rewards · August'},
+    {id:'T-DEMO-2',title:'Prepare boss CRM demonstration',status:'In Progress',priority:'High',category:'General',due:dateFromNow(1),notes:'Use synthetic contacts only.',assignedTo:'ben.rasheed@marlingroup.com.au',campaignLookup:''},
+    {id:'T-DEMO-3',title:'Confirm January to June campaign priorities',status:'Not Started',priority:'High',category:'General',due:dateFromNow(3),notes:'Supplier and venue priorities.',assignedTo:'ben.rasheed@marlingroup.com.au',campaignLookup:''},
+    {id:'T-DEMO-4',title:'Complete POS setup for next Loaded offer',status:'Blocked',priority:'Medium',category:'POS Update',due:dateFromNow(5),blocker:'Waiting for confirmed offer pricing',notes:'',assignedTo:'perrin@marlingroup.com.au',campaignLookup:'Loaded Rewards · September'},
+    {id:'T-DEMO-5',title:'Review Loaded Rewards August results',status:'Not Started',priority:'Medium',category:'Paid Ad',due:dateFromNow(7),notes:'',assignedTo:'amelia@marlingroup.com.au',campaignLookup:'Loaded Rewards · August'},
     {id:'T-DEMO-6',title:'Map existing customer sources',status:'Done',priority:'Medium',category:'Admin',due:dateFromNow(-2),notes:'',assignedTo:currentUserEmail,campaignLookup:''}
   ];
 }
@@ -2384,29 +2384,32 @@ const ACTIVITY_TEMPLATES={
 const ROLE_MAP={
   // 'email@domain.com': { role: 'admin'|'management'|'design'|'ops'|'venue'|'general', venue: null|'The Left Bank' etc }
 // FALLBACK ONLY — the primary source is the live M365 jobTitle/department lookup in resolveRoleFromM365() above.
-// This only kicks in if that lookup fails or doesn't match a keyword. Update with real emails if you want a
-// guaranteed override for specific people regardless of their M365 title.
-// PLACEHOLDERS — update with real emails
-  'kimberley@marlinhospitality.com.au': {role:'admin',   venue:null},
-  'kimberley@marlingroup.com.au':        {role:'admin',   venue:null},
-  'kim@marlingroup.com.au':              {role:'admin',   venue:null},
-  'kim@marlinhospitality.com.au':        {role:'admin',   venue:null},
+// This only kicks in if that lookup fails or doesn't match a keyword. Real addresses below, confirmed against
+// live mail headers on 2026-09-24 — the entire team is on @marlingroup.com.au, not @marlinhospitality.com.au
+// (the earlier guessed domain, which matched nobody's real address and silently fell through to the M365
+// title-keyword fallback for everyone).
+  'kimberley@marlingroup.com.au':             {role:'admin',   venue:null},
+  'kimberley.maley-smith@marlingroup.com.au': {role:'admin',   venue:null}, // real UPN differs from the mail address above
   // Design team
-  'luca@marlinhospitality.com.au':       {role:'design',  venue:null},
-  'didier@marlinhospitality.com.au':     {role:'design',  venue:null},
+  'luca@marlingroup.com.au':                  {role:'design',  venue:null},
+  'didier.bertrand@marlingroup.com.au':       {role:'design',  venue:null},
   // Ops
-  'perrin@marlinhospitality.com.au':     {role:'ops',     venue:null},
+  'perrin@marlingroup.com.au':                {role:'ops',     venue:null},
   // Management / venue managers
-  'ben@marlinhospitality.com.au':        {role:'management', venue:null},
-  'amelia@marlinhospitality.com.au':     {role:'management', venue:null},
-  'jo@marlinhospitality.com.au':         {role:'management', venue:'The Ravenswood'},
+  'ben.rasheed@marlingroup.com.au':           {role:'management', venue:null},
+  'amelia@marlingroup.com.au':                {role:'management', venue:null},
+  // Joanne signs her mail from @ravenswoodhotel.com.au, not the Marlin tenant — if she can't sign
+  // in at all (MSAL is locked to the Marlin tenant ID), that's a guest-access setup issue outside
+  // this file, not something this entry alone fixes. Left in as a guaranteed override in case she
+  // is (or becomes) a guest user on the tenant.
+  'joanne@ravenswoodhotel.com.au':            {role:'management', venue:'The Ravenswood'},
 };
 
 // Exact tenant display-name fallbacks for staff whose sign-in address differs from the old
 // guessed aliases above. These are only consulted after Microsoft Graph confirms the signed-in
 // user's own profile, so an arbitrary name typed into a form cannot grant access.
 const ROLE_NAME_MAP={
-  'kimberley maley': {role:'admin',      venue:null},
+  'kimberley maley-smith': {role:'admin',      venue:null},
   'luca brignoli':   {role:'design',     venue:null},
   'didier bertrand': {role:'design',     venue:null},
   'perrin lefebour': {role:'ops',        venue:null},
@@ -2418,10 +2421,10 @@ const ROLE_NAME_MAP={
 // Production access roster. These exact Microsoft 365 identities are the only people who may
 // pass the live sign-in gate. Preview mode remains available for layout review and never loads data.
 const AUTHORISED_TEAM=[
-  {key:'kimberley',name:'Kimberley Maley',names:['kimberley maley'],emailAliases:['kimberley@marlinhospitality.com.au','kimberley@marlingroup.com.au','kim@marlinhospitality.com.au','kim@marlingroup.com.au'],role:'Marketing Manager'},
-  {key:'perrin',name:'Perrin Lefebour',names:['perrin lefebour'],emailAliases:['perrin@marlinhospitality.com.au'],role:'Operations Manager'},
-  {key:'amelia',name:'Amelia Shugar',names:['amelia shugar'],emailAliases:['amelia@marlinhospitality.com.au'],role:'Customer Engagement Manager'},
-  {key:'ben',name:'Ben Rasheed',names:['ben rasheed'],emailAliases:['ben@marlinhospitality.com.au'],role:'Company Owner'},
+  {key:'kimberley',name:'Kimberley Maley-Smith',names:['kimberley maley-smith'],emailAliases:['kimberley@marlingroup.com.au','kimberley.maley-smith@marlingroup.com.au'],role:'Marketing Manager'},
+  {key:'perrin',name:'Perrin Lefebour',names:['perrin lefebour'],emailAliases:['perrin@marlingroup.com.au'],role:'Operations Manager'},
+  {key:'amelia',name:'Amelia Shugar',names:['amelia shugar'],emailAliases:['amelia@marlingroup.com.au'],role:'Customer Engagement Manager'},
+  {key:'ben',name:'Ben Rasheed',names:['ben rasheed'],emailAliases:['ben.rasheed@marlingroup.com.au'],role:'Chief Executive Officer'},
 ];
 
 function authorisedMember(profile,email){
@@ -2477,10 +2480,10 @@ const ROLE_CONFIG={
 // holds the 'ops' role (so POS/ops task routing still finds him via ROLE_EMAILS.ops) but also needs
 // financial visibility. Add more emails here as Kim confirms who else needs financial access.
 const FINANCE_ACCESS=new Set([
-  'kimberley@marlinhospitality.com.au','kimberley@marlingroup.com.au','kim@marlinhospitality.com.au','kim@marlingroup.com.au',
-  'perrin@marlinhospitality.com.au',
-  'amelia@marlinhospitality.com.au',
-  'ben@marlinhospitality.com.au',
+  'kimberley@marlingroup.com.au','kimberley.maley-smith@marlingroup.com.au',
+  'perrin@marlingroup.com.au',
+  'amelia@marlingroup.com.au',
+  'ben.rasheed@marlingroup.com.au',
 ]);
 function hasFinanceAccess(){return FINANCE_ACCESS.has((currentUserEmail||'').toLowerCase());}
 
@@ -5477,7 +5480,11 @@ function rolePermissions(){
   return{...base,canViewBudget:true,hidePanels:base.hidePanels.filter(panel=>panel!=='budget')};
 }
 function canAccessPrivatePersonalTasks(){
-  return isPreviewMode||authorisedMember(currentUser,currentUserEmail)?.key==='kimberley';
+  // Was passing currentUser (the MSAL account — has .name/.username, not .mail/.displayName/
+  // .userPrincipalName) where authorisedMember() expects the Graph profile. That silently dropped
+  // the .mail/.userPrincipalName checks and left only a name-match against .name, which is why a
+  // display-name or UPN mismatch (see ROLE_MAP fix) could hide Personal Tasks entirely.
+  return isPreviewMode||authorisedMember(currentM365Profile,currentUserEmail)?.key==='kimberley';
 }
 function canAccessPanel(id){
   if(id==='personaltasks')return canAccessPrivatePersonalTasks();
@@ -6688,7 +6695,7 @@ function openDesignBrief(campaignId){
   if(asel){
     asel.innerHTML='<option value="">Select designer…</option>';
     M365_USERS.forEach(u=>{const opt=document.createElement('option');opt.value=u.email;opt.textContent=u.name;asel.appendChild(opt);});
-    if(!M365_USERS.length)asel.innerHTML='<option value="luca@marlinhospitality.com.au">Luca (design)</option><option value="didier@marlinhospitality.com.au">Didier (web)</option>';
+    if(!M365_USERS.length)asel.innerHTML='<option value="luca@marlingroup.com.au">Luca (design)</option><option value="didier.bertrand@marlingroup.com.au">Didier (web)</option>';
   }
   // Set brief due to 3 days from now as default
   const bDue=document.getElementById('bBriefDue');
@@ -10479,7 +10486,7 @@ function pickSubmitPath(path){
   if(path==='job'){
     const sel=document.getElementById('fJobAssign');
     sel.innerHTML='<option value="">Unassigned</option>';
-    (M365_USERS.length?M365_USERS:([{email:'kim@marlinhospitality.com.au',name:'Kim'},{email:'luca@marlinhospitality.com.au',name:'Luca (Design)'},{email:'perrin@marlinhospitality.com.au',name:'Perrin (Ops)'},{email:'didier@marlinhospitality.com.au',name:'Didier (Web)'}])).forEach(u=>{
+    (M365_USERS.length?M365_USERS:([{email:'kimberley@marlingroup.com.au',name:'Kim'},{email:'luca@marlingroup.com.au',name:'Luca (Design)'},{email:'perrin@marlingroup.com.au',name:'Perrin (Ops)'},{email:'didier.bertrand@marlingroup.com.au',name:'Didier (Web)'}])).forEach(u=>{
       const opt=document.createElement('option');opt.value=u.email;opt.textContent=u.name;sel.appendChild(opt);
     });
     // Populate Marketing Campaign linkage from live EVENTS, most recent/upcoming first
