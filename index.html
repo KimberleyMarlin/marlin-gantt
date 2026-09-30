@@ -1495,6 +1495,20 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         </div>
       </div>
       <div class="card" style="margin-top:16px">
+        <div class="card-h"><span class="card-title">Create a new list</span></div>
+        <div class="card-body">
+          <div id="schemaNewListMsg" class="form-msg"></div>
+          <div class="form-group full"><label class="form-label">List name</label><input class="form-input" id="schemaNewListName" placeholder="e.g. Work Register"></div>
+          <div style="font-size:11px;color:var(--text3);margin:10px 0 6px">Every new SharePoint list already has a "Title" text column — add whatever else this one needs. (Lookup columns aren't supported by this tool yet — add those directly in SharePoint afterward.)</div>
+          <div id="schemaNewListColumns"></div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button class="tb-btn" onclick="addSchemaNewListColumnRow()">+ Add column</button>
+            <button class="tb-btn" onclick="prefillWorkRegisterSchema()">Prefill: Work Register</button>
+          </div>
+          <button class="btn btn-p" style="margin-top:12px" onclick="createSchemaList()">Create list</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
         <div class="card-h"><span class="card-title">Add an item to a list</span></div>
         <div class="card-body">
           <div id="schemaItemMsg" class="form-msg"></div>
@@ -9562,6 +9576,8 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'personalTasks',name:'Sequence',displayName:'Sequence',type:'number',purpose:'Persists Kimberley’s drag-and-drop task order.'}
 ];
 let SCHEMA_TOOL_COLUMNS={};
+let _schemaShowReadyColumns=false; // ready (already-created) rows stay collapsed by default — only "Missing" needs attention
+function toggleSchemaShowReadyColumns(){_schemaShowReadyColumns=!_schemaShowReadyColumns;renderSchemaTools();}
 function schemaColumnDefinition(type,name,displayName,choicesRaw){
   const base={name,displayName};
   if(type==='text')return{...base,text:{}};
@@ -9692,7 +9708,9 @@ async function renderSchemaTools(forceRefresh){
       return{...gap,exists,listLabel:SCHEMA_TOOL_LISTS[gap.listKey].label};
     });
     const missing=rows.filter(r=>!r.exists);
-    gapsEl.innerHTML=`<div class="card"><div class="card-h"><span class="card-title">Proposed SharePoint columns</span></div><div class="card-body" style="overflow:auto"><div style="min-width:760px"><div style="display:grid;grid-template-columns:1.35fr 1fr 1fr .65fr 1.7fr .55fr;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text3)"><span>List</span><span>Field</span><span>Internal name</span><span>Type</span><span>Purpose</span><span>Status</span></div>${rows.map(r=>`<div style="display:grid;grid-template-columns:1.35fr 1fr 1fr .65fr 1.7fr .55fr;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);font-size:10.5px;align-items:start"><strong>${escapeAttr(r.listLabel)}</strong><span>${escapeAttr(r.displayName)}</span><code>${escapeAttr(r.name)}</code><span>${escapeAttr(r.type)}</span><span style="color:var(--text2)">${escapeAttr(r.purpose)}</span><strong style="color:${r.exists?'#15803d':'var(--gold)'}">${r.exists?'Ready':'Missing'}</strong></div>`).join('')}</div>${missing.length?`<div style="padding:12px"><button class="btn btn-p" onclick="createKnownSchemaGaps()">Review &amp; create ${missing.length} missing column${missing.length===1?'':'s'}</button></div>`:''}</div></div>`;
+    const readyCount=rows.length-missing.length;
+    const displayRows=_schemaShowReadyColumns?rows:missing;
+    gapsEl.innerHTML=`<div class="card"><div class="card-h"><span class="card-title">Proposed SharePoint columns</span>${readyCount?`<span class="card-act" onclick="toggleSchemaShowReadyColumns()">${_schemaShowReadyColumns?'Hide ready columns':`Show ${readyCount} ready column${readyCount===1?'':'s'}`} →</span>`:''}</div><div class="card-body" style="overflow:auto"><div style="min-width:760px">${displayRows.length?`<div style="display:grid;grid-template-columns:1.35fr 1fr 1fr .65fr 1.7fr .55fr;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text3)"><span>List</span><span>Field</span><span>Internal name</span><span>Type</span><span>Purpose</span><span>Status</span></div>${displayRows.map(r=>`<div style="display:grid;grid-template-columns:1.35fr 1fr 1fr .65fr 1.7fr .55fr;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);font-size:10.5px;align-items:start"><strong>${escapeAttr(r.listLabel)}</strong><span>${escapeAttr(r.displayName)}</span><code>${escapeAttr(r.name)}</code><span>${escapeAttr(r.type)}</span><span style="color:var(--text2)">${escapeAttr(r.purpose)}</span><strong style="color:${r.exists?'#15803d':'var(--gold)'}">${r.exists?'Ready':'Missing'}</strong></div>`).join('')}`:`<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">All proposed columns already exist — nothing missing.</div>`}</div>${missing.length?`<div style="padding:12px"><button class="btn btn-p" onclick="createKnownSchemaGaps()">Review &amp; create ${missing.length} missing column${missing.length===1?'':'s'}</button></div>`:''}</div></div>`;
   }catch(e){
     gapsEl.innerHTML=`<div class="card"><div class="card-body" style="padding:20px;color:var(--red)">Could not check columns: ${escapeAttr(e.message)}</div></div>`;
   }
@@ -9742,6 +9760,80 @@ async function createSchemaColumn(){
     if(listValue.startsWith('crm:'))delete CRM_COLUMNS[listValue.slice(4)];else delete SCHEMA_TOOL_COLUMNS[listValue];
     renderSchemaTools(true);
   }catch(e){msg.textContent='Could not create column: '+e.message;msg.className='form-msg err';}
+}
+
+let _schemaNewListColSeq=0;
+function addSchemaNewListColumnRow(colName,colDisplay,colType,colChoices){
+  const id=_schemaNewListColSeq++;
+  const wrap=document.getElementById('schemaNewListColumns');
+  if(!wrap)return;
+  const row=document.createElement('div');
+  row.id=`schemaNewListColRow_${id}`;
+  row.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:start;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)';
+  row.innerHTML=`
+    <input class="form-input" id="schemaNewListColName_${id}" placeholder="Internal name, e.g. DueDate" value="${escapeAttr(colName||'')}">
+    <input class="form-input" id="schemaNewListColDisplay_${id}" placeholder="Display name, e.g. Due Date" value="${escapeAttr(colDisplay||'')}">
+    <select class="form-select" id="schemaNewListColType_${id}" onchange="document.getElementById('schemaNewListColChoices_${id}').style.display=this.value==='choice'?'block':'none'">
+      <option value="text">Single line of text</option>
+      <option value="multitext">Multiple lines of text</option>
+      <option value="number">Number</option>
+      <option value="date">Date</option>
+      <option value="yesno">Yes / No</option>
+      <option value="choice">Choice (dropdown)</option>
+    </select>
+    <button class="tb-btn" style="color:var(--red)" onclick="document.getElementById('schemaNewListColRow_${id}').remove()">✕</button>
+    <input class="form-input" id="schemaNewListColChoices_${id}" placeholder="Comma-separated choices" style="display:${colType==='choice'?'block':'none'};grid-column:1/4" value="${escapeAttr(colChoices||'')}">
+  `;
+  wrap.appendChild(row);
+  if(colType)document.getElementById(`schemaNewListColType_${id}`).value=colType;
+}
+function prefillWorkRegisterSchema(){
+  document.getElementById('schemaNewListName').value='Work Register';
+  document.getElementById('schemaNewListColumns').innerHTML='';
+  addSchemaNewListColumnRow('Status','Status','choice','Not Started, In Progress, Blocked, Done');
+  addSchemaNewListColumnRow('Priority','Priority','choice','Critical, High, Medium, Low');
+  addSchemaNewListColumnRow('TaskType','Task Type','choice','General, Web Update, Social Post, EDM / Newsletter, POS Update, Print / Signage, Admin');
+  addSchemaNewListColumnRow('DueDate','Due Date','date');
+  addSchemaNewListColumnRow('Notes','Notes','multitext');
+  addSchemaNewListColumnRow('BlockedReason','Blocked Reason','text');
+  addSchemaNewListColumnRow('AssignedTo','Assigned To','text');
+  document.getElementById('schemaNewListMsg').innerHTML='<span style="color:var(--text3)">Prefilled with the Work Register columns you approved. The "Campaign" link is a Lookup column — add that in SharePoint after creating this list, since this tool doesn\'t support Lookup columns yet.</span>';
+  document.getElementById('schemaNewListMsg').className='form-msg';
+}
+async function createSchemaList(){
+  const msg=document.getElementById('schemaNewListMsg');
+  const name=document.getElementById('schemaNewListName').value.trim();
+  if(!name){msg.textContent='Enter a list name.';msg.className='form-msg err';return;}
+  const rows=[...document.getElementById('schemaNewListColumns').children];
+  const columns=[];
+  for(const row of rows){
+    const id=row.id.match(/_(\d+)$/)[1];
+    const colName=document.getElementById(`schemaNewListColName_${id}`).value.trim();
+    if(!colName)continue;
+    if(!/^[A-Za-z][A-Za-z0-9_]*$/.test(colName)){msg.textContent=`Column name "${colName}" must start with a letter and contain only letters, numbers and underscores — no spaces.`;msg.className='form-msg err';return;}
+    const displayName=document.getElementById(`schemaNewListColDisplay_${id}`).value.trim()||colName;
+    const type=document.getElementById(`schemaNewListColType_${id}`).value;
+    const choices=document.getElementById(`schemaNewListColChoices_${id}`).value;
+    const definition=schemaColumnDefinition(type,colName,displayName,choices);
+    if(!definition){msg.textContent=`Column "${displayName}" needs at least one choice.`;msg.className='form-msg err';return;}
+    columns.push(definition);
+  }
+  const proposal=`List: ${name}\n\nColumns:\n${columns.length?columns.map(c=>`  ${c.displayName} (${c.name})`).join('\n'):'  (Title only — the SharePoint default)'}`;
+  if(!confirm(`Review the proposed SharePoint list:\n\n${proposal}\n\nCreate this list?`))return;
+  msg.textContent='Creating…';msg.className='form-msg';
+  try{
+    const token=await getToken(true);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({displayName:name,columns,list:{template:'genericList'}})});
+    if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+    const created=await res.json();
+    msg.innerHTML=`✓ List "${escapeAttr(name)}" created. Its ID is:<br><code style="user-select:all;word-break:break-all;font-size:11px">${escapeAttr(created.id)}</code><br>Copy that and send it back so it can be wired in.`;
+    msg.className='form-msg ok';
+    document.getElementById('schemaNewListName').value='';
+    document.getElementById('schemaNewListColumns').innerHTML='';
+  }catch(e){
+    msg.textContent='Could not create list: '+e.message;
+    msg.className='form-msg err';
+  }
 }
 
 // ═══════════════════════════════════════
