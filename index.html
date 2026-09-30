@@ -1631,6 +1631,11 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           </div>
           <div id="crmImportFileInfo" style="font-size:11px;color:var(--text3);margin-top:8px"></div>
           <div id="crmMappingWrap" style="display:none"><div style="font-size:12px;font-weight:700;margin-top:14px">Confirm column mapping</div><div class="crm-map-grid" id="crmMapping"></div></div>
+          <div id="crmVenueMappingWrap" style="display:none">
+            <div style="font-size:12px;font-weight:700;margin-top:14px">Venue columns <span style="font-weight:400;color:var(--text3);text-transform:none">— optional, for a file with one Yes/blank column per venue instead of a single "venue" column</span></div>
+            <div class="crm-map-grid" id="crmVenueMapping"></div>
+            <div style="font-size:10.5px;color:var(--text3);margin-top:4px">A row counts as linked to a venue when that column isn't blank and isn't "No"/"False"/"0". Map only the ones this file actually has — a venue can also come from a single "venue" column above, and a row can be linked to more than one venue at once.</div>
+          </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
             <button class="btn btn-s" id="crmPreflightBtn" onclick="preflightCRMImport()" disabled>Check against master CRM</button>
             <button class="btn btn-p" id="crmRunBtn" onclick="runCRMImport()" disabled>Simulate safe import</button>
@@ -2267,7 +2272,7 @@ const CRM_MAP_FIELDS=[
   {key:'state',label:'State',aliases:['state','region']},
   {key:'notes',label:'Notes',aliases:['notes','comments','customer notes']}
 ];
-let CRM_LISTS={},CRM_COLUMNS={},CRM_SETUP_LOADED=false,CRM_ROWS=[],CRM_HEADERS=[],CRM_FILE_NAME='',CRM_MAPPING={},CRM_PREFLIGHT=[],CRM_CUSTOMERS=[],CRM_SOURCE_LINKS=[],CRM_VENUES=[],CRM_CUSTOMER_VENUES=[],CRM_CONSENT_EVENTS=[],CRM_IMPORTS=[],CRM_CHANGES=[],CRM_IMPORT_CANCELLED=false;
+let CRM_LISTS={},CRM_COLUMNS={},CRM_SETUP_LOADED=false,CRM_ROWS=[],CRM_HEADERS=[],CRM_FILE_NAME='',CRM_MAPPING={},CRM_VENUE_COLUMN_MAPPING={},CRM_PREFLIGHT=[],CRM_CUSTOMERS=[],CRM_SOURCE_LINKS=[],CRM_VENUES=[],CRM_CUSTOMER_VENUES=[],CRM_CONSENT_EVENTS=[],CRM_IMPORTS=[],CRM_CHANGES=[],CRM_IMPORT_CANCELLED=false;
 // Enabled 2026-09-10 on Kimberley's explicit instruction, permissions to follow after.
 // Restrict the 8 CRM SharePoint lists to authorised staff as soon as possible.
 const CRM_WRITE_ENABLED=true;
@@ -9573,7 +9578,10 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'personalTasks',name:'ParentTaskId',displayName:'Parent Task Id',type:'number',purpose:'Links Kimberley’s private subtask to its parent task.'},
   {listKey:'personalTasks',name:'LinkedActivityId',displayName:'Linked Activity Id',type:'number',purpose:'Optionally links a private task to one Activity.'},
   {listKey:'personalTasks',name:'ProjectId',displayName:'Project Id',type:'number',purpose:'Optionally links a private task to one Project.'},
-  {listKey:'personalTasks',name:'Sequence',displayName:'Sequence',type:'number',purpose:'Persists Kimberley’s drag-and-drop task order.'}
+  {listKey:'personalTasks',name:'Sequence',displayName:'Sequence',type:'number',purpose:'Persists Kimberley’s drag-and-drop task order.'},
+  {listKey:'campaigns',name:'WebStatus',displayName:'Web Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Didier’s web build status.'},
+  {listKey:'campaigns',name:'LoadedStatus',displayName:'Loaded Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Amelia’s Loaded Rewards build status.'},
+  {listKey:'campaigns',name:'SocialStatus',displayName:'Social Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Marketing’s social build status.'}
 ];
 let SCHEMA_TOOL_COLUMNS={};
 let _schemaShowReadyColumns=false; // ready (already-created) rows stay collapsed by default — only "Missing" needs attention
@@ -9725,7 +9733,7 @@ async function createKnownSchemaGaps(){
   let created=0;const failures=[];
   for(const gap of missing){
     const listId=LIST_IDS[SCHEMA_TOOL_LISTS[gap.listKey].listIdKey];
-    const def=schemaColumnDefinition(gap.type,gap.name,gap.displayName);
+    const def=schemaColumnDefinition(gap.type,gap.name,gap.displayName,gap.choices||'');
     const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/columns`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(def)});
     if(res.ok)created++;else failures.push(`${SCHEMA_TOOL_LISTS[gap.listKey].label}.${gap.name}: HTTP ${res.status} ${await res.text()}`);
   }
@@ -11140,10 +11148,31 @@ function renderCRMMapping(){
   wrap.style.display=CRM_HEADERS.length?'block':'none';
   el.innerHTML=CRM_MAP_FIELDS.map(field=>`<div class="crm-map-field"><label>${escapeAttr(field.label)}</label><select data-crm-map="${field.key}" onchange="CRM_MAPPING[this.dataset.crmMap]=this.value"><option value="">Not supplied</option>${CRM_HEADERS.map(header=>`<option value="${escapeAttr(header)}"${CRM_MAPPING[field.key]===header?' selected':''}>${escapeAttr(header)}</option>`).join('')}</select></div>`).join('');
 }
+// One Yes/blank column per venue — an alternative to the single "venue" text column above, for
+// exports (like a consolidated multi-venue member list) that already carry one flag per venue
+// rather than one venue name per row. A row can end up linked to more than one venue this way.
+function autoMapCRMVenueColumns(headers){
+  const mapping={};
+  CRM_VENUE_TICKBOX_LIST.forEach(v=>{
+    const aliases=(CRM_VENUE_TICKBOX_COLUMNS[v.key]||[]).map(crmNorm);
+    mapping[v.key]=headers.find(header=>aliases.includes(crmNorm(header)))||'';
+  });
+  return mapping;
+}
+function renderCRMVenueMapping(){
+  const wrap=document.getElementById('crmVenueMappingWrap'),el=document.getElementById('crmVenueMapping');if(!wrap||!el)return;
+  wrap.style.display=CRM_HEADERS.length?'block':'none';
+  el.innerHTML=CRM_VENUE_TICKBOX_LIST.map(v=>`<div class="crm-map-field"><label>${escapeAttr(v.label)}</label><select data-crm-venue-map="${v.key}" onchange="CRM_VENUE_COLUMN_MAPPING[this.dataset.crmVenueMap]=this.value"><option value="">Not supplied</option>${CRM_HEADERS.map(header=>`<option value="${escapeAttr(header)}"${CRM_VENUE_COLUMN_MAPPING[v.key]===header?' selected':''}>${escapeAttr(header)}</option>`).join('')}</select></div>`).join('');
+}
+function crmTruthyFlag(value){
+  const clean=normaliseImportText(value);
+  if(!clean)return false;
+  return!['no','false','0','n','none','blank'].includes(clean);
+}
 async function readCRMImportFile(file){
-  CRM_ROWS=[];CRM_HEADERS=[];CRM_MAPPING={};CRM_PREFLIGHT=[];CRM_FILE_NAME='';
+  CRM_ROWS=[];CRM_HEADERS=[];CRM_MAPPING={};CRM_VENUE_COLUMN_MAPPING={};CRM_PREFLIGHT=[];CRM_FILE_NAME='';
   document.getElementById('crmPreflightBtn').disabled=true;document.getElementById('crmRunBtn').disabled=true;document.getElementById('crmExportHeldBtn').disabled=true;
-  if(!file){renderCRMMapping();return;}
+  if(!file){renderCRMMapping();renderCRMVenueMapping();return;}
   try{
     CRM_FILE_NAME=file.name;
     if(/\.csv$/i.test(file.name))CRM_ROWS=parseCsvText(await file.text());
@@ -11166,6 +11195,7 @@ async function readCRMImportFile(file){
     CRM_HEADERS=[...new Set(CRM_ROWS.flatMap(row=>Object.keys(row).filter(key=>key!=='_csvRow')))];
     CRM_ROWS=CRM_ROWS.filter(row=>Object.entries(row).some(([key,value])=>key!=='_csvRow'&&String(value).trim()));
     CRM_MAPPING=autoMapCRMHeaders(CRM_HEADERS);renderCRMMapping();
+    CRM_VENUE_COLUMN_MAPPING=autoMapCRMVenueColumns(CRM_HEADERS);renderCRMVenueMapping();
     document.getElementById('crmPreflightBtn').disabled=!CRM_ROWS.length;
     document.getElementById('crmImportFileInfo').textContent=`${CRM_FILE_NAME} · ${CRM_ROWS.length} rows · ${CRM_HEADERS.length} columns`;
     crmSetMessage(CRM_ROWS.length?`${CRM_ROWS.length} customer rows loaded. Confirm the mapping, source and venue, then run the duplicate check.`:(CRM_HEADERS.length?`Found ${CRM_HEADERS.length} columns (${CRM_HEADERS.slice(0,5).join(', ')}${CRM_HEADERS.length>5?'…':''}) but no data rows below the header. Check the file has customers in it below row 1.`:'Could not find any columns in this file — check it has a header row and at least one data row.'),CRM_ROWS.length?'ok':'err');
@@ -11214,7 +11244,14 @@ function crmRowData(row){
   if(!firstName&&!lastName&&fullName){const parts=fullName.split(/\s+/);firstName=parts.shift()||'';lastName=parts.join(' ');}
   const email=crmMapped(row,'email'),phone=crmMapped(row,'phone');
   const optInIp=crmMapped(row,'optInIp'),confirmIp=crmMapped(row,'confirmIp');
-  return{sourceId:crmMapped(row,'sourceId'),firstName,lastName,fullName:fullName||[firstName,lastName].filter(Boolean).join(' '),email,emailNorm:normaliseCRMEmail(email),phone,phoneNorm:normaliseCRMPhone(phone),dob:normaliseCRMDate(crmMapped(row,'dob')),venue:crmMapped(row,'venue')||document.getElementById('crmDefaultVenue')?.value||'',emailConsent:crmConsent(crmMapped(row,'emailConsent')),smsConsent:crmConsent(crmMapped(row,'smsConsent')),marketingEligibility:crmMapped(row,'marketingEligibility'),optInTime:normaliseCRMDateTime(crmMapped(row,'optInTime')),optInIp,optInIpQuality:crmIPQuality(optInIp),confirmTime:normaliseCRMDateTime(crmMapped(row,'confirmTime')),confirmIp,withdrawTime:normaliseCRMDateTime(crmMapped(row,'withdrawTime')),consentTextVersion:crmMapped(row,'consentTextVersion'),formIdOrUrl:crmMapped(row,'formIdOrUrl'),loyaltyTier:crmMapped(row,'loyaltyTier'),suburb:crmMapped(row,'suburb'),postcode:crmMapped(row,'postcode'),state:crmMapped(row,'state'),notes:crmMapped(row,'notes')};
+  // Venue-per-column mapping — a row can be linked to more than one venue this way. Only kicks in
+  // for venues that were actually mapped to a column; falls back to the single "venue" field below
+  // (via crmVenueTickboxField) wherever nothing was mapped here.
+  const venues=CRM_VENUE_TICKBOX_LIST.filter(v=>{
+    const header=CRM_VENUE_COLUMN_MAPPING[v.key];
+    return header&&crmTruthyFlag(row[header]);
+  }).map(v=>v.key);
+  return{sourceId:crmMapped(row,'sourceId'),firstName,lastName,fullName:fullName||[firstName,lastName].filter(Boolean).join(' '),email,emailNorm:normaliseCRMEmail(email),phone,phoneNorm:normaliseCRMPhone(phone),dob:normaliseCRMDate(crmMapped(row,'dob')),venue:crmMapped(row,'venue')||document.getElementById('crmDefaultVenue')?.value||'',venues,emailConsent:crmConsent(crmMapped(row,'emailConsent')),smsConsent:crmConsent(crmMapped(row,'smsConsent')),marketingEligibility:crmMapped(row,'marketingEligibility'),optInTime:normaliseCRMDateTime(crmMapped(row,'optInTime')),optInIp,optInIpQuality:crmIPQuality(optInIp),confirmTime:normaliseCRMDateTime(crmMapped(row,'confirmTime')),confirmIp,withdrawTime:normaliseCRMDateTime(crmMapped(row,'withdrawTime')),consentTextVersion:crmMapped(row,'consentTextVersion'),formIdOrUrl:crmMapped(row,'formIdOrUrl'),loyaltyTier:crmMapped(row,'loyaltyTier'),suburb:crmMapped(row,'suburb'),postcode:crmMapped(row,'postcode'),state:crmMapped(row,'state'),notes:crmMapped(row,'notes')};
 }
 
 function buildCRMPreviewPreflight(sourceSystem){
@@ -11328,6 +11365,16 @@ const CRM_VENUE_TICKBOX_COLUMNS={
   LeftBank:['left bank','the left bank'],
   MustangBar:['mustang bar','mustang']
 };
+// Same 5 venues, paired with a display label — drives the venue-per-column import mapping UI and
+// every place that needs to turn a tickbox column key back into a readable venue name.
+const CRM_VENUE_TICKBOX_LIST=[
+  {key:'LeftBank',label:'The Left Bank'},
+  {key:'Ravenswood',label:'The Ravenswood'},
+  {key:'WhitfordsBrewing',label:'Whitfords Brewing Co'},
+  {key:'HotelDarwin',label:'Hotel Darwin'},
+  {key:'MustangBar',label:'Mustang Bar'}
+];
+function crmVenueTickboxLabel(column){return CRM_VENUE_TICKBOX_LIST.find(v=>v.key===column)?.label||'';}
 // Only these two venues have their own opt-out column today (OPTOUT_RH / OPTOUT_LB) — confirmed
 // live, not assumed the other three venues have one too.
 const CRM_VENUE_OPTOUT_COLUMNS={Ravenswood:'OPTOUT_RH',LeftBank:'OPTOUT_LB'};
@@ -11340,12 +11387,16 @@ function crmVenueTickboxField(venueName){
   return'';
 }
 function crmCustomerValues(data,now){
-  const venueColumn=crmVenueTickboxField(data.venue);
-  const values={Title:data.fullName||data.email||data.phone||'Unnamed customer',FirstName:data.firstName,LastName:data.lastName,PrimaryEmail:data.email,EmailNormalized:data.emailNorm,PrimaryPhone:data.phone,PhoneNormalized:data.phoneNorm,DateOfBirth:data.dob,Suburb:data.suburb,Postcode:data.postcode,State:data.state,Country:'Australia',CustomerStatus:'Active',MatchStatus:'Confirmed',MarketingSuppressed:crmMarketingSuppressed(data),FirstSeen:now,LastSeen:now,LastChanged:now,PreferredVenue:data.venue,SourceCount:1,Notes:data.notes,OPTIN_TIME:data.optInTime,OPTIN_IP:data.optInIp,CONFIRM_TIME:data.confirmTime,CONFIRM_IP:data.confirmIp};
-  if(venueColumn)values[venueColumn]=true;
+  // Multi-venue columns win when the file mapped any; otherwise fall back to the single "venue" field.
+  const venueColumns=data.venues&&data.venues.length?data.venues:[crmVenueTickboxField(data.venue)].filter(Boolean);
+  const preferredVenue=data.venue||venueColumns.map(crmVenueTickboxLabel).filter(Boolean).join(', ');
+  const values={Title:data.fullName||data.email||data.phone||'Unnamed customer',FirstName:data.firstName,LastName:data.lastName,PrimaryEmail:data.email,EmailNormalized:data.emailNorm,PrimaryPhone:data.phone,PhoneNormalized:data.phoneNorm,DateOfBirth:data.dob,Suburb:data.suburb,Postcode:data.postcode,State:data.state,Country:'Australia',CustomerStatus:'Active',MatchStatus:'Confirmed',MarketingSuppressed:crmMarketingSuppressed(data),FirstSeen:now,LastSeen:now,LastChanged:now,PreferredVenue:preferredVenue,SourceCount:1,Notes:data.notes,OPTIN_TIME:data.optInTime,OPTIN_IP:data.optInIp,CONFIRM_TIME:data.confirmTime,CONFIRM_IP:data.confirmIp};
+  venueColumns.forEach(column=>{values[column]=true;});
   if(data.emailConsent==='Opted Out'){
-    const optOutColumn=CRM_VENUE_OPTOUT_COLUMNS[venueColumn];
-    if(optOutColumn)values[optOutColumn]=true;
+    venueColumns.forEach(column=>{
+      const optOutColumn=CRM_VENUE_OPTOUT_COLUMNS[column];
+      if(optOutColumn)values[optOutColumn]=true;
+    });
   }
   return values;
 }
@@ -11383,13 +11434,18 @@ async function runCRMImport(){
           const fillMap={FirstName:'firstName',LastName:'lastName',PrimaryEmail:'email',EmailNormalized:'emailNorm',PrimaryPhone:'phone',PhoneNormalized:'phoneNorm',DateOfBirth:'dob',Suburb:'suburb',Postcode:'postcode',State:'state',PreferredVenue:'venue',Notes:'notes',OPTIN_TIME:'optInTime',OPTIN_IP:'optInIp',CONFIRM_TIME:'confirmTime',CONFIRM_IP:'confirmIp'};
           for(const [field] of Object.entries(fillMap)){const oldValue=customer?.fields?.[crmFieldKey('customers',field)]||'';if(sourceValues[field]&&!oldValue){patchValues[field]=sourceValues[field];fieldChanges.push({field,oldValue,newValue:sourceValues[field]});}}
           if(sourceValues.MarketingSuppressed===true&&customer?.fields?.[crmFieldKey('customers','MarketingSuppressed')]!==true){patchValues.MarketingSuppressed=true;fieldChanges.push({field:'MarketingSuppressed',oldValue:false,newValue:true});}
-          // A returning customer can pick up a new venue on re-import — tick that venue's box even
-          // though it's a boolean (so "already false" doesn't block it, unlike the text fillMap above).
-          const venueColumn=crmVenueTickboxField(item.data.venue);
-          if(venueColumn&&customer?.fields?.[crmFieldKey('customers',venueColumn)]!==true){patchValues[venueColumn]=true;fieldChanges.push({field:venueColumn,oldValue:false,newValue:true});}
+          // A returning customer can pick up a new venue on re-import — tick every matched venue's
+          // box even though it's a boolean (so "already false" doesn't block it, unlike the text
+          // fillMap above), and a row can match more than one venue at once.
+          const venueColumns=item.data.venues&&item.data.venues.length?item.data.venues:[crmVenueTickboxField(item.data.venue)].filter(Boolean);
+          venueColumns.forEach(column=>{
+            if(customer?.fields?.[crmFieldKey('customers',column)]!==true){patchValues[column]=true;fieldChanges.push({field:column,oldValue:false,newValue:true});}
+          });
           if(item.data.emailConsent==='Opted Out'){
-            const optOutColumn=CRM_VENUE_OPTOUT_COLUMNS[venueColumn];
-            if(optOutColumn&&customer?.fields?.[crmFieldKey('customers',optOutColumn)]!==true){patchValues[optOutColumn]=true;fieldChanges.push({field:optOutColumn,oldValue:false,newValue:true});}
+            venueColumns.forEach(column=>{
+              const optOutColumn=CRM_VENUE_OPTOUT_COLUMNS[column];
+              if(optOutColumn&&customer?.fields?.[crmFieldKey('customers',optOutColumn)]!==true){patchValues[optOutColumn]=true;fieldChanges.push({field:optOutColumn,oldValue:false,newValue:true});}
+            });
           }
           patchValues.SourceCount=Math.max(1,Number(customer?.sourceCount||0)+(item.sourceKey&&!CRM_SOURCE_LINKS.some(link=>normaliseImportText(link.sourceKey)===normaliseImportText(item.sourceKey))?1:0));
           if(patchValues.SourceCount!==Number(customer?.sourceCount||0))fieldChanges.push({field:'SourceCount',oldValue:Number(customer?.sourceCount||0),newValue:patchValues.SourceCount});
@@ -11401,7 +11457,7 @@ async function runCRMImport(){
           sourceValues[crmLookupPayloadKey('sourceLinks','Customer')]=Number(customerId);sourceValues[crmLookupPayloadKey('sourceLinks','Import')]=Number(batch.id);
           if(existing){delete sourceValues.FirstSeen;await crmPatchItem('sourceLinks',existing.spId,crmPayload('sourceLinks',sourceValues),token);}else{const sourceFields=crmPayload('sourceLinks',sourceValues);const createdSource=await crmCreateItem('sourceLinks',sourceFields,token);CRM_SOURCE_LINKS.push({spId:String(createdSource.id),sourceKey:item.sourceKey,customerId,fields:createdSource.fields||sourceFields});linked++;await writeCRMChange(customerId,batch.id,sourceSystem,'Linked','Source record','',`${sourceSystem}: ${item.data.sourceId}`,token,item.matchMethod);}
         }
-        const venueResult=await upsertCRMVenueRelationship(customerId,item.data,sourceSystem,now,token);if(venueResult?.created)await writeCRMChange(customerId,batch.id,sourceSystem,'Linked','Venue','',item.data.venue,token,'New customer/venue relationship');
+        const venueResult=await upsertCRMVenueRelationship(customerId,item.data,sourceSystem,now,token);if(venueResult?.created)await writeCRMChange(customerId,batch.id,sourceSystem,'Linked','Venue','',(venueResult.venueNames||[]).join(', ')||item.data.venue,token,'New customer/venue relationship');
         await writeCRMConsentEvents(customerId,batch.id,item.data,sourceSystem,now,token);
       }catch(e){failed++;item.status='failed';item.reason=e.message;console.error(`CRM import row ${item.row._csvRow||'?'} failed:`,e);}
       renderCRMPreflight();
@@ -11425,11 +11481,19 @@ async function ensureCRMVenue(title,token){
   const created=await crmCreateItem('venues',crmPayload('venues',{Title:title,VenueCode:normaliseImportText(title).replace(/\s/g,'').slice(0,20).toUpperCase(),Active:true}),token);venue={spId:String(created.id),title};CRM_VENUES.push(venue);return venue;
 }
 async function upsertCRMVenueRelationship(customerId,data,sourceSystem,now,token){
-  if(!data.venue)return null;const venue=await ensureCRMVenue(data.venue,token);if(!venue)return null;
-  const existing=CRM_CUSTOMER_VENUES.find(item=>crmLookupId(item.fields,'customerVenues','Customer')===String(customerId)&&crmLookupId(item.fields,'customerVenues','Venue')===String(venue.spId));
-  const values={Title:`${customerId} · ${data.venue}`,FirstSeen:now,LastSeen:now,MembershipStatus:'Active',LoyaltyTier:data.loyaltyTier,SourceSystem:sourceSystem,Notes:''};values[crmLookupPayloadKey('customerVenues','Customer')]=Number(customerId);values[crmLookupPayloadKey('customerVenues','Venue')]=Number(venue.spId);
-  if(existing){delete values.FirstSeen;await crmPatchItem('customerVenues',existing.id,crmPayload('customerVenues',values),token);return{created:false,item:existing};}
-  const created=await crmCreateItem('customerVenues',crmPayload('customerVenues',values),token);CRM_CUSTOMER_VENUES.push(created);return{created:true,item:created};
+  // Multi-venue columns win when the file mapped any; otherwise fall back to the single "venue"
+  // field — one relationship record gets created/updated per venue the row is actually linked to.
+  const venueNames=data.venues&&data.venues.length?data.venues.map(crmVenueTickboxLabel).filter(Boolean):(data.venue?[data.venue]:[]);
+  if(!venueNames.length)return null;
+  let anyCreated=false;
+  for(const venueTitle of venueNames){
+    const venue=await ensureCRMVenue(venueTitle,token);if(!venue)continue;
+    const existing=CRM_CUSTOMER_VENUES.find(item=>crmLookupId(item.fields,'customerVenues','Customer')===String(customerId)&&crmLookupId(item.fields,'customerVenues','Venue')===String(venue.spId));
+    const values={Title:`${customerId} · ${venueTitle}`,FirstSeen:now,LastSeen:now,MembershipStatus:'Active',LoyaltyTier:data.loyaltyTier,SourceSystem:sourceSystem,Notes:''};values[crmLookupPayloadKey('customerVenues','Customer')]=Number(customerId);values[crmLookupPayloadKey('customerVenues','Venue')]=Number(venue.spId);
+    if(existing){delete values.FirstSeen;await crmPatchItem('customerVenues',existing.id,crmPayload('customerVenues',values),token);}
+    else{const created=await crmCreateItem('customerVenues',crmPayload('customerVenues',values),token);CRM_CUSTOMER_VENUES.push(created);anyCreated=true;}
+  }
+  return{created:anyCreated,venueNames};
 }
 async function writeCRMConsentEvents(customerId,importId,data,sourceSystem,now,token){
   for(const [channel,sourceStatus] of [['Email',data.emailConsent],['SMS',data.smsConsent]]){
