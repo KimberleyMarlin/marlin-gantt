@@ -11037,9 +11037,19 @@ async function crmFetchListItemsPageById(listUrl,cursor,pageSize,token){
   // Must filter/order on fields/ID (the real, numeric SharePoint ID column) — not the bare "id"
   // resource property, which Graph treats as a STRING. String comparison breaks the moment IDs go
   // multi-digit (e.g. "10" doesn't sort after "9" as text), silently dropping/skipping rows.
-  const url=`${listUrl}/items?expand=fields&$filter=fields/ID gt ${cursor}&$orderby=fields/ID&$top=${pageSize}`;
-  const res=await fetch(url,{headers:{Authorization:'Bearer '+token}});
-  if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+  const buildUrl=cursorLiteral=>`${listUrl}/items?expand=fields&$filter=fields/ID gt ${cursorLiteral}&$orderby=fields/ID&$top=${pageSize}`;
+  let res=await fetch(buildUrl(cursor),{headers:{Authorization:'Bearer '+token}});
+  if(!res.ok){
+    let text=await res.text();
+    // On a list with no items yet, Graph can't infer fields/ID's type from any existing row and
+    // sometimes treats it as a string, rejecting a numeric cursor with an Edm.String/Edm.Int32
+    // mismatch. Retry once with the cursor quoted as a string to match.
+    if(/Edm\.String/i.test(text)&&/Edm\.Int32/i.test(text)){
+      res=await fetch(buildUrl(`'${cursor}'`),{headers:{Authorization:'Bearer '+token}});
+      if(!res.ok)text=await res.text();
+    }
+    if(!res.ok)throw new Error('HTTP '+res.status+': '+text);
+  }
   const data=await res.json();
   return Array.isArray(data.value)?data.value:[];
 }
