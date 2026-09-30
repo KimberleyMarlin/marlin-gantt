@@ -9573,7 +9573,10 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'personalTasks',name:'ParentTaskId',displayName:'Parent Task Id',type:'number',purpose:'Links Kimberley’s private subtask to its parent task.'},
   {listKey:'personalTasks',name:'LinkedActivityId',displayName:'Linked Activity Id',type:'number',purpose:'Optionally links a private task to one Activity.'},
   {listKey:'personalTasks',name:'ProjectId',displayName:'Project Id',type:'number',purpose:'Optionally links a private task to one Project.'},
-  {listKey:'personalTasks',name:'Sequence',displayName:'Sequence',type:'number',purpose:'Persists Kimberley’s drag-and-drop task order.'}
+  {listKey:'personalTasks',name:'Sequence',displayName:'Sequence',type:'number',purpose:'Persists Kimberley’s drag-and-drop task order.'},
+  {listKey:'campaigns',name:'WebStatus',displayName:'Web Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Didier’s web build status.'},
+  {listKey:'campaigns',name:'LoadedStatus',displayName:'Loaded Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Amelia’s Loaded Rewards build status.'},
+  {listKey:'campaigns',name:'SocialStatus',displayName:'Social Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Marketing’s social build status.'}
 ];
 let SCHEMA_TOOL_COLUMNS={};
 let _schemaShowReadyColumns=false; // ready (already-created) rows stay collapsed by default — only "Missing" needs attention
@@ -9725,7 +9728,7 @@ async function createKnownSchemaGaps(){
   let created=0;const failures=[];
   for(const gap of missing){
     const listId=LIST_IDS[SCHEMA_TOOL_LISTS[gap.listKey].listIdKey];
-    const def=schemaColumnDefinition(gap.type,gap.name,gap.displayName);
+    const def=schemaColumnDefinition(gap.type,gap.name,gap.displayName,gap.choices||'');
     const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/columns`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(def)});
     if(res.ok)created++;else failures.push(`${SCHEMA_TOOL_LISTS[gap.listKey].label}.${gap.name}: HTTP ${res.status} ${await res.text()}`);
   }
