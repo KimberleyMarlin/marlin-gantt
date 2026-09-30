@@ -11048,10 +11048,28 @@ async function crmFetchListItemsPageById(listUrl,cursor,pageSize,token){
       res=await fetch(buildUrl(`'${cursor}'`),{headers:{Authorization:'Bearer '+token}});
       if(!res.ok)text=await res.text();
     }
-    if(!res.ok)throw new Error('HTTP '+res.status+': '+text);
+    if(!res.ok){
+      const err=new Error('HTTP '+res.status+': '+text);
+      err.idFilterUnsupported=/Edm\.String|field name is not recognized/i.test(text);
+      throw err;
+    }
   }
   const data=await res.json();
   return Array.isArray(data.value)?data.value:[];
+}
+async function crmFetchItemsPlain(listUrl,token){
+  // Fallback for lists where filtering/ordering on fields/ID itself is rejected by Graph (seen on
+  // empty or newly-created lists). No indexed cursor, just the default @odata.nextLink walk — fine
+  // for a small/empty list, which is the only case this is used for.
+  const items=[];let url=`${listUrl}/items?expand=fields&$top=2000`;
+  while(url){
+    const res=await fetch(url,{headers:{Authorization:'Bearer '+token}});
+    if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+    const data=await res.json();
+    if(Array.isArray(data.value))items.push(...data.value);
+    url=data['@odata.nextLink']||'';
+  }
+  return items;
 }
 async function crmFetchItems(listKey,token){
   const url=crmGraphListUrl(listKey);if(!url)return[];
@@ -11063,7 +11081,13 @@ async function crmFetchItems(listKey,token){
   const items=[];let cursor=0;const pageSize=2000;
   try{
     while(true){
-      const page=await crmFetchListItemsPageById(url,cursor,pageSize,token);
+      let page;
+      try{
+        page=await crmFetchListItemsPageById(url,cursor,pageSize,token);
+      }catch(e){
+        if(cursor===0&&e.idFilterUnsupported)return await crmFetchItemsPlain(url,token);
+        throw e;
+      }
       if(!page.length)break;
       items.push(...page);
       if(page.length<pageSize)break;
