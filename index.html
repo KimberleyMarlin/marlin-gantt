@@ -676,6 +676,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <button class="sb-item" data-p="campaigns" onclick="nav(this)"><span class="ico">◎</span>Activities<span class="sb-badge" id="aBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="artwork" onclick="nav(this)"><span class="ico">▧</span>Artwork</button>
     <button class="sb-item" data-p="drivesearch" onclick="nav(this)"><span class="ico">📷</span>Drive Search</button>
+    <button class="sb-item" data-p="phototagging" onclick="nav(this)"><span class="ico">🏷️</span>Photo Tagging</button>
     <button class="sb-item" data-p="ideas" onclick="nav(this)"><span class="ico">💡</span>Idea Bank</button>
     <div class="sb-sec">Deliver</div>
     <button class="sb-item" data-p="approvals" onclick="nav(this)"><span class="ico">✓</span>Submissions</button>
@@ -1401,13 +1402,14 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <!-- PERSONAL TASKS — separate private SharePoint list, Kimberley only -->
   <div class="panel" id="p-personaltasks">
     <div class="ph">
-      <div><div class="ph-eye">Kimberley Only</div><div class="ph-title">Personal <em>Tasks</em></div><div class="ph-sub">Private work and reminders, stored separately from the whole-team Work Register.</div></div>
+      <div><div class="ph-eye">Kimberley Only</div><div class="ph-title">Personal <em>Tasks</em></div><div class="ph-sub">Private work and reminders. A Task is one thing to do; link it to a Project when it's part of a larger body of work — Projects are the containers, Tasks are what's inside them.</div></div>
       <div class="ph-right"><button class="tb-btn p" onclick="openAddPersonalTask()">+ New Personal Task</button><button class="tb-btn" onclick="loadPersonalTasks()">↻</button></div>
     </div>
     <div class="ca">
       <div class="privacy-banner"><span style="font-size:18px">🔒</span><div><strong>Separate private list</strong><br>This panel never reads from the shared Team Work list. Access must also be restricted to Kimberley in SharePoint.</div></div>
       <div class="stats" id="personalTaskStats" style="margin-bottom:12px"></div>
-      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:11px;color:var(--text3);font-weight:600">Workstream</label><select id="personalTaskWorkstreamFilter" class="form-select" style="width:auto;min-width:180px" onchange="renderPersonalTasks()"><option value="">All</option></select><label style="font-size:11px;color:var(--text3);font-weight:600">Sort by</label><select id="personalTaskSort" class="form-select" style="width:auto;min-width:150px" onchange="renderPersonalTasks()"><option value="due">Due date</option><option value="priority">Priority</option><option value="title">Title (A–Z)</option><option value="created">Recently added</option><option value="custom">My order (drag to reorder)</option></select></div>
+      <div style="margin-bottom:10px"><input class="form-input" id="personalTaskSearch" type="search" placeholder="Search your tasks by title, notes, project or activity…" oninput="renderPersonalTasks()" style="max-width:420px"></div>
+      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:11px;color:var(--text3);font-weight:600">Project</label><select id="personalTaskProjectFilter" class="form-select" style="width:auto;min-width:180px" onchange="renderPersonalTasks()"><option value="">All</option></select><label style="font-size:11px;color:var(--text3);font-weight:600">Sort by</label><select id="personalTaskSort" class="form-select" style="width:auto;min-width:150px" onchange="renderPersonalTasks()"><option value="due">Due date</option><option value="priority">Priority</option><option value="title">Title (A–Z)</option><option value="created">Recently added</option><option value="custom">My order (drag to reorder)</option></select></div>
       <div id="personalTaskBulkBar" style="display:none;margin-bottom:10px;padding:8px 12px;background:var(--surface);border:1px solid var(--accent);border-radius:var(--r);display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span id="personalTaskBulkCount" style="font-size:12px;font-weight:700;color:var(--text)"></span>
         <select id="ptBulkPriority" class="form-select" style="width:auto;min-width:130px"><option value="">Set priority…</option><option value="__none__">No priority</option><option value="Critical">Critical</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select>
@@ -1594,6 +1596,28 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     </div>
   </div>
 
+  <!-- PHOTO TAGGING -->
+  <div class="panel" id="p-phototagging">
+    <div class="ph"><div><div class="ph-eye">Digital Media library</div><div class="ph-title">Photo <em>Tagging</em></div><div class="ph-sub">Browse folders and AI-tag photos, or search across every tag already generated — runs straight from the browser, no Power Automate involved.</div></div></div>
+    <div class="ca">
+      <div id="ptNotConfigured" style="display:none;background:var(--gold-bg);border:1px solid #ead9a3;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:11.5px;color:var(--text2);line-height:1.5"><strong>Photo Tagging isn't connected yet.</strong> This needs a Google Cloud Vision API key set in the code (GOOGLE_VISION_API_KEY) before it can be used.</div>
+      <div id="ptWrap" style="display:none">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <input class="form-input" id="ptSearchInput" type="search" placeholder="Search every tagged photo (e.g. “beer”)…" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')ptSearch()">
+          <button class="btn btn-p" onclick="ptSearch()">Search all</button>
+          <button class="btn btn-s" onclick="ptGoToRoot()">⌂ Library root</button>
+        </div>
+        <div id="ptBreadcrumb" style="font-size:11.5px;color:var(--text3);margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+          <button class="btn btn-s" id="ptTagAllBtn" onclick="ptTagAllUntaggedInFolder()" style="display:none">Tag all untagged in this folder</button>
+          <div id="ptStatus" class="form-msg"></div>
+        </div>
+        <div id="ptFolders" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px"></div>
+        <div id="ptImages" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- APPROVALS -->
   <div class="panel" id="p-approvals">
     <div class="ph"><div><div class="ph-eye">Workflow</div><div class="ph-title"><em>Submissions</em></div></div>
@@ -1763,7 +1787,10 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <label class="form-label">What are you submitting? <span class="req">*</span></label>
         <select class="form-select" id="submitCategory" onchange="pickSubmitPath(this.value)">
           <option value="">Select a category…</option>
-          <option value="activity">📅 Activity, Event or Offer</option>
+          <option value="activity:Beer of the Month">🍺 Beer of the Month</option>
+          <option value="activity:Wine of the Month">🍷 Wine of the Month</option>
+          <option value="activity:Feature Beer">🍺 Feature Beer</option>
+          <option value="activity">📅 Other Activity, Event or Offer</option>
           <option value="job">🔧 Maintenance / Update</option>
           <option value="idea">💡 Idea</option>
         </select>
@@ -2200,6 +2227,15 @@ const CFG={clientId:'b7e650cb-f871-4884-b5ba-3f55c1d8d20b',authority:'https://lo
 // with this page's URL under Authorized JavaScript origins) — leave blank to keep the feature hidden.
 const GOOGLE_CLIENT_ID='';
 const GOOGLE_DRIVE_SCOPE='https://www.googleapis.com/auth/drive.readonly';
+
+// Photo Tagging — calls Google Cloud Vision's label-detection API straight from the browser (an
+// API key is enough, no OAuth), then writes the result back to the AITags column on the Digital
+// Media library via Graph. No Power Automate / premium connector involved anywhere in this path.
+// Paste the API key from Google Cloud Console → APIs & Services → Credentials — leave blank to
+// keep the feature hidden. The Digital Media library's drive ID is fixed below; it doesn't change
+// unless the library itself is deleted and recreated.
+const GOOGLE_VISION_API_KEY='';
+const DIGITAL_MEDIA_DRIVE_ID='b!nNEymQHH-USapvbmTivj6MUjOnOvRKdGt3tKLEHQKgW6fFNcyMOoR51GxWrNifrc';
 const SP_SITE='marlingroupaus.sharepoint.com,9932d19c-c701-44f9-9aa6-f6e64e2be3e8';
 const LISTS={campaigns:'269191b2-47c7-4c0c-94bb-52c25ecb467f'};
 
@@ -2391,6 +2427,8 @@ const SUBMISSION_NOTIFY_TO='Kimberley';
 // Activity submission templates — each one pre-fills the fields that don't usually change for that
 // type of activity. Add a new entry here any time a recurring format needs its own template; the
 // dropdown on the Submit form picks these up automatically, no other changes needed.
+// Kept in sync by hand with the hardcoded "activity:<name>" options on #submitCategory —
+// add a template here AND add its option there, or it won't appear in the main dropdown.
 const ACTIVITY_TEMPLATES={
   'Beer of the Month':{
     title:'Beer of the Month',
@@ -2399,6 +2437,16 @@ const ACTIVITY_TEMPLATES={
     isLoaded:true,
     appRequired:'Yes',
     appHeading:'Beer of the Month',
+    channels:['fChanLoaded','fChanInVenue'],
+    assets:['fAssetLoaded','fAssetInVenue'],
+  },
+  'Wine of the Month':{
+    title:'Wine of the Month',
+    activityType:'Promotion / Offer',
+    stream:'Loaded Rewards',
+    isLoaded:true,
+    appRequired:'Yes',
+    appHeading:'Wine of the Month',
     channels:['fChanLoaded','fChanInVenue'],
     assets:['fAssetLoaded','fAssetInVenue'],
   },
@@ -5498,7 +5546,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -5554,7 +5602,7 @@ function showPanel(id){
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
   // Activities consolidation: Pipeline is a sub-view of 'campaigns' now — hide it when navigating elsewhere.
   if(id!=='campaigns'){const pipePanel=document.getElementById('p-pipeline');if(pipePanel)pipePanel.style.display='none';}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{},drivesearch:renderDriveSearch};
+  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
   // Skip this for 'campaigns' while its Pipeline sub-view is showing — that block just hid the
@@ -5641,6 +5689,197 @@ async function searchGoogleDrive(){
   }catch(e){
     resultsEl.innerHTML=`<div style="padding:20px;text-align:center;color:var(--red)">Search failed: ${escapeAttr(e.message)}</div>`;
   }
+}
+
+// ═══════════════════════════════════════
+// PHOTO TAGGING — Google Vision called straight from the browser against the Digital Media
+// library. No Power Automate: fetch the image via Graph, send it to Vision with the API key,
+// write the labels back to the AITags column via Graph. Same shape as every other Graph call
+// in this app, just with one extra fetch() to Google in the middle.
+// ═══════════════════════════════════════
+const PT_DRIVE_BASE=()=>`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/drives/${DIGITAL_MEDIA_DRIVE_ID}`;
+let ptFolderStack=[{id:'root',name:'Digital Media library'}];
+let ptCurrentItems=[];          // folders + images in the current browse folder
+let ptFullIndex=null;           // cached flat list of every image, built on first search
+let ptMode='browse';            // 'browse' | 'search'
+
+function ptIsImage(name){return/\.(jpe?g|png|gif|heic|bmp|webp)$/i.test(name||'');}
+
+function renderPhotoTagging(){
+  const notConfigured=document.getElementById('ptNotConfigured');
+  const wrap=document.getElementById('ptWrap');
+  if(!notConfigured||!wrap)return;
+  if(!GOOGLE_VISION_API_KEY||!DIGITAL_MEDIA_DRIVE_ID){notConfigured.style.display='';wrap.style.display='none';return;}
+  notConfigured.style.display='none';wrap.style.display='';
+  if(!ptCurrentItems.length&&ptMode==='browse')ptLoadFolder();
+}
+
+function ptRenderBreadcrumb(){
+  const el=document.getElementById('ptBreadcrumb');if(!el)return;
+  if(ptMode==='search'){el.textContent='Search results across the whole library';return;}
+  el.innerHTML=ptFolderStack.map((f,i)=>i===ptFolderStack.length-1
+    ?`<strong>${escapeAttr(f.name)}</strong>`
+    :`<span style="cursor:pointer;color:var(--accent)" onclick="ptJumpTo(${i})">${escapeAttr(f.name)}</span> / `).join('');
+}
+
+function ptJumpTo(index){ptFolderStack=ptFolderStack.slice(0,index+1);ptLoadFolder();}
+function ptGoToRoot(){ptMode='browse';ptFolderStack=[{id:'root',name:'Digital Media library'}];ptLoadFolder();}
+
+async function ptLoadFolder(){
+  ptMode='browse';
+  const statusEl=document.getElementById('ptStatus');
+  const foldersEl=document.getElementById('ptFolders');
+  const imagesEl=document.getElementById('ptImages');
+  const tagAllBtn=document.getElementById('ptTagAllBtn');
+  ptRenderBreadcrumb();
+  if(statusEl){statusEl.textContent='Loading…';statusEl.className='form-msg';}
+  foldersEl.innerHTML='';imagesEl.innerHTML='';
+  try{
+    const token=await getToken();
+    const here=ptFolderStack[ptFolderStack.length-1];
+    const url=here.id==='root'
+      ?`${PT_DRIVE_BASE()}/root/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`
+      :`${PT_DRIVE_BASE()}/items/${here.id}/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`;
+    ptCurrentItems=await fetchGraphItems(url,token);
+    if(statusEl)statusEl.textContent='';
+    const folders=ptCurrentItems.filter(it=>it.folder);
+    const images=ptCurrentItems.filter(it=>!it.folder&&ptIsImage(it.name));
+    foldersEl.innerHTML=folders.map(f=>`
+      <div class="card" style="padding:12px;cursor:pointer;text-align:center" onclick="ptFolderStack.push({id:'${f.id}',name:${JSON.stringify(f.name)}});ptLoadFolder()">
+        <div style="font-size:28px;margin-bottom:4px">📁</div>
+        <div style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeAttr(f.name)}">${escapeAttr(f.name)}</div>
+        <div style="font-size:10px;color:var(--text3)">${f.folder.childCount||0} items</div>
+      </div>`).join('');
+    imagesEl.innerHTML=images.map(ptImageTile).join('');
+    const anyUntagged=images.some(it=>!ptTagsOf(it));
+    if(tagAllBtn)tagAllBtn.style.display=anyUntagged?'':'none';
+  }catch(e){
+    if(statusEl){statusEl.textContent='Failed to load: '+e.message;statusEl.className='form-msg err';}
+  }
+}
+
+function ptTagsOf(item){return item?.listItem?.fields?.AITags||'';}
+
+function ptImageTile(item){
+  const tags=ptTagsOf(item);
+  const thumb=item.thumbnails?.[0]?.medium?.url||item.thumbnails?.[0]?.small?.url||'';
+  const link=item.webUrl||'';
+  return`<div class="card" id="pt-item-${item.id}" style="padding:8px">
+    <a href="${link}" target="_blank" style="display:block;aspect-ratio:1;background:var(--surface2) url('${thumb.replace(/'/g,"%27")}') center/cover;border-radius:6px;margin-bottom:6px"></a>
+    <div style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px" title="${escapeAttr(item.name)}">${escapeAttr(item.name)}</div>
+    <div class="pt-tags" style="font-size:10px;color:${tags?'var(--text3)':'var(--gold)'};min-height:26px;margin-bottom:6px;line-height:1.3">${tags?escapeAttr(tags):'Not tagged yet'}</div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-s" style="flex:1;font-size:10px;padding:4px" onclick="ptTagOne('${item.id}')">${tags?'Re-tag':'Tag with AI'}</button>
+      <button class="btn btn-s" style="font-size:10px;padding:4px" onclick="navigator.clipboard.writeText('${link.replace(/'/g,"\\'")}');this.textContent='✓';setTimeout(()=>this.textContent='🔗',1200)">🔗</button>
+    </div>
+  </div>`;
+}
+
+function ptArrayBufferToBase64(buffer){
+  let binary='';const bytes=new Uint8Array(buffer);
+  for(let i=0;i<bytes.byteLength;i++)binary+=String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+async function ptTagOne(itemId){
+  const tile=document.getElementById('pt-item-'+itemId);
+  const btn=tile?.querySelector('button');
+  if(btn){btn.disabled=true;btn.textContent='Tagging…';}
+  try{
+    const token=await getToken(true);
+    const imgRes=await fetch(`${PT_DRIVE_BASE()}/items/${itemId}/content`,{headers:{Authorization:'Bearer '+token}});
+    if(!imgRes.ok)throw new Error('Could not fetch image (HTTP '+imgRes.status+')');
+    const buffer=await imgRes.arrayBuffer();
+    const base64=ptArrayBufferToBase64(buffer);
+    const visionRes=await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API_KEY}`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({requests:[{image:{content:base64},features:[{type:'LABEL_DETECTION',maxResults:10}]}]})
+    });
+    if(!visionRes.ok)throw new Error('Vision API error (HTTP '+visionRes.status+')');
+    const visionData=await visionRes.json();
+    const labels=visionData.responses?.[0]?.labelAnnotations||[];
+    if(visionData.responses?.[0]?.error)throw new Error(visionData.responses[0].error.message||'Vision API returned an error');
+    const tagsString=labels.map(l=>l.description).join(', ');
+    const patchRes=await fetch(`${PT_DRIVE_BASE()}/items/${itemId}/listItem/fields`,{
+      method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({AITags:tagsString})
+    });
+    if(!patchRes.ok)throw new Error('Could not save tags back to SharePoint (HTTP '+patchRes.status+')');
+    // Reflect the new tags in memory so re-rendering (e.g. after a folder reload) stays accurate.
+    const inMemory=ptCurrentItems.find(it=>it.id===itemId);
+    if(inMemory){inMemory.listItem=inMemory.listItem||{};inMemory.listItem.fields=inMemory.listItem.fields||{};inMemory.listItem.fields.AITags=tagsString;}
+    if(tile){
+      const tagsEl=tile.querySelector('.pt-tags');
+      if(tagsEl){tagsEl.textContent=tagsString||'No labels detected';tagsEl.style.color='var(--text3)';}
+    }
+    if(btn){btn.disabled=false;btn.textContent='Re-tag';}
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='Retry';}
+    const statusEl=document.getElementById('ptStatus');
+    if(statusEl){statusEl.textContent='Tagging failed for one image: '+e.message;statusEl.className='form-msg err';}
+  }
+}
+
+async function ptTagAllUntaggedInFolder(){
+  const statusEl=document.getElementById('ptStatus');
+  const untagged=ptCurrentItems.filter(it=>!it.folder&&ptIsImage(it.name)&&!ptTagsOf(it));
+  if(!untagged.length)return;
+  const btn=document.getElementById('ptTagAllBtn');if(btn)btn.disabled=true;
+  for(let i=0;i<untagged.length;i++){
+    if(statusEl){statusEl.textContent=`Tagging ${i+1} of ${untagged.length}…`;statusEl.className='form-msg';}
+    await ptTagOne(untagged[i].id);
+  }
+  if(statusEl){statusEl.textContent=`Done — tagged ${untagged.length} image${untagged.length!==1?'s':''}.`;statusEl.className='form-msg ok';}
+  if(btn){btn.disabled=false;btn.style.display='none';}
+}
+
+async function ptBuildFullIndex(onProgress){
+  const token=await getToken();
+  const index=[];
+  const queue=[{id:'root',path:'Digital Media library'}];
+  let scanned=0;
+  while(queue.length){
+    const folder=queue.shift();
+    const url=folder.id==='root'
+      ?`${PT_DRIVE_BASE()}/root/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`
+      :`${PT_DRIVE_BASE()}/items/${folder.id}/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`;
+    const items=await fetchGraphItems(url,token);
+    scanned++;
+    if(onProgress)onProgress(scanned,index.length);
+    items.forEach(it=>{
+      if(it.folder)queue.push({id:it.id,path:folder.path+'/'+it.name});
+      else if(ptIsImage(it.name))index.push(it);
+    });
+  }
+  return index;
+}
+
+async function ptSearch(){
+  const q=(document.getElementById('ptSearchInput').value||'').trim().toLowerCase();
+  const statusEl=document.getElementById('ptStatus');
+  const foldersEl=document.getElementById('ptFolders');
+  const imagesEl=document.getElementById('ptImages');
+  const tagAllBtn=document.getElementById('ptTagAllBtn');
+  ptMode='search';
+  ptRenderBreadcrumb();
+  foldersEl.innerHTML='';
+  if(tagAllBtn)tagAllBtn.style.display='none';
+  if(!ptFullIndex){
+    imagesEl.innerHTML='';
+    if(statusEl){statusEl.textContent='Scanning the whole library the first time \u2014 this can take a minute, later searches are instant…';statusEl.className='form-msg';}
+    try{
+      ptFullIndex=await ptBuildFullIndex((scanned,found)=>{
+        if(statusEl)statusEl.textContent=`Scanning\u2026 ${scanned} folders checked, ${found} images found so far.`;
+      });
+    }catch(e){
+      if(statusEl){statusEl.textContent='Scan failed: '+e.message;statusEl.className='form-msg err';}
+      return;
+    }
+  }
+  const matches=q?ptFullIndex.filter(it=>it.name.toLowerCase().includes(q)||ptTagsOf(it).toLowerCase().includes(q)):ptFullIndex;
+  if(statusEl){statusEl.textContent=`${matches.length} image${matches.length!==1?'s':''} match${matches.length===1?'es':''}.`;statusEl.className='form-msg ok';}
+  imagesEl.innerHTML=matches.length?matches.map(ptImageTile).join(''):'<div style="padding:20px;text-align:center;color:var(--text3)">No matches.</div>';
+  ptCurrentItems=matches;
 }
 
 // ═══════════════════════════════════════
@@ -9351,16 +9590,33 @@ function renderPersonalTasks(){
   const done=PERSONAL_TASKS.filter(task=>task.status==='Done');
   const badge=document.getElementById('personalTaskBadge');if(badge){badge.textContent=open.length;badge.style.display=open.length?'':'none';}
   stats.innerHTML=`<div class="stat"><div class="stat-n">${open.length}</div><div class="stat-l">Open</div></div><div class="stat ${overdue.length?'hi':''}"><div class="stat-n">${overdue.length}</div><div class="stat-l">Overdue</div></div><div class="stat"><div class="stat-n">${done.length}</div><div class="stat-l">Completed</div></div>`;
-  const workstreamSel=document.getElementById('personalTaskWorkstreamFilter');
-  if(workstreamSel){
-    const counts={};PERSONAL_TASKS.forEach(task=>{const w=task.workstream||'Uncategorised';counts[w]=(counts[w]||0)+1;});
-    const workstreams=Object.keys(counts).sort((a,b)=>a.localeCompare(b));
-    const current=workstreamSel.value;
-    workstreamSel.innerHTML='<option value="">All ('+PERSONAL_TASKS.length+')</option>'+workstreams.map(w=>`<option value="${escapeAttr(w)}"${w===current?' selected':''}>${escapeAttr(w)} (${counts[w]})</option>`).join('');
-    if(workstreams.includes(current))workstreamSel.value=current;
+  // Project is the one axis a task is grouped by — the old free-text "Workstream" tag had no way to
+  // set it anywhere in the UI (dead data from before Project existed), so it's retired here in favour
+  // of the real Project link.
+  const projectSel=document.getElementById('personalTaskProjectFilter');
+  if(projectSel){
+    const counts={};PERSONAL_TASKS.forEach(task=>{
+      const p=task.projectId?PROJECTS.find(pr=>String(pr.id)===String(task.projectId)):null;
+      const key=p?p.title:'No project';
+      counts[key]=(counts[key]||0)+1;
+    });
+    const names=Object.keys(counts).sort((a,b)=>a.localeCompare(b));
+    const current=projectSel.value;
+    projectSel.innerHTML='<option value="">All ('+PERSONAL_TASKS.length+')</option>'+names.map(n=>`<option value="${escapeAttr(n)}"${n===current?' selected':''}>${escapeAttr(n)} (${counts[n]})</option>`).join('');
+    if(names.includes(current))projectSel.value=current;
   }
-  const activeWorkstream=workstreamSel?.value||'';
-  const filtered=activeWorkstream?PERSONAL_TASKS.filter(task=>(task.workstream||'Uncategorised')===activeWorkstream):PERSONAL_TASKS;
+  const activeProject=projectSel?.value||'';
+  const byProject=activeProject?PERSONAL_TASKS.filter(task=>{
+    const p=task.projectId?PROJECTS.find(pr=>String(pr.id)===String(task.projectId)):null;
+    return(p?p.title:'No project')===activeProject;
+  }):PERSONAL_TASKS;
+  const query=(document.getElementById('personalTaskSearch')?.value||'').trim().toLowerCase();
+  const filtered=query?byProject.filter(task=>{
+    const linkedEvent=task.linkedActivityId?EVENTS.find(e=>String(e.id)===String(task.linkedActivityId)):null;
+    const linkedProject=task.projectId?PROJECTS.find(p=>String(p.id)===String(task.projectId)):null;
+    const haystack=`${task.title||''} ${task.notes||''} ${linkedEvent?.title||task.linkedCampaign||''} ${linkedProject?.title||''}`.toLowerCase();
+    return haystack.includes(query);
+  }):byProject;
   const sortMode=document.getElementById('personalTaskSort')?.value||'due';
   const priorityRank={Critical:0,High:1,Medium:2,Low:3};
   const sortComparators={
@@ -9395,7 +9651,7 @@ function renderPersonalTasks(){
     // (see ptDrop) rather than requiring that mode to be picked first, which wasn't obvious.
     const dragAttrs=`draggable="true" ondragstart="ptDragStart(event,'${task.id}')" ondragover="ptDragOver(event)" ondragleave="ptDragLeave(event)" ondrop="ptDrop(event,'${task.id}')" ondragend="ptDragEnd(event)"`;
     const dragHandle='<span class="pt-drag-handle" title="Drag to reorder">⋮⋮</span>';
-    let row=`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${task.workstream?`<span class="tag t-gr" style="text-transform:none">${escapeAttr(task.workstream)}</span>`:''}${linkedHtml}${projectHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right">${task.priority?`<span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority)}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
+    let row=`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${linkedHtml}${projectHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right">${task.priority?`<span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority)}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
     if(!isSubtask&&subtasks.length&&expanded){
       row+=`<div class="pt-subtasks">${subtasks.map(child=>{shownChildIds.add(child.id);return personalTaskRowHtml(child,true);}).join('')}</div>`;
     } else if(!isSubtask&&subtasks.length){
@@ -10647,25 +10903,27 @@ function pickSubmitPath(path){
     alert('Bulk import is restricted to Head Office approvers.');
     path='';
   }
+  // The dropdown's activity templates carry their name after a colon, e.g. "activity:Beer of the
+  // Month" — basePath drives which form/list this goes to, templateKey (if any) picks the preset.
+  const [basePath,templateKey]=(path||'').split(':');
   // Keep the category dropdown in sync (a "← Back" button inside a form calls pickSubmitPath(''))
   const catSel=document.getElementById('submitCategory');
-  if(catSel&&['activity','idea','job'].includes(path))catSel.value=path;
-  else if(catSel&&!path)catSel.value='';
+  if(catSel)catSel.value=path||'';
   const catHelp=document.getElementById('submitCategoryHelp');
   if(catHelp){
     catHelp.textContent={
-      activity:'Live music, quiz night, ticketed event, promotion, Loaded offer, functions campaign — creates a Marketing Activity.',
+      activity:templateKey?`Prefills the usual basics for "${templateKey}" — just add the date, venue and any details. Creates a Marketing Activity.`:'Live music, quiz night, ticketed event, promotion, Loaded offer, functions campaign — creates a Marketing Activity.',
       job:'Menu update, website fix, print request, social post, design job, anything that needs to be done — creates a Task / Job Ticket.',
       idea:'Submit your ideas and wildest dreams — we’ll discuss options at the next promo meeting — goes to the Idea Bank.'
-    }[path]||'';
+    }[basePath]||'';
   }
-  document.getElementById('submitFormActivity').style.display=path==='activity'?'':'none';
-  document.getElementById('submitFormIdea').style.display=path==='idea'?'':'none';
-  document.getElementById('submitFormJob').style.display=path==='job'?'':'none';
-  document.getElementById('submitFormImport').style.display=path==='import'?'':'none';
+  document.getElementById('submitFormActivity').style.display=basePath==='activity'?'':'none';
+  document.getElementById('submitFormIdea').style.display=basePath==='idea'?'':'none';
+  document.getElementById('submitFormJob').style.display=basePath==='job'?'':'none';
+  document.getElementById('submitFormImport').style.display=basePath==='import'?'':'none';
   // Auto-populate Submitted By with the signed-in user (writes to Assignee — the same "Owner/person"
   // field the item popup uses — kept separate from the department "Owner" dropdown on this form)
-  if(path==='activity'){
+  if(basePath==='activity'){
     const subEl=document.getElementById('fSubmittedBy');
     if(subEl)subEl.textContent=currentUser?.name||currentUserEmail||'';
     const tplSel=document.getElementById('fTemplate');
@@ -10683,6 +10941,12 @@ function pickSubmitPath(path){
     }
     renderSubmitPeopleResults(document.getElementById('fPeopleSearch')?.value||'');
     populateCampaignLookupSelects();
+    // Picked a named template straight from the main dropdown (not the in-form "Use a Template"
+    // one) — apply it immediately so the form opens already prefilled.
+    if(templateKey&&tplSel&&ACTIVITY_TEMPLATES[templateKey]){
+      tplSel.value=templateKey;
+      applyActivityTemplate();
+    }
   }
   // Populate job assignee
   if(path==='job'){
