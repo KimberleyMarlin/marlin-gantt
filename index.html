@@ -676,6 +676,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <button class="sb-item" data-p="campaigns" onclick="nav(this)"><span class="ico">◎</span>Activities<span class="sb-badge" id="aBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="artwork" onclick="nav(this)"><span class="ico">▧</span>Artwork</button>
     <button class="sb-item" data-p="drivesearch" onclick="nav(this)"><span class="ico">📷</span>Drive Search</button>
+    <button class="sb-item" data-p="phototagging" onclick="nav(this)"><span class="ico">🏷️</span>Photo Tagging</button>
     <button class="sb-item" data-p="ideas" onclick="nav(this)"><span class="ico">💡</span>Idea Bank</button>
     <div class="sb-sec">Deliver</div>
     <button class="sb-item" data-p="approvals" onclick="nav(this)"><span class="ico">✓</span>Submissions</button>
@@ -1594,6 +1595,28 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     </div>
   </div>
 
+  <!-- PHOTO TAGGING -->
+  <div class="panel" id="p-phototagging">
+    <div class="ph"><div><div class="ph-eye">Digital Media library</div><div class="ph-title">Photo <em>Tagging</em></div><div class="ph-sub">Browse folders and AI-tag photos, or search across every tag already generated — runs straight from the browser, no Power Automate involved.</div></div></div>
+    <div class="ca">
+      <div id="ptNotConfigured" style="display:none;background:var(--gold-bg);border:1px solid #ead9a3;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:11.5px;color:var(--text2);line-height:1.5"><strong>Photo Tagging isn't connected yet.</strong> This needs a Google Cloud Vision API key set in the code (GOOGLE_VISION_API_KEY) before it can be used.</div>
+      <div id="ptWrap" style="display:none">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <input class="form-input" id="ptSearchInput" type="search" placeholder="Search every tagged photo (e.g. “beer”)…" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')ptSearch()">
+          <button class="btn btn-p" onclick="ptSearch()">Search all</button>
+          <button class="btn btn-s" onclick="ptGoToRoot()">⌂ Library root</button>
+        </div>
+        <div id="ptBreadcrumb" style="font-size:11.5px;color:var(--text3);margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+          <button class="btn btn-s" id="ptTagAllBtn" onclick="ptTagAllUntaggedInFolder()" style="display:none">Tag all untagged in this folder</button>
+          <div id="ptStatus" class="form-msg"></div>
+        </div>
+        <div id="ptFolders" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px"></div>
+        <div id="ptImages" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- APPROVALS -->
   <div class="panel" id="p-approvals">
     <div class="ph"><div><div class="ph-eye">Workflow</div><div class="ph-title"><em>Submissions</em></div></div>
@@ -2203,6 +2226,15 @@ const CFG={clientId:'b7e650cb-f871-4884-b5ba-3f55c1d8d20b',authority:'https://lo
 // with this page's URL under Authorized JavaScript origins) — leave blank to keep the feature hidden.
 const GOOGLE_CLIENT_ID='';
 const GOOGLE_DRIVE_SCOPE='https://www.googleapis.com/auth/drive.readonly';
+
+// Photo Tagging — calls Google Cloud Vision's label-detection API straight from the browser (an
+// API key is enough, no OAuth), then writes the result back to the AITags column on the Digital
+// Media library via Graph. No Power Automate / premium connector involved anywhere in this path.
+// Paste the API key from Google Cloud Console → APIs & Services → Credentials — leave blank to
+// keep the feature hidden. The Digital Media library's drive ID is fixed below; it doesn't change
+// unless the library itself is deleted and recreated.
+const GOOGLE_VISION_API_KEY='';
+const DIGITAL_MEDIA_DRIVE_ID='b!nNEymQHH-USapvbmTivj6MUjOnOvRKdGt3tKLEHQKgW6fFNcyMOoR51GxWrNifrc';
 const SP_SITE='marlingroupaus.sharepoint.com,9932d19c-c701-44f9-9aa6-f6e64e2be3e8';
 const LISTS={campaigns:'269191b2-47c7-4c0c-94bb-52c25ecb467f'};
 
@@ -5513,7 +5545,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -5569,7 +5601,7 @@ function showPanel(id){
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
   // Activities consolidation: Pipeline is a sub-view of 'campaigns' now — hide it when navigating elsewhere.
   if(id!=='campaigns'){const pipePanel=document.getElementById('p-pipeline');if(pipePanel)pipePanel.style.display='none';}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{},drivesearch:renderDriveSearch};
+  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
   // Skip this for 'campaigns' while its Pipeline sub-view is showing — that block just hid the
@@ -5656,6 +5688,197 @@ async function searchGoogleDrive(){
   }catch(e){
     resultsEl.innerHTML=`<div style="padding:20px;text-align:center;color:var(--red)">Search failed: ${escapeAttr(e.message)}</div>`;
   }
+}
+
+// ═══════════════════════════════════════
+// PHOTO TAGGING — Google Vision called straight from the browser against the Digital Media
+// library. No Power Automate: fetch the image via Graph, send it to Vision with the API key,
+// write the labels back to the AITags column via Graph. Same shape as every other Graph call
+// in this app, just with one extra fetch() to Google in the middle.
+// ═══════════════════════════════════════
+const PT_DRIVE_BASE=()=>`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/drives/${DIGITAL_MEDIA_DRIVE_ID}`;
+let ptFolderStack=[{id:'root',name:'Digital Media library'}];
+let ptCurrentItems=[];          // folders + images in the current browse folder
+let ptFullIndex=null;           // cached flat list of every image, built on first search
+let ptMode='browse';            // 'browse' | 'search'
+
+function ptIsImage(name){return/\.(jpe?g|png|gif|heic|bmp|webp)$/i.test(name||'');}
+
+function renderPhotoTagging(){
+  const notConfigured=document.getElementById('ptNotConfigured');
+  const wrap=document.getElementById('ptWrap');
+  if(!notConfigured||!wrap)return;
+  if(!GOOGLE_VISION_API_KEY||!DIGITAL_MEDIA_DRIVE_ID){notConfigured.style.display='';wrap.style.display='none';return;}
+  notConfigured.style.display='none';wrap.style.display='';
+  if(!ptCurrentItems.length&&ptMode==='browse')ptLoadFolder();
+}
+
+function ptRenderBreadcrumb(){
+  const el=document.getElementById('ptBreadcrumb');if(!el)return;
+  if(ptMode==='search'){el.textContent='Search results across the whole library';return;}
+  el.innerHTML=ptFolderStack.map((f,i)=>i===ptFolderStack.length-1
+    ?`<strong>${escapeAttr(f.name)}</strong>`
+    :`<span style="cursor:pointer;color:var(--accent)" onclick="ptJumpTo(${i})">${escapeAttr(f.name)}</span> / `).join('');
+}
+
+function ptJumpTo(index){ptFolderStack=ptFolderStack.slice(0,index+1);ptLoadFolder();}
+function ptGoToRoot(){ptMode='browse';ptFolderStack=[{id:'root',name:'Digital Media library'}];ptLoadFolder();}
+
+async function ptLoadFolder(){
+  ptMode='browse';
+  const statusEl=document.getElementById('ptStatus');
+  const foldersEl=document.getElementById('ptFolders');
+  const imagesEl=document.getElementById('ptImages');
+  const tagAllBtn=document.getElementById('ptTagAllBtn');
+  ptRenderBreadcrumb();
+  if(statusEl){statusEl.textContent='Loading…';statusEl.className='form-msg';}
+  foldersEl.innerHTML='';imagesEl.innerHTML='';
+  try{
+    const token=await getToken();
+    const here=ptFolderStack[ptFolderStack.length-1];
+    const url=here.id==='root'
+      ?`${PT_DRIVE_BASE()}/root/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`
+      :`${PT_DRIVE_BASE()}/items/${here.id}/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`;
+    ptCurrentItems=await fetchGraphItems(url,token);
+    if(statusEl)statusEl.textContent='';
+    const folders=ptCurrentItems.filter(it=>it.folder);
+    const images=ptCurrentItems.filter(it=>!it.folder&&ptIsImage(it.name));
+    foldersEl.innerHTML=folders.map(f=>`
+      <div class="card" style="padding:12px;cursor:pointer;text-align:center" onclick="ptFolderStack.push({id:'${f.id}',name:${JSON.stringify(f.name)}});ptLoadFolder()">
+        <div style="font-size:28px;margin-bottom:4px">📁</div>
+        <div style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeAttr(f.name)}">${escapeAttr(f.name)}</div>
+        <div style="font-size:10px;color:var(--text3)">${f.folder.childCount||0} items</div>
+      </div>`).join('');
+    imagesEl.innerHTML=images.map(ptImageTile).join('');
+    const anyUntagged=images.some(it=>!ptTagsOf(it));
+    if(tagAllBtn)tagAllBtn.style.display=anyUntagged?'':'none';
+  }catch(e){
+    if(statusEl){statusEl.textContent='Failed to load: '+e.message;statusEl.className='form-msg err';}
+  }
+}
+
+function ptTagsOf(item){return item?.listItem?.fields?.AITags||'';}
+
+function ptImageTile(item){
+  const tags=ptTagsOf(item);
+  const thumb=item.thumbnails?.[0]?.medium?.url||item.thumbnails?.[0]?.small?.url||'';
+  const link=item.webUrl||'';
+  return`<div class="card" id="pt-item-${item.id}" style="padding:8px">
+    <a href="${link}" target="_blank" style="display:block;aspect-ratio:1;background:var(--surface2) url('${thumb.replace(/'/g,"%27")}') center/cover;border-radius:6px;margin-bottom:6px"></a>
+    <div style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px" title="${escapeAttr(item.name)}">${escapeAttr(item.name)}</div>
+    <div class="pt-tags" style="font-size:10px;color:${tags?'var(--text3)':'var(--gold)'};min-height:26px;margin-bottom:6px;line-height:1.3">${tags?escapeAttr(tags):'Not tagged yet'}</div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-s" style="flex:1;font-size:10px;padding:4px" onclick="ptTagOne('${item.id}')">${tags?'Re-tag':'Tag with AI'}</button>
+      <button class="btn btn-s" style="font-size:10px;padding:4px" onclick="navigator.clipboard.writeText('${link.replace(/'/g,"\\'")}');this.textContent='✓';setTimeout(()=>this.textContent='🔗',1200)">🔗</button>
+    </div>
+  </div>`;
+}
+
+function ptArrayBufferToBase64(buffer){
+  let binary='';const bytes=new Uint8Array(buffer);
+  for(let i=0;i<bytes.byteLength;i++)binary+=String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+async function ptTagOne(itemId){
+  const tile=document.getElementById('pt-item-'+itemId);
+  const btn=tile?.querySelector('button');
+  if(btn){btn.disabled=true;btn.textContent='Tagging…';}
+  try{
+    const token=await getToken(true);
+    const imgRes=await fetch(`${PT_DRIVE_BASE()}/items/${itemId}/content`,{headers:{Authorization:'Bearer '+token}});
+    if(!imgRes.ok)throw new Error('Could not fetch image (HTTP '+imgRes.status+')');
+    const buffer=await imgRes.arrayBuffer();
+    const base64=ptArrayBufferToBase64(buffer);
+    const visionRes=await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API_KEY}`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({requests:[{image:{content:base64},features:[{type:'LABEL_DETECTION',maxResults:10}]}]})
+    });
+    if(!visionRes.ok)throw new Error('Vision API error (HTTP '+visionRes.status+')');
+    const visionData=await visionRes.json();
+    const labels=visionData.responses?.[0]?.labelAnnotations||[];
+    if(visionData.responses?.[0]?.error)throw new Error(visionData.responses[0].error.message||'Vision API returned an error');
+    const tagsString=labels.map(l=>l.description).join(', ');
+    const patchRes=await fetch(`${PT_DRIVE_BASE()}/items/${itemId}/listItem/fields`,{
+      method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({AITags:tagsString})
+    });
+    if(!patchRes.ok)throw new Error('Could not save tags back to SharePoint (HTTP '+patchRes.status+')');
+    // Reflect the new tags in memory so re-rendering (e.g. after a folder reload) stays accurate.
+    const inMemory=ptCurrentItems.find(it=>it.id===itemId);
+    if(inMemory){inMemory.listItem=inMemory.listItem||{};inMemory.listItem.fields=inMemory.listItem.fields||{};inMemory.listItem.fields.AITags=tagsString;}
+    if(tile){
+      const tagsEl=tile.querySelector('.pt-tags');
+      if(tagsEl){tagsEl.textContent=tagsString||'No labels detected';tagsEl.style.color='var(--text3)';}
+    }
+    if(btn){btn.disabled=false;btn.textContent='Re-tag';}
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='Retry';}
+    const statusEl=document.getElementById('ptStatus');
+    if(statusEl){statusEl.textContent='Tagging failed for one image: '+e.message;statusEl.className='form-msg err';}
+  }
+}
+
+async function ptTagAllUntaggedInFolder(){
+  const statusEl=document.getElementById('ptStatus');
+  const untagged=ptCurrentItems.filter(it=>!it.folder&&ptIsImage(it.name)&&!ptTagsOf(it));
+  if(!untagged.length)return;
+  const btn=document.getElementById('ptTagAllBtn');if(btn)btn.disabled=true;
+  for(let i=0;i<untagged.length;i++){
+    if(statusEl){statusEl.textContent=`Tagging ${i+1} of ${untagged.length}…`;statusEl.className='form-msg';}
+    await ptTagOne(untagged[i].id);
+  }
+  if(statusEl){statusEl.textContent=`Done — tagged ${untagged.length} image${untagged.length!==1?'s':''}.`;statusEl.className='form-msg ok';}
+  if(btn){btn.disabled=false;btn.style.display='none';}
+}
+
+async function ptBuildFullIndex(onProgress){
+  const token=await getToken();
+  const index=[];
+  const queue=[{id:'root',path:'Digital Media library'}];
+  let scanned=0;
+  while(queue.length){
+    const folder=queue.shift();
+    const url=folder.id==='root'
+      ?`${PT_DRIVE_BASE()}/root/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`
+      :`${PT_DRIVE_BASE()}/items/${folder.id}/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`;
+    const items=await fetchGraphItems(url,token);
+    scanned++;
+    if(onProgress)onProgress(scanned,index.length);
+    items.forEach(it=>{
+      if(it.folder)queue.push({id:it.id,path:folder.path+'/'+it.name});
+      else if(ptIsImage(it.name))index.push(it);
+    });
+  }
+  return index;
+}
+
+async function ptSearch(){
+  const q=(document.getElementById('ptSearchInput').value||'').trim().toLowerCase();
+  const statusEl=document.getElementById('ptStatus');
+  const foldersEl=document.getElementById('ptFolders');
+  const imagesEl=document.getElementById('ptImages');
+  const tagAllBtn=document.getElementById('ptTagAllBtn');
+  ptMode='search';
+  ptRenderBreadcrumb();
+  foldersEl.innerHTML='';
+  if(tagAllBtn)tagAllBtn.style.display='none';
+  if(!ptFullIndex){
+    imagesEl.innerHTML='';
+    if(statusEl){statusEl.textContent='Scanning the whole library the first time \u2014 this can take a minute, later searches are instant…';statusEl.className='form-msg';}
+    try{
+      ptFullIndex=await ptBuildFullIndex((scanned,found)=>{
+        if(statusEl)statusEl.textContent=`Scanning\u2026 ${scanned} folders checked, ${found} images found so far.`;
+      });
+    }catch(e){
+      if(statusEl){statusEl.textContent='Scan failed: '+e.message;statusEl.className='form-msg err';}
+      return;
+    }
+  }
+  const matches=q?ptFullIndex.filter(it=>it.name.toLowerCase().includes(q)||ptTagsOf(it).toLowerCase().includes(q)):ptFullIndex;
+  if(statusEl){statusEl.textContent=`${matches.length} image${matches.length!==1?'s':''} match${matches.length===1?'es':''}.`;statusEl.className='form-msg ok';}
+  imagesEl.innerHTML=matches.length?matches.map(ptImageTile).join(''):'<div style="padding:20px;text-align:center;color:var(--text3)">No matches.</div>';
+  ptCurrentItems=matches;
 }
 
 // ═══════════════════════════════════════
