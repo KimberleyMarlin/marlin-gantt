@@ -1402,14 +1402,14 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <!-- PERSONAL TASKS — separate private SharePoint list, Kimberley only -->
   <div class="panel" id="p-personaltasks">
     <div class="ph">
-      <div><div class="ph-eye">Kimberley Only</div><div class="ph-title">Personal <em>Tasks</em></div><div class="ph-sub">Private work and reminders, stored separately from the whole-team Work Register.</div></div>
+      <div><div class="ph-eye">Kimberley Only</div><div class="ph-title">Personal <em>Tasks</em></div><div class="ph-sub">Private work and reminders. A Task is one thing to do; link it to a Project when it's part of a larger body of work — Projects are the containers, Tasks are what's inside them.</div></div>
       <div class="ph-right"><button class="tb-btn p" onclick="openAddPersonalTask()">+ New Personal Task</button><button class="tb-btn" onclick="loadPersonalTasks()">↻</button></div>
     </div>
     <div class="ca">
       <div class="privacy-banner"><span style="font-size:18px">🔒</span><div><strong>Separate private list</strong><br>This panel never reads from the shared Team Work list. Access must also be restricted to Kimberley in SharePoint.</div></div>
       <div class="stats" id="personalTaskStats" style="margin-bottom:12px"></div>
       <div style="margin-bottom:10px"><input class="form-input" id="personalTaskSearch" type="search" placeholder="Search your tasks by title, notes, project or activity…" oninput="renderPersonalTasks()" style="max-width:420px"></div>
-      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:11px;color:var(--text3);font-weight:600">Workstream</label><select id="personalTaskWorkstreamFilter" class="form-select" style="width:auto;min-width:180px" onchange="renderPersonalTasks()"><option value="">All</option></select><label style="font-size:11px;color:var(--text3);font-weight:600">Sort by</label><select id="personalTaskSort" class="form-select" style="width:auto;min-width:150px" onchange="renderPersonalTasks()"><option value="due">Due date</option><option value="priority">Priority</option><option value="title">Title (A–Z)</option><option value="created">Recently added</option><option value="custom">My order (drag to reorder)</option></select></div>
+      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:11px;color:var(--text3);font-weight:600">Project</label><select id="personalTaskProjectFilter" class="form-select" style="width:auto;min-width:180px" onchange="renderPersonalTasks()"><option value="">All</option></select><label style="font-size:11px;color:var(--text3);font-weight:600">Sort by</label><select id="personalTaskSort" class="form-select" style="width:auto;min-width:150px" onchange="renderPersonalTasks()"><option value="due">Due date</option><option value="priority">Priority</option><option value="title">Title (A–Z)</option><option value="created">Recently added</option><option value="custom">My order (drag to reorder)</option></select></div>
       <div id="personalTaskBulkBar" style="display:none;margin-bottom:10px;padding:8px 12px;background:var(--surface);border:1px solid var(--accent);border-radius:var(--r);display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span id="personalTaskBulkCount" style="font-size:12px;font-weight:700;color:var(--text)"></span>
         <select id="ptBulkPriority" class="form-select" style="width:auto;min-width:130px"><option value="">Set priority…</option><option value="__none__">No priority</option><option value="Critical">Critical</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select>
@@ -9590,23 +9590,33 @@ function renderPersonalTasks(){
   const done=PERSONAL_TASKS.filter(task=>task.status==='Done');
   const badge=document.getElementById('personalTaskBadge');if(badge){badge.textContent=open.length;badge.style.display=open.length?'':'none';}
   stats.innerHTML=`<div class="stat"><div class="stat-n">${open.length}</div><div class="stat-l">Open</div></div><div class="stat ${overdue.length?'hi':''}"><div class="stat-n">${overdue.length}</div><div class="stat-l">Overdue</div></div><div class="stat"><div class="stat-n">${done.length}</div><div class="stat-l">Completed</div></div>`;
-  const workstreamSel=document.getElementById('personalTaskWorkstreamFilter');
-  if(workstreamSel){
-    const counts={};PERSONAL_TASKS.forEach(task=>{const w=task.workstream||'Uncategorised';counts[w]=(counts[w]||0)+1;});
-    const workstreams=Object.keys(counts).sort((a,b)=>a.localeCompare(b));
-    const current=workstreamSel.value;
-    workstreamSel.innerHTML='<option value="">All ('+PERSONAL_TASKS.length+')</option>'+workstreams.map(w=>`<option value="${escapeAttr(w)}"${w===current?' selected':''}>${escapeAttr(w)} (${counts[w]})</option>`).join('');
-    if(workstreams.includes(current))workstreamSel.value=current;
+  // Project is the one axis a task is grouped by — the old free-text "Workstream" tag had no way to
+  // set it anywhere in the UI (dead data from before Project existed), so it's retired here in favour
+  // of the real Project link.
+  const projectSel=document.getElementById('personalTaskProjectFilter');
+  if(projectSel){
+    const counts={};PERSONAL_TASKS.forEach(task=>{
+      const p=task.projectId?PROJECTS.find(pr=>String(pr.id)===String(task.projectId)):null;
+      const key=p?p.title:'No project';
+      counts[key]=(counts[key]||0)+1;
+    });
+    const names=Object.keys(counts).sort((a,b)=>a.localeCompare(b));
+    const current=projectSel.value;
+    projectSel.innerHTML='<option value="">All ('+PERSONAL_TASKS.length+')</option>'+names.map(n=>`<option value="${escapeAttr(n)}"${n===current?' selected':''}>${escapeAttr(n)} (${counts[n]})</option>`).join('');
+    if(names.includes(current))projectSel.value=current;
   }
-  const activeWorkstream=workstreamSel?.value||'';
-  const byWorkstream=activeWorkstream?PERSONAL_TASKS.filter(task=>(task.workstream||'Uncategorised')===activeWorkstream):PERSONAL_TASKS;
+  const activeProject=projectSel?.value||'';
+  const byProject=activeProject?PERSONAL_TASKS.filter(task=>{
+    const p=task.projectId?PROJECTS.find(pr=>String(pr.id)===String(task.projectId)):null;
+    return(p?p.title:'No project')===activeProject;
+  }):PERSONAL_TASKS;
   const query=(document.getElementById('personalTaskSearch')?.value||'').trim().toLowerCase();
-  const filtered=query?byWorkstream.filter(task=>{
+  const filtered=query?byProject.filter(task=>{
     const linkedEvent=task.linkedActivityId?EVENTS.find(e=>String(e.id)===String(task.linkedActivityId)):null;
     const linkedProject=task.projectId?PROJECTS.find(p=>String(p.id)===String(task.projectId)):null;
-    const haystack=`${task.title||''} ${task.notes||''} ${task.workstream||''} ${linkedEvent?.title||task.linkedCampaign||''} ${linkedProject?.title||''}`.toLowerCase();
+    const haystack=`${task.title||''} ${task.notes||''} ${linkedEvent?.title||task.linkedCampaign||''} ${linkedProject?.title||''}`.toLowerCase();
     return haystack.includes(query);
-  }):byWorkstream;
+  }):byProject;
   const sortMode=document.getElementById('personalTaskSort')?.value||'due';
   const priorityRank={Critical:0,High:1,Medium:2,Low:3};
   const sortComparators={
@@ -9641,7 +9651,7 @@ function renderPersonalTasks(){
     // (see ptDrop) rather than requiring that mode to be picked first, which wasn't obvious.
     const dragAttrs=`draggable="true" ondragstart="ptDragStart(event,'${task.id}')" ondragover="ptDragOver(event)" ondragleave="ptDragLeave(event)" ondrop="ptDrop(event,'${task.id}')" ondragend="ptDragEnd(event)"`;
     const dragHandle='<span class="pt-drag-handle" title="Drag to reorder">⋮⋮</span>';
-    let row=`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${task.workstream?`<span class="tag t-gr" style="text-transform:none">${escapeAttr(task.workstream)}</span>`:''}${linkedHtml}${projectHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right">${task.priority?`<span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority)}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
+    let row=`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${linkedHtml}${projectHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right">${task.priority?`<span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority)}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
     if(!isSubtask&&subtasks.length&&expanded){
       row+=`<div class="pt-subtasks">${subtasks.map(child=>{shownChildIds.add(child.id);return personalTaskRowHtml(child,true);}).join('')}</div>`;
     } else if(!isSubtask&&subtasks.length){
