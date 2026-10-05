@@ -1408,6 +1408,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="ca">
       <div class="privacy-banner"><span style="font-size:18px">🔒</span><div><strong>Separate private list</strong><br>This panel never reads from the shared Team Work list. Access must also be restricted to Kimberley in SharePoint.</div></div>
       <div class="stats" id="personalTaskStats" style="margin-bottom:12px"></div>
+      <div style="margin-bottom:10px"><input class="form-input" id="personalTaskSearch" type="search" placeholder="Search your tasks by title, notes, project or activity…" oninput="renderPersonalTasks()" style="max-width:420px"></div>
       <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:11px;color:var(--text3);font-weight:600">Workstream</label><select id="personalTaskWorkstreamFilter" class="form-select" style="width:auto;min-width:180px" onchange="renderPersonalTasks()"><option value="">All</option></select><label style="font-size:11px;color:var(--text3);font-weight:600">Sort by</label><select id="personalTaskSort" class="form-select" style="width:auto;min-width:150px" onchange="renderPersonalTasks()"><option value="due">Due date</option><option value="priority">Priority</option><option value="title">Title (A–Z)</option><option value="created">Recently added</option><option value="custom">My order (drag to reorder)</option></select></div>
       <div id="personalTaskBulkBar" style="display:none;margin-bottom:10px;padding:8px 12px;background:var(--surface);border:1px solid var(--accent);border-radius:var(--r);display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span id="personalTaskBulkCount" style="font-size:12px;font-weight:700;color:var(--text)"></span>
@@ -9598,7 +9599,14 @@ function renderPersonalTasks(){
     if(workstreams.includes(current))workstreamSel.value=current;
   }
   const activeWorkstream=workstreamSel?.value||'';
-  const filtered=activeWorkstream?PERSONAL_TASKS.filter(task=>(task.workstream||'Uncategorised')===activeWorkstream):PERSONAL_TASKS;
+  const byWorkstream=activeWorkstream?PERSONAL_TASKS.filter(task=>(task.workstream||'Uncategorised')===activeWorkstream):PERSONAL_TASKS;
+  const query=(document.getElementById('personalTaskSearch')?.value||'').trim().toLowerCase();
+  const filtered=query?byWorkstream.filter(task=>{
+    const linkedEvent=task.linkedActivityId?EVENTS.find(e=>String(e.id)===String(task.linkedActivityId)):null;
+    const linkedProject=task.projectId?PROJECTS.find(p=>String(p.id)===String(task.projectId)):null;
+    const haystack=`${task.title||''} ${task.notes||''} ${task.workstream||''} ${linkedEvent?.title||task.linkedCampaign||''} ${linkedProject?.title||''}`.toLowerCase();
+    return haystack.includes(query);
+  }):byWorkstream;
   const sortMode=document.getElementById('personalTaskSort')?.value||'due';
   const priorityRank={Critical:0,High:1,Medium:2,Low:3};
   const sortComparators={
