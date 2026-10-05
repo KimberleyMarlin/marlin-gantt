@@ -9732,8 +9732,10 @@ async function savePersonalTask(){
   };
   let newSequence=existing?.sequence;
   if(!existing){
-    const siblings=PERSONAL_TASKS.filter(t=>String(t.parentId||'')===String(parentId||''));
-    newSequence=siblings.reduce((max,t)=>Math.max(max,t.sequence||0),0)+10;
+    // Unique across every task, not just siblings under the same parent — two different parent
+    // groups each starting their own count at 10 produces the same number twice, which SharePoint
+    // rejects if the Sequence column enforces unique values.
+    newSequence=PERSONAL_TASKS.reduce((max,t)=>Math.max(max,t.sequence||0),0)+10;
     fields.Sequence=newSequence;
   }
   try{
@@ -9844,8 +9846,11 @@ async function ptDrop(e,targetId){
   const toIdx=siblings.findIndex(t=>String(t.id)===String(targetId));
   if(fromIdx===-1||toIdx===-1)return;
   siblings.splice(toIdx,0,siblings.splice(fromIdx,1)[0]);
+  // Numbered above the current global max, not restarted at 10 for this group — two sibling groups
+  // both renumbering to 10,20,30 collide if the Sequence column enforces unique values.
+  const base=PERSONAL_TASKS.reduce((max,t)=>Math.max(max,t.sequence||0),0);
   const changed=[];
-  siblings.forEach((t,i)=>{const newSeq=(i+1)*10;if(t.sequence!==newSeq){changed.push({task:t,oldSequence:t.sequence});t.sequence=newSeq;}});
+  siblings.forEach((t,i)=>{const newSeq=base+(i+1)*10;if(t.sequence!==newSeq){changed.push({task:t,oldSequence:t.sequence});t.sequence=newSeq;}});
   // A drop is only meaningful as a manual reorder, so switch the sort dropdown to "My order" itself
   // rather than requiring it to be picked first — otherwise the drop looks like it silently failed
   // (the list would just get recomputed back into due/priority/etc. order on the next render).
