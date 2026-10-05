@@ -10,9 +10,11 @@
   function load(src,cb,fb){var s=document.createElement('script');s.src=src;s.onload=function(){if(cb)cb();};s.onerror=function(){if(fb)load(fb,cb,null);};document.head.appendChild(s);}
   window._msalReady=false;
   window._xlsxReady=false;
+  window._gsiReady=false;
   load('https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js',function(){window._msalReady=true;},'https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js');
   load('https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js',null,null);
   load('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',function(){window._xlsxReady=true;},'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+  load('https://accounts.google.com/gsi/client',function(){window._gsiReady=true;},null);
 })();
 </script>
 <style>
@@ -673,6 +675,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <button class="sb-item active" data-p="calendar" onclick="nav(this)"><span class="ico">◻</span>Calendar</button>
     <button class="sb-item" data-p="campaigns" onclick="nav(this)"><span class="ico">◎</span>Activities<span class="sb-badge" id="aBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="artwork" onclick="nav(this)"><span class="ico">▧</span>Artwork</button>
+    <button class="sb-item" data-p="drivesearch" onclick="nav(this)"><span class="ico">📷</span>Drive Search</button>
     <button class="sb-item" data-p="ideas" onclick="nav(this)"><span class="ico">💡</span>Idea Bank</button>
     <div class="sb-sec">Deliver</div>
     <button class="sb-item" data-p="approvals" onclick="nav(this)"><span class="ico">✓</span>Submissions</button>
@@ -1571,6 +1574,26 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     </div>
   </div>
 
+  <!-- GOOGLE DRIVE SEARCH -->
+  <div class="panel" id="p-drivesearch">
+    <div class="ph"><div><div class="ph-eye">Your own Drive</div><div class="ph-title">Drive <em>Search</em></div><div class="ph-sub">Find a photo in your Google Drive and grab its link — separate sign-in from your Microsoft login, only you can see your results.</div></div></div>
+    <div class="ca">
+      <div id="driveSearchNotConfigured" style="display:none;background:var(--gold-bg);border:1px solid #ead9a3;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:11.5px;color:var(--text2);line-height:1.5"><strong>Google Drive isn't connected yet.</strong> This needs a Google Cloud OAuth Client ID set in the code (GOOGLE_CLIENT_ID) before it can be used.</div>
+      <div id="driveSearchConnectWrap" style="display:none">
+        <button class="btn btn-p" id="driveConnectBtn" onclick="connectGoogleDrive()">Connect Google Drive</button>
+        <div id="driveSearchMsg" class="form-msg"></div>
+      </div>
+      <div id="driveSearchWrap" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input class="form-input" id="driveSearchInput" type="search" placeholder="Search your Drive by file name…" style="flex:1" onkeydown="if(event.key==='Enter')searchGoogleDrive()">
+          <button class="btn btn-p" onclick="searchGoogleDrive()">Search</button>
+          <button class="btn btn-s" onclick="disconnectGoogleDrive()">Disconnect</button>
+        </div>
+        <div id="driveSearchResults" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- APPROVALS -->
   <div class="panel" id="p-approvals">
     <div class="ph"><div><div class="ph-eye">Workflow</div><div class="ph-title"><em>Submissions</em></div></div>
@@ -2186,6 +2209,12 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 // CONFIG
 // ═══════════════════════════════════════
 const CFG={clientId:'b7e650cb-f871-4884-b5ba-3f55c1d8d20b',authority:'https://login.microsoftonline.com/cafae2a4-6902-432a-9d2f-914bf980f181',redirectUri:window.location.origin+window.location.pathname};
+// Google Drive search — separate sign-in from the Microsoft one above, per-person (each user who
+// wants to search their own Drive connects it themselves). Needs a Google Cloud OAuth Client ID
+// (Google Cloud Console → APIs & Services → Credentials → Create OAuth client ID → Web application,
+// with this page's URL under Authorized JavaScript origins) — leave blank to keep the feature hidden.
+const GOOGLE_CLIENT_ID='';
+const GOOGLE_DRIVE_SCOPE='https://www.googleapis.com/auth/drive.readonly';
 const SP_SITE='marlingroupaus.sharepoint.com,9932d19c-c701-44f9-9aa6-f6e64e2be3e8';
 const LISTS={campaigns:'269191b2-47c7-4c0c-94bb-52c25ecb467f'};
 
@@ -5483,7 +5512,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -5539,7 +5568,7 @@ function showPanel(id){
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
   // Activities consolidation: Pipeline is a sub-view of 'campaigns' now — hide it when navigating elsewhere.
   if(id!=='campaigns'){const pipePanel=document.getElementById('p-pipeline');if(pipePanel)pipePanel.style.display='none';}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{}};
+  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{},drivesearch:renderDriveSearch};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
   // Skip this for 'campaigns' while its Pipeline sub-view is showing — that block just hid the
@@ -5547,6 +5576,86 @@ function showPanel(id){
   if(p&&!(id==='campaigns'&&activitiesView==='pipeline')){const ca=p.querySelector('.ca');if(ca){ca.style.minHeight='calc(100vh - 90px)';ca.style.height='auto';ca.style.display='block';ca.style.flex='none';}}
 }
 function renderCurrentPanel(){const a=document.querySelector('.panel.active');if(a){const id=a.id.replace('p-','');showPanel(id);}}
+
+// ═══════════════════════════════════════
+// GOOGLE DRIVE SEARCH (optional, per-person)
+// Separate sign-in from Microsoft/MSAL. Each person who wants to search their own Drive connects
+// it themselves via Google Identity Services' OAuth token client — nothing is shared between
+// users and nothing is written back to SharePoint; this is purely "find a file, copy its link."
+// ═══════════════════════════════════════
+let googleTokenClient=null;
+let googleAccessToken=sessionStorage.getItem('googleDriveToken')||'';
+
+function renderDriveSearch(){
+  const notConfigured=document.getElementById('driveSearchNotConfigured');
+  const connectWrap=document.getElementById('driveSearchConnectWrap');
+  const searchWrap=document.getElementById('driveSearchWrap');
+  if(!notConfigured||!connectWrap||!searchWrap)return;
+  if(!GOOGLE_CLIENT_ID){notConfigured.style.display='';connectWrap.style.display='none';searchWrap.style.display='none';return;}
+  notConfigured.style.display='none';
+  if(googleAccessToken){connectWrap.style.display='none';searchWrap.style.display='';}
+  else{connectWrap.style.display='';searchWrap.style.display='none';}
+}
+
+function connectGoogleDrive(){
+  const msg=document.getElementById('driveSearchMsg');
+  if(!window._gsiReady||!window.google?.accounts?.oauth2){
+    msg.textContent='Still loading Google sign-in — try again in a moment.';msg.className='form-msg err';return;
+  }
+  if(!googleTokenClient){
+    googleTokenClient=google.accounts.oauth2.initTokenClient({
+      client_id:GOOGLE_CLIENT_ID,
+      scope:GOOGLE_DRIVE_SCOPE,
+      callback:(resp)=>{
+        if(resp.error){msg.textContent='Google sign-in failed: '+resp.error;msg.className='form-msg err';return;}
+        googleAccessToken=resp.access_token;
+        sessionStorage.setItem('googleDriveToken',googleAccessToken);
+        msg.textContent='';
+        renderDriveSearch();
+      }
+    });
+  }
+  googleTokenClient.requestAccessToken();
+}
+
+function disconnectGoogleDrive(){
+  if(googleAccessToken&&window.google?.accounts?.oauth2)google.accounts.oauth2.revoke(googleAccessToken,()=>{});
+  googleAccessToken='';
+  sessionStorage.removeItem('googleDriveToken');
+  const resultsEl=document.getElementById('driveSearchResults');if(resultsEl)resultsEl.innerHTML='';
+  const inputEl=document.getElementById('driveSearchInput');if(inputEl)inputEl.value='';
+  renderDriveSearch();
+}
+
+async function searchGoogleDrive(){
+  const q=(document.getElementById('driveSearchInput').value||'').trim();
+  const resultsEl=document.getElementById('driveSearchResults');
+  if(!googleAccessToken){renderDriveSearch();return;}
+  resultsEl.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  const query=q?`name contains '${q.replace(/'/g,"\\'")}' and mimeType contains 'image/' and trashed=false`:`mimeType contains 'image/' and trashed=false`;
+  try{
+    const url=`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,webViewLink,thumbnailLink)&pageSize=30&orderBy=modifiedTime%20desc`;
+    const res=await fetch(url,{headers:{Authorization:'Bearer '+googleAccessToken}});
+    if(res.status===401){
+      // Token expired — clear it and ask the person to reconnect rather than silently failing.
+      googleAccessToken='';sessionStorage.removeItem('googleDriveToken');renderDriveSearch();
+      resultsEl.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">Your Google session expired — click Connect Google Drive again.</div>';
+      return;
+    }
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const files=data.files||[];
+    if(!files.length){resultsEl.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">No matching images found.</div>';return;}
+    resultsEl.innerHTML=files.map(f=>`
+      <div class="card" style="padding:8px">
+        <a href="${f.webViewLink}" target="_blank" style="display:block;aspect-ratio:1;background:var(--surface2) url('${(f.thumbnailLink||'').replace(/'/g,"%27")}') center/cover;border-radius:6px;margin-bottom:6px"></a>
+        <div style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:6px" title="${escapeAttr(f.name)}">${escapeAttr(f.name)}</div>
+        <button class="btn btn-s" style="width:100%;font-size:10px;padding:4px" onclick="navigator.clipboard.writeText('${(f.webViewLink||'').replace(/'/g,"\\'")}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',1200)">Copy link</button>
+      </div>`).join('');
+  }catch(e){
+    resultsEl.innerHTML=`<div style="padding:20px;text-align:center;color:var(--red)">Search failed: ${escapeAttr(e.message)}</div>`;
+  }
+}
 
 // ═══════════════════════════════════════
 // HELPERS
