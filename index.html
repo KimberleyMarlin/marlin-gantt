@@ -1763,7 +1763,10 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <label class="form-label">What are you submitting? <span class="req">*</span></label>
         <select class="form-select" id="submitCategory" onchange="pickSubmitPath(this.value)">
           <option value="">Select a category…</option>
-          <option value="activity">📅 Activity, Event or Offer</option>
+          <option value="activity:Beer of the Month">🍺 Beer of the Month</option>
+          <option value="activity:Wine of the Month">🍷 Wine of the Month</option>
+          <option value="activity:Feature Beer">🍺 Feature Beer</option>
+          <option value="activity">📅 Other Activity, Event or Offer</option>
           <option value="job">🔧 Maintenance / Update</option>
           <option value="idea">💡 Idea</option>
         </select>
@@ -2391,6 +2394,8 @@ const SUBMISSION_NOTIFY_TO='Kimberley';
 // Activity submission templates — each one pre-fills the fields that don't usually change for that
 // type of activity. Add a new entry here any time a recurring format needs its own template; the
 // dropdown on the Submit form picks these up automatically, no other changes needed.
+// Kept in sync by hand with the hardcoded "activity:<name>" options on #submitCategory —
+// add a template here AND add its option there, or it won't appear in the main dropdown.
 const ACTIVITY_TEMPLATES={
   'Beer of the Month':{
     title:'Beer of the Month',
@@ -2399,6 +2404,16 @@ const ACTIVITY_TEMPLATES={
     isLoaded:true,
     appRequired:'Yes',
     appHeading:'Beer of the Month',
+    channels:['fChanLoaded','fChanInVenue'],
+    assets:['fAssetLoaded','fAssetInVenue'],
+  },
+  'Wine of the Month':{
+    title:'Wine of the Month',
+    activityType:'Promotion / Offer',
+    stream:'Loaded Rewards',
+    isLoaded:true,
+    appRequired:'Yes',
+    appHeading:'Wine of the Month',
     channels:['fChanLoaded','fChanInVenue'],
     assets:['fAssetLoaded','fAssetInVenue'],
   },
@@ -10647,25 +10662,27 @@ function pickSubmitPath(path){
     alert('Bulk import is restricted to Head Office approvers.');
     path='';
   }
+  // The dropdown's activity templates carry their name after a colon, e.g. "activity:Beer of the
+  // Month" — basePath drives which form/list this goes to, templateKey (if any) picks the preset.
+  const [basePath,templateKey]=(path||'').split(':');
   // Keep the category dropdown in sync (a "← Back" button inside a form calls pickSubmitPath(''))
   const catSel=document.getElementById('submitCategory');
-  if(catSel&&['activity','idea','job'].includes(path))catSel.value=path;
-  else if(catSel&&!path)catSel.value='';
+  if(catSel)catSel.value=path||'';
   const catHelp=document.getElementById('submitCategoryHelp');
   if(catHelp){
     catHelp.textContent={
-      activity:'Live music, quiz night, ticketed event, promotion, Loaded offer, functions campaign — creates a Marketing Activity.',
+      activity:templateKey?`Prefills the usual basics for "${templateKey}" — just add the date, venue and any details. Creates a Marketing Activity.`:'Live music, quiz night, ticketed event, promotion, Loaded offer, functions campaign — creates a Marketing Activity.',
       job:'Menu update, website fix, print request, social post, design job, anything that needs to be done — creates a Task / Job Ticket.',
       idea:'Submit your ideas and wildest dreams — we’ll discuss options at the next promo meeting — goes to the Idea Bank.'
-    }[path]||'';
+    }[basePath]||'';
   }
-  document.getElementById('submitFormActivity').style.display=path==='activity'?'':'none';
-  document.getElementById('submitFormIdea').style.display=path==='idea'?'':'none';
-  document.getElementById('submitFormJob').style.display=path==='job'?'':'none';
-  document.getElementById('submitFormImport').style.display=path==='import'?'':'none';
+  document.getElementById('submitFormActivity').style.display=basePath==='activity'?'':'none';
+  document.getElementById('submitFormIdea').style.display=basePath==='idea'?'':'none';
+  document.getElementById('submitFormJob').style.display=basePath==='job'?'':'none';
+  document.getElementById('submitFormImport').style.display=basePath==='import'?'':'none';
   // Auto-populate Submitted By with the signed-in user (writes to Assignee — the same "Owner/person"
   // field the item popup uses — kept separate from the department "Owner" dropdown on this form)
-  if(path==='activity'){
+  if(basePath==='activity'){
     const subEl=document.getElementById('fSubmittedBy');
     if(subEl)subEl.textContent=currentUser?.name||currentUserEmail||'';
     const tplSel=document.getElementById('fTemplate');
@@ -10683,6 +10700,12 @@ function pickSubmitPath(path){
     }
     renderSubmitPeopleResults(document.getElementById('fPeopleSearch')?.value||'');
     populateCampaignLookupSelects();
+    // Picked a named template straight from the main dropdown (not the in-form "Use a Template"
+    // one) — apply it immediately so the form opens already prefilled.
+    if(templateKey&&tplSel&&ACTIVITY_TEMPLATES[templateKey]){
+      tplSel.value=templateKey;
+      applyActivityTemplate();
+    }
   }
   // Populate job assignee
   if(path==='job'){
