@@ -1758,33 +1758,18 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="ph"><div><div class="ph-eye">Submit</div><div class="ph-title">What are you <em>submitting?</em></div></div></div>
     <div class="ca">
 
-      <!-- PATH SELECTOR -->
-      <div id="submitPathPicker" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;max-width:960px;margin-bottom:20px">
-        <button onclick="pickSubmitPath('activity')" id="pathBtn-activity" style="padding:20px;border:2px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;transition:border-color .15s">
-          <div style="font-size:28px;margin-bottom:8px">📅</div>
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Activity, Event, Offer</div>
-          <div style="font-size:11.5px;color:var(--text3);line-height:1.4">Live music, quiz night, ticketed event, promotion, Loaded offer, functions campaign</div>
-          <div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">→ Creates Marketing Activity</div>
-        </button>
-        <button onclick="pickSubmitPath('idea')" id="pathBtn-idea" style="padding:20px;border:2px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;transition:border-color .15s">
-          <div style="font-size:28px;margin-bottom:8px">💡</div>
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Submit an Idea</div>
-          <div style="font-size:11.5px;color:var(--text3);line-height:1.4">Submit your ideas and wildest dreams — we'll discuss options at the next promo meeting</div>
-          <div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em">→ Goes to Idea Bank</div>
-        </button>
-        <button onclick="pickSubmitPath('job')" id="pathBtn-job" style="padding:20px;border:2px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;transition:border-color .15s">
-          <div style="font-size:28px;margin-bottom:8px">🔧</div>
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Maintenance / Update Ticket</div>
-          <div style="font-size:11.5px;color:var(--text3);line-height:1.4">Menu update, website fix, print request, social post, design job, anything that needs to be done</div>
-          <div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">→ Creates Task / Job Ticket</div>
-        </button>
-        <button onclick="pickSubmitPath('import')" id="pathBtn-import" style="display:none;padding:20px;border:2px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;transition:border-color .15s">
-          <div style="font-size:28px;margin-bottom:8px">⇧</div>
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Import Activities</div>
-          <div style="font-size:11.5px;color:var(--text3);line-height:1.4">Upload a reviewed CSV, check it against the live list, then create only genuinely new Intake records</div>
-          <div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.06em">Admin only · Preflight first</div>
-        </button>
+      <!-- CATEGORY PICKER -->
+      <div style="max-width:420px;margin-bottom:8px">
+        <label class="form-label">What are you submitting? <span class="req">*</span></label>
+        <select class="form-select" id="submitCategory" onchange="pickSubmitPath(this.value)">
+          <option value="">Select a category…</option>
+          <option value="activity">📅 Activity, Event or Offer</option>
+          <option value="job">🔧 Maintenance / Update</option>
+          <option value="idea">💡 Idea</option>
+        </select>
+        <div id="submitCategoryHelp" style="font-size:11.5px;color:var(--text3);margin-top:5px"></div>
       </div>
+      <button onclick="pickSubmitPath('import')" id="pathBtn-import" style="display:none;background:none;border:none;color:var(--purple);font-size:12px;font-weight:600;cursor:pointer;margin:0 0 20px;padding:0">⇧ Admin: Bulk import activities from a reviewed CSV →</button>
 
       <!-- ACTIVITY FORM (path 1) -->
       <div id="submitFormActivity" style="display:none;max-width:720px">
@@ -10662,11 +10647,18 @@ function pickSubmitPath(path){
     alert('Bulk import is restricted to Head Office approvers.');
     path='';
   }
-  // Highlight selected path button
-  ['activity','idea','job','import'].forEach(p=>{
-    const btn=document.getElementById('pathBtn-'+p);
-    if(btn){btn.style.borderColor=p===path?'var(--accent)':'var(--border)';btn.style.background=p===path?'var(--accent-bg)':'var(--surface)';}
-  });
+  // Keep the category dropdown in sync (a "← Back" button inside a form calls pickSubmitPath(''))
+  const catSel=document.getElementById('submitCategory');
+  if(catSel&&['activity','idea','job'].includes(path))catSel.value=path;
+  else if(catSel&&!path)catSel.value='';
+  const catHelp=document.getElementById('submitCategoryHelp');
+  if(catHelp){
+    catHelp.textContent={
+      activity:'Live music, quiz night, ticketed event, promotion, Loaded offer, functions campaign — creates a Marketing Activity.',
+      job:'Menu update, website fix, print request, social post, design job, anything that needs to be done — creates a Task / Job Ticket.',
+      idea:'Submit your ideas and wildest dreams — we’ll discuss options at the next promo meeting — goes to the Idea Bank.'
+    }[path]||'';
+  }
   document.getElementById('submitFormActivity').style.display=path==='activity'?'':'none';
   document.getElementById('submitFormIdea').style.display=path==='idea'?'':'none';
   document.getElementById('submitFormJob').style.display=path==='job'?'':'none';
