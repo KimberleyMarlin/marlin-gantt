@@ -12907,6 +12907,11 @@ async function savePopEdit(evId,mode){
       break; // some other error — stop retrying
     }
 
+    // Every field in this save turned out to be an unrecognized column (e.g. editing just Design
+    // Status when that column doesn't exist in SharePoint yet) — there's nothing left to retry, and
+    // this isn't the same as a real failure, so say so plainly instead of "Save failed".
+    const allSkipped=!ok&&skipped.length>0&&!Object.keys(payload).length;
+
     // SharePoint often returns a useless generic 500 when one field in a larger PATCH is invalid.
     // Retry each changed field separately so valid edits still stick and the exact failing field is named.
     if(!ok&&Object.keys(payload).length>1){
@@ -12969,6 +12974,10 @@ async function savePopEdit(evId,mode){
         else if(scheduleView==='venuemonth')renderVenueMonth();
         else if(scheduleView==='crossvenue')renderCrossVenue();
       }
+    } else if(allSkipped){
+      setBtns(`⚠️ Not saved — missing in SharePoint: ${skipped.join(', ')}`,{disabled:false,bg:'var(--gold)',color:'#fff'});
+      console.warn('Nothing to save — every changed field is a column that doesn\'t exist in SharePoint yet:',skipped.join(', '));
+      setTimeout(()=>setBtns('Save changes',{disabled:false,bg:'',color:'',display:'none'}),3600);
     } else {
       setBtns('❌ Save failed — see console',{disabled:false,bg:'var(--red)',color:'#fff'});
     }
