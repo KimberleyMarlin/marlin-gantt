@@ -432,11 +432,25 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .art-card:hover{border-color:var(--border2);box-shadow:var(--sh);transform:translateY(-1px)}
 .art-img{height:190px;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--text3);font-size:11px;text-align:center;padding:14px}
 .art-img img{width:100%;height:100%;object-fit:cover;display:block}.art-body{padding:10px 12px;display:flex;flex-direction:column;gap:5px}
-.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start}
-.proj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:var(--tr)}
-.proj-card:hover{border-color:var(--border2);box-shadow:var(--sh)}
-.risk-reason{font-size:10.5px;color:#9b3a2a;background:var(--red-bg);border-radius:5px;padding:4px 7px;line-height:1.35}
-.project-activity{display:flex;align-items:center;gap:7px;padding:6px 0;border-top:1px solid var(--border);font-size:11px;min-width:0}
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:18px;align-items:start}
+.proj-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;cursor:pointer;transition:var(--tr)}
+.proj-card:hover{border-color:var(--border2);box-shadow:var(--sh);transform:translateY(-1px)}
+.proj-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.proj-card-title{font-size:15.5px;font-weight:700;line-height:1.35;color:var(--text)}
+.proj-card-phase{font-size:10px;color:var(--text3);margin-top:5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.proj-card-badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0}
+.proj-meta-row{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--text2);margin:16px 0}
+.proj-meta-row span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.proj-risks{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.risk-reason{font-size:11px;color:var(--text2);background:var(--surface2);border-left:3px solid var(--gold);border-radius:6px;padding:7px 10px;line-height:1.4}
+.risk-reason.urgent{background:var(--red-bg);border-left-color:var(--red);color:#9b3a2a}
+.proj-prog-row{display:flex;align-items:center;gap:10px;margin:14px 0 18px}
+.proj-prog-w{background:var(--surface2);border-radius:5px;height:6px;flex:1}
+.proj-prog-f{height:100%;border-radius:5px;background:var(--accent);transition:width .2s}
+.proj-activities{border-top:1px solid var(--border);padding-top:10px;margin-top:4px}
+.project-activity{display:flex;align-items:center;gap:8px;padding:7px 0;font-size:11.5px;min-width:0}
+.project-activity+.project-activity{border-top:1px solid var(--border)}
+.proj-more-link{font-size:10.5px;color:var(--text3);padding-top:8px}
 @media(max-width:760px){.mw-head{display:none}.mw-row{grid-template-columns:1fr auto}.mw-row>*:nth-child(2),.mw-row>*:nth-child(4){display:none}.art-controls{top:42px}.art-month-head{top:94px}}
 
 /* ── FORM ── */
@@ -7143,21 +7157,34 @@ function renderWorkload(){
   const week=new Date(today);week.setDate(week.getDate()+7);
   const twoWeeks=new Date(today);twoWeeks.setDate(twoWeeks.getDate()+14);
 
-  // Job tickets = activities still in motion (not yet Live/Done, not archived). Grouped by whoever
-  // is set as Owner (Assignee) on the activity — not the disconnected four-person My Tasks list.
+  // Same person can be keyed as a plain name from one source and an email from the other —
+  // normalise so "Kimberley" and "kimberley@marlingroup.com.au" don't become two separate cards.
+  const personKey=raw=>{const v=(raw||'').trim();return v.includes('@')?v.toLowerCase():v;};
+
+  // Active work = marketing Activities still in motion (not yet Live/Done, not archived) PLUS open
+  // Tasks & Job Tickets (not Done/Complete) — this view used to only read Activities, so job
+  // tickets never showed up here even though they're real active work assigned to someone.
   const activeStages=['Intake','In Design','In Build','Review','Ready for Live'];
-  const jobs=EVENTS.filter(ev=>activeStages.includes(ev.stage)&&!isArchived(ev));
+  const activityItems=EVENTS.filter(ev=>activeStages.includes(ev.stage)&&!isArchived(ev)).map(ev=>({
+    kind:'activity',id:ev.id,title:ev.title,date:ev.start,label:stageLabel(ev.stage),
+    person:ev.owner||'Unassigned'
+  }));
+  const taskItems=MY_TASKS.filter(t=>!['Done','Complete','Completed'].includes(t.status)).map(t=>({
+    kind:'task',id:t.id,title:t.title,date:t.due,label:t.status||'Not Started',
+    person:t.assignedTo||'Unassigned'
+  }));
+  const jobs=[...activityItems,...taskItems];
 
   const byPerson={};
-  jobs.forEach(ev=>{
-    const person=ev.owner||'Unassigned';
-    if(!byPerson[person])byPerson[person]={name:person,jobs:[],overdue:0,thisWeek:0,nextWeek:0};
-    byPerson[person].jobs.push(ev);
-    if(ev.start){
-      const d=new Date(ev.start+'T00:00:00');
-      if(d<today)byPerson[person].overdue++;
-      else if(d<=week)byPerson[person].thisWeek++;
-      else if(d<=twoWeeks)byPerson[person].nextWeek++;
+  jobs.forEach(j=>{
+    const key=personKey(j.person);
+    if(!byPerson[key])byPerson[key]={name:j.person,jobs:[],overdue:0,thisWeek:0,nextWeek:0};
+    byPerson[key].jobs.push(j);
+    if(j.date){
+      const d=new Date(j.date+'T00:00:00');
+      if(d<today)byPerson[key].overdue++;
+      else if(d<=week)byPerson[key].thisWeek++;
+      else if(d<=twoWeeks)byPerson[key].nextWeek++;
     }
   });
 
@@ -7173,7 +7200,7 @@ function renderWorkload(){
       const maxJobs=8;
       const load=Math.min(p.jobs.length/maxJobs*100,100);
       const loadColor=p.jobs.length>=maxJobs?'var(--red)':p.jobs.length>=5?'var(--gold)':'var(--accent)';
-      const sortedJobs=p.jobs.slice().sort((a,b)=>(a.start||'9999').localeCompare(b.start||'9999'));
+      const sortedJobs=p.jobs.slice().sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
       return`<div class="card">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
           <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0">${((p.name||'?').split('@')[0]||'?')[0].toUpperCase()}</div>
@@ -7187,9 +7214,9 @@ function renderWorkload(){
         <div style="display:flex;gap:8px;margin-bottom:10px">
           <div style="flex:1;text-align:center;background:var(--surface2);border-radius:6px;padding:6px"><div style="font-size:16px;font-weight:600;color:${p.thisWeek>0?'var(--gold)':'var(--text)'}">${p.thisWeek}</div><div style="font-size:9px;color:var(--text3)">This week</div></div>
           <div style="flex:1;text-align:center;background:var(--surface2);border-radius:6px;padding:6px"><div style="font-size:16px;font-weight:600">${p.nextWeek}</div><div style="font-size:9px;color:var(--text3)">Next week</div></div>
-          <div style="flex:1;text-align:center;background:var(--surface2);border-radius:6px;padding:6px"><div style="font-size:16px;font-weight:600">${p.jobs.filter(j=>!j.start).length}</div><div style="font-size:9px;color:var(--text3)">No date</div></div>
+          <div style="flex:1;text-align:center;background:var(--surface2);border-radius:6px;padding:6px"><div style="font-size:16px;font-weight:600">${p.jobs.filter(j=>!j.date).length}</div><div style="font-size:9px;color:var(--text3)">No date</div></div>
         </div>
-        ${sortedJobs.slice(0,3).map(j=>`<div style="font-size:11px;padding:4px 0;border-bottom:0.5px solid var(--border);color:var(--text2);display:flex;justify-content:space-between;gap:8px;cursor:pointer" onclick="showPop(${j.id})"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(j.title)} <span style="color:var(--text3)">· ${stageLabel(j.stage)}</span></span><span style="flex-shrink:0;color:${j.start&&new Date(j.start+'T00:00:00')<today?'var(--red)':'var(--text3)'}">${j.start?fmtShort(j.start):'—'}</span></div>`).join('')}
+        ${sortedJobs.slice(0,3).map(j=>`<div style="font-size:11px;padding:4px 0;border-bottom:0.5px solid var(--border);color:var(--text2);display:flex;justify-content:space-between;gap:8px;cursor:pointer" onclick="${j.kind==='activity'?`showPop(${j.id})`:`navTo('mytasks');openEditTask('${j.id}')`}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(j.title)} <span style="color:var(--text3)">· ${j.kind==='task'?'🔧 ':''}${escapeAttr(j.label)}</span></span><span style="flex-shrink:0;color:${j.date&&new Date(j.date+'T00:00:00')<today?'var(--red)':'var(--text3)'}">${j.date?fmtShort(j.date):'—'}</span></div>`).join('')}
         ${p.jobs.length>3?`<div style="font-size:10px;color:var(--accent);padding-top:5px;cursor:pointer" onclick="navTo('campaigns')">+${p.jobs.length-3} more →</div>`:''}
       </div>`;
     }).join('')}
@@ -10586,9 +10613,34 @@ function renderProjects(){
   const allLinked=EVENTS.filter(e=>e.projectId).length,atRisk=shaped.filter(x=>x.risks.length).length,active=PROJECTS.filter(p=>p.status!=='Done').length,unassigned=EVENTS.filter(e=>!e.projectId&&!isArchived(e));
   if(stats)stats.innerHTML=`<div class="stat"><div class="stat-n">${active}</div><div class="stat-l">Active Projects</div></div><div class="stat ${atRisk?'hi':''}"><div class="stat-n">${atRisk}</div><div class="stat-l">Need attention</div></div><div class="stat"><div class="stat-n">${allLinked}</div><div class="stat-l">Linked Activities</div></div><div class="stat ${unassigned.length?'hi':''}"><div class="stat-n">${unassigned.length}</div><div class="stat-l">Unassigned Activities</div></div>`;
   const priTag={Critical:'t-r',High:'t-o',Medium:'t-a',Normal:'t-g',Low:'t-gr'},statPill={'In Progress':'p-prog','Not Started':'p-idea','Done':'p-done','On Hold':'p-aware'};
+  // Only genuinely time-sensitive risks (an overdue date, an activity actually in trouble) get the
+  // urgent red treatment — "no owner yet"/"nothing linked yet" are just normal early-project state
+  // and shouldn't make every new project card look like it's on fire.
+  const isUrgentRisk=r=>/passed|at risk/i.test(r);
   list.innerHTML=shown.length?`<div class="proj-grid">${shown.map(({p,linked,risks})=>{
     const workCount=(canAccessPanel('personaltasks')?PERSONAL_TASKS.filter(t=>String(t.projectId)===String(p.id)&&t.status!=='Done').length:0)+MY_TASKS.filter(t=>t.status!=='Done'&&linked.some(e=>(e.title||'').toLowerCase()===(t.campaignLookup||'').toLowerCase())).length;
-    return`<article class="proj-card" onclick="openEditProject('${escapeAttr(String(p.id))}')" style="${risks.length?'border-left:3px solid var(--red)':''}"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="min-width:0"><div style="font-size:14px;font-weight:700;line-height:1.3">${escapeAttr(p.title)}</div><div style="font-size:10.5px;color:var(--text3);margin-top:3px">${escapeAttr(p.phase||'Project')}</div></div><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">${p.priority?`<span class="tag ${priTag[p.priority]||'t-gr'}">${escapeAttr(p.priority)}</span>`:''}<span class="pill ${statPill[p.status]||'p-plan'}">${escapeAttr(p.status)}</span></div></div><div style="display:flex;gap:10px;flex-wrap:wrap;font-size:10.5px;color:var(--text3);margin:9px 0"><span>${p.owner?'👤 '+escapeAttr(p.owner):'👤 Owner missing'}</span>${p.due?`<span>📅 ${escapeAttr(fmtShort(p.due))}</span>`:''}<span>◎ ${linked.length} Activit${linked.length===1?'y':'ies'}</span><span>☐ ${workCount} open</span></div>${risks.length?`<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px">${risks.slice(0,3).map(r=>`<div class="risk-reason">${escapeAttr(r)}</div>`).join('')}</div>`:''}<div style="display:flex;align-items:center;gap:8px;margin:7px 0 9px"><div class="proj-prog-w" style="flex:1"><div class="proj-prog-f" style="width:${p.progress||0}%"></div></div><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${p.progress||0}%</span></div>${linked.slice(0,4).map(ev=>{const health=healthCheck(ev);return`<div class="project-activity"><span style="width:7px;height:7px;border-radius:50%;background:${health.level==='red'?'var(--red)':health.level==='amber'?'var(--gold)':'var(--accent)'};flex-shrink:0"></span><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(ev.title)}</span><span style="color:var(--text3)">${escapeAttr(stageLabel(ev.stage))}</span><span style="font-family:'DM Mono',monospace;color:var(--text3)">${escapeAttr(fmtShort(ev.start))}</span></div>`;}).join('')}${linked.length>4?`<div style="font-size:10px;color:var(--text3);padding-top:6px">+ ${linked.length-4} more Activities</div>`:''}</article>`;
+    const hasUrgent=risks.some(isUrgentRisk);
+    return`<article class="proj-card" onclick="openEditProject('${escapeAttr(String(p.id))}')" style="${hasUrgent?'border-left:3px solid var(--red)':''}">
+      <div class="proj-card-head">
+        <div style="min-width:0">
+          <div class="proj-card-title">${escapeAttr(p.title)}</div>
+          <div class="proj-card-phase">${escapeAttr(p.phase||'Project')}</div>
+        </div>
+        <div class="proj-card-badges">${p.priority?`<span class="tag ${priTag[p.priority]||'t-gr'}">${escapeAttr(p.priority)}</span>`:''}<span class="pill ${statPill[p.status]||'p-plan'}">${escapeAttr(p.status)}</span></div>
+      </div>
+      <div class="proj-meta-row">
+        <span>👤 ${p.owner?escapeAttr(p.owner):'Owner missing'}</span>
+        ${p.due?`<span>📅 ${escapeAttr(fmtShort(p.due))}</span>`:''}
+        <span>◎ ${linked.length} Activit${linked.length===1?'y':'ies'}</span>
+        <span>☐ ${workCount} open</span>
+      </div>
+      ${risks.length?`<div class="proj-risks">${risks.slice(0,3).map(r=>`<div class="risk-reason${isUrgentRisk(r)?' urgent':''}">${escapeAttr(r)}</div>`).join('')}</div>`:''}
+      <div class="proj-prog-row">
+        <div class="proj-prog-w"><div class="proj-prog-f" style="width:${p.progress||0}%"></div></div>
+        <span style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--text3);flex-shrink:0">${p.progress||0}%</span>
+      </div>
+      <div class="proj-activities">${linked.slice(0,4).map(ev=>{const health=healthCheck(ev);return`<div class="project-activity"><span style="width:7px;height:7px;border-radius:50%;background:${health.level==='red'?'var(--red)':health.level==='amber'?'var(--gold)':'var(--accent)'};flex-shrink:0"></span><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(ev.title)}</span><span style="color:var(--text3)">${escapeAttr(stageLabel(ev.stage))}</span><span style="font-family:'DM Mono',monospace;color:var(--text3)">${escapeAttr(fmtShort(ev.start))}</span></div>`;}).join('')}${linked.length>4?`<div class="proj-more-link">+ ${linked.length-4} more Activities</div>`:''}</div>
+    </article>`;
   }).join('')}</div>`:'<div style="padding:36px;text-align:center;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:var(--r)">No Projects match these filters.</div>';
   if(unassignedEl)unassignedEl.innerHTML=unassigned.length?`<div style="margin-top:22px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><div style="font-size:12px;font-weight:700">Unassigned Activities</div><div style="font-size:10.5px;color:var(--text3)">Place these into a Project when their parent is known.</div></div><div class="card">${unassigned.slice(0,12).map(ev=>`<div class="project-activity" style="padding:8px 12px;cursor:pointer" onclick="showActivityPage(${ev.id})"><span style="width:7px;height:7px;border-radius:50%;background:${vColor(ev.venue).c};flex-shrink:0"></span><span style="flex:1;font-weight:600">${escapeAttr(ev.title)}</span><span style="color:var(--text3)">${escapeAttr(shortVenue(ev.venue))}</span><span style="font-family:'DM Mono',monospace;color:var(--text3)">${escapeAttr(fmtShort(ev.start))}</span></div>`).join('')}</div></div>`:'';
 }
