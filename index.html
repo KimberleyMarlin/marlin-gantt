@@ -5907,6 +5907,91 @@ async function ptSearch(){
 }
 
 // ═══════════════════════════════════════
+// ACTIVITY ↔ PHOTO LIBRARY — reuses the same tag index Photo Tagging builds, so a photo tagged
+// "beer" there is immediately pickable here as an Activity's featured image (shown on the
+// Calendar hover card and the Artwork feed).
+// ═══════════════════════════════════════
+function openEvPhotoPicker(evId){
+  const box=document.getElementById('evPhotoPickerBox-'+evId);
+  if(!box)return;
+  const opening=box.style.display==='none';
+  box.style.display=opening?'':'none';
+  if(!opening)return;
+  box.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:8px">
+    <input type="text" id="evPhotoSearch-${evId}" placeholder="Search tags, e.g. beer, outdoor seating…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text)" onkeydown="if(event.key==='Enter'){event.preventDefault();searchEvPhotos(${evId});}">
+    <button class="btn btn-s" style="font-size:11px" onclick="searchEvPhotos(${evId})">Search</button>
+  </div><div id="evPhotoResults-${evId}" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;max-height:260px;overflow-y:auto"></div>`;
+  searchEvPhotos(evId,'');
+}
+
+async function searchEvPhotos(evId,presetQuery){
+  const resultsEl=document.getElementById('evPhotoResults-'+evId);
+  if(!resultsEl)return;
+  if(!GOOGLE_VISION_API_KEY||!DIGITAL_MEDIA_DRIVE_ID){resultsEl.innerHTML='<div style="grid-column:1/-1;font-size:11px;color:var(--text3);padding:10px">Photo Tagging isn\'t connected yet — set GOOGLE_VISION_API_KEY first.</div>';return;}
+  const q=(presetQuery!==undefined?presetQuery:document.getElementById('evPhotoSearch-'+evId)?.value||'').trim().toLowerCase();
+  resultsEl.innerHTML='<div style="grid-column:1/-1;font-size:11px;color:var(--text3);padding:10px">Loading…</div>';
+  try{
+    if(!ptFullIndex)ptFullIndex=await ptBuildFullIndex();
+    const matches=(q?ptFullIndex.filter(it=>it.name.toLowerCase().includes(q)||ptTagsOf(it).toLowerCase().includes(q)):ptFullIndex).slice(0,40);
+    resultsEl.innerHTML=matches.length?matches.map(it=>{
+      const thumb=it.thumbnails?.[0]?.medium?.url||it.thumbnails?.[0]?.small?.url||'';
+      const picked=(it.thumbnails?.[0]?.large?.url||thumb||'').replace(/'/g,"\\'");
+      return`<div style="cursor:pointer" onclick="pickEvPhoto(${evId},'${picked}')" title="${escapeAttr(it.name)}${ptTagsOf(it)?' — '+escapeAttr(ptTagsOf(it)):''}"><div style="aspect-ratio:1;background:var(--surface2) url('${thumb.replace(/'/g,"%27")}') center/cover;border-radius:6px;border:1px solid var(--border)"></div></div>`;
+    }).join(''):'<div style="grid-column:1/-1;font-size:11px;color:var(--text3);padding:10px">No matches — tag photos in Photo Tagging first, or try a different word.</div>';
+  }catch(e){
+    resultsEl.innerHTML=`<div style="grid-column:1/-1;font-size:11px;color:var(--red);padding:10px">Search failed: ${escapeAttr(e.message)}</div>`;
+  }
+}
+
+// Stores the library photo's thumbnail URL — a signed link from Graph. It's what the Calendar
+// hover card and Artwork feed already expect (a plain embeddable image URL), but unlike a normal
+// upload it can in rare cases expire; if a photo ever stops showing, re-picking it here refreshes it.
+async function pickEvPhoto(evId,url){
+  const ev=EVENTS.find(x=>String(x.id)===String(evId));if(!ev)return;
+  try{
+    const token=await getToken(true);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{EventImageURL:url}})});
+    if(!res.ok){
+      const errText=await res.text();
+      const m=errText.match(/Field '([^']+)' is not recognized/);
+      throw new Error(m?`The ${m[1]} column doesn't exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.`:'HTTP '+res.status);
+    }
+    ev.eventImageUrl=url;
+    showPop(evId);
+  }catch(e){
+    alert('Could not set photo: '+e.message);
+  }
+}
+
+// Browses the Activity's linked job/artwork folder inline, without leaving the popup — resolves
+// the folder's sharing URL (written back by the Power Automate flow) to its real drive item via
+// Graph's Shares API, since that URL alone has no item id to list children from.
+function encodeSharingUrlForGraph(url){
+  const base64=btoa(unescape(encodeURIComponent(url))).replace(/=+$/,'').replace(/\//g,'_').replace(/\+/g,'-');
+  return'u!'+base64;
+}
+async function loadEvJobFolder(evId){
+  const ev=EVENTS.find(x=>String(x.id)===String(evId));if(!ev||!ev.jobFolderUrl)return;
+  const box=document.getElementById('evFolderBox-'+evId);
+  if(!box)return;
+  const opening=box.style.display==='none';
+  box.style.display=opening?'':'none';
+  if(!opening)return;
+  box.innerHTML='<div style="font-size:11px;color:var(--text3);padding:6px">Loading folder…</div>';
+  try{
+    const token=await getToken();
+    const shareId=encodeSharingUrlForGraph(ev.jobFolderUrl);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$expand=children($select=name,webUrl,file,folder)`,{headers:{Authorization:'Bearer '+token}});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const children=data.children||[];
+    box.innerHTML=children.length?children.map(c=>`<a href="${c.webUrl}" target="_blank" style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);text-decoration:none;padding:4px 6px;border-radius:5px">${c.folder?'📁':'📄'} <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(c.name)}</span></a>`).join(''):'<div style="font-size:11px;color:var(--text3);padding:6px">Folder is empty.</div>';
+  }catch(e){
+    box.innerHTML=`<div style="font-size:11px;color:var(--red);padding:6px">Could not load folder contents: ${escapeAttr(e.message)}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -12644,7 +12729,8 @@ function renderActivityDetail(id,mode){
   // Artwork folder link
   h+=`<div class="pop-field" style="margin-top:6px"><div class="pop-lbl">Job / Artwork Folder</div>`;
   if(ev.jobFolderUrl){
-    h+=`<div style="display:flex;align-items:center;gap:8px"><a href="${ev.jobFolderUrl}" target="_blank" style="font-size:12px;color:var(--accent);font-weight:600;text-decoration:none">📁 Open artwork folder →</a></div>`;
+    h+=`<div style="display:flex;align-items:center;gap:8px"><a href="${ev.jobFolderUrl}" target="_blank" style="font-size:12px;color:var(--accent);font-weight:600;text-decoration:none">📁 Open artwork folder →</a><button class="btn btn-s" style="font-size:10.5px;padding:3px 8px" onclick="loadEvJobFolder(${ev.id})">👁 View files</button></div>
+    <div id="evFolderBox-${ev.id}" style="display:none;margin-top:6px;max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px"></div>`;
   } else {
     // The existing Power Automate flow owns folder creation and writes JobFolderURL back later.
     // The Hub must not claim it creates or rolls back folders itself.
@@ -12652,6 +12738,13 @@ function renderActivityDetail(id,mode){
   }
   if(ev.artworkFile)h+=`<div style="margin-top:4px"><a href="${ev.artworkFile}" target="_blank" style="font-size:11px;color:var(--accent)">🖼 Latest artwork →</a></div>`;
   h+=`</div>`;
+
+  // Featured photo — pulled from the Digital Media library (Photo Tagging), so the same search by
+  // tag that finds "beer" photos there can set one as this Activity's card/calendar image.
+  h+=`<div class="pop-field" style="margin-top:6px"><div class="pop-lbl">Featured Photo</div>
+    <div id="evPhotoPreview-${ev.id}">${ev.eventImageUrl?`<div style="display:flex;align-items:center;gap:8px"><img src="${escapeAttr(ev.eventImageUrl)}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" onerror="this.style.display='none'"><button class="btn btn-s" style="font-size:10.5px;padding:4px 8px" onclick="openEvPhotoPicker(${ev.id})">Change</button><button class="btn btn-s" style="font-size:10.5px;padding:4px 8px;color:var(--red)" onclick="pickEvPhoto(${ev.id},'')">Remove</button></div>`:`<button class="btn btn-s" style="font-size:10.5px;padding:4px 10px" onclick="openEvPhotoPicker(${ev.id})">📷 Add photo from Digital Media library</button>`}</div>
+    <div id="evPhotoPickerBox-${ev.id}" style="display:none;margin-top:8px"></div>
+  </div>`;
 
   // ═══ BUILD CHANNELS (tickable) ═══
   h+=`<div class="pop-section">🔧 Build Channels</div>`;
