@@ -1454,7 +1454,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="ptNotes" placeholder="Private context or next action…" style="min-height:80px"></textarea></div>
         </div>
         <input type="hidden" id="ptEditId" value="">
-        <div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-p" onclick="savePersonalTask()">Save Personal Task</button><button class="btn btn-s" onclick="closeAddPersonalTask()">Cancel</button></div>
+        <div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-p" id="ptSaveBtn" onclick="savePersonalTask()">Save Personal Task</button><button class="btn btn-s" onclick="closeAddPersonalTask()">Cancel</button></div>
       </div>
     </div>
   </div>
@@ -1804,6 +1804,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <option value="activity:Beer of the Month">🍺 Beer of the Month</option>
           <option value="activity:Wine of the Month">🍷 Wine of the Month</option>
           <option value="activity:Feature Beer">🍺 Feature Beer</option>
+          <option value="activity:Chef's Special">🍽️ Chef's Special</option>
           <option value="activity">📅 Other Activity, Event or Offer</option>
           <option value="job">🔧 Maintenance / Update</option>
           <option value="idea">💡 Idea</option>
@@ -1823,13 +1824,6 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div class="form-notice">📌 Fill in what you know — the marketing team will add channels and next steps after it's submitted.</div>
           <div id="fMsg" class="form-msg"></div>
           <div class="form-grid">
-            <div class="form-group full">
-              <label class="form-label">Use a Template (optional)</label>
-              <select class="form-select" id="fTemplate" onchange="applyActivityTemplate()">
-                <option value="">Start from scratch</option>
-              </select>
-              <div style="font-size:10.5px;color:var(--text3);margin-top:3px">Fills in the fields that don't usually change — you just fill in the date and details</div>
-            </div>
             <div class="form-group full"><label class="form-label">Activation <span class="req">*</span></label><input class="form-input" id="fTitle" type="text" placeholder="e.g. Beer of the Month"><div class="field-help">The repeatable promotion or event name. The month is taken from Start Date.</div></div>
             <div class="form-group full"><label class="form-label">Submitted By</label><div id="fSubmittedBy" style="font-size:13px;color:var(--text2);padding:8px 0">—</div></div>
             <div class="form-group full"><label class="form-label">Activity Detail</label><textarea class="form-textarea" id="fDesc" placeholder="e.g. Cheeky Monkey pints" style="min-height:70px"></textarea><div class="field-help">The specific product, offer or execution for this occurrence.</div></div>
@@ -2466,6 +2460,13 @@ const ACTIVITY_TEMPLATES={
   },
   'Feature Beer':{
     title:'Feature Beer',
+    activityType:'Promotion / Offer',
+    stream:'Venue Marketing',
+    channels:['fChanInVenue','fChanMeta'],
+    assets:['fAssetInVenue','fAssetMeta'],
+  },
+  "Chef's Special":{
+    title:"Chef's Special",
     activityType:'Promotion / Offer',
     stream:'Venue Marketing',
     channels:['fChanInVenue','fChanMeta'],
@@ -9743,6 +9744,12 @@ function openEditPersonalTask(id){
 function closeAddPersonalTask(){document.getElementById('addPersonalTaskOv').classList.remove('show');}
 
 async function savePersonalTask(){
+  // Guards a slow network turning one click into two SharePoint items — the button disables the
+  // instant it's pressed and only re-enables once the request actually finishes (success or error).
+  const saveBtn=document.getElementById('ptSaveBtn');
+  if(saveBtn?.disabled)return;
+  if(saveBtn)saveBtn.disabled=true;
+  try{
   const title=document.getElementById('ptTitle').value.trim(),editId=document.getElementById('ptEditId').value;
   const msg=document.getElementById('personalTaskFormMsg');
   if(!title){msg.textContent='Please enter a task title.';msg.className='form-msg err';return;}
@@ -9791,6 +9798,7 @@ async function savePersonalTask(){
     renderPersonalTasks();
     closeAddPersonalTask();
   }catch(e){msg.textContent='Could not save: '+e.message;msg.className='form-msg err';}
+  }finally{if(saveBtn)saveBtn.disabled=false;}
 }
 
 async function togglePersonalTask(id){
@@ -10984,12 +10992,6 @@ function pickSubmitPath(path){
   if(basePath==='activity'){
     const subEl=document.getElementById('fSubmittedBy');
     if(subEl)subEl.textContent=currentUser?.name||currentUserEmail||'';
-    const tplSel=document.getElementById('fTemplate');
-    if(tplSel&&tplSel.options.length<=1){
-      Object.keys(ACTIVITY_TEMPLATES).forEach(name=>{
-        const opt=document.createElement('option');opt.value=name;opt.textContent=name;tplSel.appendChild(opt);
-      });
-    }
     const teamsEl=document.getElementById('fAddTeams');
     if(teamsEl){
       teamsEl.innerHTML=Object.keys(TAG_GROUPS).map(g=>{
@@ -10999,12 +11001,9 @@ function pickSubmitPath(path){
     }
     renderSubmitPeopleResults(document.getElementById('fPeopleSearch')?.value||'');
     populateCampaignLookupSelects();
-    // Picked a named template straight from the main dropdown (not the in-form "Use a Template"
-    // one) — apply it immediately so the form opens already prefilled.
-    if(templateKey&&tplSel&&ACTIVITY_TEMPLATES[templateKey]){
-      tplSel.value=templateKey;
-      applyActivityTemplate();
-    }
+    // Template comes straight from the "What are you submitting?" dropdown now — apply it
+    // immediately so the form opens already prefilled.
+    if(templateKey&&ACTIVITY_TEMPLATES[templateKey])applyActivityTemplate(templateKey);
   }
   // Populate job assignee
   if(path==='job'){
@@ -11119,8 +11118,7 @@ function togglePOSDetails(){
   if(grp)grp.style.display=on?'':'none';
 }
 
-function applyActivityTemplate(){
-  const key=document.getElementById('fTemplate')?.value;
+function applyActivityTemplate(key){
   if(!key||!ACTIVITY_TEMPLATES[key])return;
   const t=ACTIVITY_TEMPLATES[key];
   const set=(id,val)=>{const el=document.getElementById(id);if(el&&val!==undefined)el.value=val;};
