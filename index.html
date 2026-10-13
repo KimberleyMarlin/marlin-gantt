@@ -1099,15 +1099,23 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       <div class="card">
         <div id="calBusyness"></div>
         <div style="display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
-          <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;align-self:center">Legend:</span>
+          <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;align-self:center">Stage (colour):</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#6b7280;display:inline-block"></span>Intake</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#7c3aed;display:inline-block"></span>In Design</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#2563eb;display:inline-block"></span>In Build</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#b8860b;display:inline-block"></span>Review</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#0891b2;display:inline-block"></span>Ready for Live</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#0a6640;display:inline-block"></span>Live</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#9ca3af;display:inline-block"></span>Done</span>
+        </div>
+        <div style="display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;align-self:center">Venue (dot):</span>
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#5ba4cf;display:inline-block"></span>Left Bank</span>
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#1a3a6e;display:inline-block"></span>Whitfords</span>
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#1a4a2e;display:inline-block"></span>Ravenswood</span>
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#7b1a2e;display:inline-block"></span>Darwin</span>
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#c05c1a;display:inline-block"></span>Mustang</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#f4a57a;display:inline-block"></span>Loaded</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#b8860b;display:inline-block"></span>Functions</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#4a9e8e;display:inline-block"></span>Supplier</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#a66c1f;display:inline-block"></span>Beerland</span>
         </div>
         <div class="cal-wrap"><div class="cal-grid" id="calGrid"></div></div>
       </div>
@@ -8101,21 +8109,19 @@ function pickCalCat(el){
   el.classList.add('on');calCatFilter=el.dataset.v;renderCalendar();
 }
 
-// Category → colour mapping
-// Calendar colour maps 1:1 to the real ActivityType choices (Event/Promotion/Offer/Campaign/
-// Maintenance/Update) so a menu change (Maintenance / Update) looks nothing like an Event or a
-// Campaign at a glance — the previous version keyed off category strings that no longer matched
-// any live ActivityType/EventFormat/BusinessStream value, so almost everything silently fell back
-// to venue colour regardless of what kind of activity it was.
-const CAL_TYPE_COLOR={'Event':'#2563eb','Promotion / Offer':'#b8860b','Campaign':'#7c3aed','Maintenance / Update':'#4a9e8e'};
+// Stage → colour mapping (same STAGE_ORDER keys as healthCheck/the Workflow Stage field) — colour
+// now signals WHERE SOMETHING IS in the pipeline (shared by the Calendar and the Gantt, which both
+// call this), not just what kind of activity it is. Venue stays visible via the small dot, and
+// activityType via its icon, so neither signal is lost by making colour mean stage instead.
+const STAGE_COLOR={'Intake':'#6b7280','In Design':'#7c3aed','In Build':'#2563eb','Review':'#b8860b','Ready for Live':'#0891b2','Live':'#0a6640','Done':'#9ca3af'};
 function calEvtColor(ev){
   // Status overrides everything — historic items stay visible but styled distinctly
   if(ev.status==='Archive'||ev.status==='Archived')return'#9ca3af';
   if(ev.status==='Cancelled')return'#dc2626';
   const cat=ev.activityType||ev.eventFormat||'';
   if(cat==='Public Holiday'||cat==='National Calendar Event'||cat==='School Holidays')return'#88887e';
-  if(CAL_TYPE_COLOR[ev.activityType])return CAL_TYPE_COLOR[ev.activityType];
-  // No classified ActivityType yet — fall back to venue colour rather than an unlabelled default
+  if(STAGE_COLOR[ev.stage])return STAGE_COLOR[ev.stage];
+  // No Workflow Stage set yet — fall back to venue colour rather than an unlabelled default
   const vc=vColor(ev.venue);return vc.c;
 }
 
@@ -8232,6 +8238,13 @@ function renderCalendar(){
     }):[];
     const isPublicHoliday=dayKeyDates.some(k=>k.isPublicHoliday);
 
+    // Design brief / marketing lead-up dates — already auto-calculated from Start date minus lead
+    // time, already driving the Gantt lead-up bar and My Day notifications, but never shown on the
+    // Calendar itself until now. Same venue/type filters as the main day events, for consistency.
+    const matchesCalFilters=e=>(!calVenueFilter||e.venue===calVenueFilter||e.venue==='All Venues')&&(!calCatFilter||calCatFilter==='holiday'||e.activityType===calCatFilter||e.eventFormat===calCatFilter||e.businessStream===calCatFilter);
+    const dayBriefsDue=inSelectedRange?EVENTS.filter(e=>!isArchived(e)&&e.designBriefDue===dateStr&&matchesCalFilters(e)):[];
+    const dayMarketingStarts=inSelectedRange?EVENTS.filter(e=>!isArchived(e)&&e.marketingStartDate===dateStr&&e.marketingStartDate!==e.start&&matchesCalFilters(e)):[];
+
     const maxShow=3;
     const shown=dayEvts.slice(0,maxShow);
     const extra=dayEvts.length-maxShow;
@@ -8239,6 +8252,8 @@ function renderCalendar(){
     h+=`<div class="cal-day${isOther?' om':''}${isToday?' td':''}${isPublicHoliday?' cd-hol':''}${!inSelectedRange?' cal-day-out':''}">
       <div class="cal-num">${day}</div>
       ${dayKeyDates.map(k=>`<div style="font-size:9px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:1px 4px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
+      ${dayBriefsDue.map(ev=>`<div style="font-size:9px;font-weight:600;color:#7c3aed;padding:1px 4px;border-radius:3px;background:#ede9fe;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✏️ Brief: ${ev.title}</div>`).join('')}
+      ${dayMarketingStarts.map(ev=>`<div style="font-size:9px;font-weight:600;color:#9a6b0a;padding:1px 4px;border-radius:3px;background:#fdf3d8;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
       ${shown.map(ev=>{
         const style=calEvtStyle(ev);
         const aType=ev.activityType||'';
