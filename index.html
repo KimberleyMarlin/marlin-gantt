@@ -4182,7 +4182,18 @@ async function fetchGraphItems(url,token){
   let next=url;
   let pages=0;
   while(next&&pages<100){
-    const res=await fetch(next,{headers:{Authorization:'Bearer '+token}});
+    // Graph throttles (429) or briefly hiccups (503/504) when a scan fires one request per folder
+    // in a row against a large library — back off and retry instead of failing the whole scan over
+    // what's usually a transient, recoverable limit.
+    let res,attempt=0;
+    while(true){
+      res=await fetch(next,{headers:{Authorization:'Bearer '+token}});
+      if(res.status!==429&&res.status!==503&&res.status!==504)break;
+      attempt++;
+      if(attempt>5)break;
+      const retryAfter=Number(res.headers.get('Retry-After'));
+      await sleep((retryAfter>0?retryAfter*1000:1000*Math.pow(2,attempt)));
+    }
     if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
     const data=await res.json();
     if(Array.isArray(data.value))items.push(...data.value);
