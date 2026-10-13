@@ -3014,14 +3014,23 @@ async function persistArchiveState(ev,noteHeading,noteLabel,reason){
   const result=await patchImportOptionalFields(url,token,fields);
   const savedState=result.saved.filter(field=>field===statusKey||field===stageKey);
   if(!savedState.length)throw new Error(`SharePoint rejected the archive state fields: ${result.failed.map(f=>f.field).join(', ')||'Status / WorkflowStage unavailable'}`);
-  const verify=await fetch(`${url}?expand=fields`,{headers:{Authorization:'Bearer '+token}});
-  if(!verify.ok)throw new Error('Archive saved but verification failed: HTTP '+verify.status);
-  const stored=(await verify.json()).fields||{};
-  ev.status=statusKey?(stored[statusKey]||ev.status):ev.status;
-  ev.eventStatus=ev.status;
-  ev.stage=stageKey?normaliseStage(stored[stageKey]||ev.stage):ev.stage;
-  ev.description=descriptionKey?splitActivityDescription(stored[descriptionKey]||newDesc).description:ev.description;
+  // The write already succeeded (savedState confirms it) — this read-back only exists to catch
+  // SharePoint's occasional "200 OK but silently didn't persist" quirk. A throttled/failed GET here
+  // is not the same as the archive failing, so fall back to the values just sent rather than
+  // reporting a false failure over a connectivity hiccup in the confirmation step alone.
   const partial=[];
+  let stored=null;
+  try{
+    const verify=await fetchWithRetry(`${url}?expand=fields`,{headers:{Authorization:'Bearer '+token}});
+    if(verify.ok)stored=(await verify.json()).fields||{};
+    else partial.push(`could not confirm the save stuck (HTTP ${verify.status}) — check it looks right`);
+  }catch(verifyError){
+    partial.push(`could not confirm the save stuck (${verifyError.message}) — check it looks right`);
+  }
+  ev.status=statusKey?(stored?.[statusKey]??archiveValue??ev.status):ev.status;
+  ev.eventStatus=ev.status;
+  ev.stage=stageKey?normaliseStage(stored?.[stageKey]??doneValue??ev.stage):ev.stage;
+  ev.description=descriptionKey?splitActivityDescription(stored?.[descriptionKey]??newDesc).description:ev.description;
   if(statusColumn&&!archiveValue)partial.push(`Status has no Archive/Archived choice`);
   partial.push(...result.failed.map(f=>f.field));
   return{partial:[...new Set(partial)]};
@@ -4188,23 +4197,28 @@ async function getToken(write=false){
   catch{return(await msalApp.acquireTokenPopup({scopes:sc})).accessToken;}
 }
 
+// Graph throttles (429) or briefly hiccups (503/504) under any kind of burst — a scan firing one
+// request per folder, or just ordinary traffic — so back off and retry instead of treating a
+// transient, recoverable limit as a hard failure. Shared by every Graph GET that cares about this,
+// not just the library-scanning one it was first written for.
+async function fetchWithRetry(url,options){
+  let res,attempt=0;
+  while(true){
+    res=await fetch(url,options);
+    if(res.status!==429&&res.status!==503&&res.status!==504)return res;
+    attempt++;
+    if(attempt>5)return res;
+    const retryAfter=Number(res.headers.get('Retry-After'));
+    await sleep((retryAfter>0?retryAfter*1000:1000*Math.pow(2,attempt)));
+  }
+}
+
 async function fetchGraphItems(url,token){
   const items=[];
   let next=url;
   let pages=0;
   while(next&&pages<100){
-    // Graph throttles (429) or briefly hiccups (503/504) when a scan fires one request per folder
-    // in a row against a large library — back off and retry instead of failing the whole scan over
-    // what's usually a transient, recoverable limit.
-    let res,attempt=0;
-    while(true){
-      res=await fetch(next,{headers:{Authorization:'Bearer '+token}});
-      if(res.status!==429&&res.status!==503&&res.status!==504)break;
-      attempt++;
-      if(attempt>5)break;
-      const retryAfter=Number(res.headers.get('Retry-After'));
-      await sleep((retryAfter>0?retryAfter*1000:1000*Math.pow(2,attempt)));
-    }
+    const res=await fetchWithRetry(next,{headers:{Authorization:'Bearer '+token}});
     if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
     const data=await res.json();
     if(Array.isArray(data.value))items.push(...data.value);
