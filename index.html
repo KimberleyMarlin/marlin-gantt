@@ -1096,6 +1096,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       </div>
     </div>
     <div class="ca">
+      <div id="calProjectsStrip"></div>
       <div class="card">
         <div id="calBusyness"></div>
         <div style="display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
@@ -8217,6 +8218,42 @@ function calEvtStyle(ev){
   return`background:${color}16;border-left:2.5px solid ${color};color:${color};opacity:${opacity}`;
 }
 
+// A mini-Gantt strip above the Month grid — "what's happening" at the Project level, not just the
+// day-by-day Activities. Projects have no Start date of their own (only a Due date), so a project's
+// span is derived from its linked Activities' earliest/latest dates, clipped to the visible month;
+// a Project with no dated activities and no Due date simply has nothing to show here yet.
+const PROJ_STRIP_STATUS_COLOR={'In Progress':'#2563eb','Not Started':'#6b7280','On Hold':'#b8860b','Done':'#9ca3af'};
+function renderCalProjectsStrip(){
+  if(!PROJECTS||!PROJECTS.length)return'';
+  const monthStart=new Date(calYear,calMonth,1),monthEnd=new Date(calYear,calMonth+1,0);
+  const totalDays=Math.round((monthEnd-monthStart)/864e5)+1;
+  const rows=PROJECTS.filter(p=>p.status!=='Done').map(p=>{
+    const linked=EVENTS.filter(e=>String(e.projectId)===String(p.id)&&!isArchived(e));
+    const dates=linked.flatMap(e=>[e.start,e.end]).filter(Boolean);
+    if(p.due)dates.push(p.due);
+    if(!dates.length)return null;
+    const spanStart=new Date(dates.reduce((a,b)=>a<b?a:b)+'T00:00:00');
+    const spanEnd=new Date(dates.reduce((a,b)=>a>b?a:b)+'T00:00:00');
+    if(spanEnd<monthStart||spanStart>monthEnd)return null;
+    const clipStart=spanStart<monthStart?monthStart:spanStart;
+    const clipEnd=spanEnd>monthEnd?monthEnd:spanEnd;
+    const leftPct=(clipStart-monthStart)/864e5/totalDays*100;
+    const widthPct=Math.max(((clipEnd-clipStart)/864e5+1)/totalDays*100,3);
+    return{p,leftPct,widthPct,color:PROJ_STRIP_STATUS_COLOR[p.status]||'#6b7280'};
+  }).filter(Boolean);
+  if(!rows.length)return'';
+  return`<div class="card" style="margin-bottom:12px;padding:10px 14px 12px">
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Projects this month</div>
+    ${rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer" onclick="openEditProject('${escapeAttr(String(r.p.id))}')">
+      <div style="width:140px;flex-shrink:0;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(r.p.title)}">${escapeAttr(r.p.title)}</div>
+      <div style="flex:1;position:relative;height:14px;background:var(--surface2);border-radius:4px">
+        <div style="position:absolute;left:${r.leftPct}%;width:${r.widthPct}%;height:100%;border-radius:4px;background:${r.color}" title="${escapeAttr(r.p.title)} — ${escapeAttr(r.p.status)}${r.p.due?' · due '+escapeAttr(fmtShort(r.p.due)):''}"></div>
+      </div>
+      <div style="width:54px;flex-shrink:0;font-size:10px;color:var(--text3);text-align:right">${r.p.progress||0}%</div>
+    </div>`).join('')}
+  </div>`;
+}
+
 function renderCalendar(){
   if(!isAuthed)return;
 
@@ -8241,6 +8278,8 @@ function renderCalendar(){
   </div>`;
   const busDiv=document.getElementById('calBusyness');
   if(busDiv)busDiv.innerHTML=busHtml;
+  const projStripDiv=document.getElementById('calProjectsStrip');
+  if(projStripDiv)projStripDiv.innerHTML=renderCalProjectsStrip();
 
   const firstDay=new Date(calYear,calMonth,1).getDay();
   const dim=new Date(calYear,calMonth+1,0).getDate();
@@ -8395,6 +8434,7 @@ function renderCalendarWeek(){
     ws.toLocaleDateString('en-AU',{day:'numeric',month:'short'})+' – '+we.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
 
   const busDiv=document.getElementById('calBusyness');if(busDiv)busDiv.innerHTML='';
+  const projStripDiv=document.getElementById('calProjectsStrip');if(projStripDiv)projStripDiv.innerHTML='';
   const today=new Date();today.setHours(0,0,0,0);
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -8485,6 +8525,7 @@ function renderCalendarDay(){
   const d=calDayDate;
   document.getElementById('calLabel').textContent=d.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'});
   const busDiv=document.getElementById('calBusyness');if(busDiv)busDiv.innerHTML='';
+  const projStripDiv=document.getElementById('calProjectsStrip');if(projStripDiv)projStripDiv.innerHTML='';
   const grid=document.getElementById('calGrid');
   grid.style.display='block';grid.style.gridTemplateColumns='';
 
@@ -8535,6 +8576,7 @@ function renderCalendarDay(){
 function renderCalendarYear(){
   document.getElementById('calLabel').textContent=String(calYear);
   const busDiv=document.getElementById('calBusyness');if(busDiv)busDiv.innerHTML='';
+  const projStripDiv=document.getElementById('calProjectsStrip');if(projStripDiv)projStripDiv.innerHTML='';
   const grid=document.getElementById('calGrid');
   grid.style.display='block';grid.style.gridTemplateColumns='';
 
@@ -12851,14 +12893,27 @@ function renderActivityDetail(id,mode){
   h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">`;
   h+=editField('Booking / Ticket Link',ev.bookingUrl||ev.ticketUrl,'BookingURL','text');
   h+=editField('Landing Page URL',ev.landingPageUrl,'LandingPageURL','text');
+  // Previously there was no way to mark an existing activity as ticketed at all — TicketedEvent
+  // only ever got set automatically at submission time if "Ticketed Event" was chosen as the
+  // format there. Hand-written (not the generic editField helper) so checking "Yes" reveals the
+  // Platform/Price/Capacity fields immediately, same live-toggle pattern as Recurring Schedule.
+  {
+    const ticketedVal=ev.ticketed?'Yes':'';
+    h+=`<div class="pop-field"><div class="pop-lbl">Ticketed?</div>
+      <select class="pop-edit-sel" data-field="TicketedEvent" data-original="${escapeAttr(ticketedVal)}" onchange="markPopDirty();toggleTicketingBox(this,${ev.id})" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
+        <option value="" ${!ev.ticketed?'selected':''}>No</option>
+        <option value="Yes" ${ev.ticketed?'selected':''}>Yes</option>
+      </select></div>`;
+  }
   // Ticket Platform/Price/Capacity only make sense for an actual ticketed event — showing them on
   // every activity (a recurring promo, a maintenance update, etc.) is exactly the "irrelevant
   // fields" clutter this popup gets flagged for. Same ev.ticketed gate the read-only summary uses.
-  if(ev.ticketed){
-    h+=editField('Ticket Platform',ev.ticketPlatform,'TicketPlatform','select',['','Humanitix','TryBooking','Eventbrite','Oztix','Now Book It']);
-    h+=editField('Ticket Price ($)',ev.ticketPrice||'','TicketPrice','number');
-    h+=editField('Capacity',ev.capacity||'','Capacity','number');
-  }
+  // Always rendered (just hidden) so the Ticketed? toggle above can reveal it live.
+  h+=`<div id="ticketingBox-${ev.id}" style="display:${ev.ticketed?'contents':'none'}">
+    ${editField('Ticket Platform',ev.ticketPlatform,'TicketPlatform','select',['','Humanitix','TryBooking','Eventbrite','Oztix','Now Book It'])}
+    ${editField('Ticket Price ($)',ev.ticketPrice||'','TicketPrice','number')}
+    ${editField('Capacity',ev.capacity||'','Capacity','number')}
+  </div>`;
   h+=editField('RRP ($)',ev.regularPrice||'','RegularPrice','number');
   h+=editField('Discount / Member Price ($)',ev.loadedBasePrice||'','LoadedBasePrice','number');
   h+=`</div>`;
@@ -13088,6 +13143,13 @@ function toggleRecurringScheduleBox(selectEl,evId){
   if(box)box.style.display=selectEl.value==='Recurring Event'?'':'none';
 }
 
+// Same live-reveal idea for the Ticketed? toggle — 'contents' (not '') when shown, since the box
+// sits inside a 2-column CSS grid and 'block' would break that grid's column flow.
+function toggleTicketingBox(selectEl,evId){
+  const box=document.getElementById('ticketingBox-'+evId);
+  if(box)box.style.display=selectEl.value==='Yes'?'contents':'none';
+}
+
 // Recurring-day checkboxes have no single input value, so they're collected into one hidden
 // .pop-edit-inp (data-field="RecurringDay") that savePopEdit already knows how to read.
 function syncRecurringDayField(evId){
@@ -13178,7 +13240,7 @@ async function savePopEdit(evId,mode){
       'DesignStatus':'designStatus','DesignBrief':'designBrief','JobFolderURL':'jobFolderUrl',
       'WebStatus':'webStatus','LoadedStatus':'loadedStatus','SocialStatus':'socialStatus','PosStatus':'posStatus',
       'BookingURL':'bookingUrl','LandingPageURL':'landingPageUrl','TicketPlatform':'ticketPlatform',
-      'TicketPrice':'ticketPrice','Capacity':'capacity',
+      'TicketPrice':'ticketPrice','Capacity':'capacity','TicketedEvent':'ticketed',
       'AppRequired':'appRequired','NewsletterRequired':'newsletterRequired','AppHeading':'appHeading','AppDescription':'appDescription','AppShortDescription':'appShortDescription',
       'RegularPrice':'regularPrice','LoadedBasePrice':'loadedBasePrice','ProjectId':'projectId',
       'RecurringFrequency':'recurringFrequency'
@@ -13189,6 +13251,7 @@ async function savePopEdit(evId,mode){
       else if(['BudgetAllocated','MarketingBudget','ActualSpend','SupplierContribution','TicketPrice'].includes(f))ev[localKey]=parseFloat(v)||0;
       else if(f==='Capacity')ev[localKey]=parseInt(v)||0;
       else if(f==='ProjectId')ev[localKey]=v||'';
+      else if(f==='TicketedEvent')ev[localKey]=v==='Yes';
       else ev[localKey]=v;
     }
     if(f===writableCampaignKey('LongDescription','Long Description'))ev.longDescription=v;
