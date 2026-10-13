@@ -5926,6 +5926,16 @@ async function ptSearch(){
 // "beer" there is immediately pickable here as an Activity's featured image (shown on the
 // Calendar hover card and the Artwork feed).
 // ═══════════════════════════════════════
+// Jumping here from the Artwork feed's "No featured image" prompt — opens the Activity's own page
+// (not just the popup, since the feed card itself isn't editable) with the photo picker already
+// expanded and scrolled into view, instead of leaving it to be found by hand.
+function openActivityPhotoPicker(evId){
+  showActivityPage(evId);
+  setTimeout(()=>{
+    openEvPhotoPicker(evId);
+    document.getElementById('evPhotoPreview-'+evId)?.scrollIntoView({behavior:'smooth',block:'center'});
+  },60);
+}
 function openEvPhotoPicker(evId){
   const box=document.getElementById('evPhotoPickerBox-'+evId);
   if(!box)return;
@@ -9337,7 +9347,7 @@ function renderArtwork(){
     const monthDate=new Date(key+'-01T00:00:00');const label=monthDate.toLocaleDateString('en-AU',{month:'long',year:'numeric'});
     return`<section class="art-month"><div class="art-month-head"><div class="art-month-title">${escapeAttr(label)}</div><div class="art-month-count">${groups[key].length} activit${groups[key].length===1?'y':'ies'}</div></div><div class="art-grid">${groups[key].map(e=>{
       const url=imageFor(e),project=PROJECTS.find(p=>String(p.id)===String(e.projectId)),health=healthCheck(e);
-      const image=url?`<img loading="lazy" src="${escapeAttr(url)}" alt="${escapeAttr(e.title||'Activity artwork')}" onerror="this.remove();this.parentElement.textContent='Image unavailable — open the Activity to check its SharePoint link.'">`:'<span>No featured artwork selected<br><small>Open the Activity to review its design status.</small></span>';
+      const image=url?`<img loading="lazy" src="${escapeAttr(url)}" alt="${escapeAttr(e.title||'Activity artwork')}" onerror="this.remove();this.parentElement.textContent='Image unavailable — open the Activity to check its SharePoint link.'">`:`<span onclick="event.stopPropagation();openActivityPhotoPicker(${e.id})" style="cursor:pointer;color:var(--accent);font-weight:600">📷 No featured image<br><small style="color:var(--text3);font-weight:400">Click to add or select one</small></span>`;
       return`<article class="art-card" onclick="showActivityPage(${e.id})"><div class="art-img">${image}</div><div class="art-body"><div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text3)"><span style="width:7px;height:7px;border-radius:50%;background:${vColor(e.venue).c};flex-shrink:0"></span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(e.venue||'No venue')}</span></div><div style="font-size:12.5px;font-weight:600;line-height:1.35">${escapeAttr(e.title)}</div><div style="font-size:10.5px;color:var(--text3)">${project?escapeAttr(project.title)+' · ':''}${escapeAttr(fmtShort(e.start))}</div><div style="display:flex;gap:5px;flex-wrap:wrap"><span class="tag t-gr">${escapeAttr(stageLabel(e.stage))}</span>${health.level!=='green'?`<span class="tag ${health.level==='red'?'t-r':'t-o'}">${escapeAttr(health.label)}</span>`:''}</div></div></article>`;
     }).join('')}</div></section>`;
   }).join('');
