@@ -1640,8 +1640,9 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <button class="btn btn-s" onclick="ptRefreshIndex()" title="Rescans the whole library — use after tagging a big new batch of photos">↻ Refresh index</button>
         </div>
         <div id="ptBreadcrumb" style="font-size:11.5px;color:var(--text3);margin-bottom:10px"></div>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
           <button class="btn btn-s" id="ptTagAllBtn" onclick="ptTagAllUntaggedInFolder()" style="display:none">Tag all untagged in this folder</button>
+          <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);cursor:pointer"><input type="checkbox" onchange="ptToggleRename(this)" style="margin:0">Also rename files using AI labels</label>
           <div id="ptStatus" class="form-msg"></div>
         </div>
         <div id="ptFolders" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px"></div>
@@ -5816,13 +5817,70 @@ function ptImageTile(item){
   const link=item.webUrl||'';
   return`<div class="card" id="pt-item-${item.id}" style="padding:8px">
     <a href="${link}" target="_blank" style="display:block;aspect-ratio:1;background:var(--surface2) url('${thumb.replace(/'/g,"%27")}') center/cover;border-radius:6px;margin-bottom:6px"></a>
-    <div style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px" title="${escapeAttr(item.name)}">${escapeAttr(item.name)}</div>
+    <div class="pt-name" style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px" title="${escapeAttr(item.name)}">${escapeAttr(item.name)}</div>
     <div class="pt-tags" style="font-size:10px;color:${tags?'var(--text3)':'var(--gold)'};min-height:26px;margin-bottom:6px;line-height:1.3">${tags?escapeAttr(tags):'Not tagged yet'}</div>
     <div style="display:flex;gap:6px">
       <button class="btn btn-s" style="flex:1;font-size:10px;padding:4px" onclick="ptTagOne('${item.id}')">${tags?'Re-tag':'Tag with AI'}</button>
+      <button class="btn btn-s" style="font-size:10px;padding:4px" onclick="ptEditTags('${item.id}')" title="Fix a wrong tag by hand">✏️</button>
       <button class="btn btn-s" style="font-size:10px;padding:4px" onclick="navigator.clipboard.writeText('${link.replace(/'/g,"\\'")}');this.textContent='✓';setTimeout(()=>this.textContent='🔗',1200)">🔗</button>
     </div>
   </div>`;
+}
+
+// Reflects a tags change (from AI tagging or a manual edit) wherever the item appears — the
+// current browse/search list, the cached full-library index, and the visible tile — so nothing
+// needs a full reload to show the correction.
+function ptApplyTagsUpdate(itemId,tagsString,tile){
+  const inMemory=ptCurrentItems.find(it=>it.id===itemId);
+  if(inMemory){
+    inMemory.tags=tagsString;
+    inMemory.listItem=inMemory.listItem||{};inMemory.listItem.fields=inMemory.listItem.fields||{};inMemory.listItem.fields.AITags=tagsString;
+  }
+  const inFullIndex=ptFullIndex?.find(it=>it.id===itemId);
+  if(inFullIndex){inFullIndex.tags=tagsString;ptSaveIndexCache(ptFullIndex);}
+  if(tile){
+    const tagsEl=tile.querySelector('.pt-tags');
+    if(tagsEl){tagsEl.textContent=tagsString||'No labels detected';tagsEl.style.color='var(--text3)';}
+    const tagBtn=tile.querySelector('button');
+    if(tagBtn&&tagBtn.textContent!=='Tagging…')tagBtn.textContent='Re-tag';
+  }
+  return inMemory;
+}
+
+// Manual correction for a wrong AI label (e.g. a beef skewer tagged "chicken") — Vision would
+// likely just repeat the same mistake on a re-tag, so this edits the stored tags directly instead.
+function ptEditTags(itemId){
+  const current=ptTagsOf(ptCurrentItems.find(it=>it.id===itemId)||{});
+  const next=prompt('Edit tags (comma-separated):',current);
+  if(next===null)return;
+  const trimmed=next.trim();
+  if(trimmed===current.trim())return;
+  ptSaveTagsManually(itemId,trimmed);
+}
+async function ptSaveTagsManually(itemId,tagsString){
+  const tile=document.getElementById('pt-item-'+itemId);
+  try{
+    const token=await getToken(true);
+    const patchRes=await fetch(`${PT_DRIVE_BASE()}/items/${itemId}/listItem/fields`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({AITags:tagsString})});
+    if(!patchRes.ok)throw new Error('Could not save tags (HTTP '+patchRes.status+')');
+    ptApplyTagsUpdate(itemId,tagsString,tile);
+  }catch(e){
+    alert('Could not save tags: '+e.message);
+  }
+}
+
+// Opt-in — renaming the whole library's files is a bigger, less reversible change than tagging
+// them, so it stays off until switched on, rather than silently changing filenames the first time
+// someone tags a photo.
+let ptRenameEnabled=false;
+function ptToggleRename(checkbox){ptRenameEnabled=checkbox.checked;}
+function ptSanitizeNamePart(text){return(text||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
+// Keeps a short id suffix so two photos that get the same top labels (ten different beer shots,
+// say) don't collide on the same filename within a folder.
+function ptGenerateFileName(originalName,labels,itemId){
+  const ext=(originalName.match(/\.[^.]+$/)||[''])[0].toLowerCase();
+  const base=labels.slice(0,3).map(l=>ptSanitizeNamePart(l.description)).filter(Boolean).join('-')||'photo';
+  return`${base}-${String(itemId).slice(-5)}${ext}`;
 }
 
 function ptArrayBufferToBase64(buffer){
@@ -5855,21 +5913,20 @@ async function ptTagOne(itemId){
       body:JSON.stringify({AITags:tagsString})
     });
     if(!patchRes.ok)throw new Error('Could not save tags back to SharePoint (HTTP '+patchRes.status+')');
-    // Reflect the new tags in memory so re-rendering (e.g. after a folder reload) stays accurate —
-    // set on whichever shape the item actually is (raw browse item vs. normalized search-index
-    // entry) by just setting both; the unused one is harmless.
-    const inMemory=ptCurrentItems.find(it=>it.id===itemId);
-    if(inMemory){
-      inMemory.tags=tagsString;
-      inMemory.listItem=inMemory.listItem||{};inMemory.listItem.fields=inMemory.listItem.fields||{};inMemory.listItem.fields.AITags=tagsString;
-    }
-    // Keep the cached full-library index in sync too, so a later search doesn't show stale tags
-    // until the next full refresh.
-    const inFullIndex=ptFullIndex?.find(it=>it.id===itemId);
-    if(inFullIndex){inFullIndex.tags=tagsString;ptSaveIndexCache(ptFullIndex);}
-    if(tile){
-      const tagsEl=tile.querySelector('.pt-tags');
-      if(tagsEl){tagsEl.textContent=tagsString||'No labels detected';tagsEl.style.color='var(--text3)';}
+    const inMemory=ptApplyTagsUpdate(itemId,tagsString,tile);
+    if(ptRenameEnabled&&labels.length&&inMemory?.name){
+      try{
+        const newName=ptGenerateFileName(inMemory.name,labels,itemId);
+        const renameRes=await fetch(`${PT_DRIVE_BASE()}/items/${itemId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name:newName})});
+        if(renameRes.ok){
+          const renamed=await renameRes.json();
+          inMemory.name=renamed.name;
+          const inFullIndex=ptFullIndex?.find(it=>it.id===itemId);
+          if(inFullIndex){inFullIndex.name=renamed.name;ptSaveIndexCache(ptFullIndex);}
+          const nameEl=tile?.querySelector('.pt-name');
+          if(nameEl){nameEl.textContent=renamed.name;nameEl.title=renamed.name;}
+        }
+      }catch(renameError){console.warn('Rename failed for',itemId,renameError);}
     }
     if(btn){btn.disabled=false;btn.textContent='Re-tag';}
   }catch(e){
