@@ -8318,12 +8318,9 @@ function renderCalendar(){
     let dayEvts=inSelectedRange?EVENTS.filter(e=>{
       if(isArchived(e))return false;
       const s=new Date(e.start+'T00:00:00'),en=new Date(e.end+'T00:00:00');
-      // Recurring parent events only count on days matching their RecurringDay
+      // Recurring parent events only count on days matching their RecurringDay + RecurringFrequency
       if(e.recurringDay&&e.recurringDay.length){
-        const dow=realDate.getDay();
-        const dayNames=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-        const matchesDay=e.recurringDay.some(rd=>(rd||'').toLowerCase()===dayNames[dow]);
-        return matchesDay&&realDate>=s&&realDate<=en;
+        return recurringMatchesDate(e,realDate)&&realDate>=s&&realDate<=en;
       }
       return realDate>=s&&realDate<=en;
     }):[];
@@ -8407,10 +8404,7 @@ function showCalDayPopup(evt,y,m,day){
   let dayEvts=calendarDateInRange(realDateKey)?EVENTS.filter(e=>{
     const s=new Date(e.start+'T00:00:00'),en=new Date(e.end+'T00:00:00');
     if(e.recurringDay&&e.recurringDay.length){
-      const dow=realDate.getDay();
-      const dayNames=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-      const matchesDay=e.recurringDay.some(rd=>(rd||'').toLowerCase()===dayNames[dow]);
-      return matchesDay&&realDate>=s&&realDate<=en&&!isArchived(e);
+      return recurringMatchesDate(e,realDate)&&realDate>=s&&realDate<=en&&!isArchived(e);
     }
     return realDate>=s&&realDate<=en&&!isArchived(e);
   }):[];
@@ -8464,10 +8458,7 @@ function renderCalendarWeek(){
       if(!ganttShowArchive&&isArchived(e))return false;
       const s=new Date(e.start+'T00:00:00'),en=new Date(e.end+'T00:00:00');
       if(e.recurringDay&&e.recurringDay.length){
-        const dow=d.getDay();
-        const dayNames=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-        const matchesDay=e.recurringDay.some(rd=>(rd||'').toLowerCase()===dayNames[dow]);
-        return matchesDay&&d>=s&&d<=en;
+        return recurringMatchesDate(e,d)&&d>=s&&d<=en;
       }
       return d>=s&&d<=en;
     }):[];
@@ -8511,6 +8502,28 @@ function renderCalendarWeek(){
   grid.innerHTML=h;
 }
 
+// Does a recurring activity actually land on this date, given its ticked day(s) AND its Recurring
+// Frequency? Frequency was being stored and shown as a dropdown but never actually consulted here —
+// ticking Thursday showed it every single Thursday regardless of whether Frequency said Weekly,
+// Fortnightly or Monthly. Anchored off the activity's own Start date: if Start falls on the 2nd
+// Thursday of its month, "Monthly" means the 2nd Thursday of every later month; "Fortnightly" means
+// every 14 days from Start. Caller is still responsible for the Start–End range check.
+function recurringMatchesDate(ev,date){
+  if(!ev.recurringDay||!ev.recurringDay.length)return false;
+  const dayNames=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  if(!ev.recurringDay.some(rd=>(rd||'').toLowerCase()===dayNames[date.getDay()]))return false;
+  const freq=(ev.recurringFrequency||'').toLowerCase();
+  if(freq==='fortnightly'){
+    const start=new Date(ev.start+'T00:00:00');
+    return Math.round((date-start)/864e5)%14===0;
+  }
+  if(freq==='monthly'){
+    const start=new Date(ev.start+'T00:00:00');
+    return Math.ceil(start.getDate()/7)===Math.ceil(date.getDate()/7);
+  }
+  return true; // Weekly, or no frequency set — every matching weekday in range
+}
+
 // Shared by day/week/month agenda-style views — one place for the recurring-day + venue + category
 // filter logic that used to be duplicated between renderCalendar/renderCalendarWeek/showCalDayPopup.
 function calEventsForDate(realDate,dateStr){
@@ -8519,10 +8532,7 @@ function calEventsForDate(realDate,dateStr){
     if(isArchived(e))return false;
     const s=new Date(e.start+'T00:00:00'),en=new Date(e.end+'T00:00:00');
     if(e.recurringDay&&e.recurringDay.length){
-      const dow=realDate.getDay();
-      const dayNames=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-      const matchesDay=e.recurringDay.some(rd=>(rd||'').toLowerCase()===dayNames[dow]);
-      return matchesDay&&realDate>=s&&realDate<=en;
+      return recurringMatchesDate(e,realDate)&&realDate>=s&&realDate<=en;
     }
     return realDate>=s&&realDate<=en;
   });
@@ -12962,12 +12972,11 @@ function renderActivityDetail(id,mode){
   // Links & setup — the fields most likely to need updating after submission
   h+=`<div class="pop-section">🔗 Links &amp; Setup</div>`;
   h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">`;
-  h+=editField('Booking / Ticket Link',ev.bookingUrl||ev.ticketUrl,'BookingURL','text');
-  h+=editField('Landing Page URL',ev.landingPageUrl,'LandingPageURL','text');
-  // Previously there was no way to mark an existing activity as ticketed at all — TicketedEvent
-  // only ever got set automatically at submission time if "Ticketed Event" was chosen as the
-  // format there. Hand-written (not the generic editField helper) so checking "Yes" reveals the
-  // Platform/Price/Capacity fields immediately, same live-toggle pattern as Recurring Schedule.
+  // Ticketed? comes first and gates everything ticketing-related, including the Booking/Ticket
+  // Link itself — previously that link (and Platform/Price/Capacity) showed regardless, which is
+  // exactly the "irrelevant fields" clutter this popup gets flagged for on a non-ticketed activity.
+  // Hand-written (not the generic editField helper) so checking "Yes" reveals the rest immediately,
+  // same live-toggle pattern as Recurring Schedule.
   {
     const ticketedVal=ev.ticketed?'Yes':'';
     h+=`<div class="pop-field"><div class="pop-lbl">Ticketed?</div>
@@ -12976,11 +12985,10 @@ function renderActivityDetail(id,mode){
         <option value="Yes" ${ev.ticketed?'selected':''}>Yes</option>
       </select></div>`;
   }
-  // Ticket Platform/Price/Capacity only make sense for an actual ticketed event — showing them on
-  // every activity (a recurring promo, a maintenance update, etc.) is exactly the "irrelevant
-  // fields" clutter this popup gets flagged for. Same ev.ticketed gate the read-only summary uses.
+  h+=editField('Landing Page URL',ev.landingPageUrl,'LandingPageURL','text');
   // Always rendered (just hidden) so the Ticketed? toggle above can reveal it live.
   h+=`<div id="ticketingBox-${ev.id}" style="display:${ev.ticketed?'contents':'none'}">
+    ${editField('Booking / Ticket Link',ev.bookingUrl||ev.ticketUrl,'BookingURL','text')}
     ${editField('Ticket Platform',ev.ticketPlatform,'TicketPlatform','select',['','Humanitix','TryBooking','Eventbrite','Oztix','Now Book It'])}
     ${editField('Ticket Price ($)',ev.ticketPrice||'','TicketPrice','number')}
     ${editField('Capacity',ev.capacity||'','Capacity','number')}
