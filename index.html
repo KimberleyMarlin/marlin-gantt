@@ -771,7 +771,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       <div class="ph-right">
         <select id="ovVenue" onchange="setUserPref('ovVenue',this.value);renderOverview()" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;background:var(--surface);color:var(--text)">
           <option value="">All Venues</option>
-          <option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option>
+          <option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option>
         </select>
         <button class="tb-btn" id="dashCustomizeBtn" onclick="toggleDashCustomize()">⠿ Customize</button>
         <button class="tb-btn" onclick="loadAll()">↻</button>
@@ -1008,7 +1008,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     </div>
     <div class="ca" id="campTableWrap">
       <div class="filters">
-        <div class="fg"><label>Venue</label><select id="cVenue" onchange="renderCampaigns()"><option value="">All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option></select></div>
+        <div class="fg"><label>Venue</label><select id="cVenue" onchange="renderCampaigns()"><option value="">All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option></select></div>
         <div class="fg"><label>Type</label><select id="cPType" onchange="renderCampaigns()"><option value="">All</option><option>Event</option><option>Promotion / Offer</option><option>Campaign</option><option>Maintenance / Update</option></select></div>
         <div class="fg"><label>Stage</label><select id="cStat" onchange="renderCampaigns()"><option value="">All</option><option value="Intake">New Submission</option><option>In Design</option><option>In Build</option><option>Review</option><option>Live</option><option>Done</option></select></div>
         <div class="fg"><label>Silo</label><select id="cSilo" onchange="renderCampaigns()"><option value="">All</option><option>Hero</option><option>Momentum</option><option>Always-On</option></select></div>
@@ -1099,15 +1099,23 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       <div class="card">
         <div id="calBusyness"></div>
         <div style="display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
-          <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;align-self:center">Legend:</span>
+          <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;align-self:center">Stage (colour):</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#6b7280;display:inline-block"></span>Intake</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#7c3aed;display:inline-block"></span>In Design</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#2563eb;display:inline-block"></span>In Build</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#b8860b;display:inline-block"></span>Review</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#0891b2;display:inline-block"></span>Ready for Live</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#0a6640;display:inline-block"></span>Live</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#9ca3af;display:inline-block"></span>Done</span>
+        </div>
+        <div style="display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;align-self:center">Venue (dot):</span>
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#5ba4cf;display:inline-block"></span>Left Bank</span>
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#1a3a6e;display:inline-block"></span>Whitfords</span>
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#1a4a2e;display:inline-block"></span>Ravenswood</span>
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#7b1a2e;display:inline-block"></span>Darwin</span>
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#c05c1a;display:inline-block"></span>Mustang</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#f4a57a;display:inline-block"></span>Loaded</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#b8860b;display:inline-block"></span>Functions</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#4a9e8e;display:inline-block"></span>Supplier</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#a66c1f;display:inline-block"></span>Beerland</span>
         </div>
         <div class="cal-wrap"><div class="cal-grid" id="calGrid"></div></div>
       </div>
@@ -1200,7 +1208,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <div class="form-grid">
           <div class="form-group full"><label class="form-label">Job Title <span class="req">*</span></label><input class="form-input" id="bTitle" placeholder="e.g. Christmas at Marlin — Instagram suite"></div>
           <div class="form-group"><label class="form-label">Campaign / Event <span class="req">*</span></label><select class="form-select" id="bCampaign"><option value="">Select campaign…</option></select></div>
-          <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="bVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>All Venues</option></select></div>
+          <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="bVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option><option>All Venues</option></select></div>
           <div class="form-group"><label class="form-label">Job Type <span class="req">*</span></label><select class="form-select" id="bType"><option value="">Select…</option><option>Social Media Post</option><option>Story / Reel</option><option>EDM Header</option><option>Web Banner</option><option>Print — Poster A3</option><option>Print — Poster A4</option><option>Print — Table Card</option><option>Menu Insert</option><option>Digital Screen</option><option>Logo / Brand</option><option>Video / Reel edit</option><option>Paid Ad creative</option><option>Other</option></select></div>
         </div>
         <!-- Section 2: Where does it go -->
@@ -1290,7 +1298,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="ca">
       <div class="stats" id="sponStats" style="margin-bottom:12px"></div>
       <div class="filters">
-        <div class="fg"><label>Venue</label><select id="sponVenue" onchange="renderSponsorships()"><option value="">All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option></select></div>
+        <div class="fg"><label>Venue</label><select id="sponVenue" onchange="renderSponsorships()"><option value="">All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option></select></div>
       </div>
       <div id="sponList"><div class="loading"><div class="spinner"></div></div></div>
     </div>
@@ -1629,6 +1637,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <input class="form-input" id="ptSearchInput" type="search" placeholder="Search every tagged photo (e.g. “beer”)…" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')ptSearch()">
           <button class="btn btn-p" onclick="ptSearch()">Search all</button>
           <button class="btn btn-s" onclick="ptGoToRoot()">⌂ Library root</button>
+          <button class="btn btn-s" onclick="ptRefreshIndex()" title="Rescans the whole library — use after tagging a big new batch of photos">↻ Refresh index</button>
         </div>
         <div id="ptBreadcrumb" style="font-size:11.5px;color:var(--text3);margin-bottom:10px"></div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
@@ -1837,7 +1846,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <div class="form-group full"><label class="form-label">Submitted By</label><div id="fSubmittedBy" style="font-size:13px;color:var(--text2);padding:8px 0">—</div></div>
             <div class="form-group full"><label class="form-label">Activity Detail</label><textarea class="form-textarea" id="fDesc" placeholder="e.g. Cheeky Monkey pints" style="min-height:70px"></textarea><div class="field-help">The specific product, offer or execution for this occurrence.</div></div>
             <div class="form-group full" id="fLongDescriptionGroup" style="display:none"><label class="form-label">Long Description</label><textarea class="form-textarea" id="fLongDescription" placeholder="Full customer-facing copy for web, listings and campaign materials" style="min-height:90px"></textarea><div class="field-help" id="fLongDescriptionHelp">Master long-form copy. Loaded can use this by default, with an optional app-specific override below.</div></div>
-            <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="fVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>All Venues</option></select></div>
+            <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="fVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option><option>All Venues</option></select></div>
             <div class="form-group"><label class="form-label">Marketing Funnel</label>
               <select class="form-select" id="fStream" onchange="updateActivityConditionalSections()">
                 <option value="">Select…</option>
@@ -1996,7 +2005,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div id="fIdeaMsg" class="form-msg"></div>
           <div class="form-grid">
             <div class="form-group full"><label class="form-label">Idea Title <span class="req">*</span></label><input class="form-input" id="ideaTitleNew" type="text" placeholder="e.g. Midweek Pasta & Wine Night"></div>
-            <div class="form-group"><label class="form-label">Venue</label><select class="form-select" id="ideaVenueNew"><option value="">Any / All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option></select></div>
+            <div class="form-group"><label class="form-label">Venue</label><select class="form-select" id="ideaVenueNew"><option value="">Any / All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option></select></div>
             <div class="form-group"><label class="form-label">Goal</label><select class="form-select" id="ideaGoalNew"><option value="">Select…</option><option>Revenue / upsell</option><option>Increase Foot Traffic</option><option>Product push</option><option>Brand / awareness</option><option>Functions / private bookings</option><option>General idea</option></select></div>
             <div class="form-group full"><label class="form-label">The Concept</label><textarea class="form-textarea" id="ideaConcept" placeholder="What's the idea? What would it look like?" style="min-height:80px"></textarea></div>
             <div class="form-group"><label class="form-label">Best Months / Season</label><input class="form-input" id="ideaMonths" type="text" placeholder="e.g. June–August"></div>
@@ -2020,7 +2029,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div id="fJobMsg" class="form-msg"></div>
           <div class="form-grid">
             <div class="form-group full"><label class="form-label">Job Title <span class="req">*</span></label><input class="form-input" id="fJobTitle" type="text" placeholder="e.g. Update menu on website, Print A3 poster for trivia night"></div>
-            <div class="form-group"><label class="form-label">Venue</label><select class="form-select" id="fJobVenue"><option value="">Group / All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option></select></div>
+            <div class="form-group"><label class="form-label">Venue</label><select class="form-select" id="fJobVenue"><option value="">Group / All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option></select></div>
             <div class="form-group"><label class="form-label">Job Type</label>
               <select class="form-select" id="fJobType">
                 <option value="General">General</option>
@@ -2175,7 +2184,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto">
             <select id="ideaVenue" onchange="renderIdeas()" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--surface);color:var(--text);outline:none">
               <option value="">All venues</option>
-              <option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option>
+              <option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option>
             </select>
             <select id="ideaStatusFilter" onchange="renderIdeas()" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--surface);color:var(--text);outline:none">
               <option value="">All statuses (excl. Archived)</option>
@@ -2199,7 +2208,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <div id="ideaFormMsg" class="form-msg"></div>
         <div class="form-grid">
           <div class="form-group full"><label class="form-label">Idea Title <span class="req">*</span></label><input class="form-input" id="ideaTitle" type="text" placeholder="e.g. Bottomless Brunch Sundays, Trivia with prizes, Tap takeover…"></div>
-          <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="ideaOverlayVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Any / All Venues</option></select></div>
+          <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="ideaOverlayVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option><option>Any / All Venues</option></select></div>
           <div class="form-group"><label class="form-label">Goal <span class="req">*</span></label><select class="form-select" id="ideaOverlayGoal"><option value="">Select…</option><option>Revenue / upsell</option><option>Increase Foot Traffic</option><option>Product push</option><option>Brand / awareness</option><option>Functions / private bookings</option><option>General idea</option></select></div>
           <div class="form-group"><label class="form-label">Best Months</label><select class="form-select" id="ideaOverlayMonths"><option value="">Any time</option><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option><option>Summer</option><option>Autumn</option><option>Winter</option><option>Spring</option><option>EOFY</option><option>Christmas period</option></select></div>
           <div class="form-group"><label class="form-label">Target Audience</label><input class="form-input" id="ideaOverlayAudience" type="text" placeholder="e.g. Families, 25-40 professionals, Beer lovers…"></div>
@@ -2621,7 +2630,8 @@ function venueFromM365Profile(text){
     {venue:'The Ravenswood',keys:['the ravenswood','ravenswood']},
     {venue:'Whitfords Brewing Co',keys:['whitfords brewing','wbc']},
     {venue:'Hotel Darwin',keys:['hotel darwin']},
-    {venue:'Mustang Bar',keys:['mustang bar']}
+    {venue:'Mustang Bar',keys:['mustang bar']},
+    {venue:'Beerland Brewing',keys:['beerland brewing','beerland']}
   ];
   return venues.find(v=>v.keys.some(k=>probe.includes(k)))?.venue||null;
 }
@@ -4007,6 +4017,9 @@ const VENUES_DATA=[
   {name:'Mustang Bar',loc:'Perth WA',type:'Partner',key:'mustang',
    primary:'#c05c1a',accent:'#e07830',cls:'vc-mb',
    url:'https://mustangbar.com.au'},
+  {name:'Beerland Brewing',loc:'',type:'Owned',key:'beerland',
+   primary:'#a66c1f',accent:'#c98a2e',cls:'vc-bl',
+   url:''},
 ];
 
 // Sponsorships remain static until a real list is connected.
@@ -4178,7 +4191,18 @@ async function fetchGraphItems(url,token){
   let next=url;
   let pages=0;
   while(next&&pages<100){
-    const res=await fetch(next,{headers:{Authorization:'Bearer '+token}});
+    // Graph throttles (429) or briefly hiccups (503/504) when a scan fires one request per folder
+    // in a row against a large library — back off and retry instead of failing the whole scan over
+    // what's usually a transient, recoverable limit.
+    let res,attempt=0;
+    while(true){
+      res=await fetch(next,{headers:{Authorization:'Bearer '+token}});
+      if(res.status!==429&&res.status!==503&&res.status!==504)break;
+      attempt++;
+      if(attempt>5)break;
+      const retryAfter=Number(res.headers.get('Retry-After'));
+      await sleep((retryAfter>0?retryAfter*1000:1000*Math.pow(2,attempt)));
+    }
     if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
     const data=await res.json();
     if(Array.isArray(data.value))items.push(...data.value);
@@ -4971,7 +4995,7 @@ async function loadCampaigns(){
         cta:f.CTA||'',
         tagline:f.Tagline||'',
         // People
-        owner:(typeof f.Assignee==='string'?f.Assignee:(f.Assignee?.LookupValue||f.Assignee?.Title))||'',
+        owner:f.AssigneeName||(typeof f.Assignee==='string'?f.Assignee:(f.Assignee?.LookupValue||f.Assignee?.Title))||'',
         ownerEmail:f.Assignee?.Email||'',
         projectId:f.ProjectId!=null&&f.ProjectId!==''?String(f.ProjectId):'',
         designer:f.Designer?.LookupValue||f.Designer?.Title||'',
@@ -5083,7 +5107,7 @@ function vmPrev(){vmMonth--;if(vmMonth<0){vmMonth=11;vmYear--;}renderVenueMonth(
 function vmNext(){vmMonth++;if(vmMonth>11){vmMonth=0;vmYear++;}renderVenueMonth();}
 function pickVmVenue(el){document.querySelectorAll('#vmVenueChips .chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');vmVenue=el.dataset.v;renderVenueMonth();}
 
-const OWNED_VENUES=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin'];
+const OWNED_VENUES=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Beerland Brewing'];
 const ALL_VENUES_VM=[...OWNED_VENUES,'Mustang Bar'];
 function renderVenueMonth(){
   if(!isAuthed)return;
@@ -5782,11 +5806,13 @@ async function ptLoadFolder(){
   }
 }
 
-function ptTagsOf(item){return item?.listItem?.fields?.AITags||'';}
+// Handles both shapes: a raw Graph driveItem (browse mode) and a normalized cached search-index
+// entry (ptNormalizeIndexItem) — tags is only ever absent (not just empty) on the raw shape.
+function ptTagsOf(item){return item?.tags??item?.listItem?.fields?.AITags??'';}
 
 function ptImageTile(item){
   const tags=ptTagsOf(item);
-  const thumb=item.thumbnails?.[0]?.medium?.url||item.thumbnails?.[0]?.small?.url||'';
+  const thumb=item.thumb||item.thumbnails?.[0]?.medium?.url||item.thumbnails?.[0]?.small?.url||'';
   const link=item.webUrl||'';
   return`<div class="card" id="pt-item-${item.id}" style="padding:8px">
     <a href="${link}" target="_blank" style="display:block;aspect-ratio:1;background:var(--surface2) url('${thumb.replace(/'/g,"%27")}') center/cover;border-radius:6px;margin-bottom:6px"></a>
@@ -5829,9 +5855,18 @@ async function ptTagOne(itemId){
       body:JSON.stringify({AITags:tagsString})
     });
     if(!patchRes.ok)throw new Error('Could not save tags back to SharePoint (HTTP '+patchRes.status+')');
-    // Reflect the new tags in memory so re-rendering (e.g. after a folder reload) stays accurate.
+    // Reflect the new tags in memory so re-rendering (e.g. after a folder reload) stays accurate —
+    // set on whichever shape the item actually is (raw browse item vs. normalized search-index
+    // entry) by just setting both; the unused one is harmless.
     const inMemory=ptCurrentItems.find(it=>it.id===itemId);
-    if(inMemory){inMemory.listItem=inMemory.listItem||{};inMemory.listItem.fields=inMemory.listItem.fields||{};inMemory.listItem.fields.AITags=tagsString;}
+    if(inMemory){
+      inMemory.tags=tagsString;
+      inMemory.listItem=inMemory.listItem||{};inMemory.listItem.fields=inMemory.listItem.fields||{};inMemory.listItem.fields.AITags=tagsString;
+    }
+    // Keep the cached full-library index in sync too, so a later search doesn't show stale tags
+    // until the next full refresh.
+    const inFullIndex=ptFullIndex?.find(it=>it.id===itemId);
+    if(inFullIndex){inFullIndex.tags=tagsString;ptSaveIndexCache(ptFullIndex);}
     if(tile){
       const tagsEl=tile.querySelector('.pt-tags');
       if(tagsEl){tagsEl.textContent=tagsString||'No labels detected';tagsEl.style.color='var(--text3)';}
@@ -5857,25 +5892,68 @@ async function ptTagAllUntaggedInFolder(){
   if(btn){btn.disabled=false;btn.style.display='none';}
 }
 
+// Walks the library one DEPTH LEVEL at a time, fetching every folder at that level in parallel
+// (capped at PT_SCAN_CONCURRENCY) instead of one folder at a time — with ~40+ folders in this
+// library, that was the actual source of the multi-minute scan time, not Graph itself being slow.
+const PT_SCAN_CONCURRENCY=6;
 async function ptBuildFullIndex(onProgress){
   const token=await getToken();
   const index=[];
-  const queue=[{id:'root',path:'Digital Media library'}];
+  let frontier=[{id:'root',path:'Digital Media library'}];
   let scanned=0;
-  while(queue.length){
-    const folder=queue.shift();
-    const url=folder.id==='root'
-      ?`${PT_DRIVE_BASE()}/root/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`
-      :`${PT_DRIVE_BASE()}/items/${folder.id}/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`;
-    const items=await fetchGraphItems(url,token);
-    scanned++;
-    if(onProgress)onProgress(scanned,index.length);
-    items.forEach(it=>{
-      if(it.folder)queue.push({id:it.id,path:folder.path+'/'+it.name});
-      else if(ptIsImage(it.name))index.push(it);
-    });
+  while(frontier.length){
+    const nextFrontier=[];
+    for(let i=0;i<frontier.length;i+=PT_SCAN_CONCURRENCY){
+      const batch=frontier.slice(i,i+PT_SCAN_CONCURRENCY);
+      const results=await Promise.all(batch.map(folder=>{
+        const url=folder.id==='root'
+          ?`${PT_DRIVE_BASE()}/root/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`
+          :`${PT_DRIVE_BASE()}/items/${folder.id}/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`;
+        return fetchGraphItems(url,token).then(items=>({folder,items}));
+      }));
+      results.forEach(({folder,items})=>{
+        scanned++;
+        items.forEach(it=>{
+          if(it.folder)nextFrontier.push({id:it.id,path:folder.path+'/'+it.name});
+          else if(ptIsImage(it.name))index.push(ptNormalizeIndexItem(it));
+        });
+      });
+      if(onProgress)onProgress(scanned,index.length);
+    }
+    frontier=nextFrontier;
   }
   return index;
+}
+
+// Full Graph driveItem objects are too heavy (and too big for localStorage) to cache as-is — reduce
+// each to just what search/rendering actually use before it goes into ptFullIndex or the cache.
+function ptNormalizeIndexItem(it){
+  return{
+    id:it.id,name:it.name,webUrl:it.webUrl||'',
+    thumb:it.thumbnails?.[0]?.large?.url||it.thumbnails?.[0]?.medium?.url||it.thumbnails?.[0]?.small?.url||'',
+    tags:it.listItem?.fields?.AITags||''
+  };
+}
+
+const PT_INDEX_CACHE_KEY='marlinHub_ptFullIndex_v1';
+function ptSaveIndexCache(index){
+  try{localStorage.setItem(PT_INDEX_CACHE_KEY,JSON.stringify({builtAt:Date.now(),index}));}
+  catch(e){console.warn('Could not cache the photo index (localStorage full or unavailable):',e);}
+}
+function ptLoadIndexCache(){
+  try{
+    const raw=localStorage.getItem(PT_INDEX_CACHE_KEY);
+    if(!raw)return null;
+    const parsed=JSON.parse(raw);
+    return Array.isArray(parsed?.index)?parsed:null;
+  }catch(e){return null;}
+}
+// Forces a fresh scan — use after tagging a big batch of new photos, since the cache otherwise
+// only refreshes when a browser tab has never searched before (or its cache was cleared).
+async function ptRefreshIndex(){
+  ptFullIndex=null;
+  localStorage.removeItem(PT_INDEX_CACHE_KEY);
+  await ptSearch();
 }
 
 async function ptSearch(){
@@ -5889,12 +5967,20 @@ async function ptSearch(){
   foldersEl.innerHTML='';
   if(tagAllBtn)tagAllBtn.style.display='none';
   if(!ptFullIndex){
+    const cached=ptLoadIndexCache();
+    if(cached){
+      ptFullIndex=cached.index;
+      if(statusEl){statusEl.textContent=`Using a saved index from ${new Date(cached.builtAt).toLocaleString('en-AU')} — hit Refresh index if you've added new photos.`;statusEl.className='form-msg';}
+    }
+  }
+  if(!ptFullIndex){
     imagesEl.innerHTML='';
     if(statusEl){statusEl.textContent='Scanning the whole library the first time \u2014 this can take a minute, later searches are instant…';statusEl.className='form-msg';}
     try{
       ptFullIndex=await ptBuildFullIndex((scanned,found)=>{
         if(statusEl)statusEl.textContent=`Scanning\u2026 ${scanned} folders checked, ${found} images found so far.`;
       });
+      ptSaveIndexCache(ptFullIndex);
     }catch(e){
       if(statusEl){statusEl.textContent='Scan failed: '+e.message;statusEl.className='form-msg err';}
       return;
@@ -5911,6 +5997,16 @@ async function ptSearch(){
 // "beer" there is immediately pickable here as an Activity's featured image (shown on the
 // Calendar hover card and the Artwork feed).
 // ═══════════════════════════════════════
+// Jumping here from the Artwork feed's "No featured image" prompt — opens the Activity's own page
+// (not just the popup, since the feed card itself isn't editable) with the photo picker already
+// expanded and scrolled into view, instead of leaving it to be found by hand.
+function openActivityPhotoPicker(evId){
+  showActivityPage(evId);
+  setTimeout(()=>{
+    openEvPhotoPicker(evId);
+    document.getElementById('evPhotoPreview-'+evId)?.scrollIntoView({behavior:'smooth',block:'center'});
+  },60);
+}
 function openEvPhotoPicker(evId){
   const box=document.getElementById('evPhotoPickerBox-'+evId);
   if(!box)return;
@@ -5931,11 +6027,15 @@ async function searchEvPhotos(evId,presetQuery){
   const q=(presetQuery!==undefined?presetQuery:document.getElementById('evPhotoSearch-'+evId)?.value||'').trim().toLowerCase();
   resultsEl.innerHTML='<div style="grid-column:1/-1;font-size:11px;color:var(--text3);padding:10px">Loading…</div>';
   try{
-    if(!ptFullIndex)ptFullIndex=await ptBuildFullIndex();
+    if(!ptFullIndex){
+      const cached=ptLoadIndexCache();
+      ptFullIndex=cached?cached.index:await ptBuildFullIndex();
+      if(!cached)ptSaveIndexCache(ptFullIndex);
+    }
     const matches=(q?ptFullIndex.filter(it=>it.name.toLowerCase().includes(q)||ptTagsOf(it).toLowerCase().includes(q)):ptFullIndex).slice(0,40);
     resultsEl.innerHTML=matches.length?matches.map(it=>{
-      const thumb=it.thumbnails?.[0]?.medium?.url||it.thumbnails?.[0]?.small?.url||'';
-      const picked=(it.thumbnails?.[0]?.large?.url||thumb||'').replace(/'/g,"\\'");
+      const thumb=it.thumb||it.thumbnails?.[0]?.medium?.url||it.thumbnails?.[0]?.small?.url||'';
+      const picked=thumb.replace(/'/g,"\\'");
       return`<div style="cursor:pointer" onclick="pickEvPhoto(${evId},'${picked}')" title="${escapeAttr(it.name)}${ptTagsOf(it)?' — '+escapeAttr(ptTagsOf(it)):''}"><div style="aspect-ratio:1;background:var(--surface2) url('${thumb.replace(/'/g,"%27")}') center/cover;border-radius:6px;border:1px solid var(--border)"></div></div>`;
     }).join(''):'<div style="grid-column:1/-1;font-size:11px;color:var(--text3);padding:10px">No matches — tag photos in Photo Tagging first, or try a different word.</div>';
   }catch(e){
@@ -5981,11 +6081,30 @@ async function loadEvJobFolder(evId){
   try{
     const token=await getToken();
     const shareId=encodeSharingUrlForGraph(ev.jobFolderUrl);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$expand=children($select=name,webUrl,file,folder)`,{headers:{Authorization:'Bearer '+token}});
+    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$expand=children($select=id,name,webUrl,file,folder,thumbnails;$expand=thumbnails)`,{headers:{Authorization:'Bearer '+token}});
     if(!res.ok)throw new Error('HTTP '+res.status);
     const data=await res.json();
     const children=data.children||[];
-    box.innerHTML=children.length?children.map(c=>`<a href="${c.webUrl}" target="_blank" style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);text-decoration:none;padding:4px 6px;border-radius:5px">${c.folder?'📁':'📄'} <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(c.name)}</span></a>`).join(''):'<div style="font-size:11px;color:var(--text3);padding:6px">Folder is empty.</div>';
+    const images=children.filter(c=>!c.folder&&ptIsImage(c.name));
+    const others=children.filter(c=>c.folder||!ptIsImage(c.name));
+    const thumbOf=c=>c.thumbnails?.[0]?.large?.url||c.thumbnails?.[0]?.medium?.url||c.thumbnails?.[0]?.small?.url||'';
+    box.innerHTML=children.length?`
+      ${images.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;margin-bottom:8px">${images.map(c=>{
+        const thumb=thumbOf(c);
+        return`<div style="cursor:pointer" onclick="pickEvPhoto(${evId},'${thumb.replace(/'/g,"\\'")}')" title="${escapeAttr(c.name)} — set as promo image">
+          <div style="aspect-ratio:1;background:var(--surface2) url('${thumb.replace(/'/g,"%27")}') center/cover;border-radius:6px;border:1px solid var(--border)"></div>
+        </div>`;
+      }).join('')}</div>`:''}
+      ${others.map(c=>`<a href="${c.webUrl}" target="_blank" style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);text-decoration:none;padding:4px 6px;border-radius:5px">${c.folder?'📁':'📄'} <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(c.name)}</span></a>`).join('')}
+      ${images.length?'<div style="font-size:10px;color:var(--text3);padding:4px 6px">Click an image to use it as this Activity\'s promo image.</div>':''}
+    `:'<div style="font-size:11px;color:var(--text3);padding:6px">Folder is empty.</div>';
+    // Nothing picked yet and artwork has landed in the folder — default to the first image rather
+    // than leaving the Artwork feed blank until someone remembers to pick one by hand. A manual
+    // pick (here or via the Featured Photo search) always overrides this.
+    if(!ev.eventImageUrl&&images.length){
+      const firstThumb=thumbOf(images[0]);
+      if(firstThumb)pickEvPhoto(evId,firstThumb);
+    }
   }catch(e){
     box.innerHTML=`<div style="font-size:11px;color:var(--red);padding:6px">Could not load folder contents: ${escapeAttr(e.message)}</div>`;
   }
@@ -6622,7 +6741,7 @@ function renderDashThisMonth(){
   // instead of one mixed pile, same idea as the Venue Monthly page. A venue-specific view (either
   // picked manually, or defaulted to a venue manager's own venue) just shows its one flat grid.
   if(!venue){
-    const venues5=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
+    const venues5=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
     el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
       ${venues5.map(v=>{
         const vc=vColor(v);
@@ -6753,9 +6872,9 @@ function renderOverview(){
     :'<div style="padding:14px;text-align:center;color:var(--text3);font-size:12px">No key dates loaded yet</div>';
 
   // Venue activity snapshot
-  const VENUES=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
-  const VCODES=['LB','RAV','WBC','HD','MB'];
-  document.getElementById('ovVenueSnap').innerHTML=`<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:10px 0">
+  const VENUES=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
+  const VCODES=['LB','RAV','WBC','HD','MB','BL'];
+  document.getElementById('ovVenueSnap').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;padding:10px 0">
     ${VENUES.map((v,i)=>{
       const vEvts=active.filter(e=>e.venue===v);
       const liveNow=vEvts.filter(e=>e.stage==='Live').length;
@@ -6873,7 +6992,7 @@ function renderDashboardCharts(evts){
   destroyChart('chartBudget');
   if(!canSeeFinancials)return;
   const venues=['LB','RAV','WBC','Darwin','Mustang'];
-  const venueKeys=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
+  const venueKeys=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
   const budgets=venueKeys.map(v=>Math.round(evts.filter(e=>e.venue===v).reduce((a,e)=>a+(e.budget||0),0)));
   const actuals=venueKeys.map(v=>Math.round(evts.filter(e=>e.venue===v).reduce((a,e)=>a+(e.actualSpend||0),0)));
   const ctx3=document.getElementById('chartBudget');
@@ -7604,7 +7723,7 @@ function _renderGanttInner(){
   if(todayPct>=0&&todayPct<=100)h+=`<div class="g-today-line" style="left:calc(200px + (100% - 200px) * ${todayPct/100})"><div class="g-today-flag">Today</div></div>`;
 
   if(ganttViewMode==='day'){
-    const venueOrder=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
+    const venueOrder=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
     venueOrder.forEach(vn=>{
       const vEvts=evts.filter(e=>e.venue===vn||e.venue==='All Venues');
       if(!vEvts.length)return;
@@ -7990,21 +8109,19 @@ function pickCalCat(el){
   el.classList.add('on');calCatFilter=el.dataset.v;renderCalendar();
 }
 
-// Category → colour mapping
-// Calendar colour maps 1:1 to the real ActivityType choices (Event/Promotion/Offer/Campaign/
-// Maintenance/Update) so a menu change (Maintenance / Update) looks nothing like an Event or a
-// Campaign at a glance — the previous version keyed off category strings that no longer matched
-// any live ActivityType/EventFormat/BusinessStream value, so almost everything silently fell back
-// to venue colour regardless of what kind of activity it was.
-const CAL_TYPE_COLOR={'Event':'#2563eb','Promotion / Offer':'#b8860b','Campaign':'#7c3aed','Maintenance / Update':'#4a9e8e'};
+// Stage → colour mapping (same STAGE_ORDER keys as healthCheck/the Workflow Stage field) — colour
+// now signals WHERE SOMETHING IS in the pipeline (shared by the Calendar and the Gantt, which both
+// call this), not just what kind of activity it is. Venue stays visible via the small dot, and
+// activityType via its icon, so neither signal is lost by making colour mean stage instead.
+const STAGE_COLOR={'Intake':'#6b7280','In Design':'#7c3aed','In Build':'#2563eb','Review':'#b8860b','Ready for Live':'#0891b2','Live':'#0a6640','Done':'#9ca3af'};
 function calEvtColor(ev){
   // Status overrides everything — historic items stay visible but styled distinctly
   if(ev.status==='Archive'||ev.status==='Archived')return'#9ca3af';
   if(ev.status==='Cancelled')return'#dc2626';
   const cat=ev.activityType||ev.eventFormat||'';
   if(cat==='Public Holiday'||cat==='National Calendar Event'||cat==='School Holidays')return'#88887e';
-  if(CAL_TYPE_COLOR[ev.activityType])return CAL_TYPE_COLOR[ev.activityType];
-  // No classified ActivityType yet — fall back to venue colour rather than an unlabelled default
+  if(STAGE_COLOR[ev.stage])return STAGE_COLOR[ev.stage];
+  // No Workflow Stage set yet — fall back to venue colour rather than an unlabelled default
   const vc=vColor(ev.venue);return vc.c;
 }
 
@@ -8060,7 +8177,7 @@ function renderCalendar(){
   {const grid=document.getElementById('calGrid');grid.style.display='grid';grid.style.gridTemplateColumns='repeat(7,1fr)';}
 
   // Venue trade intensity banner
-  const venues5=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
+  const venues5=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
   const busHtml=`<div style="display:flex;gap:5px;padding:8px 12px;background:var(--surface2);border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center">
     <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-right:4px">Venue Trade:</span>
     ${venues5.map(v=>{const b=getBusyness(v,calMonth,'revenue');const vc=vColor(v);return b?`<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:${busynessColor(b)};color:${busynessTextColor(b)}"><span style="width:5px;height:5px;border-radius:50%;background:${vc.c};display:inline-block"></span>${v.replace('The ','').replace('Whitfords Brewing Co','WBC')}: ${b}</span>`:''}).join('')}
@@ -8121,6 +8238,13 @@ function renderCalendar(){
     }):[];
     const isPublicHoliday=dayKeyDates.some(k=>k.isPublicHoliday);
 
+    // Design brief / marketing lead-up dates — already auto-calculated from Start date minus lead
+    // time, already driving the Gantt lead-up bar and My Day notifications, but never shown on the
+    // Calendar itself until now. Same venue/type filters as the main day events, for consistency.
+    const matchesCalFilters=e=>(!calVenueFilter||e.venue===calVenueFilter||e.venue==='All Venues')&&(!calCatFilter||calCatFilter==='holiday'||e.activityType===calCatFilter||e.eventFormat===calCatFilter||e.businessStream===calCatFilter);
+    const dayBriefsDue=inSelectedRange?EVENTS.filter(e=>!isArchived(e)&&e.designBriefDue===dateStr&&matchesCalFilters(e)):[];
+    const dayMarketingStarts=inSelectedRange?EVENTS.filter(e=>!isArchived(e)&&e.marketingStartDate===dateStr&&e.marketingStartDate!==e.start&&matchesCalFilters(e)):[];
+
     const maxShow=3;
     const shown=dayEvts.slice(0,maxShow);
     const extra=dayEvts.length-maxShow;
@@ -8128,6 +8252,8 @@ function renderCalendar(){
     h+=`<div class="cal-day${isOther?' om':''}${isToday?' td':''}${isPublicHoliday?' cd-hol':''}${!inSelectedRange?' cal-day-out':''}">
       <div class="cal-num">${day}</div>
       ${dayKeyDates.map(k=>`<div style="font-size:9px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:1px 4px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
+      ${dayBriefsDue.map(ev=>`<div style="font-size:9px;font-weight:600;color:#7c3aed;padding:1px 4px;border-radius:3px;background:#ede9fe;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✏️ Brief: ${ev.title}</div>`).join('')}
+      ${dayMarketingStarts.map(ev=>`<div style="font-size:9px;font-weight:600;color:#9a6b0a;padding:1px 4px;border-radius:3px;background:#fdf3d8;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
       ${shown.map(ev=>{
         const style=calEvtStyle(ev);
         const aType=ev.activityType||'';
@@ -8311,7 +8437,7 @@ function renderCalendarDay(){
   const dayKeyDates=inSelectedRange?KEY_DATES.filter(k=>k.start&&k.start<=dateStr&&(k.end||k.start)>=dateStr):[];
 
   const venues=[...new Set(dayEvts.map(e=>e.venue||'No venue'))].sort((a,b)=>{
-    const order=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
+    const order=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
     const ia=order.indexOf(a),ib=order.indexOf(b);
     if(ia===-1&&ib===-1)return a.localeCompare(b);
     if(ia===-1)return 1;if(ib===-1)return-1;
@@ -9303,7 +9429,7 @@ function renderArtwork(){
     const monthDate=new Date(key+'-01T00:00:00');const label=monthDate.toLocaleDateString('en-AU',{month:'long',year:'numeric'});
     return`<section class="art-month"><div class="art-month-head"><div class="art-month-title">${escapeAttr(label)}</div><div class="art-month-count">${groups[key].length} activit${groups[key].length===1?'y':'ies'}</div></div><div class="art-grid">${groups[key].map(e=>{
       const url=imageFor(e),project=PROJECTS.find(p=>String(p.id)===String(e.projectId)),health=healthCheck(e);
-      const image=url?`<img loading="lazy" src="${escapeAttr(url)}" alt="${escapeAttr(e.title||'Activity artwork')}" onerror="this.remove();this.parentElement.textContent='Image unavailable — open the Activity to check its SharePoint link.'">`:'<span>No featured artwork selected<br><small>Open the Activity to review its design status.</small></span>';
+      const image=url?`<img loading="lazy" src="${escapeAttr(url)}" alt="${escapeAttr(e.title||'Activity artwork')}" onerror="this.remove();this.parentElement.textContent='Image unavailable — open the Activity to check its SharePoint link.'">`:`<span onclick="event.stopPropagation();openActivityPhotoPicker(${e.id})" style="cursor:pointer;color:var(--accent);font-weight:600">📷 No featured image<br><small style="color:var(--text3);font-weight:400">Click to add or select one</small></span>`;
       return`<article class="art-card" onclick="showActivityPage(${e.id})"><div class="art-img">${image}</div><div class="art-body"><div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text3)"><span style="width:7px;height:7px;border-radius:50%;background:${vColor(e.venue).c};flex-shrink:0"></span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(e.venue||'No venue')}</span></div><div style="font-size:12.5px;font-weight:600;line-height:1.35">${escapeAttr(e.title)}</div><div style="font-size:10.5px;color:var(--text3)">${project?escapeAttr(project.title)+' · ':''}${escapeAttr(fmtShort(e.start))}</div><div style="display:flex;gap:5px;flex-wrap:wrap"><span class="tag t-gr">${escapeAttr(stageLabel(e.stage))}</span>${health.level!=='green'?`<span class="tag ${health.level==='red'?'t-r':'t-o'}">${escapeAttr(health.label)}</span>`:''}</div></div></article>`;
     }).join('')}</div></section>`;
   }).join('');
@@ -10078,6 +10204,8 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'RegularPrice',displayName:'Regular Price',type:'number',purpose:'Standard price used for offer comparisons.'},
   {listKey:'campaigns',name:'LoadedBasePrice',displayName:'Loaded Base Price',type:'number',purpose:'Loaded member price used for offer comparisons.'},
   {listKey:'campaigns',name:'JobFolderURL',displayName:'Job Folder URL',type:'text',purpose:'Folder link written back by the existing Power Automate flow.'},
+  {listKey:'campaigns',name:'AssigneeName',displayName:'Assignee Name',type:'text',purpose:'Owner/assignee as plain text — the existing Assignee column is Person/Group, which silently drops a plain name string on save instead of erroring.'},
+  {listKey:'campaigns',name:'EventImageURL',displayName:'Event Image URL',type:'text',purpose:'Featured photo link, set from the Digital Media library picker or a job folder image — shown on the Calendar hover card and Artwork feed.'},
   {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number',purpose:'Groups Activities that belong to one recurring series.'},
   {listKey:'campaigns',name:'ProjectId',displayName:'Project Id',type:'number',purpose:'Links each Activity to its one parent Project.'},
   {listKey:'projects',name:'Priority',displayName:'Priority',type:'text',purpose:'High, Medium, Low, or blank planning priority.'},
@@ -10801,7 +10929,7 @@ function apprClearFilters(){
 function renderApprovals(){
   const chipsWrap=document.getElementById('apprVenueChips');
   if(chipsWrap&&!chipsWrap.innerHTML){
-    const venues=['','The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
+    const venues=['','The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
     chipsWrap.innerHTML=venues.map(v=>`<div class="chip ${v===''?'on':''}" data-v="${v}" onclick="pickApprVenue(this)">${v?shortVenue(v):'All Venues'}</div>`).join('');
   }
   let intake=EVENTS.filter(e=>e.stage==='Intake'&&!isArchived(e));
@@ -11937,7 +12065,8 @@ const CRM_VENUE_TICKBOX_COLUMNS={
   Ravenswood:['ravenswood','the ravenswood','ravenswood hotel'],
   WhitfordsBrewing:['whitfords brewing co','whitfords brewing','whitfords'],
   LeftBank:['left bank','the left bank'],
-  MustangBar:['mustang bar','mustang']
+  MustangBar:['mustang bar','mustang'],
+  BeerlandBrewing:['beerland brewing','beerland']
 };
 // Same 5 venues, paired with a display label — drives the venue-per-column import mapping UI and
 // every place that needs to turn a tickbox column key back into a readable venue name.
@@ -11946,7 +12075,8 @@ const CRM_VENUE_TICKBOX_LIST=[
   {key:'Ravenswood',label:'The Ravenswood'},
   {key:'WhitfordsBrewing',label:'Whitfords Brewing Co'},
   {key:'HotelDarwin',label:'Hotel Darwin'},
-  {key:'MustangBar',label:'Mustang Bar'}
+  {key:'MustangBar',label:'Mustang Bar'},
+  {key:'BeerlandBrewing',label:'Beerland Brewing'}
 ];
 function crmVenueTickboxLabel(column){return CRM_VENUE_TICKBOX_LIST.find(v=>v.key===column)?.label||'';}
 // Only these two venues have their own opt-out column today (OPTOUT_RH / OPTOUT_LB) — confirmed
@@ -12390,7 +12520,7 @@ async function submitEvent(){
       if(longDescriptionKey)fields[longDescriptionKey]=longDescription;
       else fields.Description=withLongDescription(fields.Description,longDescription);
     }
-    fields.Assignee=submitter;
+    fields.AssigneeName=submitter;
 
     const ef=document.getElementById('fEventFormat')?.value;if(ef)fields.EventFormat=ef;
     const stream=document.getElementById('fStream')?.value;if(stream)fields.BusinessStream=stream;
@@ -12625,10 +12755,14 @@ function renderActivityDetail(id,mode){
   h+=editLookup('Supplier','Supplier',ev.supplierId,ev.supplierLookup);
   h+=editLookup('Product','Product',ev.productId,ev.product);
   if(ev.department)h+=editField('Department',ev.department,'Departement');
-  // Owner — Choice field (names). Change Assignee to a Choice column in SharePoint with these values.
+  // Owner — plain text, written to AssigneeName. The original Assignee column is a SharePoint
+  // Person/Group field; writing a plain name string to it is silently accepted (200 OK) but never
+  // actually stored, which is why this kept "saving" without sticking. AssigneeName sidesteps that
+  // type mismatch entirely instead of relying on a Person→Text column conversion SharePoint may not
+  // even offer. Old records are still read from the legacy Assignee field until re-saved.
   const peopleNames=(M365_USERS.length?M365_USERS.map(u=>u.name):['Kim','Luca','Perrin','Didier','Ben','Jo','Amelia']);
   h+=`<div class="pop-field"><div class="pop-lbl">Owner ${!M365_USERS.length?'<span style="color:var(--gold);font-weight:400">(list from directory once User.ReadBasic.All is granted)</span>':''}</div>
-    <select class="pop-edit-sel" data-field="Assignee" data-original="${escapeAttr(ev.owner||'')}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
+    <select class="pop-edit-sel" data-field="AssigneeName" data-original="${escapeAttr(ev.owner||'')}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
       <option value="">Unassigned</option>
       ${peopleNames.map(n=>`<option value="${n}" ${n===ev.owner?'selected':''}>${n}</option>`).join('')}
     </select></div>`;
@@ -12637,7 +12771,7 @@ function renderActivityDetail(id,mode){
       <option value="">Not part of a project</option>
       ${PROJECTS.map(p=>`<option value="${p.id}" ${String(p.id)===String(ev.projectId)?'selected':''}>${escapeAttr(p.title)}</option>`).join('')}
     </select></div>`;
-  h+=editField('Venue',ev.venue,'Venue','select',['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','All Venues']);
+  h+=editField('Venue',ev.venue,'Venue','select',['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing','All Venues']);
   if(rolePermissions().canViewBudget){
     h+=editField('Budget ($)',ev.budget||'','BudgetAllocated','number');
     if(ev.actualSpend)h+=editField('Actual Spend ($)',ev.actualSpend,'ActualSpend','number');
@@ -12944,7 +13078,7 @@ async function savePopEdit(evId,mode){
       'SupplierContribution':'supplierContrib',
       'ActivityType':'activityType','EventFormat':'eventFormat','Venue':'venue',
       'CampaignSilo':'marketingSilo','BusinessStream':'businessStream',
-      'Brand':'brand','Departement':'department','Assignee':'owner',
+      'Brand':'brand','Departement':'department','Assignee':'owner','AssigneeName':'owner',
       'DesignStatus':'designStatus','DesignBrief':'designBrief','JobFolderURL':'jobFolderUrl',
       'WebStatus':'webStatus','LoadedStatus':'loadedStatus','SocialStatus':'socialStatus','PosStatus':'posStatus',
       'BookingURL':'bookingUrl','LandingPageURL':'landingPageUrl','TicketPlatform':'ticketPlatform',
