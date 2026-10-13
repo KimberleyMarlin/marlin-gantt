@@ -10129,6 +10129,23 @@ async function savePersonalTask(){
         itemId=String((await coreRes.json()).id);
       }
       const optionalResult=await patchImportOptionalFields(`${listUrl}/${itemId}`,token,fields);
+      // A failed Sequence specifically (rather than a missing-column error) usually means this tab's
+      // in-memory PERSONAL_TASKS max was stale — e.g. the tab's been open a while and other tasks
+      // were created since the last load — so the +10 it computed had already been taken by then.
+      // Ask SharePoint directly for the real current max and retry once before reporting a failure.
+      if(fields.Sequence&&optionalResult.failed.some(f=>f.field==='Sequence')){
+        try{
+          const freshItems=await fetchGraphItems(`${listUrl}?$top=200&$select=id&$expand=fields($select=Sequence)`,token);
+          const liveMax=freshItems.reduce((max,it)=>Math.max(max,Number(it.fields?.Sequence)||0),0);
+          const retrySequence=liveMax+10;
+          const retryRes=await fetch(`${listUrl}/${itemId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Sequence:retrySequence}})});
+          if(retryRes.ok){
+            optionalResult.failed=optionalResult.failed.filter(f=>f.field!=='Sequence');
+            optionalResult.saved.push('Sequence');
+            newSequence=retrySequence;
+          }
+        }catch(retryError){console.warn('Sequence retry failed:',retryError);}
+      }
       await loadPersonalTasks();
       renderPersonalTasks();
       if(optionalResult.failed.length){
@@ -10225,8 +10242,18 @@ async function ptDrop(e,targetId){
   if(fromIdx===-1||toIdx===-1)return;
   siblings.splice(toIdx,0,siblings.splice(fromIdx,1)[0]);
   // Numbered above the current global max, not restarted at 10 for this group — two sibling groups
-  // both renumbering to 10,20,30 collide if the Sequence column enforces unique values.
-  const base=PERSONAL_TASKS.reduce((max,t)=>Math.max(max,t.sequence||0),0);
+  // both renumbering to 10,20,30 collide if the Sequence column enforces unique values. The local
+  // PERSONAL_TASKS max can be stale (tab open a while, tasks created elsewhere since), so refresh it
+  // from SharePoint directly first rather than risk renumbering straight into an existing collision.
+  let base=PERSONAL_TASKS.reduce((max,t)=>Math.max(max,t.sequence||0),0);
+  if(LIST_IDS.personalTasks&&!isPreviewMode){
+    try{
+      const token=await getToken(true);
+      const listUrl=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items`;
+      const freshItems=await fetchGraphItems(`${listUrl}?$top=200&$select=id&$expand=fields($select=Sequence)`,token);
+      base=Math.max(base,freshItems.reduce((max,it)=>Math.max(max,Number(it.fields?.Sequence)||0),0));
+    }catch(refreshError){console.warn('Could not refresh live Sequence max before reordering, using local value:',refreshError);}
+  }
   const changed=[];
   siblings.forEach((t,i)=>{const newSeq=base+(i+1)*10;if(t.sequence!==newSeq){changed.push({task:t,oldSequence:t.sequence});t.sequence=newSeq;}});
   // A drop is only meaningful as a manual reorder, so switch the sort dropdown to "My order" itself
