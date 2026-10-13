@@ -1629,6 +1629,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <input class="form-input" id="ptSearchInput" type="search" placeholder="Search every tagged photo (e.g. “beer”)…" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')ptSearch()">
           <button class="btn btn-p" onclick="ptSearch()">Search all</button>
           <button class="btn btn-s" onclick="ptGoToRoot()">⌂ Library root</button>
+          <button class="btn btn-s" onclick="ptRefreshIndex()" title="Rescans the whole library — use after tagging a big new batch of photos">↻ Refresh index</button>
         </div>
         <div id="ptBreadcrumb" style="font-size:11.5px;color:var(--text3);margin-bottom:10px"></div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
@@ -4986,7 +4987,7 @@ async function loadCampaigns(){
         cta:f.CTA||'',
         tagline:f.Tagline||'',
         // People
-        owner:(typeof f.Assignee==='string'?f.Assignee:(f.Assignee?.LookupValue||f.Assignee?.Title))||'',
+        owner:f.AssigneeName||(typeof f.Assignee==='string'?f.Assignee:(f.Assignee?.LookupValue||f.Assignee?.Title))||'',
         ownerEmail:f.Assignee?.Email||'',
         projectId:f.ProjectId!=null&&f.ProjectId!==''?String(f.ProjectId):'',
         designer:f.Designer?.LookupValue||f.Designer?.Title||'',
@@ -5797,11 +5798,13 @@ async function ptLoadFolder(){
   }
 }
 
-function ptTagsOf(item){return item?.listItem?.fields?.AITags||'';}
+// Handles both shapes: a raw Graph driveItem (browse mode) and a normalized cached search-index
+// entry (ptNormalizeIndexItem) — tags is only ever absent (not just empty) on the raw shape.
+function ptTagsOf(item){return item?.tags??item?.listItem?.fields?.AITags??'';}
 
 function ptImageTile(item){
   const tags=ptTagsOf(item);
-  const thumb=item.thumbnails?.[0]?.medium?.url||item.thumbnails?.[0]?.small?.url||'';
+  const thumb=item.thumb||item.thumbnails?.[0]?.medium?.url||item.thumbnails?.[0]?.small?.url||'';
   const link=item.webUrl||'';
   return`<div class="card" id="pt-item-${item.id}" style="padding:8px">
     <a href="${link}" target="_blank" style="display:block;aspect-ratio:1;background:var(--surface2) url('${thumb.replace(/'/g,"%27")}') center/cover;border-radius:6px;margin-bottom:6px"></a>
@@ -5844,9 +5847,18 @@ async function ptTagOne(itemId){
       body:JSON.stringify({AITags:tagsString})
     });
     if(!patchRes.ok)throw new Error('Could not save tags back to SharePoint (HTTP '+patchRes.status+')');
-    // Reflect the new tags in memory so re-rendering (e.g. after a folder reload) stays accurate.
+    // Reflect the new tags in memory so re-rendering (e.g. after a folder reload) stays accurate —
+    // set on whichever shape the item actually is (raw browse item vs. normalized search-index
+    // entry) by just setting both; the unused one is harmless.
     const inMemory=ptCurrentItems.find(it=>it.id===itemId);
-    if(inMemory){inMemory.listItem=inMemory.listItem||{};inMemory.listItem.fields=inMemory.listItem.fields||{};inMemory.listItem.fields.AITags=tagsString;}
+    if(inMemory){
+      inMemory.tags=tagsString;
+      inMemory.listItem=inMemory.listItem||{};inMemory.listItem.fields=inMemory.listItem.fields||{};inMemory.listItem.fields.AITags=tagsString;
+    }
+    // Keep the cached full-library index in sync too, so a later search doesn't show stale tags
+    // until the next full refresh.
+    const inFullIndex=ptFullIndex?.find(it=>it.id===itemId);
+    if(inFullIndex){inFullIndex.tags=tagsString;ptSaveIndexCache(ptFullIndex);}
     if(tile){
       const tagsEl=tile.querySelector('.pt-tags');
       if(tagsEl){tagsEl.textContent=tagsString||'No labels detected';tagsEl.style.color='var(--text3)';}
@@ -5872,25 +5884,68 @@ async function ptTagAllUntaggedInFolder(){
   if(btn){btn.disabled=false;btn.style.display='none';}
 }
 
+// Walks the library one DEPTH LEVEL at a time, fetching every folder at that level in parallel
+// (capped at PT_SCAN_CONCURRENCY) instead of one folder at a time — with ~40+ folders in this
+// library, that was the actual source of the multi-minute scan time, not Graph itself being slow.
+const PT_SCAN_CONCURRENCY=6;
 async function ptBuildFullIndex(onProgress){
   const token=await getToken();
   const index=[];
-  const queue=[{id:'root',path:'Digital Media library'}];
+  let frontier=[{id:'root',path:'Digital Media library'}];
   let scanned=0;
-  while(queue.length){
-    const folder=queue.shift();
-    const url=folder.id==='root'
-      ?`${PT_DRIVE_BASE()}/root/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`
-      :`${PT_DRIVE_BASE()}/items/${folder.id}/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`;
-    const items=await fetchGraphItems(url,token);
-    scanned++;
-    if(onProgress)onProgress(scanned,index.length);
-    items.forEach(it=>{
-      if(it.folder)queue.push({id:it.id,path:folder.path+'/'+it.name});
-      else if(ptIsImage(it.name))index.push(it);
-    });
+  while(frontier.length){
+    const nextFrontier=[];
+    for(let i=0;i<frontier.length;i+=PT_SCAN_CONCURRENCY){
+      const batch=frontier.slice(i,i+PT_SCAN_CONCURRENCY);
+      const results=await Promise.all(batch.map(folder=>{
+        const url=folder.id==='root'
+          ?`${PT_DRIVE_BASE()}/root/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`
+          :`${PT_DRIVE_BASE()}/items/${folder.id}/children?$top=200&$expand=thumbnails,listItem($expand=fields($select=AITags))`;
+        return fetchGraphItems(url,token).then(items=>({folder,items}));
+      }));
+      results.forEach(({folder,items})=>{
+        scanned++;
+        items.forEach(it=>{
+          if(it.folder)nextFrontier.push({id:it.id,path:folder.path+'/'+it.name});
+          else if(ptIsImage(it.name))index.push(ptNormalizeIndexItem(it));
+        });
+      });
+      if(onProgress)onProgress(scanned,index.length);
+    }
+    frontier=nextFrontier;
   }
   return index;
+}
+
+// Full Graph driveItem objects are too heavy (and too big for localStorage) to cache as-is — reduce
+// each to just what search/rendering actually use before it goes into ptFullIndex or the cache.
+function ptNormalizeIndexItem(it){
+  return{
+    id:it.id,name:it.name,webUrl:it.webUrl||'',
+    thumb:it.thumbnails?.[0]?.large?.url||it.thumbnails?.[0]?.medium?.url||it.thumbnails?.[0]?.small?.url||'',
+    tags:it.listItem?.fields?.AITags||''
+  };
+}
+
+const PT_INDEX_CACHE_KEY='marlinHub_ptFullIndex_v1';
+function ptSaveIndexCache(index){
+  try{localStorage.setItem(PT_INDEX_CACHE_KEY,JSON.stringify({builtAt:Date.now(),index}));}
+  catch(e){console.warn('Could not cache the photo index (localStorage full or unavailable):',e);}
+}
+function ptLoadIndexCache(){
+  try{
+    const raw=localStorage.getItem(PT_INDEX_CACHE_KEY);
+    if(!raw)return null;
+    const parsed=JSON.parse(raw);
+    return Array.isArray(parsed?.index)?parsed:null;
+  }catch(e){return null;}
+}
+// Forces a fresh scan — use after tagging a big batch of new photos, since the cache otherwise
+// only refreshes when a browser tab has never searched before (or its cache was cleared).
+async function ptRefreshIndex(){
+  ptFullIndex=null;
+  localStorage.removeItem(PT_INDEX_CACHE_KEY);
+  await ptSearch();
 }
 
 async function ptSearch(){
@@ -5904,12 +5959,20 @@ async function ptSearch(){
   foldersEl.innerHTML='';
   if(tagAllBtn)tagAllBtn.style.display='none';
   if(!ptFullIndex){
+    const cached=ptLoadIndexCache();
+    if(cached){
+      ptFullIndex=cached.index;
+      if(statusEl){statusEl.textContent=`Using a saved index from ${new Date(cached.builtAt).toLocaleString('en-AU')} — hit Refresh index if you've added new photos.`;statusEl.className='form-msg';}
+    }
+  }
+  if(!ptFullIndex){
     imagesEl.innerHTML='';
     if(statusEl){statusEl.textContent='Scanning the whole library the first time \u2014 this can take a minute, later searches are instant…';statusEl.className='form-msg';}
     try{
       ptFullIndex=await ptBuildFullIndex((scanned,found)=>{
         if(statusEl)statusEl.textContent=`Scanning\u2026 ${scanned} folders checked, ${found} images found so far.`;
       });
+      ptSaveIndexCache(ptFullIndex);
     }catch(e){
       if(statusEl){statusEl.textContent='Scan failed: '+e.message;statusEl.className='form-msg err';}
       return;
@@ -5956,11 +6019,15 @@ async function searchEvPhotos(evId,presetQuery){
   const q=(presetQuery!==undefined?presetQuery:document.getElementById('evPhotoSearch-'+evId)?.value||'').trim().toLowerCase();
   resultsEl.innerHTML='<div style="grid-column:1/-1;font-size:11px;color:var(--text3);padding:10px">Loading…</div>';
   try{
-    if(!ptFullIndex)ptFullIndex=await ptBuildFullIndex();
+    if(!ptFullIndex){
+      const cached=ptLoadIndexCache();
+      ptFullIndex=cached?cached.index:await ptBuildFullIndex();
+      if(!cached)ptSaveIndexCache(ptFullIndex);
+    }
     const matches=(q?ptFullIndex.filter(it=>it.name.toLowerCase().includes(q)||ptTagsOf(it).toLowerCase().includes(q)):ptFullIndex).slice(0,40);
     resultsEl.innerHTML=matches.length?matches.map(it=>{
-      const thumb=it.thumbnails?.[0]?.medium?.url||it.thumbnails?.[0]?.small?.url||'';
-      const picked=(it.thumbnails?.[0]?.large?.url||thumb||'').replace(/'/g,"\\'");
+      const thumb=it.thumb||it.thumbnails?.[0]?.medium?.url||it.thumbnails?.[0]?.small?.url||'';
+      const picked=thumb.replace(/'/g,"\\'");
       return`<div style="cursor:pointer" onclick="pickEvPhoto(${evId},'${picked}')" title="${escapeAttr(it.name)}${ptTagsOf(it)?' — '+escapeAttr(ptTagsOf(it)):''}"><div style="aspect-ratio:1;background:var(--surface2) url('${thumb.replace(/'/g,"%27")}') center/cover;border-radius:6px;border:1px solid var(--border)"></div></div>`;
     }).join(''):'<div style="grid-column:1/-1;font-size:11px;color:var(--text3);padding:10px">No matches — tag photos in Photo Tagging first, or try a different word.</div>';
   }catch(e){
@@ -10122,6 +10189,8 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'RegularPrice',displayName:'Regular Price',type:'number',purpose:'Standard price used for offer comparisons.'},
   {listKey:'campaigns',name:'LoadedBasePrice',displayName:'Loaded Base Price',type:'number',purpose:'Loaded member price used for offer comparisons.'},
   {listKey:'campaigns',name:'JobFolderURL',displayName:'Job Folder URL',type:'text',purpose:'Folder link written back by the existing Power Automate flow.'},
+  {listKey:'campaigns',name:'AssigneeName',displayName:'Assignee Name',type:'text',purpose:'Owner/assignee as plain text — the existing Assignee column is Person/Group, which silently drops a plain name string on save instead of erroring.'},
+  {listKey:'campaigns',name:'EventImageURL',displayName:'Event Image URL',type:'text',purpose:'Featured photo link, set from the Digital Media library picker or a job folder image — shown on the Calendar hover card and Artwork feed.'},
   {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number',purpose:'Groups Activities that belong to one recurring series.'},
   {listKey:'campaigns',name:'ProjectId',displayName:'Project Id',type:'number',purpose:'Links each Activity to its one parent Project.'},
   {listKey:'projects',name:'Priority',displayName:'Priority',type:'text',purpose:'High, Medium, Low, or blank planning priority.'},
@@ -12436,7 +12505,7 @@ async function submitEvent(){
       if(longDescriptionKey)fields[longDescriptionKey]=longDescription;
       else fields.Description=withLongDescription(fields.Description,longDescription);
     }
-    fields.Assignee=submitter;
+    fields.AssigneeName=submitter;
 
     const ef=document.getElementById('fEventFormat')?.value;if(ef)fields.EventFormat=ef;
     const stream=document.getElementById('fStream')?.value;if(stream)fields.BusinessStream=stream;
@@ -12671,10 +12740,14 @@ function renderActivityDetail(id,mode){
   h+=editLookup('Supplier','Supplier',ev.supplierId,ev.supplierLookup);
   h+=editLookup('Product','Product',ev.productId,ev.product);
   if(ev.department)h+=editField('Department',ev.department,'Departement');
-  // Owner — Choice field (names). Change Assignee to a Choice column in SharePoint with these values.
+  // Owner — plain text, written to AssigneeName. The original Assignee column is a SharePoint
+  // Person/Group field; writing a plain name string to it is silently accepted (200 OK) but never
+  // actually stored, which is why this kept "saving" without sticking. AssigneeName sidesteps that
+  // type mismatch entirely instead of relying on a Person→Text column conversion SharePoint may not
+  // even offer. Old records are still read from the legacy Assignee field until re-saved.
   const peopleNames=(M365_USERS.length?M365_USERS.map(u=>u.name):['Kim','Luca','Perrin','Didier','Ben','Jo','Amelia']);
   h+=`<div class="pop-field"><div class="pop-lbl">Owner ${!M365_USERS.length?'<span style="color:var(--gold);font-weight:400">(list from directory once User.ReadBasic.All is granted)</span>':''}</div>
-    <select class="pop-edit-sel" data-field="Assignee" data-original="${escapeAttr(ev.owner||'')}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
+    <select class="pop-edit-sel" data-field="AssigneeName" data-original="${escapeAttr(ev.owner||'')}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
       <option value="">Unassigned</option>
       ${peopleNames.map(n=>`<option value="${n}" ${n===ev.owner?'selected':''}>${n}</option>`).join('')}
     </select></div>`;
@@ -12990,7 +13063,7 @@ async function savePopEdit(evId,mode){
       'SupplierContribution':'supplierContrib',
       'ActivityType':'activityType','EventFormat':'eventFormat','Venue':'venue',
       'CampaignSilo':'marketingSilo','BusinessStream':'businessStream',
-      'Brand':'brand','Departement':'department','Assignee':'owner',
+      'Brand':'brand','Departement':'department','Assignee':'owner','AssigneeName':'owner',
       'DesignStatus':'designStatus','DesignBrief':'designBrief','JobFolderURL':'jobFolderUrl',
       'WebStatus':'webStatus','LoadedStatus':'loadedStatus','SocialStatus':'socialStatus','PosStatus':'posStatus',
       'BookingURL':'bookingUrl','LandingPageURL':'landingPageUrl','TicketPlatform':'ticketPlatform',
