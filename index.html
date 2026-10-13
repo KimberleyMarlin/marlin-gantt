@@ -1844,9 +1844,9 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div class="form-notice">📌 Fill in what you know — the marketing team will add channels and next steps after it's submitted.</div>
           <div id="fMsg" class="form-msg"></div>
           <div class="form-grid">
-            <div class="form-group full"><label class="form-label">Activation <span class="req">*</span></label><input class="form-input" id="fTitle" type="text" placeholder="e.g. Beer of the Month"><div class="field-help">The repeatable promotion or event name. The month is taken from Start Date.</div></div>
+            <div class="form-group full"><label class="form-label">Activation <span class="req">*</span></label><input class="form-input" id="fTitle" type="text" placeholder="e.g. Beer of the Month"><div class="field-help" id="fTitleHelp">The repeatable promotion or event name. The month is taken from Start Date.</div><input type="hidden" id="fTitleBase" value=""></div>
             <div class="form-group full"><label class="form-label">Submitted By</label><div id="fSubmittedBy" style="font-size:13px;color:var(--text2);padding:8px 0">—</div></div>
-            <div class="form-group full"><label class="form-label">Activity Detail</label><textarea class="form-textarea" id="fDesc" placeholder="e.g. Cheeky Monkey pints" style="min-height:70px"></textarea><div class="field-help">The specific product, offer or execution for this occurrence.</div></div>
+            <div class="form-group full"><label class="form-label">Activity Detail</label><textarea class="form-textarea" id="fDesc" placeholder="e.g. Cheeky Monkey pints" style="min-height:70px" oninput="composeActivityTitle()"></textarea><div class="field-help" id="fDescHelp">The specific product, offer or execution for this occurrence.</div></div>
             <div class="form-group full" id="fLongDescriptionGroup" style="display:none"><label class="form-label">Long Description</label><textarea class="form-textarea" id="fLongDescription" placeholder="Full customer-facing copy for web, listings and campaign materials" style="min-height:90px"></textarea><div class="field-help" id="fLongDescriptionHelp">Master long-form copy. Loaded can use this by default, with an optional app-specific override below.</div></div>
             <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="fVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option><option>All Venues</option></select></div>
             <div class="form-group"><label class="form-label">Marketing Funnel</label>
@@ -1899,7 +1899,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <div class="form-grid">
               <div class="form-group"><label class="form-label">Required in App?</label><select class="form-select" id="fAppRequired"><option value="">Select…</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
               <div class="form-group"><label class="form-label">Required in Newsletter?</label><select class="form-select" id="fNewsletterRequired"><option value="">Select…</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
-              <div class="form-group full"><label class="form-label">App Heading</label><input class="form-input" id="fAppHeading" type="text" placeholder="e.g. 1/2 Price Sirloin Steak - Save $24"></div>
+              <div class="form-group full"><label class="form-label">App Heading</label><input class="form-input" id="fAppHeading" type="text" placeholder="e.g. 1/2 Price Sirloin Steak - Save $24" oninput="fAppHeadingTouched=true"></div>
               <div class="form-group full"><label class="form-label">Short Description</label><input class="form-input" id="fAppShortDescription" type="text" placeholder="e.g. Members special. Every Wednesday"><div style="font-size:10.5px;color:var(--text3);margin-top:3px">The one-liner shown under the heading in app listings</div></div>
               <div class="form-group full"><label class="form-label">App Long Description Override</label><textarea class="form-textarea" id="fAppDescription" placeholder="Leave blank to use the activity Long Description" style="min-height:60px"></textarea><div style="font-size:10.5px;color:var(--text3);margin-top:3px">Only use this when the Loaded app needs different copy.</div></div>
               <div class="form-group full"><label class="form-label">Booking Link / Landing Page</label><input class="form-input" id="fLoadedBookingLink" type="url" placeholder="https://"></div>
@@ -11376,6 +11376,21 @@ function pickSubmitPath(path){
     // Template comes straight from the "What are you submitting?" dropdown now — apply it
     // immediately so the form opens already prefilled.
     if(templateKey&&ACTIVITY_TEMPLATES[templateKey])applyActivityTemplate(templateKey);
+    // Beer of the Month, Wine of the Month etc. are a repeatable series — the Title needs the
+    // specific item too (e.g. "Beer of the Month — Feral Hop Hog"), not just the series name,
+    // otherwise every month's activity looks identical everywhere it's listed. Activity Detail
+    // becomes that item name while a template is active; App Heading mirrors it until manually
+    // overwritten, since the Loaded app heading is usually just the item itself.
+    const titleBaseEl=document.getElementById('fTitleBase');
+    const descHelpEl=document.getElementById('fDescHelp');
+    const titleHelpEl=document.getElementById('fTitleHelp');
+    if(titleBaseEl){
+      titleBaseEl.value=templateKey&&ACTIVITY_TEMPLATES[templateKey]?ACTIVITY_TEMPLATES[templateKey].title:'';
+      fAppHeadingTouched=false;
+      if(descHelpEl)descHelpEl.textContent=titleBaseEl.value?`The specific item (e.g. "Feral Hop Hog") — combines with "${titleBaseEl.value}" to form the Title, and fills App Heading until you edit that yourself.`:'The specific product, offer or execution for this occurrence.';
+      if(titleHelpEl)titleHelpEl.textContent=titleBaseEl.value?`Auto-built from "${titleBaseEl.value}" plus whatever you type in Activity Detail below.`:'The repeatable promotion or event name. The month is taken from Start Date.';
+      composeActivityTitle();
+    }
   }
   // Populate job assignee
   if(path==='job'){
@@ -11488,6 +11503,21 @@ function togglePOSDetails(){
   const on=!!document.getElementById('fPOSRequired')?.checked;
   const grp=document.getElementById('fPOSDetailsGroup');
   if(grp)grp.style.display=on?'':'none';
+}
+
+// Whether App Heading has been hand-edited since the last template pick — while untouched it keeps
+// mirroring the Activity Detail item name; once the user types into it directly, it stops.
+let fAppHeadingTouched=false;
+function composeActivityTitle(){
+  const base=document.getElementById('fTitleBase')?.value||'';
+  if(!base)return; // no template active — Title and Activity Detail are independent free text
+  const item=document.getElementById('fDesc')?.value.trim()||'';
+  const titleEl=document.getElementById('fTitle');
+  if(titleEl)titleEl.value=item?`${base} — ${item}`:base;
+  if(!fAppHeadingTouched){
+    const headingEl=document.getElementById('fAppHeading');
+    if(headingEl)headingEl.value=item||base;
+  }
 }
 
 function applyActivityTemplate(key){
