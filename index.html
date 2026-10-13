@@ -13058,6 +13058,7 @@ async function savePopEdit(evId,mode){
   setBtns('Saving…',{disabled:true});
   const fields={};
   let requestedPOSNotes=null;
+  let recurringDayError=null;
   const editElements=roots.flatMap(root=>[...root.querySelectorAll('.pop-edit-inp,.pop-edit-sel')]);
   editElements.forEach(el=>{
     let f=el.dataset.field;
@@ -13079,8 +13080,24 @@ async function savePopEdit(evId,mode){
         if(kind==='Product'){ev.productId=v;ev.product=selected?.label||'';}
       }
     } else if(f==='RecurringDay'){
-      fields[f]=v?v.split(',').map(s=>s.trim()).filter(Boolean):[];
-      ev.recurringDay=fields[f];
+      // SharePoint's RecurringDay choices might not literally be "Monday".."Sunday" — match loosely
+      // against its real defined choices (same idea as the Offer Variants AudienceTier check) and
+      // report exactly which day(s) aren't valid choices there, instead of a generic 400 "Invalid
+      // request" that gives no clue what's actually wrong.
+      const days=v?v.split(',').map(s=>s.trim()).filter(Boolean):[];
+      const dayColumn=campaignColumnDefinition('RecurringDay');
+      if(dayColumn?.choice?.choices?.length){
+        const matched=[],missing=[];
+        days.forEach(day=>{
+          const hit=dayColumn.choice.choices.find(choice=>normaliseImportText(choice)===normaliseImportText(day));
+          if(hit)matched.push(hit);else missing.push(day);
+        });
+        if(missing.length){recurringDayError=`The RecurringDay column needs these dropdown choices added in SharePoint: ${missing.join(', ')}.`;return;}
+        fields[f]=matched;
+      } else {
+        fields[f]=days;
+      }
+      ev.recurringDay=days;
     } else if(f==='BudgetAllocated'||f==='ActualSpend'||f==='SupplierContribution'||f==='MarketingBudget'||f==='TicketPrice'||f==='Capacity'||f==='ProjectId'){
       fields[f]=v?(f==='Capacity'||f==='ProjectId'?parseInt(v,10):parseFloat(v)):null;
     } else if(f==='Start'||f==='End'){
@@ -13126,6 +13143,11 @@ async function savePopEdit(evId,mode){
       ev.posRequired=posIsRequired;
     }
   });
+
+  if(recurringDayError){
+    setBtns(`⚠️ ${recurringDayError}`,{disabled:false,bg:'var(--gold)',color:'#fff'});
+    return;
+  }
 
   if(Object.keys(fields).some(field=>field.endsWith('LookupId'))){
     const involved=!!(ev.supplierId||ev.productId);
