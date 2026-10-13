@@ -771,7 +771,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       <div class="ph-right">
         <select id="ovVenue" onchange="setUserPref('ovVenue',this.value);renderOverview()" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;background:var(--surface);color:var(--text)">
           <option value="">All Venues</option>
-          <option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option>
+          <option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option>
         </select>
         <button class="tb-btn" id="dashCustomizeBtn" onclick="toggleDashCustomize()">⠿ Customize</button>
         <button class="tb-btn" onclick="loadAll()">↻</button>
@@ -1008,7 +1008,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     </div>
     <div class="ca" id="campTableWrap">
       <div class="filters">
-        <div class="fg"><label>Venue</label><select id="cVenue" onchange="renderCampaigns()"><option value="">All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option></select></div>
+        <div class="fg"><label>Venue</label><select id="cVenue" onchange="renderCampaigns()"><option value="">All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option></select></div>
         <div class="fg"><label>Type</label><select id="cPType" onchange="renderCampaigns()"><option value="">All</option><option>Event</option><option>Promotion / Offer</option><option>Campaign</option><option>Maintenance / Update</option></select></div>
         <div class="fg"><label>Stage</label><select id="cStat" onchange="renderCampaigns()"><option value="">All</option><option value="Intake">New Submission</option><option>In Design</option><option>In Build</option><option>Review</option><option>Live</option><option>Done</option></select></div>
         <div class="fg"><label>Silo</label><select id="cSilo" onchange="renderCampaigns()"><option value="">All</option><option>Hero</option><option>Momentum</option><option>Always-On</option></select></div>
@@ -1200,7 +1200,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <div class="form-grid">
           <div class="form-group full"><label class="form-label">Job Title <span class="req">*</span></label><input class="form-input" id="bTitle" placeholder="e.g. Christmas at Marlin — Instagram suite"></div>
           <div class="form-group"><label class="form-label">Campaign / Event <span class="req">*</span></label><select class="form-select" id="bCampaign"><option value="">Select campaign…</option></select></div>
-          <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="bVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>All Venues</option></select></div>
+          <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="bVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option><option>All Venues</option></select></div>
           <div class="form-group"><label class="form-label">Job Type <span class="req">*</span></label><select class="form-select" id="bType"><option value="">Select…</option><option>Social Media Post</option><option>Story / Reel</option><option>EDM Header</option><option>Web Banner</option><option>Print — Poster A3</option><option>Print — Poster A4</option><option>Print — Table Card</option><option>Menu Insert</option><option>Digital Screen</option><option>Logo / Brand</option><option>Video / Reel edit</option><option>Paid Ad creative</option><option>Other</option></select></div>
         </div>
         <!-- Section 2: Where does it go -->
@@ -1290,7 +1290,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="ca">
       <div class="stats" id="sponStats" style="margin-bottom:12px"></div>
       <div class="filters">
-        <div class="fg"><label>Venue</label><select id="sponVenue" onchange="renderSponsorships()"><option value="">All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option></select></div>
+        <div class="fg"><label>Venue</label><select id="sponVenue" onchange="renderSponsorships()"><option value="">All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option></select></div>
       </div>
       <div id="sponList"><div class="loading"><div class="spinner"></div></div></div>
     </div>
@@ -1837,7 +1837,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <div class="form-group full"><label class="form-label">Submitted By</label><div id="fSubmittedBy" style="font-size:13px;color:var(--text2);padding:8px 0">—</div></div>
             <div class="form-group full"><label class="form-label">Activity Detail</label><textarea class="form-textarea" id="fDesc" placeholder="e.g. Cheeky Monkey pints" style="min-height:70px"></textarea><div class="field-help">The specific product, offer or execution for this occurrence.</div></div>
             <div class="form-group full" id="fLongDescriptionGroup" style="display:none"><label class="form-label">Long Description</label><textarea class="form-textarea" id="fLongDescription" placeholder="Full customer-facing copy for web, listings and campaign materials" style="min-height:90px"></textarea><div class="field-help" id="fLongDescriptionHelp">Master long-form copy. Loaded can use this by default, with an optional app-specific override below.</div></div>
-            <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="fVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>All Venues</option></select></div>
+            <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="fVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option><option>All Venues</option></select></div>
             <div class="form-group"><label class="form-label">Marketing Funnel</label>
               <select class="form-select" id="fStream" onchange="updateActivityConditionalSections()">
                 <option value="">Select…</option>
@@ -1996,7 +1996,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div id="fIdeaMsg" class="form-msg"></div>
           <div class="form-grid">
             <div class="form-group full"><label class="form-label">Idea Title <span class="req">*</span></label><input class="form-input" id="ideaTitleNew" type="text" placeholder="e.g. Midweek Pasta & Wine Night"></div>
-            <div class="form-group"><label class="form-label">Venue</label><select class="form-select" id="ideaVenueNew"><option value="">Any / All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option></select></div>
+            <div class="form-group"><label class="form-label">Venue</label><select class="form-select" id="ideaVenueNew"><option value="">Any / All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option></select></div>
             <div class="form-group"><label class="form-label">Goal</label><select class="form-select" id="ideaGoalNew"><option value="">Select…</option><option>Revenue / upsell</option><option>Increase Foot Traffic</option><option>Product push</option><option>Brand / awareness</option><option>Functions / private bookings</option><option>General idea</option></select></div>
             <div class="form-group full"><label class="form-label">The Concept</label><textarea class="form-textarea" id="ideaConcept" placeholder="What's the idea? What would it look like?" style="min-height:80px"></textarea></div>
             <div class="form-group"><label class="form-label">Best Months / Season</label><input class="form-input" id="ideaMonths" type="text" placeholder="e.g. June–August"></div>
@@ -2020,7 +2020,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div id="fJobMsg" class="form-msg"></div>
           <div class="form-grid">
             <div class="form-group full"><label class="form-label">Job Title <span class="req">*</span></label><input class="form-input" id="fJobTitle" type="text" placeholder="e.g. Update menu on website, Print A3 poster for trivia night"></div>
-            <div class="form-group"><label class="form-label">Venue</label><select class="form-select" id="fJobVenue"><option value="">Group / All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option></select></div>
+            <div class="form-group"><label class="form-label">Venue</label><select class="form-select" id="fJobVenue"><option value="">Group / All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option></select></div>
             <div class="form-group"><label class="form-label">Job Type</label>
               <select class="form-select" id="fJobType">
                 <option value="General">General</option>
@@ -2175,7 +2175,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto">
             <select id="ideaVenue" onchange="renderIdeas()" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--surface);color:var(--text);outline:none">
               <option value="">All venues</option>
-              <option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option>
+              <option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option>
             </select>
             <select id="ideaStatusFilter" onchange="renderIdeas()" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--surface);color:var(--text);outline:none">
               <option value="">All statuses (excl. Archived)</option>
@@ -2199,7 +2199,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <div id="ideaFormMsg" class="form-msg"></div>
         <div class="form-grid">
           <div class="form-group full"><label class="form-label">Idea Title <span class="req">*</span></label><input class="form-input" id="ideaTitle" type="text" placeholder="e.g. Bottomless Brunch Sundays, Trivia with prizes, Tap takeover…"></div>
-          <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="ideaOverlayVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Any / All Venues</option></select></div>
+          <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="ideaOverlayVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option><option>Any / All Venues</option></select></div>
           <div class="form-group"><label class="form-label">Goal <span class="req">*</span></label><select class="form-select" id="ideaOverlayGoal"><option value="">Select…</option><option>Revenue / upsell</option><option>Increase Foot Traffic</option><option>Product push</option><option>Brand / awareness</option><option>Functions / private bookings</option><option>General idea</option></select></div>
           <div class="form-group"><label class="form-label">Best Months</label><select class="form-select" id="ideaOverlayMonths"><option value="">Any time</option><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option><option>Summer</option><option>Autumn</option><option>Winter</option><option>Spring</option><option>EOFY</option><option>Christmas period</option></select></div>
           <div class="form-group"><label class="form-label">Target Audience</label><input class="form-input" id="ideaOverlayAudience" type="text" placeholder="e.g. Families, 25-40 professionals, Beer lovers…"></div>
@@ -2621,7 +2621,8 @@ function venueFromM365Profile(text){
     {venue:'The Ravenswood',keys:['the ravenswood','ravenswood']},
     {venue:'Whitfords Brewing Co',keys:['whitfords brewing','wbc']},
     {venue:'Hotel Darwin',keys:['hotel darwin']},
-    {venue:'Mustang Bar',keys:['mustang bar']}
+    {venue:'Mustang Bar',keys:['mustang bar']},
+    {venue:'Beerland Brewing',keys:['beerland brewing','beerland']}
   ];
   return venues.find(v=>v.keys.some(k=>probe.includes(k)))?.venue||null;
 }
@@ -4007,6 +4008,9 @@ const VENUES_DATA=[
   {name:'Mustang Bar',loc:'Perth WA',type:'Partner',key:'mustang',
    primary:'#c05c1a',accent:'#e07830',cls:'vc-mb',
    url:'https://mustangbar.com.au'},
+  {name:'Beerland Brewing',loc:'',type:'Owned',key:'beerland',
+   primary:'#a66c1f',accent:'#c98a2e',cls:'vc-bl',
+   url:''},
 ];
 
 // Sponsorships remain static until a real list is connected.
@@ -5083,7 +5087,7 @@ function vmPrev(){vmMonth--;if(vmMonth<0){vmMonth=11;vmYear--;}renderVenueMonth(
 function vmNext(){vmMonth++;if(vmMonth>11){vmMonth=0;vmYear++;}renderVenueMonth();}
 function pickVmVenue(el){document.querySelectorAll('#vmVenueChips .chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');vmVenue=el.dataset.v;renderVenueMonth();}
 
-const OWNED_VENUES=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin'];
+const OWNED_VENUES=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Beerland Brewing'];
 const ALL_VENUES_VM=[...OWNED_VENUES,'Mustang Bar'];
 function renderVenueMonth(){
   if(!isAuthed)return;
@@ -5981,11 +5985,30 @@ async function loadEvJobFolder(evId){
   try{
     const token=await getToken();
     const shareId=encodeSharingUrlForGraph(ev.jobFolderUrl);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$expand=children($select=name,webUrl,file,folder)`,{headers:{Authorization:'Bearer '+token}});
+    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$expand=children($select=id,name,webUrl,file,folder,thumbnails;$expand=thumbnails)`,{headers:{Authorization:'Bearer '+token}});
     if(!res.ok)throw new Error('HTTP '+res.status);
     const data=await res.json();
     const children=data.children||[];
-    box.innerHTML=children.length?children.map(c=>`<a href="${c.webUrl}" target="_blank" style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);text-decoration:none;padding:4px 6px;border-radius:5px">${c.folder?'📁':'📄'} <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(c.name)}</span></a>`).join(''):'<div style="font-size:11px;color:var(--text3);padding:6px">Folder is empty.</div>';
+    const images=children.filter(c=>!c.folder&&ptIsImage(c.name));
+    const others=children.filter(c=>c.folder||!ptIsImage(c.name));
+    const thumbOf=c=>c.thumbnails?.[0]?.large?.url||c.thumbnails?.[0]?.medium?.url||c.thumbnails?.[0]?.small?.url||'';
+    box.innerHTML=children.length?`
+      ${images.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;margin-bottom:8px">${images.map(c=>{
+        const thumb=thumbOf(c);
+        return`<div style="cursor:pointer" onclick="pickEvPhoto(${evId},'${thumb.replace(/'/g,"\\'")}')" title="${escapeAttr(c.name)} — set as promo image">
+          <div style="aspect-ratio:1;background:var(--surface2) url('${thumb.replace(/'/g,"%27")}') center/cover;border-radius:6px;border:1px solid var(--border)"></div>
+        </div>`;
+      }).join('')}</div>`:''}
+      ${others.map(c=>`<a href="${c.webUrl}" target="_blank" style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);text-decoration:none;padding:4px 6px;border-radius:5px">${c.folder?'📁':'📄'} <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(c.name)}</span></a>`).join('')}
+      ${images.length?'<div style="font-size:10px;color:var(--text3);padding:4px 6px">Click an image to use it as this Activity\'s promo image.</div>':''}
+    `:'<div style="font-size:11px;color:var(--text3);padding:6px">Folder is empty.</div>';
+    // Nothing picked yet and artwork has landed in the folder — default to the first image rather
+    // than leaving the Artwork feed blank until someone remembers to pick one by hand. A manual
+    // pick (here or via the Featured Photo search) always overrides this.
+    if(!ev.eventImageUrl&&images.length){
+      const firstThumb=thumbOf(images[0]);
+      if(firstThumb)pickEvPhoto(evId,firstThumb);
+    }
   }catch(e){
     box.innerHTML=`<div style="font-size:11px;color:var(--red);padding:6px">Could not load folder contents: ${escapeAttr(e.message)}</div>`;
   }
@@ -6622,7 +6645,7 @@ function renderDashThisMonth(){
   // instead of one mixed pile, same idea as the Venue Monthly page. A venue-specific view (either
   // picked manually, or defaulted to a venue manager's own venue) just shows its one flat grid.
   if(!venue){
-    const venues5=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
+    const venues5=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
     el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
       ${venues5.map(v=>{
         const vc=vColor(v);
@@ -6753,9 +6776,9 @@ function renderOverview(){
     :'<div style="padding:14px;text-align:center;color:var(--text3);font-size:12px">No key dates loaded yet</div>';
 
   // Venue activity snapshot
-  const VENUES=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
-  const VCODES=['LB','RAV','WBC','HD','MB'];
-  document.getElementById('ovVenueSnap').innerHTML=`<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:10px 0">
+  const VENUES=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
+  const VCODES=['LB','RAV','WBC','HD','MB','BL'];
+  document.getElementById('ovVenueSnap').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;padding:10px 0">
     ${VENUES.map((v,i)=>{
       const vEvts=active.filter(e=>e.venue===v);
       const liveNow=vEvts.filter(e=>e.stage==='Live').length;
@@ -6873,7 +6896,7 @@ function renderDashboardCharts(evts){
   destroyChart('chartBudget');
   if(!canSeeFinancials)return;
   const venues=['LB','RAV','WBC','Darwin','Mustang'];
-  const venueKeys=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
+  const venueKeys=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
   const budgets=venueKeys.map(v=>Math.round(evts.filter(e=>e.venue===v).reduce((a,e)=>a+(e.budget||0),0)));
   const actuals=venueKeys.map(v=>Math.round(evts.filter(e=>e.venue===v).reduce((a,e)=>a+(e.actualSpend||0),0)));
   const ctx3=document.getElementById('chartBudget');
@@ -7604,7 +7627,7 @@ function _renderGanttInner(){
   if(todayPct>=0&&todayPct<=100)h+=`<div class="g-today-line" style="left:calc(200px + (100% - 200px) * ${todayPct/100})"><div class="g-today-flag">Today</div></div>`;
 
   if(ganttViewMode==='day'){
-    const venueOrder=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
+    const venueOrder=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
     venueOrder.forEach(vn=>{
       const vEvts=evts.filter(e=>e.venue===vn||e.venue==='All Venues');
       if(!vEvts.length)return;
@@ -8060,7 +8083,7 @@ function renderCalendar(){
   {const grid=document.getElementById('calGrid');grid.style.display='grid';grid.style.gridTemplateColumns='repeat(7,1fr)';}
 
   // Venue trade intensity banner
-  const venues5=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
+  const venues5=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
   const busHtml=`<div style="display:flex;gap:5px;padding:8px 12px;background:var(--surface2);border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center">
     <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-right:4px">Venue Trade:</span>
     ${venues5.map(v=>{const b=getBusyness(v,calMonth,'revenue');const vc=vColor(v);return b?`<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:${busynessColor(b)};color:${busynessTextColor(b)}"><span style="width:5px;height:5px;border-radius:50%;background:${vc.c};display:inline-block"></span>${v.replace('The ','').replace('Whitfords Brewing Co','WBC')}: ${b}</span>`:''}).join('')}
@@ -8311,7 +8334,7 @@ function renderCalendarDay(){
   const dayKeyDates=inSelectedRange?KEY_DATES.filter(k=>k.start&&k.start<=dateStr&&(k.end||k.start)>=dateStr):[];
 
   const venues=[...new Set(dayEvts.map(e=>e.venue||'No venue'))].sort((a,b)=>{
-    const order=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
+    const order=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
     const ia=order.indexOf(a),ib=order.indexOf(b);
     if(ia===-1&&ib===-1)return a.localeCompare(b);
     if(ia===-1)return 1;if(ib===-1)return-1;
@@ -10801,7 +10824,7 @@ function apprClearFilters(){
 function renderApprovals(){
   const chipsWrap=document.getElementById('apprVenueChips');
   if(chipsWrap&&!chipsWrap.innerHTML){
-    const venues=['','The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar'];
+    const venues=['','The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
     chipsWrap.innerHTML=venues.map(v=>`<div class="chip ${v===''?'on':''}" data-v="${v}" onclick="pickApprVenue(this)">${v?shortVenue(v):'All Venues'}</div>`).join('');
   }
   let intake=EVENTS.filter(e=>e.stage==='Intake'&&!isArchived(e));
@@ -11937,7 +11960,8 @@ const CRM_VENUE_TICKBOX_COLUMNS={
   Ravenswood:['ravenswood','the ravenswood','ravenswood hotel'],
   WhitfordsBrewing:['whitfords brewing co','whitfords brewing','whitfords'],
   LeftBank:['left bank','the left bank'],
-  MustangBar:['mustang bar','mustang']
+  MustangBar:['mustang bar','mustang'],
+  BeerlandBrewing:['beerland brewing','beerland']
 };
 // Same 5 venues, paired with a display label — drives the venue-per-column import mapping UI and
 // every place that needs to turn a tickbox column key back into a readable venue name.
@@ -11946,7 +11970,8 @@ const CRM_VENUE_TICKBOX_LIST=[
   {key:'Ravenswood',label:'The Ravenswood'},
   {key:'WhitfordsBrewing',label:'Whitfords Brewing Co'},
   {key:'HotelDarwin',label:'Hotel Darwin'},
-  {key:'MustangBar',label:'Mustang Bar'}
+  {key:'MustangBar',label:'Mustang Bar'},
+  {key:'BeerlandBrewing',label:'Beerland Brewing'}
 ];
 function crmVenueTickboxLabel(column){return CRM_VENUE_TICKBOX_LIST.find(v=>v.key===column)?.label||'';}
 // Only these two venues have their own opt-out column today (OPTOUT_RH / OPTOUT_LB) — confirmed
@@ -12637,7 +12662,7 @@ function renderActivityDetail(id,mode){
       <option value="">Not part of a project</option>
       ${PROJECTS.map(p=>`<option value="${p.id}" ${String(p.id)===String(ev.projectId)?'selected':''}>${escapeAttr(p.title)}</option>`).join('')}
     </select></div>`;
-  h+=editField('Venue',ev.venue,'Venue','select',['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','All Venues']);
+  h+=editField('Venue',ev.venue,'Venue','select',['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing','All Venues']);
   if(rolePermissions().canViewBudget){
     h+=editField('Budget ($)',ev.budget||'','BudgetAllocated','number');
     if(ev.actualSpend)h+=editField('Actual Spend ($)',ev.actualSpend,'ActualSpend','number');
