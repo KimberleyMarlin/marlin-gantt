@@ -1869,16 +1869,23 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <div class="form-group" id="fEventFormatGroup" style="display:none"><label class="form-label">Event Format</label>
               <select class="form-select" id="fEventFormat" onchange="updateSubmitForm()">
                 <option value="">Select…</option>
-                <option>Ticketed Event</option>
-                <option>Table Booking Event</option>
-                <option>Non-Ticketed Event</option>
                 <option>Live Music / Entertainment</option>
                 <option>Sporting Screening</option>
                 <option>Community Event</option>
                 <option>Private / Functions Event</option>
-                <option>Recurring Event</option>
               </select>
             </div>
+            <div class="form-group" id="fEventSeatingGroup" style="display:none"><label class="form-label">Seating / Setup</label>
+              <select class="form-select" id="fEventSeating">
+                <option value="">Select…</option>
+                <option>Seated</option>
+                <option>Standing</option>
+                <option>Table Service</option>
+                <option>Mixed</option>
+              </select>
+            </div>
+            <div class="form-group" id="fTicketedGroup" style="display:none"><label class="checkbox-row"><input type="checkbox" id="fTicketed" onchange="updateActivityConditionalSections()"> Ticketed event</label></div>
+            <div class="form-group" id="fRecurringGroup" style="display:none"><label class="checkbox-row"><input type="checkbox" id="fRecurring"> Recurring event <span style="color:var(--text3);font-weight:400">(set the day(s) after creating, on the activity's details)</span></label></div>
             <div class="form-group" id="fRegularPriceGroup" style="display:none"><label class="form-label">RRP ($)</label><input class="form-input" id="fRegularPrice" type="number" step="0.01" min="0" placeholder="e.g. 32.00"></div>
             <div class="form-group" id="fLoadedPriceGroup" style="display:none"><label class="form-label">Discount / Member Price ($)</label><input class="form-input" id="fLoadedBasePrice" type="number" step="0.01" min="0" placeholder="e.g. 16.00"></div>
           </div>
@@ -2793,9 +2800,9 @@ function autoSelectPlaybook(ev){
   const format=ev.eventFormat||'';
   const stream=ev.businessStream||'';
   // Format-specific first
-  if(format==='Ticketed Event')return'Ticketed Event';
+  if(format==='Ticketed Event'||ev.ticketed)return'Ticketed Event';
   if(format==='Live Music / Entertainment')return'Live Music';
-  if(format==='Recurring Event')return'Recurring Event';
+  if(format==='Recurring Event'||ev.recurring)return'Recurring Event';
   if(format==='Private / Functions Event'||stream==='Functions')return'Functions Campaign';
   // Stream-specific
   if(stream==='Loaded Rewards'||ev.loadedRewards)return'Loaded Rewards';
@@ -4948,6 +4955,10 @@ async function loadCampaigns(){
         :(recurringDayRaw?[recurringDayRaw]:[]);
       // RecurringFrequency is single Choice
       const recurringFreq=f.RecurringFrequency||'';
+      // Recurring? — also true for an activity saved under the old EventFormat="Recurring Event"
+      // value, from before Recurring? became its own field, and for anything that already has
+      // days ticked (older records saved before this field existed at all).
+      const isRecurring=f.RecurringEvent===true||f.RecurringEvent==='Yes'||f.EventFormat==='Recurring Event'||recurringDay.length>0;
       const descriptionParts=splitActivityDescription(f.Description||'');
       const loadedRewards=isLoadedRewardsFields(f);
       const posRequired=f.POSUpdateRequired===true||f.POSUpdateRequired==='Yes';
@@ -5033,8 +5044,12 @@ async function loadCampaigns(){
         actualSpend:canViewBudget?parseFloat(f.ActualSpend||0):0,
         supplierContrib:canViewBudget?parseFloat(f.SupplierContribution||0):0,
         ticketsSold:parseInt(f.TicketsSold||0),
-        // Ticketing
-        ticketed:f.TicketedEvent===true||f.TicketedEvent==='Yes',
+        // Ticketing — also true for an activity saved under the old EventFormat="Ticketed Event"
+        // value, from before Ticketed? became its own field, so nothing already marked ticketed
+        // loses that status just because Event Format no longer offers it as a choice.
+        ticketed:f.TicketedEvent===true||f.TicketedEvent==='Yes'||f.EventFormat==='Ticketed Event',
+        // Seating/setup — same backward-compat idea for the old "Table Booking Event" format value.
+        seating:f.EventSeating||(f.EventFormat==='Table Booking Event'?'Table Service':''),
         ticketUrl:sharePointUrl(f.TicketURL),
         ticketPlatform:f.TicketPlatform||'',
         ticketPrice:parseFloat(f.TicketPrice||0),
@@ -5090,6 +5105,7 @@ async function loadCampaigns(){
         loadedStatus:f.LoadedStatus||'',
         socialStatus:f.SocialStatus||'',
         // Recurring
+        recurring:isRecurring,
         recurringDay, // array of days
         recurringFrequency:recurringFreq,
         // Computed
@@ -8424,7 +8440,7 @@ function showCalDayPopup(evt,y,m,day){
     </div>
     ${dayEvts.map(ev=>{
       const style=calEvtStyle(ev);
-      const icon=ev.loadedRewards?'⭐':ev.eventFormat==='Ticketed Event'||ev.eventFormat==='Live Music / Entertainment'?'🎫':ev.businessStream==='Functions'?'🥂':ev.supplierInvolved?'🤝':'';
+      const icon=ev.loadedRewards?'⭐':ev.ticketed||ev.eventFormat==='Live Music / Entertainment'?'🎫':ev.businessStream==='Functions'?'🥂':ev.supplierInvolved?'🤝':'';
       return`<div onclick="document.getElementById('calDayOv').remove();showPop(${ev.id})" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;margin-bottom:6px;cursor:pointer;${style}">
         <span>${icon}</span>
         <div><div style="font-weight:500;font-size:13px">${ev.title}</div><div style="font-size:11px;opacity:.7">${shortVenue(ev.venue)}</div></div>
@@ -8486,7 +8502,7 @@ function renderCalendarWeek(){
       ${dayKeyDates.map(k=>`<div style="font-size:9.5px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:2px 5px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:5px;display:inline-block" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
       ${dayEvts.length?dayEvts.map(ev=>{
         const style=calEvtStyle(ev);
-        const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.eventFormat==='Ticketed Event'||ev.eventFormat==='Live Music / Entertainment'?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':'';
+        const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.ticketed||ev.eventFormat==='Live Music / Entertainment'?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':'';
         return`<div class="wk-ev" style="${style}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">
           <div class="wk-ev-title">${icon?icon+' ':''}${ev.title}</div>
           <div class="wk-ev-sub"><span style="width:6px;height:6px;border-radius:50%;background:${vColor(ev.venue).c};display:inline-block;flex-shrink:0"></span>${shortVenue(ev.venue)}${ev.eventFormat||ev.activityType?' · '+(ev.eventFormat||ev.activityType):''}</div>
@@ -8707,17 +8723,29 @@ function renderCampaigns(){
 // Offer Variants and reusable Offer Mechanics caches
 let OFFER_VARIANTS=[],OFFER_MECHANICS=[],OFFER_VARIANT_COLUMNS=[],OFFER_MECHANIC_COLUMNS=[];
 const LOADED_COMPONENTS={
-  base:{tier:'Base Member Deal',label:'Base member deal',category:'Base Member Deal',defaults:['$9','$10','$11','$12','$13','$15','$17','$50','3+1 Stamp Card','4+1 Stamp Card','National promo only','Free upgrade']},
-  premium:{tier:'Premium',label:'Premium member deal',category:'Premium',defaults:['$7','$8','$9','$10','$11','50% off x 1','Free x 1','3+1 Stamp Card','N/A']},
+  // Tier values below are matched exactly (case included) against the live choices already in
+  // SharePoint's Offer Variants "AudienceTier" column: Silver, Gold, Platinum, Re-Engagement,
+  // New Sign-up, Refer a Friend, Birthday, Staff Incentive, Venue Hopper, All Members, Premium Tiers.
+  base:{tier:'Silver',label:'Silver member deal',category:'Silver',defaults:['$9','$10','$11','$12','$13','$15','$17','$50','3+1 Stamp Card','4+1 Stamp Card','National promo only','Free upgrade']},
+  // Gold/Platinum were a single "Premium" bucket — split out because they're reportable tiers in
+  // their own right in SharePoint, not one combined thing. The invitation-only club is folded into
+  // Platinum (not a separate tier) — rename the "Platinum" choice in SharePoint to "Platinum and
+  // Invitation Only" to match (SharePoint carries the rename onto any item already tagged Platinum).
+  gold:{tier:'Gold',label:'Gold member deal',category:'Gold',defaults:['$7','$8','$9','$10','$11','50% off x 1','Free x 1','3+1 Stamp Card','N/A']},
+  platinum:{tier:'Platinum and Invitation Only',label:'Platinum & Invitation Only deal',category:'Platinum and Invitation Only',defaults:['$7','$8','$9','$10','$11','50% off x 1','Free x 1','3+1 Stamp Card','N/A']},
+  newSignup:{tier:'New Sign-up',label:'New sign-up offer',category:'New Sign-up',defaults:['Free x 1','50% off x 1','$10 x 1','N/A']},
+  birthday:{tier:'Birthday',label:'Birthday offer',category:'Birthday',defaults:['Free x 1','$10 x 1','Free dessert','N/A']},
+  venueHopper:{tier:'Venue Hopper',label:'Venue Hopper offer',category:'Venue Hopper',defaults:['Free x 1','50% off x 1','N/A']},
+  allMembers:{tier:'All Members',label:'All Members offer',category:'All Members',defaults:['Free x 1','50% off x 1','N/A']},
   reCategory:{label:'Re-engagement category',category:'Re-engagement Category',defaults:['Any Cocktail','Any Spirit','Any RTD','Any Guinness','Inactive for 6 months']},
-  reOffer:{tier:'Re-engagement',label:'Re-engagement offer',category:'Re-engagement Offer',defaults:['Free x 1','50% off x 1','Free x 1 glass']},
-  referral:{tier:'Referral',label:'Referral',category:'Referral',defaults:['Free x 1','$10 x 1','N/A']},
+  reOffer:{tier:'Re-Engagement',label:'Re-engagement offer',category:'Re-Engagement',defaults:['Free x 1','50% off x 1','Free x 1 glass']},
+  referral:{tier:'Refer a Friend',label:'Referral',category:'Refer a Friend',defaults:['Free x 1','$10 x 1','N/A']},
   staff:{tier:'Staff Incentive',label:'Staff incentive',category:'Staff Incentive',defaults:['$50 per venue','Bottle per venue','700ml bottle per venue','1L bottle per venue','N/A']},
   comp:{tier:'Comp Metrics',label:'Comp metrics',category:'Comp Metrics',defaults:[]},
   marketing:{tier:'Marketing Spend',label:'Marketing spend',category:'Marketing Spend',defaults:['$0','$500','$1,000','$1,500','$2,500']}
 };
 
-const LOADED_OFFER_DISPLAY=['base','premium','reOffer','referral','staff','comp','marketing'];
+const LOADED_OFFER_DISPLAY=['base','gold','platinum','newSignup','birthday','venueHopper','allMembers','reOffer','referral','staff','comp','marketing'];
 
 function loadedOfferSchemaState(){
   const check=(columns,aliases,requiredType='')=>{
@@ -8907,7 +8935,20 @@ function loadedOfferSelectHtml(prefix,key,current=''){
   return`<div class="form-group"><label class="form-label">${escapeAttr(def.label)}</label><select class="form-select" id="${prefix}_${key}" onchange="toggleLoadedOfferCustom('${prefix}','${key}')"><option value="">Not included</option>${choices.map(choice=>`<option value="${escapeAttr(choice)}"${normaliseImportText(choice)===normaliseImportText(current)?' selected':''}>${escapeAttr(choice)}</option>`).join('')}<option value="__custom__"${current&&!known?' selected':''}>Other / custom…</option></select><input class="form-input" id="${prefix}_${key}_custom" value="${current&&!known?escapeAttr(current):''}" placeholder="Enter a reusable value" style="display:${current&&!known?'block':'none'};margin-top:5px"></div>`;
 }
 function loadedOfferFieldsHtml(prefix,campaignId=''){
-  return`<div class="form-grid">${['base','premium','reCategory','reOffer','referral','staff','comp','marketing'].map(key=>loadedOfferSelectHtml(prefix,key,loadedOfferCurrent(campaignId,key))).join('')}</div>`;
+  return`<div class="form-grid">${['base','gold','platinum','newSignup','birthday','venueHopper','allMembers','reCategory','reOffer','referral','staff','comp','marketing'].map(key=>loadedOfferSelectHtml(prefix,key,loadedOfferCurrent(campaignId,key))).join('')}</div>
+    <button type="button" class="tb-btn" style="font-size:10.5px;margin-top:6px" onclick="copyLoadedOfferValue('${prefix}','gold',['platinum'])">Copy Gold's deal to Platinum &amp; Invitation Only</button>`;
+}
+// Convenience for "same offer, several tiers" — copies one field's select/custom value into others
+// without forcing every tier through the same value (each still saves as its own Offer Variant row).
+function copyLoadedOfferValue(prefix,fromKey,toKeys){
+  const fromSelect=document.getElementById(`${prefix}_${fromKey}`);if(!fromSelect)return;
+  const fromCustom=document.getElementById(`${prefix}_${fromKey}_custom`);
+  toKeys.forEach(key=>{
+    const select=document.getElementById(`${prefix}_${key}`);if(!select)return;
+    if([...select.options].some(o=>o.value===fromSelect.value))select.value=fromSelect.value;
+    else{select.value='__custom__';const custom=document.getElementById(`${prefix}_${key}_custom`);if(custom)custom.value=fromCustom?.value||fromSelect.value;}
+    toggleLoadedOfferCustom(prefix,key);
+  });
 }
 function toggleLoadedOfferCustom(prefix,key){const select=document.getElementById(`${prefix}_${key}`),input=document.getElementById(`${prefix}_${key}_custom`);if(input)input.style.display=select?.value==='__custom__'?'block':'none';}
 function loadedOfferValue(prefix,key){const select=document.getElementById(`${prefix}_${key}`);if(!select)return'';return select.value==='__custom__'?(document.getElementById(`${prefix}_${key}_custom`)?.value.trim()||''):select.value;}
@@ -8939,13 +8980,13 @@ async function saveLoadedOfferComponents(campaignId,campaignTitle,prefix,token){
   const reCategory=loadedOfferValue(prefix,'reCategory'),reOffer=loadedOfferValue(prefix,'reOffer');let saved=0,deactivated=0;
   if(reCategory&&!reOffer)throw new Error('Choose a Re-engagement offer as well as its category.');
   if(reOffer&&!reCategory)throw new Error('Choose the Re-engagement category as well as its offer.');
-  const selectedTiers=['base','premium','reOffer','referral','staff','comp','marketing'].filter(key=>loadedOfferValue(prefix,key)).map(key=>LOADED_COMPONENTS[key].tier);
+  const selectedTiers=['base','gold','platinum','newSignup','birthday','venueHopper','allMembers','reOffer','referral','staff','comp','marketing'].filter(key=>loadedOfferValue(prefix,key)).map(key=>LOADED_COMPONENTS[key].tier);
   if(tierColumn.choice?.choices?.length&&!tierColumn.choice.allowTextEntry){
     const missing=[...new Set(selectedTiers.filter(tier=>!tierColumn.choice.choices.some(choice=>normaliseImportText(choice)===normaliseImportText(tier))))];
     if(missing.length)throw new Error(`Offer Variants column "${tierColumn.displayName||tierColumn.name}" needs these dropdown choices added in SharePoint: ${missing.join(', ')}.`);
   }
   if(reCategory)await ensureOfferMechanic(reCategory,LOADED_COMPONENTS.reCategory.category,token);
-  for(const key of ['base','premium','reOffer','referral','staff','comp','marketing']){
+  for(const key of ['base','gold','platinum','newSignup','birthday','venueHopper','allMembers','reOffer','referral','staff','comp','marketing']){
     const def=LOADED_COMPONENTS[key],value=loadedOfferValue(prefix,key),existing=loadedVariantFor(campaignId,def.tier);
     if(!value){
       if(existing){const activeKey=offerVariantKey('Active');if(activeKey){await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.offerVariants}/items/${existing.id}`,token,{[activeKey]:false});deactivated++;}}
@@ -8984,13 +9025,13 @@ async function saveLoadedOfferEditor(evId,button){
 }
 
 const TIER_ICONS={
-  'Silver':'🥈','Gold':'🥇','Platinum':'💎',
-  'Base Member':'⭐','Base Member Deal':'⭐','Premium':'💎',
+  'Silver':'🥈','Gold':'🥇','Platinum and Invitation Only':'💎','Platinum':'💎','Premium Tiers':'💎',
+  'Base Member':'⭐','Base Member Deal':'⭐','Premium':'💎', // legacy labels kept for older saved offers
   'Re-engagement':'🔄','Re-Engagement':'🔄',
   'New Sign-up':'⭐','Refer a Friend':'👥','Referral':'👥',
   'Staff Incentive':'👔','Staff':'👔',
   'Comp Metric':'🎁','Comp Metrics':'🎁','Marketing Spend':'📣',
-  'Birthday':'🎂','Venue Hopper':'🏨'
+  'Birthday':'🎂','Venue Hopper':'🏨','All Members':'👥'
 };
 
 function renderLoaded(){
@@ -10356,6 +10397,8 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'JobFolderURL',displayName:'Job Folder URL',type:'text',purpose:'Folder link written back by the existing Power Automate flow.'},
   {listKey:'campaigns',name:'AssigneeName',displayName:'Assignee Name',type:'text',purpose:'Owner/assignee as plain text — the existing Assignee column is Person/Group, which silently drops a plain name string on save instead of erroring.'},
   {listKey:'campaigns',name:'EventImageURL',displayName:'Event Image URL',type:'text',purpose:'Featured photo link, set from the Digital Media library picker or a job folder image — shown on the Calendar hover card and Artwork feed.'},
+  {listKey:'campaigns',name:'RecurringEvent',displayName:'Recurring Event',type:'choice',choices:'Yes',purpose:'Independent Yes/No toggle for whether the activity repeats — separate from Event Format so a ticketed event can also be recurring.'},
+  {listKey:'campaigns',name:'EventSeating',displayName:'Event Seating',type:'choice',choices:'Seated, Standing, Table Service, Mixed',purpose:'The seating/setup breakdown for the event.'},
   {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number',purpose:'Groups Activities that belong to one recurring series.'},
   {listKey:'campaigns',name:'ProjectId',displayName:'Project Id',type:'number',purpose:'Links each Activity to its one parent Project.'},
   {listKey:'projects',name:'Priority',displayName:'Priority',type:'text',purpose:'High, Medium, Low, or blank planning priority.'},
@@ -11215,7 +11258,7 @@ function generateNotifications(){
     const missing=[];
 
     // Ticketed events — need ticket URL and platform
-    if(((e.activityType==='Ticketed Event'||e.eventFormat==='Ticketed Event'||e.businessStream==='Ticketed Event')||(e.activityType==='Live Music'||e.eventFormat==='Live Music'||e.businessStream==='Live Music'))&&daysOut<=21){
+    if((e.ticketed||e.eventFormat==='Ticketed Event'||(e.activityType==='Live Music'||e.eventFormat==='Live Music / Entertainment'||e.businessStream==='Live Music'))&&daysOut<=21){
       if(!e.ticketUrl)missing.push('ticket URL');
       if(!e.ticketPlatform)missing.push('ticket platform');
       if(!e.capacity)missing.push('capacity');
@@ -11456,23 +11499,31 @@ function updateSubmitForm(){
   const type=document.getElementById('fActType')?.value||'';
   const grp=document.getElementById('fEventFormatGroup');
   if(grp)grp.style.display=type==='Event'?'':'none';
+  const show=(id,on)=>{const el=document.getElementById(id);if(el)el.style.display=on?'':'none';};
+  show('fEventSeatingGroup',type==='Event');
+  show('fTicketedGroup',type==='Event');
+  show('fRecurringGroup',type==='Event');
   if(type!=='Event'){
     const format=document.getElementById('fEventFormat');if(format)format.value='';
+    const seating=document.getElementById('fEventSeating');if(seating)seating.value='';
+    const ticketed=document.getElementById('fTicketed');if(ticketed)ticketed.checked=false;
+    const recurring=document.getElementById('fRecurring');if(recurring)recurring.checked=false;
   }
   updateActivityConditionalSections();
 }
 
 function updateActivityConditionalSections(){
   const type=document.getElementById('fActType')?.value||'';
-  const format=document.getElementById('fEventFormat')?.value||'';
   // Loaded Rewards setup only appears for an activity actually funded through that funnel —
   // no separate yes/no question needed, it's implied by the Marketing Funnel choice.
   const isLoaded=document.getElementById('fStream')?.value==='Loaded Rewards';
   const needsChannels=!!document.getElementById('fNeedsChannels')?.checked;
   const needsDesign=!!document.getElementById('fNeedsDesign')?.checked;
   const supplierInvolved=!!document.getElementById('fSupplierInvolved')?.checked;
-  const isTicketed=format==='Ticketed Event';
-  const showPricing=isLoaded||type==='Promotion / Offer'||isTicketed||format==='Table Booking Event';
+  // Ticketed? is its own checkbox, independent of Event Format/Recurring — matches the same
+  // split used on the activity's detail popup.
+  const isTicketed=!!document.getElementById('fTicketed')?.checked;
+  const showPricing=isLoaded||type==='Promotion / Offer'||isTicketed;
   const show=(id,on)=>{const el=document.getElementById(id);if(el)el.style.display=on?'':'none';};
   // Long Description is customer-facing marketing copy — only worth asking for once there's
   // actually a promotion, design work or Loaded listing that would use it.
@@ -12703,6 +12754,8 @@ async function submitEvent(){
     fields.AssigneeName=submitter;
 
     const ef=document.getElementById('fEventFormat')?.value;if(ef)fields.EventFormat=ef;
+    const seating=document.getElementById('fEventSeating')?.value;if(seating)fields.EventSeating=seating;
+    const recurring=!!document.getElementById('fRecurring')?.checked;if(recurring)fields.RecurringEvent=true;
     const stream=document.getElementById('fStream')?.value;if(stream)fields.BusinessStream=stream;
     const rrp=document.getElementById('fRegularPrice')?.value;if(rrp)fields.RegularPrice=parseFloat(rrp)||0;
     const discPrice=document.getElementById('fLoadedBasePrice')?.value;if(discPrice)fields.LoadedBasePrice=parseFloat(discPrice)||0;
@@ -12721,9 +12774,10 @@ async function submitEvent(){
       }
     }
 
-    // Ticketing fields only exist for a ticketed event. EventFormat remains the fallback flag if
-    // the older TicketedEvent column is not present in SharePoint.
-    if(ef==='Ticketed Event'){
+    // Ticketing fields only exist for a ticketed event — Ticketed? is its own checkbox,
+    // independent of Event Format/Recurring.
+    const ticketed=!!document.getElementById('fTicketed')?.checked;
+    if(ticketed){
       fields.TicketedEvent=true;
       const platform=document.getElementById('fTicketPlatform')?.value;if(platform)fields.TicketPlatform=platform;
       const ticketPrice=document.getElementById('fTicketPrice')?.value;if(ticketPrice)fields.TicketPrice=parseFloat(ticketPrice)||0;
@@ -12840,9 +12894,9 @@ async function submitEvent(){
 function showFMsg(msg,type){const el=document.getElementById('fMsg');if(!el)return;el.textContent=msg;el.className='form-msg '+type;el.scrollIntoView({behavior:'smooth',block:'nearest'});}
 function clearForm(){
   ['fTitle','fDesc','fLongDescription','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['fVenue','fActType','fEventFormat','fStream','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  ['fVenue','fActType','fEventFormat','fEventSeating','fStream','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
   const productSel=document.getElementById('fProductLookup');if(productSel)[...productSel.options].forEach(o=>o.selected=false);
-  ['fSupplierInvolved','fPOSRequired','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  ['fSupplierInvolved','fPOSRequired','fTicketed','fRecurring','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   togglePOSDetails();
   SUBMIT_PEOPLE_SELECTED.clear();
   const peopleSearch=document.getElementById('fPeopleSearch');if(peopleSearch)peopleSearch.value='';
@@ -12893,6 +12947,8 @@ function renderActivityDetail(id,mode){
     ${statusPill(ev.status)}
     ${ev.loadedRewards?'<span class="tag t-a">⭐ Loaded</span>':''}
     ${ev.ticketed?'<span class="tag t-b">🎟 Ticketed</span>':''}
+    ${ev.recurring?'<span class="tag t-b">↻ Recurring</span>':''}
+    ${ev.seating?`<span class="tag t-gr" style="font-size:10px">${ev.seating}</span>`:''}
     ${ev.supplierInvolved?'<span class="tag t-g" style="font-size:10px">🤝 Supplier</span>':''}
     ${timing?`<span style="font-size:10px;font-weight:700;color:${timingColor};background:${timingColor}18;padding:2px 8px;border-radius:4px">${timing}</span>`:''}
     ${complexity?`<span style="font-size:10px;color:var(--text3)">${complexity} complexity</span>`:''}
@@ -12928,17 +12984,17 @@ function renderActivityDetail(id,mode){
   h+=editField('Stage',ev.stage,'WorkflowStage','select',['Intake','In Design','In Build','Review','Ready for Live','Live','Done']);
   h+=editField('Status',ev.status||'Active','Status','select',campaignColumnDefinition('Status')?.choice?.choices||['Active','Paused','Cancelled','Archive']);
   h+=editField('Activity Type',ev.activityType,'ActivityType','select',['Event','Promotion / Offer','Campaign','Maintenance / Update']);
-  // Hand-written rather than the generic editField helper — picking "Recurring Event" needs to
-  // reveal the day-checkboxes section immediately, not only after Save reloads the popup (that
-  // round trip was the actual complaint: "you need to save as recurring event before the day
-  // selection pops up").
+  // Event Format is genre only now — Ticketed? and Recurring? are independent toggles below
+  // (previously this one field conflated genre, ticketing and recurrence, so "Ticketed Event"
+  // and "Recurring Event" couldn't be combined, e.g. a ticketed trivia night held weekly).
   {
-    const formatOpts=['','Ticketed Event','Table Booking Event','Non-Ticketed Event','Live Music / Entertainment','Sporting Screening','Community Event','Private / Functions Event','Recurring Event'];
+    const formatOpts=['','Live Music / Entertainment','Sporting Screening','Community Event','Private / Functions Event'];
     h+=`<div class="pop-field"><div class="pop-lbl">Event Format</div>
-      <select class="pop-edit-sel" data-field="EventFormat" data-original="${escapeAttr(ev.eventFormat||'')}" onchange="markPopDirty();toggleRecurringScheduleBox(this,${ev.id})" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
+      <select class="pop-edit-sel" data-field="EventFormat" data-original="${escapeAttr(ev.eventFormat||'')}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
         ${formatOpts.map(o=>`<option value="${o}" ${o===ev.eventFormat?'selected':''}>${o?stageLabel(o):'—'}</option>`).join('')}
       </select></div>`;
   }
+  h+=editField('Seating / Setup',ev.seating,'EventSeating','select',['','Seated','Standing','Table Service','Mixed']);
   h+=editField('Marketing Silo',ev.marketingSilo,'CampaignSilo','select',['','Hero','Momentum','Always-On','Organic','Maintenance']);
   h+=editField('Marketing Funnel',ev.businessStream,'BusinessStream','select',['','Venue Marketing','Loaded Rewards','Functions','Gift Cards','Events Program','Group / Brand Marketing','Marketing Operations']);
   h+=editField('Primary Brand',ev.brand,'Brand','select',['','The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Loaded Rewards','Beerland Brewing']);
@@ -12985,13 +13041,23 @@ function renderActivityDetail(id,mode){
         <option value="Yes" ${ev.ticketed?'selected':''}>Yes</option>
       </select></div>`;
   }
+  // Recurring? — independent of Ticketed? and Event Format, so a weekly ticketed trivia night
+  // can tick both. Same live-reveal pattern: picking "Yes" shows the day-checkboxes immediately.
+  {
+    const recurringVal=ev.recurring?'Yes':'';
+    h+=`<div class="pop-field"><div class="pop-lbl">Recurring?</div>
+      <select class="pop-edit-sel" data-field="RecurringEvent" data-original="${escapeAttr(recurringVal)}" onchange="markPopDirty();toggleRecurringScheduleBox(this,${ev.id})" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);width:100%;outline:none">
+        <option value="" ${!ev.recurring?'selected':''}>No</option>
+        <option value="Yes" ${ev.recurring?'selected':''}>Yes</option>
+      </select></div>`;
+  }
   h+=editField('Landing Page URL',ev.landingPageUrl,'LandingPageURL','text');
   // Always rendered (just hidden) so the Ticketed? toggle above can reveal it live.
   h+=`<div id="ticketingBox-${ev.id}" style="display:${ev.ticketed?'contents':'none'}">
-    ${editField('Booking / Ticket Link',ev.bookingUrl||ev.ticketUrl,'BookingURL','text')}
     ${editField('Ticket Platform',ev.ticketPlatform,'TicketPlatform','select',['','Humanitix','TryBooking','Eventbrite','Oztix','Now Book It'])}
     ${editField('Ticket Price ($)',ev.ticketPrice||'','TicketPrice','number')}
     ${editField('Capacity',ev.capacity||'','Capacity','number')}
+    ${editField('Booking / Ticket Link',ev.bookingUrl||ev.ticketUrl,'BookingURL','text')}
   </div>`;
   h+=editField('RRP ($)',ev.regularPrice||'','RegularPrice','number');
   h+=editField('Discount / Member Price ($)',ev.loadedBasePrice||'','LoadedBasePrice','number');
@@ -13006,7 +13072,7 @@ function renderActivityDetail(id,mode){
     const currentDays=(ev.recurringDay||[]).map(d=>String(d||''));
     const currentDaysLower=currentDays.map(d=>d.toLowerCase());
     const freqChoices=campaignColumnDefinition('RecurringFrequency')?.choice?.choices||['Weekly','Fortnightly','Monthly'];
-    h+=`<div id="recurringScheduleBox-${ev.id}" style="${ev.eventFormat==='Recurring Event'?'':'display:none'}">
+    h+=`<div id="recurringScheduleBox-${ev.id}" style="${ev.recurring?'':'display:none'}">
       <div class="pop-section">↻ Recurring Schedule</div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Start/End above is the whole run. Tick the day(s) it actually happens on — the Calendar only shows it on these days within that range.</div>
       <div id="recurringDayBox-${ev.id}" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
@@ -13219,7 +13285,16 @@ function markPopDirty(mode){
 // the popup, which read as the day-ticking step being broken rather than just not shown yet.
 function toggleRecurringScheduleBox(selectEl,evId){
   const box=document.getElementById('recurringScheduleBox-'+evId);
-  if(box)box.style.display=selectEl.value==='Recurring Event'?'':'none';
+  if(box)box.style.display=selectEl.value==='Yes'?'':'none';
+  // Switching to No clears the ticked days so an activity doesn't keep running on them server-side
+  // after being marked non-recurring.
+  if(selectEl.value!=='Yes'){
+    const dayBox=document.getElementById('recurringDayBox-'+evId);
+    if(dayBox){
+      dayBox.querySelectorAll('input[type=checkbox]:checked').forEach(cb=>cb.checked=false);
+      syncRecurringDayField(evId);
+    }
+  }
 }
 
 // Same live-reveal idea for the Ticketed? toggle — 'contents' (not '') when shown, since the box
@@ -13320,6 +13395,7 @@ async function savePopEdit(evId,mode){
       'WebStatus':'webStatus','LoadedStatus':'loadedStatus','SocialStatus':'socialStatus','PosStatus':'posStatus',
       'BookingURL':'bookingUrl','LandingPageURL':'landingPageUrl','TicketPlatform':'ticketPlatform',
       'TicketPrice':'ticketPrice','Capacity':'capacity','TicketedEvent':'ticketed',
+      'RecurringEvent':'recurring','EventSeating':'seating',
       'AppRequired':'appRequired','NewsletterRequired':'newsletterRequired','AppHeading':'appHeading','AppDescription':'appDescription','AppShortDescription':'appShortDescription',
       'RegularPrice':'regularPrice','LoadedBasePrice':'loadedBasePrice','ProjectId':'projectId',
       'RecurringFrequency':'recurringFrequency'
@@ -13330,7 +13406,7 @@ async function savePopEdit(evId,mode){
       else if(['BudgetAllocated','MarketingBudget','ActualSpend','SupplierContribution','TicketPrice'].includes(f))ev[localKey]=parseFloat(v)||0;
       else if(f==='Capacity')ev[localKey]=parseInt(v)||0;
       else if(f==='ProjectId')ev[localKey]=v||'';
-      else if(f==='TicketedEvent')ev[localKey]=v==='Yes';
+      else if(f==='TicketedEvent'||f==='RecurringEvent')ev[localKey]=v==='Yes';
       else ev[localKey]=v;
     }
     if(f===writableCampaignKey('LongDescription','Long Description'))ev.longDescription=v;
