@@ -1614,6 +1614,16 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       <div class="ph-right"><button class="tb-btn" onclick="renderSchemaTools(true)">↻ Refresh</button></div>
     </div>
     <div class="ca">
+      <!-- Phase 1 of the File Management & Job Archiving workstream — a safe repair mechanism for
+           Jobs already archived before the cascade fix existed, whose Tasks or private follow-ups
+           are still showing as active. Read-only scan on open; nothing changes until confirmed. -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-h"><span class="card-title">🔧 Orphaned Task Repair</span><span class="card-act" onclick="scanOrphanedJobTasks()">↻ Rescan</span></div>
+        <div class="card-body">
+          <div class="field-help" style="margin-bottom:10px">Finds archived/Done/Cancelled Activities whose linked Tasks or private follow-ups still show as active elsewhere in the Hub — matching only by stable SharePoint id, never by title. Preview only; nothing is changed until you confirm.</div>
+          <div id="orphanRepairResults"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+      </div>
       <div id="schemaKnownGaps"></div>
       <div class="card" style="margin-top:16px">
         <div class="card-h"><span class="card-title">Add a column to any list</span></div>
@@ -1736,10 +1746,11 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 
   <!-- PHOTO TAGGING -->
   <div class="panel" id="p-phototagging">
-    <div class="ph"><div><div class="ph-eye">Digital Media library</div><div class="ph-title">Photo <em>Tagging</em></div><div class="ph-sub">Browse folders and AI-tag photos, or search across every tag already generated — runs straight from the browser, no Power Automate involved.</div></div></div>
+    <div class="ph"><div><div class="ph-eye">Digital Media library</div><div class="ph-title">Photo <em>Tagging</em></div><div class="ph-sub">Browse folders, tag photos by hand, or search across every tag already saved.</div></div></div>
     <div class="ca">
-      <div id="ptNotConfigured" style="display:none;background:var(--gold-bg);border:1px solid #ead9a3;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:11.5px;color:var(--text2);line-height:1.5"><strong>Photo Tagging isn't connected yet.</strong> This needs a Google Cloud Vision API key set in the code (GOOGLE_VISION_API_KEY) before it can be used.</div>
+      <div id="ptNotConfigured" style="display:none;background:var(--gold-bg);border:1px solid #ead9a3;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:11.5px;color:var(--text2);line-height:1.5"><strong>Digital Media isn't connected yet.</strong> This needs the library's SharePoint drive id set in the code (DIGITAL_MEDIA_DRIVE_ID) before it can be used.</div>
       <div id="ptWrap" style="display:none">
+        <div id="ptAiDisabledNotice" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 13px;margin-bottom:12px;font-size:11.5px;color:var(--text2);line-height:1.5">🏷️ <strong>AI-assisted tagging is currently disabled.</strong> Tag photos by hand using the ✏️ button on each image — nothing else here is affected.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
           <input class="form-input" id="ptSearchInput" type="search" placeholder="Search every tagged photo (e.g. “beer”)…" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')ptSearch()">
           <button class="btn btn-p" onclick="ptSearch()">Search all</button>
@@ -2484,13 +2495,17 @@ const CFG={clientId:'b7e650cb-f871-4884-b5ba-3f55c1d8d20b',authority:'https://lo
 const GOOGLE_CLIENT_ID='805946744245-e41ge33vlbr91t94olfqchk67o498ght.apps.googleusercontent.com';
 const GOOGLE_DRIVE_SCOPE='https://www.googleapis.com/auth/drive.readonly';
 
-// Photo Tagging — calls Google Cloud Vision's label-detection API straight from the browser (an
-// API key is enough, no OAuth), then writes the result back to the AITags column on the Digital
-// Media library via Graph. No Power Automate / premium connector involved anywhere in this path.
-// Paste the API key from Google Cloud Console → APIs & Services → Credentials — leave blank to
-// keep the feature hidden. The Digital Media library's drive ID is fixed below; it doesn't change
-// unless the library itself is deleted and recreated.
-const GOOGLE_VISION_API_KEY='AIzaSyDRuH5I4E_zWv02o8atS4CR2zLMZkq88zU';
+// Photo Tagging's AI-assisted labels previously called Google Cloud Vision's label-detection API
+// straight from the browser with a hardcoded key — a real, live credential sitting in this app's
+// public client-side JavaScript, readable by anyone who viewed the deployed page's source. That
+// key has been revoked in Google Cloud Console. Deliberately left blank, not replaced — a new key
+// placed back in this same client-side spot would be exposed again just as fast. Every call site
+// below already treats a blank key as "AI tagging unavailable" and falls back to manual tagging
+// only; nothing else about Photo Tagging (browsing, search, manual tag edit, Digital Media itself)
+// depends on this. Re-enabling AI suggestions needs the Vision call moved behind something that
+// isn't the public browser (a small server-side proxy, or routed through Power Automate) before a
+// new key would be safe to use here.
+const GOOGLE_VISION_API_KEY='';
 const DIGITAL_MEDIA_DRIVE_ID='b!nNEymQHH-USapvbmTivj6MUjOnOvRKdGt3tKLEHQKgW6fFNcyMOoR51GxWrNifrc';
 const SP_SITE='marlingroupaus.sharepoint.com,9932d19c-c701-44f9-9aa6-f6e64e2be3e8';
 
@@ -3441,11 +3456,28 @@ async function persistArchiveState(ev,noteHeading,noteLabel,reason){
   return{partial:[...new Set(partial)]};
 }
 
+// Shared by archiveCampaign()/denyCampaign() — runs the cascade and folds its result into the
+// message the user already sees, rather than a silent success that leaves orphaned work behind.
+async function cascadeAndDescribe(ev,baseMessage){
+  try{
+    const token=await getToken(true);
+    const{cancelled,failed}=await cascadeArchiveJobWork(ev,token);
+    if(failed.length)return`${baseMessage}. ${cancelled} linked item${cancelled===1?'':'s'} cancelled, but ${failed.length} couldn't be: ${failed.map(f=>f.title).join(', ')} — check Schema Tools → Orphaned Task Repair.`;
+    return cancelled?`${baseMessage} — ${cancelled} linked Task${cancelled===1?'':'s'}/follow-up${cancelled===1?'':'s'} cancelled too.`:baseMessage;
+  }catch(e){
+    console.error('Cascade cancel failed:',e);
+    return`${baseMessage}, but linked Tasks/follow-ups couldn't be checked (${e.message}) — run Schema Tools → Orphaned Task Repair to confirm nothing was left behind.`;
+  }
+}
+
 async function archiveCampaign(evId,btn){
   if(!canEditCampaigns()){alert('You do not have permission to archive campaigns.');return;}
   const ev=EVENTS.find(e=>e.id===evId||e.spId==evId);
   if(!ev||!ev.spId){alert('Cannot archive — item has no SharePoint ID');return;}
-  const reason=prompt(`Archive "${ev.title}"?\n\nThis removes it from active views but keeps it in the system (not a permanent delete). Please give a reason:`);
+  const{sharedTasks,personalTasks}=findDependentWork(ev);
+  const depCount=sharedTasks.length+personalTasks.length;
+  const depNote=depCount?`\n\nThis will also cancel ${depCount} linked Task${depCount===1?'':'s'}/follow-up${depCount===1?'':'s'} that are still open.`:'';
+  const reason=prompt(`Archive "${ev.title}"?\n\nThis removes it from active views but keeps it in the system (not a permanent delete).${depNote} Please give a reason:`);
   if(reason===null)return; // cancelled
   if(!reason.trim()){alert('Please enter a reason so there\'s a record of why this was archived.');return;}
   if(btn){btn.disabled=true;btn.textContent='Archiving…';}
@@ -3456,13 +3488,15 @@ async function archiveCampaign(evId,btn){
     renderCampaigns&&renderCampaigns();
     renderOverview&&renderOverview();
     renderApprovals&&renderApprovals();
+    renderMyWork&&renderMyWork();
     if(document.getElementById('p-calendar')?.classList.contains('active')){
       if(scheduleView==='month'||scheduleView==='week')renderCalendar();
       else if(scheduleView==='gantt')renderGantt();
       else if(scheduleView==='venuemonth')renderVenueMonth();
       else if(scheduleView==='crossvenue')renderCrossVenue();
     }
-    if(typeof showToast==='function')showToast(result.partial.length?`"${ev.title}" archived, but check ${result.partial.join(', ')}`:`"${ev.title}" archived`);
+    const message=await cascadeAndDescribe(ev,result.partial.length?`"${ev.title}" archived, but check ${result.partial.join(', ')}`:`"${ev.title}" archived`);
+    if(typeof showToast==='function')showToast(message);
   }catch(e){
     console.error('Archive failed:',e);
     alert('Could not archive — the change didn\'t save. '+e.message);
@@ -3474,7 +3508,10 @@ async function denyCampaign(evId,btn){
   if(!canApproveCampaigns()){alert('You do not have permission to deny campaigns.');return;}
   const ev=EVENTS.find(e=>e.id===evId||e.spId==evId);
   if(!ev||!ev.spId)return;
-  const reason=prompt(`Deny "${ev.title}"?\n\nThis archives it — removed from active views, not permanently deleted. Reason:`);
+  const{sharedTasks,personalTasks}=findDependentWork(ev);
+  const depCount=sharedTasks.length+personalTasks.length;
+  const depNote=depCount?`\n\nThis will also cancel ${depCount} linked Task${depCount===1?'':'s'}/follow-up${depCount===1?'':'s'} that are still open.`:'';
+  const reason=prompt(`Deny "${ev.title}"?\n\nThis archives it — removed from active views, not permanently deleted.${depNote} Reason:`);
   if(reason===null)return;
   if(!reason.trim()){alert('Please enter a reason for the record.');return;}
   if(btn){btn.disabled=true;btn.textContent='Denying…';}
@@ -3485,7 +3522,9 @@ async function denyCampaign(evId,btn){
     renderPipeline&&renderPipeline();
     renderCampaigns&&renderCampaigns();
     renderOverview&&renderOverview();
-    if(typeof showToast==='function')showToast(`"${ev.title}" denied and archived`);
+    renderMyWork&&renderMyWork();
+    const message=await cascadeAndDescribe(ev,`"${ev.title}" denied and archived`);
+    if(typeof showToast==='function')showToast(message);
   }catch(e){
     console.error('Deny failed:',e);
     showApprovalError(`Could not deny "${ev.title}": ${e.message}`);
@@ -4411,6 +4450,62 @@ function isArchived(e){
   // Stage = workflow position
   if(e.stage==='Done'||e.stage==='Cancelled')return true;
   return false;
+}
+// Task/subtask equivalent of isArchived() above — a task is closed (done, completed, or
+// cancelled) and should disappear from every open-task list, count and notification the same
+// way everywhere. Before this, "Cancelled" wasn't recognised as closed anywhere a task's status
+// was checked, which is exactly how an archived Job's cascade-cancelled tasks kept showing up as
+// active — see cascadeArchiveJobWork().
+function isTaskClosed(status){return['Done','Complete','Completed','Cancelled'].includes(status);}
+// Stricter than isTaskClosed() above — genuinely finished work only, not cancelled. Use this
+// anywhere a count or label claims "Done"/"Completed"; use isTaskClosed() for "is this still
+// active" filtering. Keeping them separate is the fix for a real gap this session found in its
+// own cascade-archive work: a task cascade-cancelled because its parent Job was archived must
+// never inflate a "Completed" count or report — it didn't get done, it got called off.
+function isTaskDone(status){return['Done','Complete','Completed'].includes(status);}
+
+// ── Cascading Job archiving (File Management & Job Archiving workstream, Phase 1) ──────────────
+// Fixes the confirmed regression: archiving or denying a Job left its linked Tasks and private
+// follow-ups active, so they kept appearing in My Work, My Tasks, Team Workload and Dashboard
+// counts/notifications after the Job itself had left active views.
+const CASCADE_ARCHIVE_TAG='[Auto-cancelled: parent Activity archived]';
+
+// Finds exclusively-dependent active work for one Activity, by stable SharePoint id only — never
+// by title, so a renamed or duplicate-titled Activity can never pull in someone else's work.
+// Personal Tasks are only ever included when the *current* signed-in user is their one private
+// owner: PERSONAL_TASKS is only ever loaded client-side for that person (loadPersonalTasks() is
+// itself gated by canAccessPrivatePersonalTasks()), so anyone else's archive action sees an empty
+// list here — there is nothing to silently read, modify or expose for a private task that isn't
+// theirs; it simply isn't present in their session at all.
+function findDependentWork(ev){
+  const sharedTasks=MY_TASKS.filter(t=>t.campaignLookupId&&String(t.campaignLookupId)===String(ev.spId)&&!isTaskClosed(t.status));
+  const personalTasks=canAccessPrivatePersonalTasks()
+    ?PERSONAL_TASKS.filter(t=>t.linkedActivityId&&String(t.linkedActivityId)===String(ev.id)&&!isTaskClosed(t.status))
+    :[];
+  return{sharedTasks,personalTasks};
+}
+
+// Cancels (not deletes) every dependent Task/follow-up found above. Idempotent — findDependentWork
+// already excludes anything already closed, so calling this twice on the same Activity is a no-op
+// the second time. Per-item failures are collected rather than thrown, so one rejected field or a
+// transient error on one task never blocks cancelling the rest — the caller decides how to surface
+// a partial failure summary rather than silently reporting success.
+async function cascadeArchiveJobWork(ev,token){
+  const{sharedTasks,personalTasks}=findDependentWork(ev);
+  const failed=[];
+  const cancelOne=async(t,listId,kind)=>{
+    try{
+      const notes=t.notes?`${t.notes}\n\n${CASCADE_ARCHIVE_TAG}`:CASCADE_ARCHIVE_TAG;
+      const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/items/${t.id}`;
+      const result=await patchImportOptionalFields(url,token,{Status:'Cancelled',Notes:notes});
+      if(result.failed.length){failed.push({kind,title:t.title,reason:result.failed.map(f=>f.field).join(', ')});return false;}
+      t.status='Cancelled';t.notes=notes;return true;
+    }catch(e){failed.push({kind,title:t.title,reason:e.message});return false;}
+  };
+  let cancelled=0;
+  for(const t of sharedTasks)if(await cancelOne(t,LIST_IDS.myTasks,'task'))cancelled++;
+  for(const t of personalTasks)if(await cancelOne(t,LIST_IDS.personalTasks,'personal follow-up'))cancelled++;
+  return{cancelled,failed};
 }
 function filterActive(arr){return globalShowArchive?arr:arr.filter(e=>!isArchived(e));}
 
@@ -6325,8 +6420,13 @@ function renderPhotoTagging(){
   const notConfigured=document.getElementById('ptNotConfigured');
   const wrap=document.getElementById('ptWrap');
   if(!notConfigured||!wrap)return;
-  if(!GOOGLE_VISION_API_KEY||!DIGITAL_MEDIA_DRIVE_ID){notConfigured.style.display='';wrap.style.display='none';return;}
+  // Browsing, search and manual tagging only need the Digital Media drive connected — none of
+  // that depends on AI tagging being available. The AI-specific notice is a separate, calmer
+  // banner inside ptWrap (see ptAiDisabledNotice), not a hard gate on the whole feature.
+  if(!DIGITAL_MEDIA_DRIVE_ID){notConfigured.style.display='';wrap.style.display='none';return;}
   notConfigured.style.display='none';wrap.style.display='';
+  const aiNotice=document.getElementById('ptAiDisabledNotice');
+  if(aiNotice)aiNotice.style.display=GOOGLE_VISION_API_KEY?'none':'';
   if(!ptCurrentItems.length&&ptMode==='browse')ptLoadFolder();
 }
 
@@ -6368,7 +6468,7 @@ async function ptLoadFolder(){
       </div>`).join('');
     imagesEl.innerHTML=images.map(ptImageTile).join('');
     const anyUntagged=images.some(it=>!ptTagsOf(it));
-    if(tagAllBtn)tagAllBtn.style.display=anyUntagged?'':'none';
+    if(tagAllBtn)tagAllBtn.style.display=(anyUntagged&&GOOGLE_VISION_API_KEY)?'':'none';
   }catch(e){
     if(statusEl){statusEl.textContent='Failed to load: '+e.message;statusEl.className='form-msg err';}
   }
@@ -6387,8 +6487,8 @@ function ptImageTile(item){
     <div class="pt-name" style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px" title="${escapeAttr(item.name)}">${escapeAttr(item.name)}</div>
     <div class="pt-tags" style="font-size:10px;color:${tags?'var(--text3)':'var(--gold)'};min-height:26px;margin-bottom:6px;line-height:1.3">${tags?escapeAttr(tags):'Not tagged yet'}</div>
     <div style="display:flex;gap:6px">
-      <button class="btn btn-s" style="flex:1;font-size:10px;padding:4px" onclick="ptTagOne('${item.id}')">${tags?'Re-tag':'Tag with AI'}</button>
-      <button class="btn btn-s" style="font-size:10px;padding:4px" onclick="ptEditTags('${item.id}')" title="Fix a wrong tag by hand">✏️</button>
+      ${GOOGLE_VISION_API_KEY?`<button class="btn btn-s" style="flex:1;font-size:10px;padding:4px" onclick="ptTagOne('${item.id}')">${tags?'Re-tag':'Tag with AI'}</button>`:''}
+      <button class="btn btn-s" style="${GOOGLE_VISION_API_KEY?'':'flex:1;'}font-size:10px;padding:4px" onclick="ptEditTags('${item.id}')" title="Add or edit tags by hand">✏️ ${GOOGLE_VISION_API_KEY?'':'Tag'}</button>
       <button class="btn btn-s" style="font-size:10px;padding:4px" onclick="navigator.clipboard.writeText('${link.replace(/'/g,"\\'")}');this.textContent='✓';setTimeout(()=>this.textContent='🔗',1200)">🔗</button>
     </div>
   </div>`;
@@ -7593,7 +7693,7 @@ function openEditPersonalTaskOrTask(t){
 function renderDashMyPriorities(){
   const el=document.getElementById('ovMyPriorities');if(!el)return;
   const todayStr=toLocalISODate(new Date());
-  const open=myWorkItems().filter(t=>!['Done','Complete','Completed'].includes(t.status));
+  const open=myWorkItems().filter(t=>!isTaskClosed(t.status));
   const scored=open.map(t=>{
     const overdue=!!(t.due&&t.due<todayStr);
     const blocked=t.status==='Blocked';
@@ -7617,7 +7717,7 @@ function renderDashMyPriorities(){
 function renderDashOverdueBlocked(){
   const el=document.getElementById('ovOverdueBlocked');if(!el)return;
   const todayStr=toLocalISODate(new Date());
-  const open=myWorkItems().filter(t=>!['Done','Complete','Completed'].includes(t.status));
+  const open=myWorkItems().filter(t=>!isTaskClosed(t.status));
   const items=open.filter(t=>(t.due&&t.due<todayStr)||t.status==='Blocked')
     .sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))).slice(0,8);
   el.innerHTML=items.length?items.map(t=>{
@@ -7820,7 +7920,7 @@ function renderOverview(){
   // assigned to you + owned/flagged Activities), so this card doesn't sit permanently empty just
   // because Shared Work Items has no data in it yet.
   const todayStr=toLocalISODate(today);
-  const myTasks=myWorkItems().filter(t=>!['Done','Complete','Completed'].includes(t.status)).sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))).slice(0,5);
+  const myTasks=myWorkItems().filter(t=>!isTaskClosed(t.status)).sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))).slice(0,5);
   document.getElementById('ovMyTasks').innerHTML=myTasks.length
     ?myTasks.map(t=>{
       const isOverdue=t.due&&t.due<todayStr;
@@ -7995,8 +8095,11 @@ function renderMyTasksInline(){
     return a.includes(emailPart)||(firstName.length>2&&a.includes(firstName));
   }
   const tasks=MY_TASKS.filter(t=>t.title&&t.title.trim()&&isMyTask(t));
-  const pending=tasks.filter(t=>t.status!=='Done'&&t.status!=='Complete');
-  const done=tasks.filter(t=>t.status==='Done'||t.status==='Complete');
+  const pending=tasks.filter(t=>!isTaskClosed(t.status));
+  // Closed = Done + Cancelled, for "no longer active" grouping below. doneCount is the stricter,
+  // genuinely-finished count for the stat tile — a cascade-cancelled task must not inflate "Done".
+  const done=tasks.filter(t=>isTaskClosed(t.status));
+  const doneCount=tasks.filter(t=>isTaskDone(t.status)).length;
   const priTag={Critical:'t-r',High:'t-o',Medium:'t-a',Normal:'t-g',Low:'t-gr'};
 
   // Update badge
@@ -8005,16 +8108,16 @@ function renderMyTasksInline(){
   el.innerHTML=`
     <div class="stats" style="margin-bottom:12px">
       <div class="stat ${tasks.filter(t=>t.status==='Blocked').length?'hi':''}"><div class="stat-n">${tasks.filter(t=>t.status==='Blocked').length}</div><div class="stat-l">Blocked</div></div>
-      <div class="stat"><div class="stat-n">${tasks.filter(t=>t.due===toLocalISODate(today)&&t.status!=='Done').length}</div><div class="stat-l">Due Today</div></div>
+      <div class="stat"><div class="stat-n">${tasks.filter(t=>t.due===toLocalISODate(today)&&!isTaskClosed(t.status)).length}</div><div class="stat-l">Due Today</div></div>
       <div class="stat"><div class="stat-n">${pending.length}</div><div class="stat-l">Open</div></div>
-      <div class="stat"><div class="stat-n">${done.length}</div><div class="stat-l">Done</div></div>
+      <div class="stat"><div class="stat-n">${doneCount}</div><div class="stat-l">Done</div></div>
     </div>
     <button class="btn btn-p" style="margin-bottom:12px;padding:7px 14px;font-size:12px" onclick="openAddTask()">＋ New Task</button>
     ${pending.length?pending.map(t=>{
       const isBlocked=t.status==='Blocked';
       const isOverdue=t.due&&new Date(t.due+'T00:00:00')<today;
       return`<div class="task-item ${isBlocked?'blocked':''}">
-        <div class="task-cb" onclick="toggleMyDayTask('${t.id}')">${t.status==='Done'?'✓':''}</div>
+        <div class="task-cb" onclick="toggleMyDayTask('${t.id}')">${isTaskClosed(t.status)?'✓':''}</div>
         <div class="task-info">
           <div class="task-name">${t.title}</div>
           <div class="task-meta">
@@ -8029,10 +8132,10 @@ function renderMyTasksInline(){
         </div>
       </div>`;
     }).join(''):'<div style="padding:20px;text-align:center;color:var(--text3)">No open tasks ✓</div>'}
-    ${done.length?`<div style="margin-top:12px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Completed · ${done.length}</div>
+    ${done.length?`<div style="margin-top:12px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Closed · ${done.length}</div>
     ${done.slice(0,5).map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;opacity:.5;cursor:pointer" onclick="toggleMyDayTask('${t.id}')">
-      <div class="task-cb done">✓</div>
-      <div style="font-size:12px;text-decoration:line-through;color:var(--text3)">${t.title}</div>
+      <div class="task-cb done">${isTaskDone(t.status)?'✓':'✕'}</div>
+      <div style="font-size:12px;text-decoration:line-through;color:var(--text3)">${t.title}${isTaskDone(t.status)?'':' (cancelled)'}</div>
     </div>`).join('')}`:''}
   `;
 }
@@ -8090,7 +8193,7 @@ function renderMyDay(){
   const validTasks=MY_TASKS.filter(t=>t.title&&t.title.trim()&&isMyTask(t));
   const feed=[];
 
-  validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00')<today).forEach(t=>{
+  validTasks.filter(t=>!isTaskClosed(t.status)&&t.due&&new Date(t.due+'T00:00:00')<today).forEach(t=>{
     feed.push({urgency:0,icon:'🔴',label:'OVERDUE',color:'var(--red-bg)',text:t.title,sub:t.venue||t.category||'Task',due:t.due,type:'task',id:t.id});
   });
   validTasks.filter(t=>t.status==='Blocked').forEach(t=>{
@@ -8103,11 +8206,11 @@ function renderMyDay(){
   NOTIFS.filter(n=>n.category==='readiness'&&n.unread&&n.color==='var(--red-bg)').forEach(n=>{
     feed.push({urgency:3,icon:'⚠️',label:'URGENT',color:'var(--red-bg)',text:n.text,sub:n.time,type:'notif',key:n.key,eventId:n.eventId});
   });
-  validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00').getTime()===today.getTime()).forEach(t=>{
+  validTasks.filter(t=>!isTaskClosed(t.status)&&t.due&&new Date(t.due+'T00:00:00').getTime()===today.getTime()).forEach(t=>{
     if(feed.some(f=>f.id===t.id))return;
     feed.push({urgency:4,icon:'📌',label:'DUE TODAY',color:'var(--gold-bg)',text:t.title,sub:t.venue||t.category||'Task',due:t.due,type:'task',id:t.id});
   });
-  validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00')>today&&new Date(t.due+'T00:00:00')<=week).forEach(t=>{
+  validTasks.filter(t=>!isTaskClosed(t.status)&&t.due&&new Date(t.due+'T00:00:00')>today&&new Date(t.due+'T00:00:00')<=week).forEach(t=>{
     if(feed.some(f=>f.id===t.id))return;
     feed.push({urgency:5,icon:'☐',label:'THIS WEEK',color:'var(--surface2)',text:t.title,sub:fmtDate(t.due),due:t.due,type:'task',id:t.id});
   });
@@ -8117,23 +8220,23 @@ function renderMyDay(){
   NOTIFS.filter(n=>n.category==='campaign'&&n.unread).forEach(n=>{
     feed.push({urgency:7,icon:n.icon,label:'CAMPAIGN',color:n.color||'var(--accent-bg)',text:n.text,sub:n.time,type:'notif',key:n.key,eventId:n.eventId});
   });
-  validTasks.filter(t=>t.status!=='Done'&&!t.due).forEach(t=>{
+  validTasks.filter(t=>!isTaskClosed(t.status)&&!t.due).forEach(t=>{
     if(feed.some(f=>f.id===t.id))return;
     feed.push({urgency:8,icon:'○',label:'OPEN',color:'var(--surface2)',text:t.title,sub:t.category||'Task',due:null,type:'task',id:t.id});
   });
 
-  const recentDone=validTasks.filter(t=>t.status==='Done').slice(0,5);
+  const recentDone=validTasks.filter(t=>isTaskClosed(t.status)).slice(0,5);
   feed.sort((a,b)=>a.urgency-b.urgency);
 
   const body=document.getElementById('mydayFeedTab');
   if(!body)return;
 
   const counts={
-    overdue:validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00')<today).length,
+    overdue:validTasks.filter(t=>!isTaskClosed(t.status)&&t.due&&new Date(t.due+'T00:00:00')<today).length,
     blocked:validTasks.filter(t=>t.status==='Blocked').length,
-    dueToday:validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00').getTime()===today.getTime()).length,
-    open:validTasks.filter(t=>t.status!=='Done').length,
-    done:validTasks.filter(t=>t.status==='Done').length
+    dueToday:validTasks.filter(t=>!isTaskClosed(t.status)&&t.due&&new Date(t.due+'T00:00:00').getTime()===today.getTime()).length,
+    open:validTasks.filter(t=>!isTaskClosed(t.status)).length,
+    done:validTasks.filter(t=>isTaskClosed(t.status)).length
   };
 
   let html='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
@@ -8315,7 +8418,7 @@ function renderWorkload(targetId='workloadBody',limit=0){
     kind:'activity',id:ev.id,title:ev.title,date:ev.start,label:stageLabel(ev.stage),
     person:ev.owner||'Unassigned'
   }));
-  const taskItems=MY_TASKS.filter(t=>!['Done','Complete','Completed'].includes(t.status)).map(t=>({
+  const taskItems=MY_TASKS.filter(t=>!isTaskClosed(t.status)).map(t=>({
     kind:'task',id:t.id,title:t.title,date:t.due,label:t.status||'Not Started',
     person:t.assignedTo||'Unassigned'
   }));
@@ -10301,7 +10404,7 @@ function loadMyWorkPrefs(){
 }
 function saveMyWorkPrefs(p){try{localStorage.setItem(myWorkPrefsKey(),JSON.stringify(p));}catch(e){console.warn('Could not save My Work layout preference:',e);}}
 function mwAutoBucket(t,today){
-  if(['Done','Complete','Completed'].includes(t.status))return null;
+  if(isTaskClosed(t.status))return null;
   if(t.status==='Blocked')return '_blocked';
   if(t.due&&t.due<today)return '_overdue';
   if(t.due===today)return '_today';
@@ -10355,8 +10458,8 @@ function renderMyWork(){
   const all=myWorkItems();
   const byKey={};all.forEach(t=>byKey[t.key]=t);
 
-  const open=all.filter(t=>!['Done','Complete','Completed'].includes(t.status));
-  const overdue=open.filter(t=>t.due&&t.due<today),dueToday=open.filter(t=>t.due===today),completed=all.length-open.length,blocked=open.filter(t=>t.status==='Blocked');
+  const open=all.filter(t=>!isTaskClosed(t.status));
+  const overdue=open.filter(t=>t.due&&t.due<today),dueToday=open.filter(t=>t.due===today),completed=all.filter(t=>isTaskDone(t.status)).length,blocked=open.filter(t=>t.status==='Blocked');
   stats.innerHTML=`<div class="stat"><div class="stat-n">${open.length}</div><div class="stat-l">Open</div></div><div class="stat ${blocked.length?'hi':''}"><div class="stat-n">${blocked.length}</div><div class="stat-l">Blocked</div></div><div class="stat ${overdue.length?'hi':''}"><div class="stat-n">${overdue.length}</div><div class="stat-l">Overdue</div></div><div class="stat"><div class="stat-n">${completed}</div><div class="stat-l">Completed</div></div>`;
   const badge=document.getElementById('myWorkBadge');if(badge){badge.textContent=open.length;badge.style.display=open.length?'':'none';}
 
@@ -10413,7 +10516,7 @@ function renderMyWork(){
     });
     const collapsed=!!prefs.collapsed[bucket.id];
     const rowsHtml=items.map(t=>{
-      const done=['Done','Complete','Completed'].includes(t.status),late=!done&&t.due&&t.due<today;
+      const done=isTaskClosed(t.status),late=!done&&t.due&&t.due<today;
       return`<div draggable="true" ondragstart="mwDragStart(event,'${t.key}')" ondragend="mwDragEnd(event)" ondragover="mwDragOverRow(event)" ondrop="mwDropOnRow(event,'${bucket.id}','${t.key}')" onclick="mwOpenItem('${t.key}')" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-top:1px solid var(--border);cursor:pointer">
         <span style="color:#d0d0c8;font-size:11px;cursor:grab;flex-shrink:0" title="Drag to move">⠿</span>
         <div style="flex:1;min-width:0">
@@ -10599,13 +10702,13 @@ function renderMyTasks(){
   const queue=_taskQueue||'mine';
   let tasks=MY_TASKS.filter(t=>t.title&&t.title.trim());
 
-  if(queue==='mine') tasks=tasks.filter(t=>isMyTask(t)&&t.status!=='Done');
-  else if(queue==='design') tasks=tasks.filter(t=>t.category==='Design Asset'&&t.status!=='Done');
-  else if(queue==='web') tasks=tasks.filter(t=>t.category==='Web Update'&&t.status!=='Done');
-  else if(queue==='overdue') tasks=tasks.filter(t=>t.status!=='Done'&&t.due&&t.due<todayStr);
-  else if(queue==='week') tasks=tasks.filter(t=>t.status!=='Done'&&t.due&&t.due>=todayStr&&t.due<=weekStr);
-  else if(queue==='all') tasks=tasks.filter(t=>t.status!=='Done');
-  else if(queue==='archive') tasks=tasks.filter(t=>t.status==='Done');
+  if(queue==='mine') tasks=tasks.filter(t=>isMyTask(t)&&!isTaskClosed(t.status));
+  else if(queue==='design') tasks=tasks.filter(t=>t.category==='Design Asset'&&!isTaskClosed(t.status));
+  else if(queue==='web') tasks=tasks.filter(t=>t.category==='Web Update'&&!isTaskClosed(t.status));
+  else if(queue==='overdue') tasks=tasks.filter(t=>!isTaskClosed(t.status)&&t.due&&t.due<todayStr);
+  else if(queue==='week') tasks=tasks.filter(t=>!isTaskClosed(t.status)&&t.due&&t.due>=todayStr&&t.due<=weekStr);
+  else if(queue==='all') tasks=tasks.filter(t=>!isTaskClosed(t.status));
+  else if(queue==='archive') tasks=tasks.filter(t=>isTaskClosed(t.status));
   else if(queue==='blocked') tasks=tasks.filter(t=>t.status==='Blocked');
 
   tasks.sort((a,b)=>{
@@ -10617,10 +10720,10 @@ function renderMyTasks(){
   });
 
   const blocked=MY_TASKS.filter(t=>t.status==='Blocked').length;
-  const critical=MY_TASKS.filter(t=>t.priority==='Critical'&&t.status!=='Done').length;
-  const dueToday=MY_TASKS.filter(t=>t.due===todayStr&&t.status!=='Done').length;
-  const overdue=MY_TASKS.filter(t=>t.status!=='Done'&&t.due&&t.due<todayStr).length;
-  const pending=MY_TASKS.filter(t=>t.status!=='Done'&&isMyTask(t)).length;
+  const critical=MY_TASKS.filter(t=>t.priority==='Critical'&&!isTaskClosed(t.status)).length;
+  const dueToday=MY_TASKS.filter(t=>t.due===todayStr&&!isTaskClosed(t.status)).length;
+  const overdue=MY_TASKS.filter(t=>!isTaskClosed(t.status)&&t.due&&t.due<todayStr).length;
+  const pending=MY_TASKS.filter(t=>!isTaskClosed(t.status)&&isMyTask(t)).length;
 
   const who=document.getElementById('myTasksWho');
   if(who)who.textContent=`${currentUser?.name||currentUserEmail} · ${pending} open tasks`;
@@ -10638,7 +10741,7 @@ function renderMyTasks(){
   const priTag={Critical:'t-r',High:'t-o',Medium:'t-a',Normal:'t-g',Low:'t-gr'};
   const mainListHtml=tasks.length
     ?tasks.map(t=>{
-        const isBlocked=t.status==='Blocked';const isDone=t.status==='Done';
+        const isBlocked=t.status==='Blocked';const isDone=isTaskClosed(t.status);
         const isOverdue=t.due&&t.due<todayStr&&!isDone;
         return`<div class="task-item ${isBlocked?'blocked':t.priority==='Critical'&&!isDone?'critical':''}">
           <div class="task-cb ${isDone?'done':''}" ${canEditTeamTask(t)?`onclick="toggleTask('${t.id}')" style="cursor:pointer"`:'title="View only"'}>${isDone?'✓':''}</div>
@@ -10671,7 +10774,7 @@ function renderMyTasks(){
       if(queue==='mine')return isMyTask(t);
       return true;
     }
-    const doneList=MY_TASKS.filter(t=>t.title&&t.title.trim()&&t.status==='Done'&&inQueueScope(t))
+    const doneList=MY_TASKS.filter(t=>t.title&&t.title.trim()&&isTaskClosed(t.status)&&inQueueScope(t))
       .sort((a,b)=>(b.due||'').localeCompare(a.due||''));
     if(doneList.length){
       completedHtml=`
@@ -10987,9 +11090,9 @@ function renderPersonalTasks(){
     return;
   }
   const today=toLocalISODate(new Date());
-  const open=PERSONAL_TASKS.filter(task=>task.status!=='Done');
+  const open=PERSONAL_TASKS.filter(task=>!isTaskClosed(task.status));
   const overdue=open.filter(task=>task.due&&task.due<today);
-  const done=PERSONAL_TASKS.filter(task=>task.status==='Done');
+  const done=PERSONAL_TASKS.filter(task=>isTaskDone(task.status));
   const badge=document.getElementById('personalTaskBadge');if(badge){badge.textContent=open.length;badge.style.display=open.length?'':'none';}
   stats.innerHTML=`<div class="stat"><div class="stat-n">${open.length}</div><div class="stat-l">Open</div></div><div class="stat ${overdue.length?'hi':''}"><div class="stat-n">${overdue.length}</div><div class="stat-l">Overdue</div></div><div class="stat"><div class="stat-n">${done.length}</div><div class="stat-l">Completed</div></div>`;
   // Project is the one axis a task is grouped by — the old free-text "Workstream" tag had no way to
@@ -11036,9 +11139,9 @@ function renderPersonalTasks(){
   const allShownIds=new Set(PERSONAL_TASKS.map(t=>String(t.id)));
   Array.from(personalTaskSelected).forEach(id=>{if(!allShownIds.has(String(id)))personalTaskSelected.delete(id);});
   const personalTaskRowHtml=(task,isSubtask)=>{
-    const isDone=task.status==='Done',isOverdue=!isDone&&task.due&&task.due<today;
+    const isDone=isTaskClosed(task.status),isOverdue=!isDone&&task.due&&task.due<today;
     const subtasks=isSubtask?[]:childrenOf(task.id);
-    const subtasksDone=subtasks.filter(t=>t.status==='Done').length;
+    const subtasksDone=subtasks.filter(t=>isTaskClosed(t.status)).length;
     const expanded=personalTaskExpanded.has(String(task.id));
     // Prefer the real linked activity (LinkedActivityId, an actual EVENTS id) over the older free-text
     // LinkedCampaign field — the ID stays correct if the activity is renamed, the text doesn't.
@@ -11356,7 +11459,7 @@ async function bulkApplyPersonalTaskPriority(){
 async function bulkMarkPersonalTasksDone(){
   if(!personalTaskSelected.size)return;
   for(const id of Array.from(personalTaskSelected)){
-    const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task||task.status==='Done')continue;
+    const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task||isTaskClosed(task.status))continue;
     const old=task.status;task.status='Done';
     try{if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(id).startsWith('PT-')){const token=await getToken(true);const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:'Done'}})});if(!res.ok)throw new Error('HTTP '+res.status);}}catch(e){task.status=old;}
   }
@@ -11563,6 +11666,57 @@ function toggleSchemaChoiceInput(){
   const group=document.getElementById('schemaChoiceGroup');
   if(group)group.style.display=type==='choice'?'':'none';
 }
+
+// ── Orphaned Task Repair — for Jobs archived before the cascade fix existed. Read-only scan;
+// nothing is changed until an admin explicitly confirms one or all rows. ──
+function scanOrphanedJobTasks(){
+  const el=document.getElementById('orphanRepairResults');
+  if(!el)return;
+  const rows=EVENTS.filter(isArchived).map(ev=>({ev,...findDependentWork(ev)})).filter(r=>r.sharedTasks.length||r.personalTasks.length);
+  if(!rows.length){el.innerHTML='<div style="padding:14px;text-align:center;color:var(--text3);font-size:12.5px">✅ No orphaned active work found on any archived Activity.</div>';return;}
+  el.innerHTML=`<div style="font-size:11.5px;color:var(--text2);margin-bottom:8px">${rows.length} archived Activit${rows.length===1?'y has':'ies have'} open work still linked:</div>`+
+    rows.map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border)">
+      <div><div style="font-size:12.5px;font-weight:600">${escapeAttr(r.ev.title)}</div><div style="font-size:11px;color:var(--text3)">${r.sharedTasks.length} task${r.sharedTasks.length===1?'':'s'}${r.personalTasks.length?` · ${r.personalTasks.length} private follow-up${r.personalTasks.length===1?'':'s'}`:''}</div></div>
+      <button class="tb-btn" onclick="repairOneOrphanedJob(${r.ev.id},this)">Cancel these →</button>
+    </div>`).join('')+
+    `<button class="btn btn-p" style="margin-top:10px" onclick="repairAllOrphanedJobs(this)">Cancel all ${rows.length} Activities' orphaned work</button>`;
+}
+async function repairOneOrphanedJob(evId,btn){
+  const ev=EVENTS.find(e=>e.id===evId);if(!ev)return;
+  const{sharedTasks,personalTasks}=findDependentWork(ev);
+  const depCount=sharedTasks.length+personalTasks.length;
+  if(!confirm(`Cancel ${depCount} open Task${depCount===1?'':'s'}/follow-up${depCount===1?'':'s'} still linked to "${ev.title}"?\n\nThis only touches work linked by its stable SharePoint id — nothing else is changed.`))return;
+  btn.disabled=true;btn.textContent='Cancelling…';
+  try{
+    const token=await getToken(true);
+    const result=await cascadeArchiveJobWork(ev,token);
+    if(typeof showToast==='function')showToast(result.failed.length?`${result.cancelled} cancelled, ${result.failed.length} couldn't be — see console`:`${result.cancelled} item(s) cancelled`);
+    if(result.failed.length)console.warn('Orphan repair — some items could not be cancelled:',result.failed);
+    scanOrphanedJobTasks();
+    renderMyWork&&renderMyWork();renderOverview&&renderOverview();
+  }catch(e){alert('Repair failed: '+e.message);}
+  btn.disabled=false;btn.textContent='Cancel these →';
+}
+async function repairAllOrphanedJobs(btn){
+  const rows=EVENTS.filter(isArchived).map(ev=>({ev,...findDependentWork(ev)})).filter(r=>r.sharedTasks.length||r.personalTasks.length);
+  if(!rows.length)return;
+  if(!confirm(`Cancel orphaned open work across all ${rows.length} archived Activities shown? This only touches work linked by stable SharePoint id, never by title.`))return;
+  btn.disabled=true;btn.textContent='Cancelling…';
+  try{
+    const token=await getToken(true);
+    let totalCancelled=0;const totalFailed=[];
+    for(const r of rows){
+      const result=await cascadeArchiveJobWork(r.ev,token);
+      totalCancelled+=result.cancelled;totalFailed.push(...result.failed);
+    }
+    if(typeof showToast==='function')showToast(totalFailed.length?`${totalCancelled} cancelled, ${totalFailed.length} couldn't be — see console`:`${totalCancelled} item(s) cancelled across ${rows.length} Activities`);
+    if(totalFailed.length)console.warn('Orphan repair — some items could not be cancelled:',totalFailed);
+    scanOrphanedJobTasks();
+    renderMyWork&&renderMyWork();renderOverview&&renderOverview();
+  }catch(e){alert('Repair failed: '+e.message);}
+  btn.disabled=false;btn.textContent=`Cancel all ${rows.length} Activities' orphaned work`;
+}
+
 async function renderSchemaTools(forceRefresh){
   if(!canAccessPanel('schema'))return;
   const gapsEl=document.getElementById('schemaKnownGaps');
@@ -11578,6 +11732,7 @@ async function renderSchemaTools(forceRefresh){
   const optionsHtml=`<option value="">Choose a list…</option>${schemaListOptionsHtml()}`;
   listSelect.innerHTML=schemaListOptionsHtml();
   if(itemListSelect)itemListSelect.innerHTML=optionsHtml;
+  scanOrphanedJobTasks(); // read-only scan, safe to run on every open — see Phase 1 fix notes
   gapsEl.innerHTML='<div class="card"><div class="card-body" style="padding:20px"><div class="loading"><div class="spinner"></div></div></div></div>';
   try{
     const token=await getToken();
@@ -11754,7 +11909,7 @@ function renderOperationsMap(){
   if(!isAuthed)return;
   const el=document.getElementById('operationsMapBody');if(!el)return;
   const tasks=MY_TASKS.filter(task=>task.title&&task.title.trim());
-  const open=tasks.filter(task=>task.status!=='Done');
+  const open=tasks.filter(task=>!isTaskClosed(task.status));
   const today=toLocalISODate(new Date());
   const overdue=open.filter(task=>task.due&&task.due<today);
   const blocked=open.filter(task=>task.status==='Blocked'||task.blocker);
@@ -11946,7 +12101,7 @@ function renderProjectLinkedTasks(projectId){
   const linked=PERSONAL_TASKS.filter(t=>String(t.projectId)===String(projectId));
   const unlinked=PERSONAL_TASKS.filter(t=>!t.projectId).sort((a,b)=>(a.title||'').localeCompare(b.title||''));
   el.innerHTML=`<div class="pop-section">Linked Personal Tasks — ${linked.length}</div>
-    ${linked.length?linked.map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><a href="#" onclick="event.preventDefault();closeAddProject();openEditPersonalTask('${t.id}')" style="color:var(--accent)">${escapeAttr(t.title)}</a><span style="display:flex;align-items:center;gap:8px"><span class="tag ${t.status==='Done'?'t-g':'t-gr'}" style="font-size:9px">${escapeAttr(t.status)}</span><button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="unlinkPersonalTaskFromProject('${t.id}')">Unlink</button></span></div>`).join(''):'<div style="font-size:12px;color:var(--text3);padding:4px 0">No personal tasks linked yet.</div>'}
+    ${linked.length?linked.map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><a href="#" onclick="event.preventDefault();closeAddProject();openEditPersonalTask('${t.id}')" style="color:var(--accent)">${escapeAttr(t.title)}</a><span style="display:flex;align-items:center;gap:8px"><span class="tag ${isTaskClosed(t.status)?'t-g':'t-gr'}" style="font-size:9px">${escapeAttr(t.status)}</span><button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="unlinkPersonalTaskFromProject('${t.id}')">Unlink</button></span></div>`).join(''):'<div style="font-size:12px;color:var(--text3);padding:4px 0">No personal tasks linked yet.</div>'}
     <div style="display:flex;gap:6px;margin-top:8px">
       <select class="form-select" id="projLinkTaskSelect" style="flex:1"><option value="">Link an existing personal task…</option>${unlinked.map(t=>`<option value="${t.id}">${escapeAttr(t.title)}</option>`).join('')}</select>
       <button class="tb-btn" onclick="linkPersonalTaskToProject('${projectId}')">Link</button>
@@ -12112,7 +12267,7 @@ function renderProjects(){
   // and shouldn't make every new project card look like it's on fire.
   const isUrgentRisk=r=>/passed|at risk/i.test(r);
   list.innerHTML=shown.length?`<div class="proj-grid">${shown.map(({p,linked,risks})=>{
-    const workCount=(canAccessPanel('personaltasks')?PERSONAL_TASKS.filter(t=>String(t.projectId)===String(p.id)&&t.status!=='Done').length:0)+MY_TASKS.filter(t=>t.status!=='Done'&&linked.some(e=>t.campaignLookupId?(String(e.spId)===String(t.campaignLookupId)||String(e.id)===String(t.campaignLookupId)):(e.title||'').toLowerCase()===(t.campaignLookup||'').toLowerCase())).length;
+    const workCount=(canAccessPanel('personaltasks')?PERSONAL_TASKS.filter(t=>String(t.projectId)===String(p.id)&&!isTaskClosed(t.status)).length:0)+MY_TASKS.filter(t=>!isTaskClosed(t.status)&&linked.some(e=>t.campaignLookupId?(String(e.spId)===String(t.campaignLookupId)||String(e.id)===String(t.campaignLookupId)):(e.title||'').toLowerCase()===(t.campaignLookup||'').toLowerCase())).length;
     const hasUrgent=risks.some(isUrgentRisk);
     return`<article class="proj-card" onclick="openEditProject('${escapeAttr(String(p.id))}')" style="${hasUrgent?'border-left:3px solid var(--red)':''}">
       <div class="proj-card-head">
@@ -12371,7 +12526,7 @@ function generateNotifications(){
     .forEach(t=>{const key=`blocked-${t.id}`;NOTIFS.push({key,icon:'🚫',text:`Blocked task: ${t.title}${t.blocker?' — '+t.blocker:''}`,time:'Action needed',color:'var(--red-bg)',category:'action',unread:!readKeys.includes(key)});});
 
   // Tasks due this week
-  MY_TASKS.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00')<=week&&(!t.assignedTo||t.assignedTo.toLowerCase().includes(myEmail.split('@')[0])))
+  MY_TASKS.filter(t=>!isTaskClosed(t.status)&&t.due&&new Date(t.due+'T00:00:00')<=week&&(!t.assignedTo||t.assignedTo.toLowerCase().includes(myEmail.split('@')[0])))
     .forEach(t=>{const key=`taskdue-${t.id}`;const isOverdue=new Date(t.due+'T00:00:00')<today;NOTIFS.push({key,icon:'☐',text:`${isOverdue?'OVERDUE: ':'Due soon: '}${t.title}`,time:fmtDate(t.due),color:isOverdue?'var(--red-bg)':'var(--gold-bg)',category:'task',unread:!readKeys.includes(key)});});
 
   // Campaigns going live this week
@@ -14477,13 +14632,13 @@ function renderActivityDetail(id,mode){
   // Linked personal tasks — Kimberley-only, the flip side of the Personal Tasks list's Linked activity field.
   if(canAccessPanel('personaltasks')){
     const linkedTasks=PERSONAL_TASKS.filter(t=>String(t.linkedActivityId)===String(ev.id));
-    const linkedDone=linkedTasks.filter(t=>t.status==='Done').length;
+    const linkedDone=linkedTasks.filter(t=>isTaskClosed(t.status)).length;
     h+=`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div style="font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase">🔒 My linked tasks${linkedTasks.length?` (${linkedDone}/${linkedTasks.length} done)`:''}</div>
         <button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('','${ev.id}')">+ Add task</button>
       </div>
-      ${linkedTasks.length?linkedTasks.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><div class="task-cb ${t.status==='Done'?'done':''}" onclick="togglePersonalTask('${t.id}')">${t.status==='Done'?'✓':''}</div><div style="flex:1;font-size:12.5px;cursor:pointer;${t.status==='Done'?'text-decoration:line-through;color:var(--text3)':''}" onclick="navTo('personaltasks')" title="Open in Personal Tasks">${escapeAttr(t.title)}</div>${t.due?`<span style="font-size:11px;color:var(--text3)">${fmtDate(t.due)}</span>`:''}</div>`).join(''):'<div style="font-size:12px;color:var(--text3);padding:6px 0">No personal tasks linked to this activity yet.</div>'}
+      ${linkedTasks.length?linkedTasks.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><div class="task-cb ${isTaskClosed(t.status)?'done':''}" onclick="togglePersonalTask('${t.id}')">${isTaskClosed(t.status)?'✓':''}</div><div style="flex:1;font-size:12.5px;cursor:pointer;${isTaskClosed(t.status)?'text-decoration:line-through;color:var(--text3)':''}" onclick="navTo('personaltasks')" title="Open in Personal Tasks">${escapeAttr(t.title)}</div>${t.due?`<span style="font-size:11px;color:var(--text3)">${fmtDate(t.due)}</span>`:''}</div>`).join(''):'<div style="font-size:12px;color:var(--text3);padding:6px 0">No personal tasks linked to this activity yet.</div>'}
     </div>`;
   }
   // Action buttons
