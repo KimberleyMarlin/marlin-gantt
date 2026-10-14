@@ -89,7 +89,7 @@ campaigns (master Activities/Campaigns — "Marketing & Activations 2026"), myTa
 ### ADD (genuinely missing, real new work)
 - A real **Activity Group** taxonomy layer (the 7 groups × many subtypes in brief Section 4) — doesn't exist; today's `ActivityType` is flat (Event/Promotion/Campaign/Maintenance). This needs to be schema-driven (one config object), not hardcoded into a 5th place.
 - A true progressive-disclosure, multi-step wizard — today's Submit form is one long page with inline show/hide, not the 7-step flow in Section 3.
-- Automatic Activity naming engine (`[Venue/Brand] | [Type] | [Name] | [Period]`) — doesn't exist generally (only a narrow Loaded-Rewards-specific version built this session).
+- ~~Automatic Activity naming engine (`[Venue/Brand] | [Type] | [Name] | [Period]`)~~ — **done 2026-10-14**: `composeAutoActivityTitle()` builds this live on the Submit form from Venue/Brand, Activity Type (or the active template's name), Activity Detail and Start Date; stays editable, stops auto-overwriting once hand-edited. The old narrower "{Template} — {Item}" builder (`composeActivityTitle()`) is archived in place, not deleted, in case this needs rolling back.
 - Food & Beverage, full Events, and Promotions conditional templates at the depth described (PLU/SKU, dietary/allergen, guest collateral, bump-in/out, canonical single offer definition shared across briefs) — none of this exists today.
 - Digital Advertising, Website, Email, SMS briefs as structured work items — don't exist; today it's a free-text Channels multi-select only.
 - Approval → task-creation connection itself (wiring `runPlaybook`-equivalent logic to the approval flow, with the preview/confirm step the brief asks for, not immediate silent creation).
