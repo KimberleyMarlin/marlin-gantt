@@ -1875,7 +1875,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
               </select>
             </div>
             <div class="form-group"><label class="form-label">Activity Group</label>
-              <select class="form-select" id="fActGroup" onchange="populateActivitySubtypeSelect('fActGroup','fActSubtype');composeAutoActivityTitle()">
+              <select class="form-select" id="fActGroup" onchange="populateActivitySubtypeSelect('fActGroup','fActSubtype');composeAutoActivityTitle();updateActivityConditionalSections()">
                 <option value="">Select…</option>
               </select>
               <div style="font-size:10.5px;color:var(--text3);margin-top:3px">What kind of thing this actually is — separate from Activity Type above, which only distinguishes Event/Promotion/Campaign/Maintenance</div>
@@ -1943,6 +1943,25 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <div class="form-grid">
               <div class="form-group"><label class="form-label">Supplier</label><select class="form-select" id="fSupplierLookup"><option value="">Loading SharePoint lookup…</option></select><div class="lookup-note" id="fSupplierLookupNote"></div></div>
               <div class="form-group"><label class="form-label">Product</label><select class="form-select" id="fProductLookup"><option value="">Loading SharePoint lookup…</option></select><div class="lookup-note" id="fProductLookupNote"></div></div>
+            </div>
+          </div>
+
+          <!-- Food & Beverage conditional template (brief Section 8) — only the genuinely new
+               questions it asks that nothing else on this form already covers. Price, Member Price,
+               Start/End, Supplier and POS are already asked above/below — this doesn't repeat them. -->
+          <div id="fFoodBevGroup" style="display:none">
+            <div class="form-section-head">Food &amp; Beverage Details</div>
+            <div class="form-grid">
+              <div class="form-group"><label class="form-label">Is this a...</label><select class="form-select" id="fFBStatus"><option value="">Select…</option><option>New Item</option><option>Replacement</option><option>Amendment</option></select></div>
+              <div class="form-group full"><label class="form-label">Dietary &amp; Allergen Information</label><input class="form-input" id="fFBDietary" type="text" placeholder="e.g. Contains nuts, gluten-free available"></div>
+              <div class="form-group full"><label class="form-label">Availability Notes</label><input class="form-input" id="fFBAvailability" type="text" placeholder="e.g. Limited stock (50 only), Fri-Sun lunch only, Mains section"></div>
+              <div class="form-group full" style="display:flex;gap:20px;flex-wrap:wrap">
+                <label class="checkbox-row"><input type="checkbox" id="fFBPhotography"> Product photography available</label>
+                <label class="checkbox-row"><input type="checkbox" id="fFBSupplierBranding"> Supplier branding available</label>
+                <label class="checkbox-row"><input type="checkbox" id="fFBPrintMenu"> Printed menu update required</label>
+                <label class="checkbox-row"><input type="checkbox" id="fFBDigitalMenu"> Digital menu update required</label>
+                <label class="checkbox-row"><input type="checkbox" id="fFBStaffBriefing"> Staff briefing required</label>
+              </div>
             </div>
           </div>
 
@@ -5226,6 +5245,17 @@ async function loadCampaigns(){
         eventFormat:f.EventFormat||'',
         activityGroup:f.ActivityGroup||'',
         activitySubtype:f.ActivitySubtype||'',
+        // Food & Beverage conditional template — read-only in the activity popup for now (not yet
+        // wired into renderActivityDetail's edit fields); kept here so the data survives a reload
+        // instead of being silently dropped.
+        fbItemStatus:f.ItemStatus||'',
+        fbDietaryInfo:f.DietaryAllergenInfo||'',
+        fbAvailabilityNotes:f.FBAvailabilityNotes||'',
+        fbPhotographyAvailable:f.ProductPhotographyAvailable===true||f.ProductPhotographyAvailable==='Yes',
+        fbSupplierBrandingAvailable:f.SupplierBrandingAvailable===true||f.SupplierBrandingAvailable==='Yes',
+        fbPrintMenuRequired:f.PrintedMenuUpdateRequired===true||f.PrintedMenuUpdateRequired==='Yes',
+        fbDigitalMenuRequired:f.DigitalMenuUpdateRequired===true||f.DigitalMenuUpdateRequired==='Yes',
+        staffBriefingRequired:f.StaffBriefingRequired===true||f.StaffBriefingRequired==='Yes',
         marketingSilo:f.CampaignSilo||'', // internal name CampaignSilo
         businessStream:f.BusinessStream||'',
         stage:isPast&&storedStage!=='Done'?'Done':storedStage,
@@ -10716,6 +10746,14 @@ const SCHEMA_KNOWN_GAPS=[
   // second, harder-to-maintain copy of the same list (every future subtype added in code would also
   // need manually adding here). Text accepts whatever the Hub sends without that duplication.
   {listKey:'campaigns',name:'ActivitySubtype',displayName:'Activity Subtype',type:'text',purpose:'The specific subtype within the chosen Activity Group — e.g. "Beer of the Month" under Food & Beverage. Values are constrained by the Hub\'s own dropdown, not this column.'},
+  {listKey:'campaigns',name:'ItemStatus',displayName:'Item Status',type:'choice',choices:'New Item, Replacement, Amendment',purpose:'Food & Beverage conditional template — whether this is a brand new item, a replacement, or an amendment to an existing one.'},
+  {listKey:'campaigns',name:'DietaryAllergenInfo',displayName:'Dietary & Allergen Info',type:'text',purpose:'Food & Beverage conditional template.'},
+  {listKey:'campaigns',name:'FBAvailabilityNotes',displayName:'Availability Notes',type:'text',purpose:'Food & Beverage conditional template — limited stock, specific days/times, menu placement, combined into one free-text field rather than three separate columns.'},
+  {listKey:'campaigns',name:'ProductPhotographyAvailable',displayName:'Product Photography Available',type:'choice',choices:'Yes',purpose:'Food & Beverage conditional template.'},
+  {listKey:'campaigns',name:'SupplierBrandingAvailable',displayName:'Supplier Branding Available',type:'choice',choices:'Yes',purpose:'Food & Beverage conditional template.'},
+  {listKey:'campaigns',name:'PrintedMenuUpdateRequired',displayName:'Printed Menu Update Required',type:'choice',choices:'Yes',purpose:'Food & Beverage conditional template.'},
+  {listKey:'campaigns',name:'DigitalMenuUpdateRequired',displayName:'Digital Menu Update Required',type:'choice',choices:'Yes',purpose:'Food & Beverage conditional template.'},
+  {listKey:'campaigns',name:'StaffBriefingRequired',displayName:'Staff Briefing Required',type:'choice',choices:'Yes',purpose:'Surfaced first on the Food & Beverage template, but generic enough to reuse for other activity types later.'},
   {listKey:'campaigns',name:'LoadedRewards',displayName:'Loaded Rewards',type:'choice',choices:'Yes',purpose:'Independent Yes/No flag for whether Loaded Rewards is involved — separate from Brand/Business Stream so an activity under a different brand can still have a Loaded component. Only needed if none of LoadedRewards/Loaded Rewards/LoadedRewardsPromo/IsLoaded already exist.'},
   {listKey:'campaigns',name:'EventSeating',displayName:'Event Seating',type:'choice',choices:'Seated, Standing, Table Service, Mixed',purpose:'The seating/setup breakdown for the event.'},
   {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number',purpose:'Groups Activities that belong to one recurring series.'},
@@ -11849,6 +11887,7 @@ function updateActivityConditionalSections(){
   // split used on the activity's detail popup.
   const isTicketed=!!document.getElementById('fTicketed')?.checked;
   const showPricing=isLoaded||type==='Promotion / Offer'||isTicketed;
+  const isFoodBev=document.getElementById('fActGroup')?.value==='Food & Beverage';
   const show=(id,on)=>{const el=document.getElementById(id);if(el)el.style.display=on?'':'none';};
   // Long Description is customer-facing marketing copy — only worth asking for once there's
   // actually a promotion, design work or Loaded listing that would use it.
@@ -11859,6 +11898,7 @@ function updateActivityConditionalSections(){
   show('fTicketingGroup',isTicketed);
   show('fChannelsGroup',needsChannels||needsDesign);
   show('fSupplierProductGroup',supplierInvolved);
+  show('fFoodBevGroup',isFoodBev);
   updatePromoteArtworkColumns();
   updateAssetDetailVisibility();
 }
@@ -13120,6 +13160,20 @@ async function submitEvent(){
     const ef=document.getElementById('fEventFormat')?.value;if(ef)fields.EventFormat=ef;
     const actGroup=document.getElementById('fActGroup')?.value;if(actGroup)fields.ActivityGroup=actGroup;
     const actSubtype=document.getElementById('fActSubtype')?.value;if(actSubtype)fields.ActivitySubtype=actSubtype;
+
+    // Food & Beverage conditional template — only collected/sent when that section is actually
+    // visible (Activity Group = Food & Beverage), so a Campaign or Maintenance activity never gets
+    // these fields written at all.
+    if(actGroup==='Food & Beverage'){
+      const fbStatus=document.getElementById('fFBStatus')?.value;if(fbStatus)fields.ItemStatus=fbStatus;
+      const fbDietary=document.getElementById('fFBDietary')?.value.trim();if(fbDietary)fields.DietaryAllergenInfo=fbDietary;
+      const fbAvailability=document.getElementById('fFBAvailability')?.value.trim();if(fbAvailability)fields.FBAvailabilityNotes=fbAvailability;
+      if(document.getElementById('fFBPhotography')?.checked)fields.ProductPhotographyAvailable=true;
+      if(document.getElementById('fFBSupplierBranding')?.checked)fields.SupplierBrandingAvailable=true;
+      if(document.getElementById('fFBPrintMenu')?.checked)fields.PrintedMenuUpdateRequired=true;
+      if(document.getElementById('fFBDigitalMenu')?.checked)fields.DigitalMenuUpdateRequired=true;
+      if(document.getElementById('fFBStaffBriefing')?.checked)fields.StaffBriefingRequired=true;
+    }
     const seating=document.getElementById('fEventSeating')?.value;if(seating)fields.EventSeating=seating;
     const recurring=!!document.getElementById('fRecurring')?.checked;if(recurring)fields.RecurringEvent=true;
     const stream=document.getElementById('fStream')?.value;if(stream)fields.BusinessStream=stream;
@@ -13204,7 +13258,7 @@ async function submitEvent(){
     // Fields most likely to not exist as SharePoint columns yet, tried as removable groups if the
     // full payload is rejected — a generic 400 on create doesn't tell us which field is the problem,
     // unlike editing an existing item, so we strip the newest/least-confirmed fields first and retry.
-    const removableGroups=[[productKey],[supplierKey],['SupplierInvolved'],['TicketURL'],['TicketPlatform','TicketPrice','Capacity','TicketedEvent'],['RegularPrice','LoadedBasePrice'],['AssetTVsDetail'],['AssetNewsletterDetail'],['DesignStatus'],['AssetsNeeded'],['Channels'],['GoogleAdsEligible'],['AppShortDescription'],['AppHeading','AppDescription'],['NewsletterRequired'],['AppRequired'],['BookingURL'],['LoadedRewards'],['Brand']].filter(group=>group.some(Boolean));
+    const removableGroups=[[productKey],[supplierKey],['SupplierInvolved'],['TicketURL'],['TicketPlatform','TicketPrice','Capacity','TicketedEvent'],['RegularPrice','LoadedBasePrice'],['AssetTVsDetail'],['AssetNewsletterDetail'],['DesignStatus'],['AssetsNeeded'],['Channels'],['GoogleAdsEligible'],['AppShortDescription'],['AppHeading','AppDescription'],['NewsletterRequired'],['AppRequired'],['BookingURL'],['LoadedRewards'],['Brand'],['ActivityGroup'],['ActivitySubtype'],['ItemStatus','DietaryAllergenInfo','FBAvailabilityNotes','ProductPhotographyAvailable','SupplierBrandingAvailable','PrintedMenuUpdateRequired','DigitalMenuUpdateRequired','StaffBriefingRequired']].filter(group=>group.some(Boolean));
     let payload={...fields};
     const dropped=[];
     let res,ok=false,resBody='';
@@ -13278,10 +13332,10 @@ async function submitEvent(){
 }
 function showFMsg(msg,type){const el=document.getElementById('fMsg');if(!el)return;el.textContent=msg;el.className='form-msg '+type;el.scrollIntoView({behavior:'smooth',block:'nearest'});}
 function clearForm(){
-  ['fTitle','fDesc','fLongDescription','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['fVenue','fActType','fActGroup','fActSubtype','fEventFormat','fEventSeating','fStream','fCampaignSilo','fBrand','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  ['fTitle','fDesc','fLongDescription','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails','fFBDietary','fFBAvailability'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['fVenue','fActType','fActGroup','fActSubtype','fEventFormat','fEventSeating','fStream','fCampaignSilo','fBrand','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup','fFBStatus'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
   const productSel=document.getElementById('fProductLookup');if(productSel)[...productSel.options].forEach(o=>o.selected=false);
-  ['fSupplierInvolved','fPOSRequired','fTicketed','fRecurring','fLoadedRewardsFlag','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  ['fSupplierInvolved','fPOSRequired','fTicketed','fRecurring','fLoadedRewardsFlag','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff','fFBPhotography','fFBSupplierBranding','fFBPrintMenu','fFBDigitalMenu','fFBStaffBriefing'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   togglePOSDetails();
   fTitleTouched=false;
   fAppHeadingTouched=false;
@@ -13515,6 +13569,14 @@ function renderActivityDetail(id,mode){
   }
 
   // Read-only info
+  if(ev.activityGroup==='Food & Beverage'&&(ev.fbItemStatus||ev.fbDietaryInfo||ev.fbAvailabilityNotes||ev.fbPhotographyAvailable||ev.fbSupplierBrandingAvailable||ev.fbPrintMenuRequired||ev.fbDigitalMenuRequired||ev.staffBriefingRequired)){
+    h+=`<div class="pop-section">🍽 Food &amp; Beverage Details</div>`;
+    if(ev.fbItemStatus)h+=`<div class="pop-field"><div class="pop-lbl">Item Status</div><div class="pop-val">${ev.fbItemStatus}</div></div>`;
+    if(ev.fbDietaryInfo)h+=`<div class="pop-field"><div class="pop-lbl">Dietary &amp; Allergen Info</div><div class="pop-val">${ev.fbDietaryInfo}</div></div>`;
+    if(ev.fbAvailabilityNotes)h+=`<div class="pop-field"><div class="pop-lbl">Availability Notes</div><div class="pop-val">${ev.fbAvailabilityNotes}</div></div>`;
+    const fbFlags=[ev.fbPhotographyAvailable&&'Photography available',ev.fbSupplierBrandingAvailable&&'Supplier branding available',ev.fbPrintMenuRequired&&'Printed menu update required',ev.fbDigitalMenuRequired&&'Digital menu update required',ev.staffBriefingRequired&&'Staff briefing required'].filter(Boolean);
+    if(fbFlags.length)h+=`<div class="pop-field"><div class="pop-lbl">Notes</div><div class="pop-val">${fbFlags.join(' · ')}</div></div>`;
+  }
   if(ev.mktLeadWeeks)h+=`<div class="pop-field"><div class="pop-lbl">Lead Time</div><div class="pop-val">${ev.mktLeadWeeks} weeks (auto-calculated)</div></div>`;
   if(ev.marketingStartDate)h+=`<div class="pop-field"><div class="pop-lbl">Marketing Start</div><div class="pop-val" style="font-weight:600;color:var(--accent)">${fmtDate(ev.marketingStartDate)}</div></div>`;
   if(ev.designBriefDue)h+=`<div class="pop-field"><div class="pop-lbl">Design Brief Due</div><div class="pop-val" style="font-weight:600;color:${new Date(ev.designBriefDue+'T00:00:00')<new Date()?'var(--red)':'var(--text2)'}">${fmtDate(ev.designBriefDue)}</div></div>`;
