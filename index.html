@@ -1387,6 +1387,45 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <div class="card"><div class="card-h"><span class="card-title">By Venue</span></div><div class="card-body" id="bVenues"></div></div>
         <div class="card"><div class="card-h"><span class="card-title">By Category</span></div><div class="card-body" id="bCats"></div></div>
       </div>
+
+      <!-- Reporting roll-ups (brief Phase 5) — the remaining dimensions not already covered by the
+           two cards above, as a picker rather than 5 more near-identical cards. -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-h" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <span class="card-title">Budget by…</span>
+          <select class="form-select" id="budgRollupDim" style="width:auto;font-size:12px" onchange="renderBudget()">
+            <option value="businessStream">Marketing Funnel</option>
+            <option value="marketingSilo">Marketing Silo</option>
+            <option value="brand">Primary Brand</option>
+            <option value="project">Project</option>
+            <option value="period">Period (Month)</option>
+          </select>
+        </div>
+        <div class="card-body" id="bRollup"></div>
+      </div>
+
+      <!-- Campaign Performance roll-ups — tickets/revenue/redemptions/covers, now that
+           savePostCampaign() actually persists them instead of silently dropping three of the
+           four. Completed activities only, since these numbers are only final once a
+           Post-Campaign Report has been saved. -->
+      <div class="form-section-head" style="margin-top:20px">📊 Campaign Performance</div>
+      <div class="field-help" style="margin-bottom:10px">Completed activities only — these numbers are only final once a Post-Campaign Report has been saved.</div>
+      <div class="stats" id="perfStats" style="margin-bottom:12px"></div>
+      <div class="card">
+        <div class="card-h" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <span class="card-title">Performance by…</span>
+          <select class="form-select" id="perfRollupDim" style="width:auto;font-size:12px" onchange="renderBudget()">
+            <option value="venue">Venue</option>
+            <option value="brand">Primary Brand</option>
+            <option value="businessStream">Marketing Funnel</option>
+            <option value="activityType">Activity Type</option>
+            <option value="marketingSilo">Marketing Silo</option>
+            <option value="project">Project</option>
+            <option value="period">Period (Month)</option>
+          </select>
+        </div>
+        <div class="card-body" id="bPerfRollup"></div>
+      </div>
     </div>
   </div>
 
@@ -5439,6 +5478,11 @@ async function loadCampaigns(){
         actualSpend:canViewBudget?parseFloat(f.ActualSpend||0):0,
         supplierContrib:canViewBudget?parseFloat(f.SupplierContribution||0):0,
         ticketsSold:parseInt(f.TicketsSold||0),
+        // Were captured on the Post-Campaign Report form and silently dropped on save — see the
+        // savePostCampaign() fix. Reading them now that they're actually written.
+        ticketRevenue:parseFloat(f.TicketRevenue||0),
+        redemptions:parseInt(f.Redemptions||0),
+        covers:parseInt(f.Covers||0),
         // Ticketing — also true for an activity saved under the old EventFormat="Ticketed Event"
         // value, from before Ticketed? became its own field, so nothing already marked ticketed
         // loses that status just because Event Format no longer offers it as a choice.
@@ -8235,15 +8279,36 @@ async function savePostCampaign(btn){
       const supplier=document.getElementById('rSupplierContrib').value;if(supplier)fields.SupplierContribution=parseFloat(supplier);
     }
     const sold=document.getElementById('rTicketsSold').value;if(sold)fields.TicketsSold=parseInt(sold);
+    // These three were being captured on screen and silently dropped on save — confirmed bug, not
+    // intentional: the form has always asked for them (including the "auto-calculated" promise on
+    // Ticket Revenue, matching calcROI()'s own fallback), nothing ever wrote them to SharePoint.
+    const ticketRevInput=document.getElementById('rTicketRevenue').value;
+    const ticketRev=ticketRevInput?parseFloat(ticketRevInput):(parseInt(sold)||0)*(ev.ticketPrice||0);
+    if(ticketRev)fields.TicketRevenue=ticketRev;
+    const redemptions=document.getElementById('rRedemptions').value;if(redemptions)fields.Redemptions=parseInt(redemptions);
+    const covers=document.getElementById('rCovers').value;if(covers)fields.Covers=parseInt(covers);
     const worked=document.getElementById('rWorked').value;
     const improve=document.getElementById('rImprove').value;
-    if(worked||improve)fields.Fulldescription=(ev.description||'')+'\n\n--- POST-CAMPAIGN REPORT ---\n'+(worked?'✅ What worked:\n'+worked+'\n\n':'')+(improve?'🔄 To improve:\n'+improve:'');
-    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    document.getElementById('reportFormMsg').textContent='✅ Report saved. Campaign marked Complete.';
+    // Was writing to "Fulldescription", which is not a real column on this list — every report
+    // that included either of these notes was silently failing the entire save (WorkflowStage and
+    // every other field in the same PATCH included), not just the notes. Fixed to the real
+    // Description field, appended rather than overwritten.
+    if(worked||improve)fields.Description=(ev.description||'')+'\n\n--- POST-CAMPAIGN REPORT ---\n'+(worked?'✅ What worked:\n'+worked+'\n\n':'')+(improve?'🔄 To improve:\n'+improve:'');
+    // WorkflowStage is the one field this save must never lose — sent on its own first so an
+    // unconfirmed report column (TicketRevenue/Redemptions/Covers are new) can never block marking
+    // the campaign Done. The rest retries field-by-field on a group failure, same resilience as
+    // the bulk importer's optional fields.
+    const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`;
+    const stageRes=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{WorkflowStage:'Done'}})});
+    if(!stageRes.ok)throw new Error('HTTP '+stageRes.status);
+    const{WorkflowStage,...reportFields}=fields;
+    const{failed}=await patchImportOptionalFields(url,token,reportFields);
+    document.getElementById('reportFormMsg').textContent=failed.length
+      ?`✅ Report saved. Campaign marked Complete. ${failed.length} field${failed.length===1?'':'s'} skipped (not set up in SharePoint yet): ${failed.map(f=>f.field).join(', ')}.`
+      :'✅ Report saved. Campaign marked Complete.';
     document.getElementById('reportFormMsg').className='form-msg ok';
     await loadAll();
-    setTimeout(()=>closePostCampaign(),1500);
+    setTimeout(()=>closePostCampaign(),failed.length?3000:1500);
   }catch(e){document.getElementById('reportFormMsg').textContent='Error: '+e.message;document.getElementById('reportFormMsg').className='form-msg err';}
   if(btn){btn.disabled=false;btn.textContent='Save Report';}
 }
@@ -9945,6 +10010,71 @@ function renderBudget(){
   document.getElementById('bCats').innerHTML=catEntries.length
     ?catEntries.map(([n,amt])=>{const p=total>0?Math.round(amt/total*100):0;return`<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:12px;font-weight:600;color:var(--text)">${n}</span><span style="font-size:11px;color:var(--text3)">$${Math.round(amt).toLocaleString()} · ${p}%</span></div><div class="b-bar-w"><div class="b-bar-f" style="width:${p}%"></div></div></div>`;}).join('')
     :'<div style="padding:12px;color:var(--text3);font-size:12px;text-align:center">No budget allocated yet — set BudgetAllocated on campaigns to see the breakdown</div>';
+
+  // Budget roll-up by the remaining brief-named dimensions (Marketing Funnel, Marketing Silo,
+  // Primary Brand, Project, Period) — a picker rather than 5 more near-identical cards.
+  const budgDim=document.getElementById('budgRollupDim')?.value||'businessStream';
+  const budgRollup=groupRollup(EVENTS.filter(e=>e.budget),budgDim,e=>e.budget).sort((a,b)=>b[1].value-a[1].value);
+  document.getElementById('bRollup').innerHTML=budgRollup.length
+    ?budgRollup.map(([name,g])=>{const p=total>0?Math.round(g.value/total*100):0;return`<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:12px;font-weight:600;color:var(--text)">${escapeAttr(name)}</span><span style="font-size:11px;color:var(--text3)">$${Math.round(g.value).toLocaleString()} · ${g.count} activit${g.count===1?'y':'ies'}</span></div><div class="b-bar-w"><div class="b-bar-f" style="width:${p}%"></div></div></div>`;}).join('')
+    :'<div style="padding:12px;color:var(--text3);font-size:12px;text-align:center">No budget allocated yet</div>';
+
+  // Campaign Performance roll-ups — tickets/revenue/redemptions/covers, now that
+  // savePostCampaign() actually persists them instead of silently dropping three of the four.
+  // Completed activities only, since these numbers are only final once a Post-Campaign Report has
+  // been saved.
+  const completed=EVENTS.filter(e=>e.stage==='Done'||e.status==='Complete'||e.status==='Archive'||e.status==='Archived');
+  const totalTickets=completed.reduce((a,e)=>a+(e.ticketsSold||0),0);
+  const totalRevenue=completed.reduce((a,e)=>a+(e.ticketRevenue||0),0);
+  const totalRedemptions=completed.reduce((a,e)=>a+(e.redemptions||0),0);
+  const totalCovers=completed.reduce((a,e)=>a+(e.covers||0),0);
+  document.getElementById('perfStats').innerHTML=`
+    <div class="stat"><div class="stat-n">${completed.length}</div><div class="stat-l">Completed</div></div>
+    <div class="stat"><div class="stat-n">${totalTickets.toLocaleString()}</div><div class="stat-l">Tickets Sold</div></div>
+    <div class="stat"><div class="stat-n">${totalRevenue>0?'$'+Math.round(totalRevenue).toLocaleString():'—'}</div><div class="stat-l">Ticket Revenue</div></div>
+    <div class="stat"><div class="stat-n">${totalRedemptions.toLocaleString()}</div><div class="stat-l">Loaded Redemptions</div></div>
+    <div class="stat"><div class="stat-n">${totalCovers.toLocaleString()}</div><div class="stat-l">Covers / Pax</div></div>
+  `;
+  const perfDim=document.getElementById('perfRollupDim')?.value||'venue';
+  const perfRollup=groupRollup(completed,perfDim,()=>0,e=>({tickets:e.ticketsSold||0,revenue:e.ticketRevenue||0,redemptions:e.redemptions||0,covers:e.covers||0}));
+  const perfRows=perfRollup.sort((a,b)=>b[1].sums.revenue-a[1].sums.revenue||b[1].sums.tickets-a[1].sums.tickets);
+  document.getElementById('bPerfRollup').innerHTML=perfRows.length
+    ?`<div style="overflow-x:auto"><table class="tbl" style="min-width:520px">
+        <thead><tr><th>${ROLLUP_DIM_LABELS[perfDim]||'Group'}</th><th style="text-align:right">Activities</th><th style="text-align:right">Tickets</th><th style="text-align:right">Revenue</th><th style="text-align:right">Redemptions</th><th style="text-align:right">Covers</th></tr></thead>
+        <tbody>${perfRows.map(([name,g])=>`<tr><td>${escapeAttr(name)}</td><td style="text-align:right">${g.count}</td><td style="text-align:right">${g.sums.tickets||'—'}</td><td style="text-align:right">${g.sums.revenue?'$'+Math.round(g.sums.revenue).toLocaleString():'—'}</td><td style="text-align:right">${g.sums.redemptions||'—'}</td><td style="text-align:right">${g.sums.covers||'—'}</td></tr>`).join('')}</tbody>
+      </table></div>`
+    :'<div style="padding:12px;color:var(--text3);font-size:12px;text-align:center">No completed activities with performance data yet</div>';
+}
+
+// Shared key-resolver for every roll-up dimension named in the brief (venue/brand/stream/type/
+// silo/project/period) — one place so Budget and Performance roll-ups group the same way.
+const ROLLUP_DIM_LABELS={venue:'Venue',brand:'Primary Brand',businessStream:'Marketing Funnel',activityType:'Activity Type',marketingSilo:'Marketing Silo',project:'Project',period:'Period'};
+function activityRollupKey(ev,dim){
+  if(dim==='venue')return ev.venue||'(none)';
+  if(dim==='brand')return ev.brand||'(none)';
+  if(dim==='businessStream')return ev.businessStream||'(none)';
+  if(dim==='activityType')return ev.activityType||'(none)';
+  if(dim==='marketingSilo')return ev.marketingSilo||'(none)';
+  if(dim==='project')return PROJECTS.find(p=>String(p.id)===String(ev.projectId))?.title||'(unassigned)';
+  if(dim==='period')return activityMonthLabel(ev);
+  return'(none)';
+}
+// valueFn sums a single number into g.value (budget/spend roll-up); sumsFn instead returns an
+// object of named sums per activity, accumulated into g.sums (performance roll-up, several
+// metrics at once). Only one of the two is used by a given caller.
+function groupRollup(events,dim,valueFn,sumsFn){
+  const byKey={};
+  events.forEach(e=>{
+    const key=activityRollupKey(e,dim);
+    if(!byKey[key])byKey[key]={value:0,count:0,sums:{}};
+    byKey[key].value+=valueFn(e)||0;
+    byKey[key].count++;
+    if(sumsFn){
+      const s=sumsFn(e);
+      Object.entries(s).forEach(([k,v])=>{byKey[key].sums[k]=(byKey[key].sums[k]||0)+(v||0);});
+    }
+  });
+  return Object.entries(byKey).filter(([,g])=>g.value>0||Object.values(g.sums).some(v=>v>0));
 }
 
 // ═══════════════════════════════════════
@@ -11103,6 +11233,9 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'MetaBriefNotes',displayName:'Meta Brief Notes',type:'text',purpose:'Specialist brief — audience, format, angle or offer to lead with for Meta/social.'},
   {listKey:'campaigns',name:'GoogleAdsBriefNotes',displayName:'Google Ads Brief Notes',type:'text',purpose:'Specialist brief — keywords, search intent, landing page for Google Ads.'},
   {listKey:'campaigns',name:'SmsCopy',displayName:'SMS Copy',type:'text',purpose:'The actual SMS message text, for activities promoted via SMS.'},
+  {listKey:'campaigns',name:'TicketRevenue',displayName:'Ticket Revenue',type:'number',purpose:'Post-Campaign Report — captured on the form since before this session but never actually saved until now (confirmed bug fix).'},
+  {listKey:'campaigns',name:'Redemptions',displayName:'Redemptions',type:'number',purpose:'Post-Campaign Report — Loaded Rewards redemptions. Same confirmed bug fix as Ticket Revenue.'},
+  {listKey:'campaigns',name:'Covers',displayName:'Covers',type:'number',purpose:'Post-Campaign Report — estimated covers/pax. Same confirmed bug fix as Ticket Revenue.'},
   {listKey:'campaigns',name:'LoadedRewards',displayName:'Loaded Rewards',type:'choice',choices:'Yes',purpose:'Independent Yes/No flag for whether Loaded Rewards is involved — separate from Brand/Business Stream so an activity under a different brand can still have a Loaded component. Only needed if none of LoadedRewards/Loaded Rewards/LoadedRewardsPromo/IsLoaded already exist.'},
   {listKey:'campaigns',name:'EventSeating',displayName:'Event Seating',type:'choice',choices:'Seated, Standing, Table Service, Mixed',purpose:'The seating/setup breakdown for the event.'},
   {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number',purpose:'Groups Activities that belong to one recurring series.'},
