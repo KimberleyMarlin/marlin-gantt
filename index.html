@@ -5355,9 +5355,6 @@ async function loadCampaigns(){
       // ActivityType is the new primary type field (replaces old ActivationType/Category)
       const actType=f.ActivityType||f.ActivationType||'';
       const storedStage=normaliseStage(f.WorkflowStage);
-      const endDate=f.End?f.End.split('T')[0]:f.Start.split('T')[0];
-      const today=new Date();today.setHours(0,0,0,0);
-      const isPast=new Date(endDate+'T00:00:00')<today;
       // RecurringDay is MultiChoice — normalise to array
       const recurringDayRaw=f.RecurringDay;
       const recurringDay=Array.isArray(recurringDayRaw)
@@ -5369,6 +5366,17 @@ async function loadCampaigns(){
       // value, from before Recurring? became its own field, and for anything that already has
       // days ticked (older records saved before this field existed at all).
       const isRecurring=f.RecurringEvent===true||f.RecurringEvent==='Yes'||f.EventFormat==='Recurring Event'||recurringDay.length>0;
+      // A recurring Activity's End is documented to Kimberley as "the whole run" (see the Recurring
+      // Schedule box's own help text) — if it was never actually set in SharePoint, defaulting it to
+      // Start (as a genuinely one-day Activity would be) silently collapses the whole run down to a
+      // single day: every recurring-day match everywhere (month/week/day calendar views) requires
+      // realDate<=End, so the activity would stop recurring the day after it was created, for every
+      // frequency including Weekly — not an edge case, the default outcome for anyone who ticks days
+      // without separately remembering to push End years out. Default an unset End on a recurring
+      // Activity several years out instead, so it keeps recurring until a real End is actually set.
+      const endDate=f.End?f.End.split('T')[0]:(recurringDay.length?`${new Date().getFullYear()+5}-12-31`:f.Start.split('T')[0]);
+      const today=new Date();today.setHours(0,0,0,0);
+      const isPast=new Date(endDate+'T00:00:00')<today;
       const descriptionParts=splitActivityDescription(f.Description||'');
       const loadedRewards=isLoadedRewardsFields(f);
       const posRequired=f.POSUpdateRequired===true||f.POSUpdateRequired==='Yes';
