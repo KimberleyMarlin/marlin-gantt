@@ -2023,6 +2023,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div class="form-grid">
             <div class="form-group full"><label class="form-label">Idea Title <span class="req">*</span></label><input class="form-input" id="ideaTitleNew" type="text" placeholder="e.g. Midweek Pasta & Wine Night"></div>
             <div class="form-group"><label class="form-label">Venue</label><select class="form-select" id="ideaVenueNew"><option value="">Any / All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option></select></div>
+            <div class="form-group"><label class="form-label">Activity Type</label><select class="form-select" id="ideaActTypeNew"><option value="">Select…</option></select></div>
             <div class="form-group"><label class="form-label">Goal</label><select class="form-select" id="ideaGoalNew"><option value="">Select…</option><option>Revenue / upsell</option><option>Increase Foot Traffic</option><option>Product push</option><option>Brand / awareness</option><option>Functions / private bookings</option><option>General idea</option></select></div>
             <div class="form-group full"><label class="form-label">The Concept</label><textarea class="form-textarea" id="ideaConcept" placeholder="What's the idea? What would it look like?" style="min-height:80px"></textarea></div>
             <div class="form-group"><label class="form-label">Best Months / Season</label><input class="form-input" id="ideaMonths" type="text" placeholder="e.g. June–August"></div>
@@ -2220,12 +2221,14 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <!-- ADD IDEA OVERLAY -->
   <div class="overlay" id="addIdeaOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closeAddIdea()">
     <div class="popup" style="max-width:600px">
-      <div class="pop-h"><div class="pop-title">💡 New Activation Idea</div><button class="pop-close" onclick="closeAddIdea()">✕</button></div>
+      <div class="pop-h"><div class="pop-title" id="addIdeaTitle">💡 New Activation Idea</div><button class="pop-close" onclick="closeAddIdea()">✕</button></div>
       <div class="pop-body">
         <div id="ideaFormMsg" class="form-msg"></div>
         <div class="form-grid">
+          <input type="hidden" id="ideaEditingId" value="">
           <div class="form-group full"><label class="form-label">Idea Title <span class="req">*</span></label><input class="form-input" id="ideaTitle" type="text" placeholder="e.g. Bottomless Brunch Sundays, Trivia with prizes, Tap takeover…"></div>
           <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="ideaOverlayVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option><option>Any / All Venues</option></select></div>
+          <div class="form-group"><label class="form-label">Activity Type</label><select class="form-select" id="ideaOverlayActType"><option value="">Select…</option></select></div>
           <div class="form-group"><label class="form-label">Goal <span class="req">*</span></label><select class="form-select" id="ideaOverlayGoal"><option value="">Select…</option><option>Revenue / upsell</option><option>Increase Foot Traffic</option><option>Product push</option><option>Brand / awareness</option><option>Functions / private bookings</option><option>General idea</option></select></div>
           <div class="form-group"><label class="form-label">Best Months</label><select class="form-select" id="ideaOverlayMonths"><option value="">Any time</option><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option><option>Summer</option><option>Autumn</option><option>Winter</option><option>Spring</option><option>EOFY</option><option>Christmas period</option></select></div>
           <div class="form-group"><label class="form-label">Target Audience</label><input class="form-input" id="ideaOverlayAudience" type="text" placeholder="e.g. Families, 25-40 professionals, Beer lovers…"></div>
@@ -2240,7 +2243,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:14px">
-          <button class="btn btn-p" onclick="saveIdea(this)">Submit Idea</button>
+          <button class="btn btn-p" id="addIdeaSaveBtn" onclick="saveIdea(this)">Save Idea</button>
           <button class="btn btn-s" onclick="closeAddIdea()">Cancel</button>
         </div>
       </div>
@@ -2328,6 +2331,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   populateCanonicalSelect('fStream',BUSINESS_STREAM_OPTIONS);
   populateCanonicalSelect('fCampaignSilo',CAMPAIGN_SILO_OPTIONS);
   populateCanonicalSelect('fBrand',BRAND_OPTIONS);
+  populateCanonicalSelect('ideaActTypeNew',ACTIVITY_TYPE_OPTIONS);
+  populateCanonicalSelect('ideaOverlayActType',ACTIVITY_TYPE_OPTIONS);
 });
 
 let CAMPAIGN_COLUMNS=new Map();
@@ -5301,6 +5306,8 @@ async function loadIdeas(){
         ticketed:f.Ticketed_x003f_===true||f.Ticketed_x003f_==='Yes',
         suggestedCost:parseFloat(f.Suggestedcost||0),
         venue:f.Venue?.LookupValue||f.Venue||'',
+        activityType:f.ActivityType||'',
+        promotedActivityId:f.PromotedActivityId!=null&&f.PromotedActivityId!==''?String(f.PromotedActivityId):'',
         submittedBy:f.SubmittedBy?.LookupValue||f.SubmittedBy?.Title||f.Author?.LookupValue||'',
         goal:f.Goal||'',
         status:f.Status||'New',
@@ -5410,9 +5417,11 @@ function openIdeaDetail(id){
   if(idea.setupRequired)inner+=cell('SET UP REQUIRED','🔧 '+idea.setupRequired);
   if(idea.licenceRequired)inner+=cell('LICENCE / PERMIT','📋 '+idea.licenceRequired);
   if(idea.submittedBy)inner+=cell('SUBMITTED BY','👤 '+idea.submittedBy);
+  if(idea.promotedActivityId)inner+='<div style="font-size:11px;color:var(--text3);margin-bottom:10px">🔗 Already linked to an Activity — "Continue Brief" opens that one instead of starting another.</div>';
   inner+='</div>';
-  inner+='<div style="display:flex;gap:8px">';
-  inner+='<button class="btn btn-p" style="flex:1" onclick="document.getElementById(\'ideaDetailOv\').remove();useIdea(\''+idea.id+'\')">Use as campaign template →</button>';
+  inner+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  inner+='<button class="btn btn-p" style="flex:1" onclick="document.getElementById(\'ideaDetailOv\').remove();useIdea(\''+idea.id+'\')">'+(idea.promotedActivityId?'Open linked Activity →':'Continue Brief →')+'</button>';
+  inner+='<button class="tb-btn" onclick="editIdea(\''+idea.id+'\')">✏️ Edit</button>';
   if(idea.status==='New')inner+='<button class="tb-btn" onclick="updateIdeaStatus(\''+idea.id+'\',\'Under Review\');document.getElementById(\'ideaDetailOv\').remove()">Mark reviewing</button>';
   if(idea.status==='Under Review')inner+='<button class="tb-btn" style="color:var(--accent)" onclick="updateIdeaStatus(\''+idea.id+'\',\'Approved\');document.getElementById(\'ideaDetailOv\').remove()">✓ Approve</button>';
   if(idea.status!=='Archived')inner+='<button class="tb-btn" style="color:var(--red)" onclick="updateIdeaStatus(\''+idea.id+'\',\'Archived\');document.getElementById(\'ideaDetailOv\').remove()">🗑 Archive</button>';
@@ -5421,10 +5430,86 @@ function openIdeaDetail(id){
   document.body.appendChild(ov);
 }
 
-function openAddIdea(){document.getElementById('addIdeaOv').classList.add('show');}
+function openAddIdea(){
+  document.getElementById('ideaEditingId').value='';
+  document.getElementById('addIdeaTitle').textContent='💡 New Activation Idea';
+  document.getElementById('addIdeaSaveBtn').textContent='Save Idea';
+  // Clear any values left over from a cancelled Edit, so a fresh idea doesn't inherit them.
+  ['ideaTitle','ideaOverlayConcept','ideaOverlayAudience','ideaCost','ideaSetup','ideaLicence','ideaImage'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ideaOverlayVenue','ideaOverlayActType','ideaOverlayGoal','ideaOverlayMonths'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  ['ideaFamilyFriendly','ideaTicketed'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  document.getElementById('addIdeaOv').classList.add('show');
+}
 function closeAddIdea(){document.getElementById('addIdeaOv').classList.remove('show');}
+// Reopens the "+Add idea" overlay prefilled from an existing idea so continuing it updates the
+// SAME record (saveIdea() PATCHes when ideaEditingId is set) instead of creating a duplicate —
+// "an Idea should be editable and progressively completed", not a one-shot form.
+function editIdea(id){
+  const idea=IDEAS.find(i=>i.id==id);
+  if(!idea)return;
+  document.getElementById('ideaDetailOv')?.remove();
+  document.getElementById('ideaEditingId').value=idea.id;
+  document.getElementById('addIdeaTitle').textContent='✏️ Edit Idea';
+  document.getElementById('addIdeaSaveBtn').textContent='Save Changes';
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||'';};
+  const selectOpt=(id,val)=>{const el=document.getElementById(id);if(el&&val)Array.from(el.options).forEach(o=>{o.selected=o.value===val;});};
+  set('ideaTitle',idea.title);
+  selectOpt('ideaOverlayVenue',idea.venue);
+  selectOpt('ideaOverlayActType',idea.activityType);
+  selectOpt('ideaOverlayGoal',idea.goal);
+  selectOpt('ideaOverlayMonths',idea.bestMonths);
+  set('ideaOverlayAudience',idea.targetAudience);
+  set('ideaCost',idea.suggestedCost||'');
+  set('ideaOverlayConcept',idea.concept);
+  set('ideaSetup',idea.setupRequired);
+  set('ideaLicence',idea.licenceRequired);
+  set('ideaImage',idea.imageUrl);
+  const familyEl=document.getElementById('ideaFamilyFriendly');if(familyEl)familyEl.checked=!!idea.familyFriendly;
+  const ticketedEl=document.getElementById('ideaTicketed');if(ticketedEl)ticketedEl.checked=!!idea.ticketed;
+  document.getElementById('addIdeaOv').classList.add('show');
+}
+
+// Single save path for both idea entry points — the "+Add idea" overlay and the quick "Submit an
+// Idea" form below both call this instead of each POSTing their own hand-built fields object.
+// Required fields go in the create/update call; everything else is optional and PATCHed in
+// separately (patchImportOptionalFields drops any field that fails individually, e.g. a column
+// that doesn't exist yet, instead of failing the whole save). Pass existingId to update the SAME
+// record instead of creating a duplicate — "editable and progressively completed", not one-shot.
+async function saveIdeaRecord(data){
+  const title=(data.title||'').trim();
+  if(!title)throw new Error('Please enter a title.');
+  const token=await getToken(true);
+  const required={Title:title};
+  if(data.venue)required.Venue=data.venue;
+  if(data.goal)required.Goal=data.goal;
+  if(!data.existingId)required.Status='New';
+  const optional={};
+  if(data.activityType)optional.ActivityType=data.activityType;
+  if(data.concept)optional.Concept=data.concept;
+  if(data.bestMonths)optional.BestMonths=data.bestMonths;
+  if(data.targetAudience)optional.TargetAudience=data.targetAudience;
+  if(data.suggestedCost)optional.Suggestedcost=parseFloat(data.suggestedCost);
+  if(data.setupRequired)optional.SetUprequired=data.setupRequired;
+  if(data.licenceRequired)optional.Licence_x002f_Permitrequired=data.licenceRequired;
+  if(data.imageUrl)optional.InspirationImage=data.imageUrl;
+  if(data.familyFriendly)optional.Familyfriendly=true;
+  if(data.ticketed)optional.Ticketed_x003f_=true;
+  let itemId=data.existingId;
+  if(itemId){
+    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${IDEA_LIST_ID}/items/${itemId}`,token,required);
+    if(result.failed.length)throw new Error(result.failed.map(f=>f.field+': HTTP '+f.status).join('; '));
+  }else{
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${IDEA_LIST_ID}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:required})});
+    if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+    itemId=(await res.json()).id;
+  }
+  await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${IDEA_LIST_ID}/items/${itemId}`,token,optional);
+  await loadIdeas();
+  return itemId;
+}
 
 async function saveIdea(btn){
+  const editingId=document.getElementById('ideaEditingId')?.value||'';
   const title=document.getElementById('ideaTitle').value.trim();
   const venue=document.getElementById('ideaOverlayVenue').value;
   const goal=document.getElementById('ideaOverlayGoal').value;
@@ -5435,32 +5520,32 @@ async function saveIdea(btn){
   btn=btn||document.querySelector('#addIdeaOv .btn-p');
   if(btn){btn.disabled=true;btn.textContent='Saving…';}
   try{
-    const token=await getToken(true);
-    const fields={Title:title,Status:'New',Venue:venue};
-    const concept=document.getElementById('ideaOverlayConcept').value;if(concept)fields.Concept=concept;
-    const months=document.getElementById('ideaOverlayMonths').value;if(months)fields.BestMonths=months;
-    const audience=document.getElementById('ideaOverlayAudience').value;if(audience)fields.TargetAudience=audience;
-    const cost=document.getElementById('ideaCost').value;if(cost)fields.Suggestedcost=parseFloat(cost);
-    const setup=document.getElementById('ideaSetup').value;if(setup)fields.SetUprequired=setup;
-    const licence=document.getElementById('ideaLicence').value;if(licence)fields.Licence_x002f_Permitrequired=licence;
-    const imageUrl=document.getElementById('ideaImage').value;if(imageUrl)fields.InspirationImage=imageUrl;
-    if(document.getElementById('ideaFamilyFriendly').checked)fields.Familyfriendly=true;
-    if(document.getElementById('ideaTicketed').checked)fields.Ticketed_x003f_=true;
-    if(goal)fields.Goal=goal;
-    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${IDEA_LIST_ID}/items`,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
-    if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
-    document.getElementById('ideaFormMsg').textContent='✅ Idea saved!';
+    await saveIdeaRecord({
+      existingId:editingId||undefined,
+      title,venue,goal,
+      activityType:document.getElementById('ideaOverlayActType')?.value||'',
+      concept:document.getElementById('ideaOverlayConcept').value,
+      bestMonths:document.getElementById('ideaOverlayMonths').value,
+      targetAudience:document.getElementById('ideaOverlayAudience').value,
+      suggestedCost:document.getElementById('ideaCost').value,
+      setupRequired:document.getElementById('ideaSetup').value,
+      licenceRequired:document.getElementById('ideaLicence').value,
+      imageUrl:document.getElementById('ideaImage').value,
+      familyFriendly:document.getElementById('ideaFamilyFriendly').checked,
+      ticketed:document.getElementById('ideaTicketed').checked,
+    });
+    document.getElementById('ideaFormMsg').textContent=editingId?'✅ Idea updated!':'✅ Idea saved!';
     document.getElementById('ideaFormMsg').className='form-msg ok';
     ['ideaTitle','ideaOverlayConcept','ideaOverlayAudience','ideaCost','ideaSetup','ideaLicence','ideaImage'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    ['ideaOverlayVenue','ideaOverlayGoal','ideaOverlayMonths'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+    ['ideaOverlayVenue','ideaOverlayActType','ideaOverlayGoal','ideaOverlayMonths'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
     ['ideaFamilyFriendly','ideaTicketed'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
-    await loadIdeas();
+    document.getElementById('ideaEditingId').value='';
     setTimeout(()=>closeAddIdea(),1200);
   }catch(e){
     document.getElementById('ideaFormMsg').textContent='Error: '+e.message;
     document.getElementById('ideaFormMsg').className='form-msg err';
   }
-  if(btn){btn.disabled=false;btn.textContent='Submit Idea';}
+  if(btn){btn.disabled=false;btn.textContent=editingId?'Save Changes':'Save Idea';}
 }
 
 async function updateIdeaStatus(id,status){
@@ -5482,16 +5567,30 @@ async function updateIdeaStatus(id,status){
   renderIdeas();
 }
 
+// "Continue Brief" — carries a Quick Capture idea into the full Activity submission form instead
+// of re-asking for what's already known. Tracked via CONTINUING_IDEA_ID so that when the resulting
+// Activity is actually submitted, the source idea gets linked to it (see submitEvent()) rather than
+// the two staying unrelated records. If the idea is already linked to an Activity, this opens that
+// Activity instead of starting a second one from the same idea (never create a duplicate Activity).
+let CONTINUING_IDEA_ID='';
 function useIdea(id){
   const idea=IDEAS.find(i=>i.id==id);
   if(!idea)return;
+  if(idea.promotedActivityId){
+    const existing=EVENTS.find(e=>String(e.spId)===String(idea.promotedActivityId));
+    if(existing){showPop(existing.id);return;}
+  }
+  CONTINUING_IDEA_ID=String(idea.id);
   navTo('submit');
   setTimeout(()=>{
+    pickSubmitPath('activity');
     const t=document.getElementById('fTitle');if(t)t.value=idea.title;
     const v=document.getElementById('fVenue');
     if(v&&idea.venue&&idea.venue!=='Any / All Venues'){
       Array.from(v.options).forEach(o=>{if(o.value===idea.venue)o.selected=true;});
     }
+    const at=document.getElementById('fActType');
+    if(at&&idea.activityType)Array.from(at.options).forEach(o=>{o.selected=o.value===idea.activityType;});
     const d=document.getElementById('fDesc');
     if(d){
       const parts=[idea.concept||''];
@@ -5502,12 +5601,10 @@ function useIdea(id){
       parts.push('[From Idea Bank — idea #'+idea.id+']');
       d.value=parts.filter(Boolean).join('\n\n');
     }
-    // Set ticketed if idea was ticketed
-    if(idea.ticketed){
-      const at=document.getElementById('fActType');
-      if(at)Array.from(at.options).forEach(o=>{if(o.value==='Ticketed Event')o.selected=true;});
-    }
+    const ticketedEl=document.getElementById('fTicketed');
+    if(ticketedEl)ticketedEl.checked=!!idea.ticketed;
     updateSubmitForm();
+    composeAutoActivityTitle();
     // Mark idea as Under Review if still New
     if(idea.status==='New')updateIdeaStatus(id,'Under Review');
   },150);
@@ -10447,6 +10544,8 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'personalTasks',name:'LinkedActivityId',displayName:'Linked Activity Id',type:'number',purpose:'Optionally links a private task to one Activity.'},
   {listKey:'personalTasks',name:'ProjectId',displayName:'Project Id',type:'number',purpose:'Optionally links a private task to one Project.'},
   {listKey:'personalTasks',name:'Sequence',displayName:'Sequence',type:'number',purpose:'Persists Kimberley’s drag-and-drop task order.'},
+  {listKey:'ideas',name:'ActivityType',displayName:'Activity Type',type:'choice',choices:ACTIVITY_TYPE_OPTIONS.join(', '),purpose:'Captured at idea stage so "Continue Brief" can prefill it on the Activity submission form.'},
+  {listKey:'ideas',name:'PromotedActivityId',displayName:'Promoted Activity Id',type:'number',purpose:'Links an idea to the real Activity created from it via "Continue Brief", so reopening a promoted idea opens that Activity instead of letting it be promoted twice.'},
   {listKey:'campaigns',name:'WebStatus',displayName:'Web Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Didier’s web build status.'},
   {listKey:'campaigns',name:'LoadedStatus',displayName:'Loaded Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Amelia’s Loaded Rewards build status.'},
   {listKey:'campaigns',name:'SocialStatus',displayName:'Social Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Marketing’s social build status.'}
@@ -11697,31 +11796,28 @@ function applyActivityTemplate(key){
   if(msg){msg.textContent=`📋 "${key}" template applied — check the highlighted basics, then just add the date, venue and any details.`;msg.className='form-msg ok';}
 }
 
+// Quick Capture — the same saveIdeaRecord() path as the "+Add idea" overlay, just fed from this
+// form's smaller field set. One underlying save implementation, two presentations of it.
 async function submitIdeaNew(){
   const title=document.getElementById('ideaTitleNew').value.trim();
   if(!title){const m=document.getElementById('fIdeaMsg');m.textContent='Please enter a title.';m.className='form-msg err';return;}
   const btn=document.querySelector('#submitFormIdea .btn-p');
   if(btn){btn.disabled=true;btn.textContent='Submitting…';}
-  const fields={Title:title};
-  const v=document.getElementById('ideaVenueNew').value;if(v)fields.Venue=v;
-  const g=document.getElementById('ideaGoalNew').value;if(g)fields.Goal=g;
-  const c=document.getElementById('ideaConcept').value;if(c)fields.Concept=c;
-  const mo=document.getElementById('ideaMonths').value;if(mo)fields.BestMonths=mo;
-  const au=document.getElementById('ideaAudience').value;if(au)fields.TargetAudience=au;
-  fields.Status='New';
   try{
-    const token=await getToken(true);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${IDEA_LIST_ID}/items`,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
-    if(res.ok){
-      const m=document.getElementById('fIdeaMsg');m.textContent='✅ Idea submitted to the Idea Bank!';m.className='form-msg ok';
-      ['ideaTitleNew','ideaConcept','ideaMonths','ideaAudience'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-      document.getElementById('ideaVenueNew').selectedIndex=0;document.getElementById('ideaGoalNew').selectedIndex=0;
-      await loadIdeas();
-      setTimeout(()=>pickSubmitPath(''),2000);
-    } else {
-      const err=await res.text();const m=document.getElementById('fIdeaMsg');m.textContent='Error submitting. Please try again.';m.className='form-msg err';console.error(err);
-    }
-  }catch(e){const m=document.getElementById('fIdeaMsg');m.textContent='Error: '+e.message;m.className='form-msg err';}
+    await saveIdeaRecord({
+      title,
+      venue:document.getElementById('ideaVenueNew').value,
+      activityType:document.getElementById('ideaActTypeNew')?.value||'',
+      goal:document.getElementById('ideaGoalNew').value,
+      concept:document.getElementById('ideaConcept').value,
+      bestMonths:document.getElementById('ideaMonths').value,
+      targetAudience:document.getElementById('ideaAudience').value,
+    });
+    const m=document.getElementById('fIdeaMsg');m.textContent='✅ Idea submitted to the Idea Bank!';m.className='form-msg ok';
+    ['ideaTitleNew','ideaConcept','ideaMonths','ideaAudience'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['ideaVenueNew','ideaActTypeNew','ideaGoalNew'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+    setTimeout(()=>pickSubmitPath(''),2000);
+  }catch(e){const m=document.getElementById('fIdeaMsg');m.textContent='Error: '+e.message;m.className='form-msg err';console.error(e);}
   if(btn){btn.disabled=false;btn.textContent='Submit Idea →';}
 }
 
@@ -12940,6 +13036,15 @@ async function submitEvent(){
     if(!ok)throw new Error('HTTP '+res.status+': '+resBody);
     const created=JSON.parse(resBody);
     console.log('Created item ID:',created.id,'fields echoed back:',JSON.stringify(created.fields,null,2));
+    // This Activity grew out of an Idea via "Continue Brief" — link the two records (so reopening
+    // that idea later opens this Activity instead of letting someone start a second one from it)
+    // and mark the idea used. Never fails the Activity submission itself if this part doesn't stick.
+    if(CONTINUING_IDEA_ID){
+      try{await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${IDEA_LIST_ID}/items/${CONTINUING_IDEA_ID}`,token,{PromotedActivityId:created.id,Status:'Used'});}
+      catch(e){console.warn('Could not link source idea to new Activity:',e);}
+      CONTINUING_IDEA_ID='';
+      await loadIdeas();
+    }
     let loadedOfferNote='';
     if(isLoaded){try{const result=await saveLoadedOfferComponents(created.id,title,'fLoaded',token);loadedOfferNote=` ${result.saved} Loaded offer component${result.saved===1?'':'s'} linked.`;}catch(e){loadedOfferNote=' Loaded offer setup needs attention: '+e.message;console.error('Loaded offer variant save failed:',e);}}
     const emailSelectedPeople=document.getElementById('fNotifyPeopleByEmail')?.checked??false;
