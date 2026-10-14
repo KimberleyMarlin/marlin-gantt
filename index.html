@@ -3484,18 +3484,27 @@ async function archiveCampaign(evId,btn){
   try{
     const result=await persistArchiveState(ev,'ARCHIVED','Archive notes',reason);
     closePop();
+    // The cascade must finish (and mutate MY_TASKS/PERSONAL_TASKS) BEFORE any view below is
+    // rendered — every one of them reads that live in-memory state, so rendering first would show
+    // pre-cascade counts/status for exactly the tasks this is meant to cancel. A task that failed
+    // to cancel is left untouched by cascadeArchiveJobWork(), so it still correctly shows as open
+    // here rather than silently implying success.
+    const message=await cascadeAndDescribe(ev,result.partial.length?`"${ev.title}" archived, but check ${result.partial.join(', ')}`:`"${ev.title}" archived`);
+    generateNotifications&&generateNotifications();
     renderPipeline&&renderPipeline();
     renderCampaigns&&renderCampaigns();
     renderOverview&&renderOverview();
     renderApprovals&&renderApprovals();
     renderMyWork&&renderMyWork();
+    renderMyTasks&&renderMyTasks();
+    renderPersonalTasks&&renderPersonalTasks();
+    refreshShownActivityDetail(ev.id);
     if(document.getElementById('p-calendar')?.classList.contains('active')){
       if(scheduleView==='month'||scheduleView==='week')renderCalendar();
       else if(scheduleView==='gantt')renderGantt();
       else if(scheduleView==='venuemonth')renderVenueMonth();
       else if(scheduleView==='crossvenue')renderCrossVenue();
     }
-    const message=await cascadeAndDescribe(ev,result.partial.length?`"${ev.title}" archived, but check ${result.partial.join(', ')}`:`"${ev.title}" archived`);
     if(typeof showToast==='function')showToast(message);
   }catch(e){
     console.error('Archive failed:',e);
@@ -3518,12 +3527,18 @@ async function denyCampaign(evId,btn){
   try{
     await persistArchiveState(ev,'DENIED','Reason',reason);
     notifySubmitter(ev,`Your submission wasn't approved this time. Reason: ${reason.trim()}`);
+    // Same ordering as archiveCampaign() above — the cascade must finish before any view below
+    // is rendered, since they all read the live MY_TASKS/PERSONAL_TASKS state it mutates.
+    const message=await cascadeAndDescribe(ev,`"${ev.title}" denied and archived`);
+    generateNotifications&&generateNotifications();
     renderApprovals&&renderApprovals();
     renderPipeline&&renderPipeline();
     renderCampaigns&&renderCampaigns();
     renderOverview&&renderOverview();
     renderMyWork&&renderMyWork();
-    const message=await cascadeAndDescribe(ev,`"${ev.title}" denied and archived`);
+    renderMyTasks&&renderMyTasks();
+    renderPersonalTasks&&renderPersonalTasks();
+    refreshShownActivityDetail(ev.id);
     if(typeof showToast==='function')showToast(message);
   }catch(e){
     console.error('Deny failed:',e);
@@ -14311,8 +14326,21 @@ function showActivityPage(id,fromChat=false){
   renderActivityDetail(id,'page');
 }
 
+// Tracks which Activity (and which surface — popup or full page) is currently showing its
+// detail view, so a background state change (e.g. the archive cascade) can refresh it in place
+// when it's this same Activity, without force-opening it when it isn't currently shown at all.
+let _activityDetailShown=null;
+// Re-renders the Activity Detail view (its "linked Activity tasks" section included) only when
+// it's actually visible right now for this exact Activity — never force-opens it, and never
+// refreshes a popup/page that's since been closed or navigated away from.
+function refreshShownActivityDetail(evId){
+  if(!_activityDetailShown||String(_activityDetailShown.id)!==String(evId))return;
+  if(_activityDetailShown.mode==='popup'&&document.getElementById('evOv')?.classList.contains('show'))renderActivityDetail(evId,'popup');
+  else if(_activityDetailShown.mode==='page'&&document.getElementById('p-activitydetail')?.classList.contains('active'))renderActivityDetail(evId,'page');
+}
 function renderActivityDetail(id,mode){
   const ev=EVENTS.find(e=>e.id===id);if(!ev)return;
+  _activityDetailShown={id:ev.id,mode};
   const canEdit=canEditCampaigns();
   const canApprove=canApproveCampaigns();
   const vc=vColor(ev.venue);
@@ -14687,13 +14715,22 @@ function renderActivityDetail(id,mode){
   // Linked personal tasks — Kimberley-only, the flip side of the Personal Tasks list's Linked activity field.
   if(canAccessPanel('personaltasks')){
     const linkedTasks=PERSONAL_TASKS.filter(t=>String(t.linkedActivityId)===String(ev.id));
-    const linkedDone=linkedTasks.filter(t=>isTaskClosed(t.status)).length;
+    // "done" here must mean genuinely completed (isTaskDone), not merely closed (isTaskClosed) —
+    // a Cancelled or Converted linked task is closed but was never actually done.
+    const linkedDone=linkedTasks.filter(t=>isTaskDone(t.status)).length;
     h+=`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div style="font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase">🔒 My linked tasks${linkedTasks.length?` (${linkedDone}/${linkedTasks.length} done)`:''}</div>
         <button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('','${ev.id}')">+ Add task</button>
       </div>
-      ${linkedTasks.length?linkedTasks.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><div class="task-cb ${isTaskClosed(t.status)?'done':''}" onclick="togglePersonalTask('${t.id}')">${isTaskClosed(t.status)?'✓':''}</div><div style="flex:1;font-size:12.5px;cursor:pointer;${isTaskClosed(t.status)?'text-decoration:line-through;color:var(--text3)':''}" onclick="navTo('personaltasks')" title="Open in Personal Tasks">${escapeAttr(t.title)}</div>${t.due?`<span style="font-size:11px;color:var(--text3)">${fmtDate(t.due)}</span>`:''}</div>`).join(''):'<div style="font-size:12px;color:var(--text3);padding:6px 0">No personal tasks linked to this activity yet.</div>'}
+      ${linkedTasks.length?linkedTasks.map(t=>{
+        const tDone=isTaskDone(t.status),tClosed=isTaskClosed(t.status),tLocked=t.status==='Converted'||t.status==='Cancelled';
+        // A Converted/Cancelled task's checkbox is display-only — togglePersonalTask() only knows
+        // Done<->Not Started, so clicking it on either would wrongly reopen or "complete" a task
+        // that was actually converted to shared work or called off, not genuinely finished.
+        const cbAttrs=tLocked?`title="${t.status==='Converted'?'Converted to a shared task — see My Tasks':'Cancelled'}"`:`onclick="togglePersonalTask('${t.id}')"`;
+        return`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><div class="task-cb ${tClosed?'done':''}" ${cbAttrs}>${tDone?'✓':t.status==='Converted'?'↗':''}</div><div style="flex:1;font-size:12.5px;cursor:pointer;${tClosed?'text-decoration:line-through;color:var(--text3)':''}" onclick="navTo('personaltasks')" title="Open in Personal Tasks">${escapeAttr(t.title)}</div>${t.due?`<span style="font-size:11px;color:var(--text3)">${fmtDate(t.due)}</span>`:''}</div>`;
+      }).join(''):'<div style="font-size:12px;color:var(--text3);padding:6px 0">No personal tasks linked to this activity yet.</div>'}
     </div>`;
   }
   // Action buttons
