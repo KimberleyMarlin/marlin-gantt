@@ -836,34 +836,101 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         </details>
       </div>
 
-      <!-- 4 + 5. NEW SUBMISSIONS + MY TASKS (side by side) -->
-      <div class="dash-widget" data-widget="submitpair" style="margin-bottom:12px">
+      <!-- 4. NEW SUBMISSIONS — split out of the old "submitpair" combined widget so each section
+           can be independently reordered, hidden and restored (was previously one fixed unit). -->
+      <div class="dash-widget" data-widget="newsubmissions" style="margin-bottom:12px">
         <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <details class="dash-card" open>
           <summary class="card-h"><span class="card-title">📥 New Submissions</span><span class="card-act" onclick="event.preventDefault();navTo('approvals')">Review →</span></summary>
           <div id="ovNewSubmissions"><div class="loading"><div class="spinner"></div></div></div>
         </details>
+      </div>
+
+      <!-- 5. MY TASKS -->
+      <div class="dash-widget" data-widget="mytasks" style="margin-bottom:12px">
+        <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
         <details class="dash-card" open>
           <summary class="card-h"><span class="card-title">☐ My Tasks</span><span class="card-act" onclick="event.preventDefault();navTo('mywork')">All tasks →</span></summary>
           <div id="ovMyTasks"><div class="loading"><div class="spinner"></div></div></div>
         </details>
-        </div>
       </div>
 
-      <!-- 6 + 7. REPORTING REQUIRED + KEY DATES (side by side) -->
-      <div class="dash-widget" data-widget="reportpair" style="margin-bottom:12px">
+      <!-- WIDGET LIBRARY: MY PRIORITIES — overdue, blocked or high/critical-priority items from the
+           same combined source as My Work (myWorkItems()), not a separate list. -->
+      <div class="dash-widget" data-widget="mypriorities" style="margin-bottom:12px">
         <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <details class="dash-card" open>
+          <summary class="card-h"><span class="card-title">⚡ My Priorities</span><span class="card-act" onclick="event.preventDefault();navTo('mywork')">My Work →</span></summary>
+          <div id="ovMyPriorities"><div class="loading"><div class="spinner"></div></div></div>
+        </details>
+      </div>
+
+      <!-- WIDGET LIBRARY: OVERDUE / BLOCKED WORK -->
+      <div class="dash-widget" data-widget="overdueblocked" style="margin-bottom:12px">
+        <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
+        <details class="dash-card" open>
+          <summary class="card-h"><span class="card-title">🚫 Overdue / Blocked Work</span><span class="card-act" onclick="event.preventDefault();navTo('mywork')">My Work →</span></summary>
+          <div id="ovOverdueBlocked"><div class="loading"><div class="spinner"></div></div></div>
+        </details>
+      </div>
+
+      <!-- WIDGET LIBRARY: UPCOMING LAUNCHES — Activities entering or close to Live, distinct from
+           the broader "Next 14 Days" widget which includes everything starting soon regardless of stage. -->
+      <div class="dash-widget" data-widget="upcominglaunches" style="margin-bottom:12px">
+        <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
+        <details class="dash-card" open>
+          <summary class="card-h"><span class="card-title">🚀 Upcoming Launches</span><span class="card-act" onclick="event.preventDefault();navTo('calendar')">Calendar →</span></summary>
+          <div id="ovUpcomingLaunches"><div class="loading"><div class="spinner"></div></div></div>
+        </details>
+      </div>
+
+      <!-- 6. REPORTING REQUIRED — split out of the old "reportpair" combined widget. -->
+      <div class="dash-widget" data-widget="reportrequired" style="margin-bottom:12px">
+        <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
         <details class="dash-card" open>
           <summary class="card-h"><span class="card-title">📊 Reporting Required</span></summary>
           <div id="ovResults"><div class="loading"><div class="spinner"></div></div></div>
         </details>
+      </div>
+
+      <!-- 7. KEY DATES AHEAD -->
+      <div class="dash-widget" data-widget="keydates" style="margin-bottom:12px">
+        <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
         <details class="dash-card" open>
           <summary class="card-h"><span class="card-title">🗓 Key Dates Ahead</span><span class="card-act" onclick="event.preventDefault();navTo('calendar')">Calendar →</span></summary>
           <div id="ovKeyDates"><div class="loading"><div class="spinner"></div></div></div>
         </details>
-        </div>
+      </div>
+
+      <!-- WIDGET LIBRARY: TEAM WORKLOAD — reuses the existing Team Workload page's own renderWorkload(),
+           just pointed at a different target element, so this is the same live data, not a copy.
+           Permission-gated: only shown to roles that can already open the full Workload page. -->
+      <div class="dash-widget" data-widget="teamworkload" style="margin-bottom:12px">
+        <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
+        <details class="dash-card">
+          <summary class="card-h"><span class="card-title">👥 Team Workload</span><span class="card-act" onclick="event.preventDefault();navTo('workload')">Full view →</span></summary>
+          <div id="dashTeamWorkload"><div class="loading"><div class="spinner"></div></div></div>
+        </details>
+      </div>
+
+      <!-- WIDGET LIBRARY: PROJECT PROGRESS — reads the same PROJECTS list as the Projects page.
+           Permission-gated to roles that can open Projects. -->
+      <div class="dash-widget" data-widget="projectprogress" style="margin-bottom:12px">
+        <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
+        <details class="dash-card">
+          <summary class="card-h"><span class="card-title">◧ Project Progress</span><span class="card-act" onclick="event.preventDefault();navTo('projects')">Full view →</span></summary>
+          <div id="ovProjectProgress"><div class="loading"><div class="spinner"></div></div></div>
+        </details>
+      </div>
+
+      <!-- WIDGET LIBRARY: LOADED REWARDS CAMPAIGNS — filters the same EVENTS list by the existing
+           loadedRewards flag. Permission-gated to roles that can open the Loaded Rewards page. -->
+      <div class="dash-widget" data-widget="loadedcampaigns" style="margin-bottom:12px">
+        <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
+        <details class="dash-card">
+          <summary class="card-h"><span class="card-title">⭐ Loaded Rewards Campaigns</span><span class="card-act" onclick="event.preventDefault();navTo('loaded')">Full view →</span></summary>
+          <div id="ovLoadedCampaigns"><div class="loading"><div class="spinner"></div></div></div>
+        </details>
       </div>
 
       <!-- 8. VENUE ACTIVITY SNAPSHOT (collapsed by default) -->
@@ -7024,20 +7091,61 @@ function renderCrossVenue(){
 }
 
 
-// ── Dashboard widget order (localStorage persisted) ──
-const DEFAULT_WIDGET_ORDER=['needsaction','next14days','thismonth','submitpair','reportpair','venuesnap','charts'];
-// Human-readable names for the "add section back" picker in Customize mode.
-const WIDGET_TITLES={needsaction:'🔴 Needs Action',next14days:'⏱ Next 14 Days',thismonth:"📅 This Month's Overview",submitpair:'📥 New Submissions + My Tasks',reportpair:'📊 Reporting Required + Key Dates',venuesnap:'◉ Venue Activity Snapshot',charts:'Reporting Overview — Charts'};
+// ── Dashboard widget order (localStorage persisted, per signed-in user) ──
+// Recommended layout for a brand-new user with no saved preferences yet.
+const DEFAULT_WIDGET_ORDER=['needsaction','mypriorities','next14days','thismonth','newsubmissions','mytasks','upcominglaunches','overdueblocked','reportrequired','keydates','teamworkload','projectprogress','loadedcampaigns','venuesnap','charts'];
+// Widgets added in this round that start hidden even in the recommended layout — available any
+// time from the Widget Library, but don't crowd the default view uninvited.
+const DEFAULT_HIDDEN_WIDGETS=['upcominglaunches','overdueblocked','teamworkload','projectprogress','loadedcampaigns'];
+const ALL_WIDGET_IDS=[...new Set([...DEFAULT_WIDGET_ORDER,...DEFAULT_HIDDEN_WIDGETS])];
+// Human-readable names for the Widget Library "add section" picker in Customize mode.
+const WIDGET_TITLES={needsaction:'🔴 Needs Action',mypriorities:'⚡ My Priorities',next14days:'⏱ Next 14 Days',thismonth:"📅 This Month's Overview",newsubmissions:'📥 New Submissions',mytasks:'☐ My Tasks',overdueblocked:'🚫 Overdue / Blocked Work',upcominglaunches:'🚀 Upcoming Launches',reportrequired:'📊 Reporting & Performance',keydates:'🗓 Key Dates Ahead',teamworkload:'👥 Team Workload',projectprogress:'◧ Project Progress',loadedcampaigns:'⭐ Loaded Rewards Campaigns',venuesnap:'◉ Venue Activity Snapshot',charts:'Existing Charts & Graphs'};
+// Widgets that surface data gated behind a specific panel permission — stays hidden for any role
+// that couldn't open that panel directly, even if the id is sitting in a saved order/hidden list
+// (e.g. from before a role change). This is the real security boundary, not just UI tidiness.
+const WIDGET_PERMISSIONS={teamworkload:'workload',projectprogress:'projects',loadedcampaigns:'loaded'};
+function widgetAllowed(id){const panel=WIDGET_PERMISSIONS[id];return !panel||canAccessPanel(panel);}
 function dashStorageKey(){return 'marlin_dash_layout_'+(currentUserEmail||'anon');}
 function getWidgetOrder(){
   try{
-    const saved=JSON.parse(localStorage.getItem(dashStorageKey())||'null');
-    if(!saved||!Array.isArray(saved.order))return{order:DEFAULT_WIDGET_ORDER,open:{},hidden:[]};
-    if(!Array.isArray(saved.hidden))saved.hidden=[];
-    return saved;
-  }catch{return{order:DEFAULT_WIDGET_ORDER,open:{},hidden:[]};}
+    const raw=localStorage.getItem(dashStorageKey());
+    if(!raw)return{order:DEFAULT_WIDGET_ORDER.slice(),open:{},hidden:DEFAULT_HIDDEN_WIDGETS.slice()};
+    const saved=JSON.parse(raw)||{};
+    let order=Array.isArray(saved.order)?saved.order.slice():DEFAULT_WIDGET_ORDER.slice();
+    let hidden=Array.isArray(saved.hidden)?saved.hidden.slice():[];
+    const open=saved.open&&typeof saved.open==='object'?saved.open:{};
+    let changed=false;
+    // Migrate the old combined pair-widgets into their split replacements, in place, carrying
+    // across whichever state (position or hidden) the pair had — keeps an existing saved layout
+    // working instead of silently losing those sections after this update.
+    const SPLITS={submitpair:['newsubmissions','mytasks'],reportpair:['reportrequired','keydates']};
+    Object.entries(SPLITS).forEach(([oldId,newIds])=>{
+      const idx=order.indexOf(oldId);
+      if(idx!==-1){order.splice(idx,1,...newIds);changed=true;}
+      const hIdx=hidden.indexOf(oldId);
+      if(hIdx!==-1){hidden.splice(hIdx,1,...newIds);changed=true;}
+    });
+    // Any widget this saved layout predates (new since this update) starts hidden rather than
+    // suddenly appearing on an already-customized dashboard — still addable any time from the
+    // Widget Library. A brand-new user with no saved layout gets the full recommended set instead
+    // (the `!raw` branch above).
+    ALL_WIDGET_IDS.forEach(id=>{
+      if(!order.includes(id)&&!hidden.includes(id)){hidden.push(id);changed=true;}
+    });
+    if(changed)saveWidgetOrder(order,open,hidden);
+    return{order,open,hidden};
+  }catch{return{order:DEFAULT_WIDGET_ORDER.slice(),open:{},hidden:DEFAULT_HIDDEN_WIDGETS.slice()};}
 }
 function saveWidgetOrder(order,open,hidden){try{localStorage.setItem(dashStorageKey(),JSON.stringify({order,open,hidden:hidden||[]}));}catch{}}
+// Reset to the recommended layout — only this user's own saved arrangement is touched, no
+// Activity, Task, Project or Loaded Rewards record is affected.
+function resetDashboardLayout(){
+  if(!confirm('Reset your Dashboard to the recommended layout? This only changes your own saved arrangement — nothing else on the Hub is affected.'))return;
+  saveWidgetOrder(DEFAULT_WIDGET_ORDER.slice(),{},DEFAULT_HIDDEN_WIDGETS.slice());
+  applyDashboardLayout();
+  renderDashAddSectionPicker();
+  renderOverview();
+}
 
 // Hide a section — not deleted, just removed from view. Can be brought back any time from the
 // "+ Add section" picker that appears while customizing.
@@ -7059,9 +7167,11 @@ function renderDashAddSectionPicker(){
   if(!el)return;
   if(!_dashCustomizing){el.style.display='none';return;}
   const {hidden}=getWidgetOrder();
+  const available=hidden.filter(widgetAllowed);
   el.style.display='flex';
-  el.innerHTML=`<span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">+ Add section:</span>`+
-    (hidden.length?hidden.map(id=>`<button class="tb-btn" onclick="showDashWidget('${id}')" style="font-size:11px">+ ${WIDGET_TITLES[id]||id}</button>`).join(''):`<span style="font-size:12px;color:var(--text3)">Every section is already showing</span>`);
+  el.innerHTML=`<span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">📦 Widget Library — add a section:</span>`+
+    (available.length?available.map(id=>`<button class="tb-btn" onclick="showDashWidget('${id}')" style="font-size:11px">+ ${WIDGET_TITLES[id]||id}</button>`).join(''):`<span style="font-size:12px;color:var(--text3)">Every available section is already showing</span>`)+
+    `<button class="tb-btn" onclick="resetDashboardLayout()" style="font-size:11px;margin-left:auto;color:var(--text3)">↺ Reset to Recommended Layout</button>`;
 }
 
 let _dashCustomizing=false;
@@ -7102,7 +7212,11 @@ function applyDashboardLayout(){
     if(el)container.appendChild(el); // moves to end in saved order
   });
   container.querySelectorAll('.dash-widget').forEach(w=>{
-    w.style.display=hidden.includes(w.dataset.widget)?'none':'';
+    const id=w.dataset.widget;
+    // Permission check is enforced here regardless of saved state — a widget a role can't see
+    // never renders just because it's absent from that role's hidden list (e.g. a stale
+    // localStorage entry from before a role change, or the list being edited by hand).
+    w.style.display=(hidden.includes(id)||!widgetAllowed(id))?'none':'';
   });
   // Any widget not in the saved order (e.g. newly added in a future update) stays wherever it naturally sits
 }
@@ -7238,6 +7352,105 @@ function renderDashThisMonth(){
       ?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">${thisMonthEvts.map(ovCard).join('')}</div>`
       :'<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Nothing scheduled this month</div>';
   }
+}
+
+// ── Widget Library additions — each reads an existing live data source (myWorkItems(), EVENTS,
+// PROJECTS) and renders its own compact view. None of these create a new record or a
+// Dashboard-only copy of anything; they're just another way of looking at the same data. ──
+
+function openEditPersonalTaskOrTask(t){
+  return t.kind==='personal'?`openEditPersonalTask('${t.id}')`:t.kind==='activity'?`showPop(${Number(t.activityId)})`:`openEditTask('${t.id}')`;
+}
+
+function renderDashMyPriorities(){
+  const el=document.getElementById('ovMyPriorities');if(!el)return;
+  const todayStr=toLocalISODate(new Date());
+  const open=myWorkItems().filter(t=>!['Done','Complete','Completed'].includes(t.status));
+  const scored=open.map(t=>{
+    const overdue=!!(t.due&&t.due<todayStr);
+    const blocked=t.status==='Blocked';
+    const urgentPriority=['Critical','High'].includes(t.priority);
+    if(!overdue&&!blocked&&!urgentPriority)return null;
+    return{...t,overdue,blocked};
+  }).filter(Boolean).sort((a,b)=>{
+    if(a.overdue!==b.overdue)return a.overdue?-1:1;
+    if(a.blocked!==b.blocked)return a.blocked?-1:1;
+    return String(a.due||'9999').localeCompare(String(b.due||'9999'));
+  }).slice(0,6);
+  el.innerHTML=scored.length?scored.map(t=>{
+    const tag=t.overdue?'Overdue':t.blocked?'Blocked':t.priority;
+    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:0.5px solid var(--border);cursor:pointer" onclick="${openEditPersonalTaskOrTask(t)}">
+      <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500">${escapeAttr(t.title)}</div>${t.due?`<div style="font-size:10px;color:${t.overdue?'#dc2626':'var(--text3)'}">${t.overdue?'Overdue: ':'Due: '}${fmtShort(t.due)}</div>`:''}</div>
+      <span style="font-size:9px;font-weight:700;color:${t.overdue||t.blocked?'#dc2626':'var(--text3)'}">${escapeAttr(tag||'')}</span>
+    </div>`;
+  }).join(''):'<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Nothing urgent right now ✓</div>';
+}
+
+function renderDashOverdueBlocked(){
+  const el=document.getElementById('ovOverdueBlocked');if(!el)return;
+  const todayStr=toLocalISODate(new Date());
+  const open=myWorkItems().filter(t=>!['Done','Complete','Completed'].includes(t.status));
+  const items=open.filter(t=>(t.due&&t.due<todayStr)||t.status==='Blocked')
+    .sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))).slice(0,8);
+  el.innerHTML=items.length?items.map(t=>{
+    const overdue=!!(t.due&&t.due<todayStr);
+    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:0.5px solid var(--border);cursor:pointer" onclick="${openEditPersonalTaskOrTask(t)}">
+      <span style="font-size:14px">${overdue?'⏰':'🚫'}</span>
+      <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500">${escapeAttr(t.title)}</div><div style="font-size:10px;color:#dc2626">${overdue?'Overdue since '+fmtShort(t.due):'Blocked'}</div></div>
+    </div>`;
+  }).join(''):'<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">✅ Nothing overdue or blocked</div>';
+}
+
+function renderDashUpcomingLaunches(){
+  const el=document.getElementById('ovUpcomingLaunches');if(!el)return;
+  const venue=document.getElementById('ovVenue')?.value||'';
+  const today=new Date();today.setHours(0,0,0,0);
+  const in30=new Date(today.getTime()+30*864e5);
+  const items=EVENTS.filter(e=>!venue||e.venue===venue).filter(e=>!isArchived(e))
+    .filter(e=>e.stage==='Ready for Live'||(e.stage==='Live'&&new Date(e.start+'T00:00:00')>=today&&new Date(e.start+'T00:00:00')<=in30))
+    .sort((a,b)=>a.start.localeCompare(b.start)).slice(0,8);
+  el.innerHTML=items.length?items.map(ev=>{
+    const vc=vColor(ev.venue);
+    const daysOut=Math.round((new Date(ev.start+'T00:00:00')-today)/864e5);
+    return`<div onclick="showPop(${ev.id})" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:0.5px solid var(--border);cursor:pointer">
+      <div style="width:4px;align-self:stretch;background:${vc.c};border-radius:2px"></div>
+      <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">${escapeAttr(ev.title)}</div><div style="font-size:10px;color:var(--text3)">${shortVenue(ev.venue)} · ${escapeAttr(ev.stage)}</div></div>
+      <div style="font-size:10px;font-weight:600;color:${daysOut<=3?'#dc2626':'var(--text3)'}">${daysOut<=0?'Live':daysOut+'d'}</div>
+    </div>`;
+  }).join(''):'<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Nothing launching soon</div>';
+}
+
+function renderDashProjectProgress(){
+  const el=document.getElementById('ovProjectProgress');if(!el)return;
+  if(!widgetAllowed('projectprogress')){el.innerHTML='';return;}
+  if(!PROJECTS.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No projects found</div>';return;}
+  const today=toLocalISODate(new Date());
+  const active=PROJECTS.filter(p=>p.status!=='Done').sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999')).slice(0,6);
+  el.innerHTML=active.length?active.map(p=>{
+    const overdue=!!(p.due&&p.due<today&&p.status!=='Done');
+    return`<div onclick="openEditProject('${escapeAttr(String(p.id))}')" style="padding:9px 12px;border-bottom:0.5px solid var(--border);cursor:pointer">
+      <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:5px">
+        <span style="font-size:12px;font-weight:600">${escapeAttr(p.title)}</span>
+        <span style="font-size:10px;color:${overdue?'#dc2626':'var(--text3)'}">${p.due?fmtShort(p.due):''}</span>
+      </div>
+      <div class="b-bar-w"><div class="b-bar-f" style="width:${p.progress}%;background:${overdue?'var(--red)':'var(--accent)'}"></div></div>
+    </div>`;
+  }).join(''):'<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No active projects</div>';
+}
+
+function renderDashLoadedCampaigns(){
+  const el=document.getElementById('ovLoadedCampaigns');if(!el)return;
+  if(!widgetAllowed('loadedcampaigns')){el.innerHTML='';return;}
+  const venue=document.getElementById('ovVenue')?.value||'';
+  const today=new Date();today.setHours(0,0,0,0);
+  const items=EVENTS.filter(e=>e.loadedRewards&&(!venue||e.venue===venue)&&!isArchived(e))
+    .filter(e=>!['Done','Archive','Archived','Cancelled'].includes(e.status)&&new Date((e.end||e.start)+'T00:00:00')>=today)
+    .sort((a,b)=>a.start.localeCompare(b.start)).slice(0,8);
+  el.innerHTML=items.length?items.map(ev=>`<div onclick="showPop(${ev.id})" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:0.5px solid var(--border);cursor:pointer">
+    <span style="font-size:14px">⭐</span>
+    <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">${escapeAttr(ev.title)}</div><div style="font-size:10px;color:var(--text3)">${shortVenue(ev.venue)} · ${escapeAttr(ev.stage||'')}</div></div>
+    <div style="font-size:10px;color:var(--text3)">${fmtShort(ev.start)}</div>
+  </div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No active Loaded Rewards campaigns</div>';
 }
 
 function renderOverview(){
@@ -7405,6 +7618,13 @@ function renderOverview(){
       <div style="padding:10px;background:var(--surface2);border-radius:6px"><div style="font-size:18px;font-weight:700;color:#4a9e8e">${supplierFunds>0?'$'+Math.round(supplierFunds/1000)+'k':'—'}</div><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Supplier Funds</div></div>
     </div>
   `:`<div style="padding:10px"><div style="padding:10px;background:var(--surface2);border-radius:6px"><div style="font-size:18px;font-weight:700;color:var(--text)">${completed.length}</div><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Completed</div></div></div>`;
+
+  renderDashMyPriorities();
+  renderDashOverdueBlocked();
+  renderDashUpcomingLaunches();
+  if(widgetAllowed('teamworkload'))renderWorkload('dashTeamWorkload',6);
+  renderDashProjectProgress();
+  renderDashLoadedCampaigns();
 
   setTimeout(()=>renderDashboardCharts(allEvts),50);
   applyDashboardLayout();
@@ -7846,7 +8066,10 @@ async function saveDesignBrief(btn){
 // ═══════════════════════════════════════
 // WORKLOAD VIEW
 // ═══════════════════════════════════════
-function renderWorkload(){
+// targetId/limit let the Dashboard's Team Workload widget reuse this exact computation and
+// render into its own compact container instead of duplicating the byPerson logic — same live
+// data as the full Team Workload page, just a shorter list.
+function renderWorkload(targetId='workloadBody',limit=0){
   if(!isAuthed)return;
   const today=new Date();today.setHours(0,0,0,0);
   const week=new Date(today);week.setDate(week.getDate()+7);
@@ -7883,15 +8106,16 @@ function renderWorkload(){
     }
   });
 
-  const body=document.getElementById('workloadBody');
+  const body=document.getElementById(targetId);
   if(!body)return;
 
   if(!Object.keys(byPerson).length){
     body.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)">No active job tickets in the pipeline.</div>';return;
   }
 
+  const people=Object.values(byPerson).sort((a,b)=>b.jobs.length-a.jobs.length);
   body.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;align-items:start">
-    ${Object.values(byPerson).sort((a,b)=>b.jobs.length-a.jobs.length).map(p=>{
+    ${(limit?people.slice(0,limit):people).map(p=>{
       const maxJobs=8;
       const load=Math.min(p.jobs.length/maxJobs*100,100);
       const loadColor=p.jobs.length>=maxJobs?'var(--red)':p.jobs.length>=5?'var(--gold)':'var(--accent)';
