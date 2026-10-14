@@ -5495,6 +5495,14 @@ async function loadCampaigns(){
         capacity:parseInt(f.Capacity||0),
         // Event image (uploaded Image column or EventImageURL) — used for card thumbnails
         eventImageUrl:sharePointUrl(f.Image)||sharePointUrl(f.EventImageURL),
+        // Stable {driveId,itemId} reference for the featured image, so a fresh thumbnail can be
+        // resolved later instead of relying only on the (possibly expired) cached URL above — see
+        // resolveFeaturedImageUrl(). Absent on anything picked before this existed; eventImageUrl
+        // alone still works for those, maintaining compatibility with existing values.
+        eventImageRef:(()=>{try{const parsed=JSON.parse(f.EventImageRef||'null');return parsed?.driveId&&parsed?.itemId?parsed:null;}catch{return null;}})(),
+        // A second, independently-linkable SharePoint folder for completed artwork that sometimes
+        // lives somewhere other than the Power Automate–created Activity folder.
+        linkedArtworkFolderUrl:sharePointUrl(f.LinkedArtworkFolderURL)||'',
         // Digital / SEO
         landingPageRequired:f.LandingPageRequired===true||f.LandingPageRequired==='Yes',
         landingPageUrl:sharePointUrl(f.LandingPageURL),
@@ -6623,13 +6631,46 @@ function openActivityPhotoPicker(evId){
     document.getElementById('evPhotoPreview-'+evId)?.scrollIntoView({behavior:'smooth',block:'center'});
   },60);
 }
+// ── Featured Image picker — three sources sharing one picker UI ──────────────────────────────
+// 'activity' = this Activity's own JobFolderURL folder (Power Automate–created); 'artwork' = a
+// second, separately-linkable SharePoint folder for completed artwork that sometimes lives
+// somewhere else — linking never moves/copies anything or creates a new folder; 'library' = the
+// existing Digital Media tag search, unchanged. Each folder source supports navigating into
+// subfolders, which the old single-level "View files" never did.
+let _evPhotoSource={};   // evId -> 'activity'|'artwork'|'library', remembered while the popup is open
+let _evFolderStack={};   // `${evId}:${source}` -> [{id,name,driveId}] breadcrumb; id:null = the linked folder itself
+
 function openEvPhotoPicker(evId){
   const box=document.getElementById('evPhotoPickerBox-'+evId);
   if(!box)return;
   const opening=box.style.display==='none';
   box.style.display=opening?'':'none';
   if(!opening)return;
-  box.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:8px">
+  const ev=EVENTS.find(x=>String(x.id)===String(evId));
+  if(!_evPhotoSource[evId])_evPhotoSource[evId]=ev?.jobFolderUrl?'activity':'library';
+  renderEvPhotoPickerBox(evId);
+}
+function renderEvPhotoPickerBox(evId){
+  const box=document.getElementById('evPhotoPickerBox-'+evId);
+  if(!box)return;
+  const source=_evPhotoSource[evId]||'library';
+  const labels={activity:"This Activity's Files",artwork:'Linked Artwork Folder',library:'Digital Media Library'};
+  box.innerHTML=`<div class="chips" style="margin-bottom:8px;flex-wrap:wrap">${['activity','artwork','library'].map(s=>`<div class="chip ${s===source?'on':''}" onclick="setEvPhotoSource(${evId},'${s}')">${labels[s]}</div>`).join('')}</div><div id="evPhotoSourceBody-${evId}"></div>`;
+  renderEvPhotoSource(evId);
+}
+function setEvPhotoSource(evId,source){_evPhotoSource[evId]=source;renderEvPhotoPickerBox(evId);}
+function renderEvPhotoSource(evId){
+  const source=_evPhotoSource[evId]||'library';
+  const ev=EVENTS.find(x=>String(x.id)===String(evId));
+  const bodyEl=document.getElementById('evPhotoSourceBody-'+evId);
+  if(!bodyEl||!ev)return;
+  if(source==='library')return renderEvPhotoLibraryTab(evId,bodyEl);
+  if(source==='activity')return renderEvPhotoFolderTab(evId,bodyEl,ev.jobFolderUrl,'activity','Folder pending — the Power Automate flow will add this after approval.');
+  if(source==='artwork')return renderEvPhotoArtworkTab(evId,bodyEl,ev);
+}
+
+function renderEvPhotoLibraryTab(evId,bodyEl){
+  bodyEl.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:8px">
     <input type="text" id="evPhotoSearch-${evId}" placeholder="Search tags, e.g. beer, outdoor seating…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text)" onkeydown="if(event.key==='Enter'){event.preventDefault();searchEvPhotos(${evId});}">
     <button class="btn btn-s" style="font-size:11px" onclick="searchEvPhotos(${evId})">Search</button>
   </div><div id="evPhotoResults-${evId}" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;max-height:260px;overflow-y:auto"></div>`;
@@ -6639,7 +6680,7 @@ function openEvPhotoPicker(evId){
 async function searchEvPhotos(evId,presetQuery){
   const resultsEl=document.getElementById('evPhotoResults-'+evId);
   if(!resultsEl)return;
-  if(!GOOGLE_VISION_API_KEY||!DIGITAL_MEDIA_DRIVE_ID){resultsEl.innerHTML='<div style="grid-column:1/-1;font-size:11px;color:var(--text3);padding:10px">Photo Tagging isn\'t connected yet — set GOOGLE_VISION_API_KEY first.</div>';return;}
+  if(!DIGITAL_MEDIA_DRIVE_ID){resultsEl.innerHTML='<div style="grid-column:1/-1;font-size:11px;color:var(--text3);padding:10px">Digital Media isn\'t connected yet.</div>';return;}
   const q=(presetQuery!==undefined?presetQuery:document.getElementById('evPhotoSearch-'+evId)?.value||'').trim().toLowerCase();
   resultsEl.innerHTML='<div style="grid-column:1/-1;font-size:11px;color:var(--text3);padding:10px">Loading…</div>';
   try{
@@ -6652,78 +6693,197 @@ async function searchEvPhotos(evId,presetQuery){
     resultsEl.innerHTML=matches.length?matches.map(it=>{
       const thumb=it.thumb||it.thumbnails?.[0]?.medium?.url||it.thumbnails?.[0]?.small?.url||'';
       const picked=thumb.replace(/'/g,"\\'");
-      return`<div style="cursor:pointer" onclick="pickEvPhoto(${evId},'${picked}')" title="${escapeAttr(it.name)}${ptTagsOf(it)?' — '+escapeAttr(ptTagsOf(it)):''}"><div style="aspect-ratio:1;background:var(--surface2) url('${thumb.replace(/'/g,"%27")}') center/cover;border-radius:6px;border:1px solid var(--border)"></div></div>`;
+      return`<div style="cursor:pointer" onclick="pickEvPhoto(${evId},'${picked}','${DIGITAL_MEDIA_DRIVE_ID}','${it.id}')" title="${escapeAttr(it.name)}${ptTagsOf(it)?' — '+escapeAttr(ptTagsOf(it)):''}"><div style="aspect-ratio:1;background:var(--surface2) url('${thumb.replace(/'/g,"%27")}') center/cover;border-radius:6px;border:1px solid var(--border)"></div></div>`;
     }).join(''):'<div style="grid-column:1/-1;font-size:11px;color:var(--text3);padding:10px">No matches — tag photos in Photo Tagging first, or try a different word.</div>';
   }catch(e){
     resultsEl.innerHTML=`<div style="grid-column:1/-1;font-size:11px;color:var(--red);padding:10px">Search failed: ${escapeAttr(e.message)}</div>`;
   }
 }
 
-// Stores the library photo's thumbnail URL — a signed link from Graph. It's what the Calendar
-// hover card and Artwork feed already expect (a plain embeddable image URL), but unlike a normal
-// upload it can in rare cases expire; if a photo ever stops showing, re-picking it here refreshes it.
-async function pickEvPhoto(evId,url){
+// Saves the picked photo. url is a cached thumbnail link for immediate, synchronous display
+// everywhere that still just does <img src> (and for EventImageURL back-compat); driveId/itemId
+// are the stable SharePoint reference, stored as EventImageRef, that resolveFeaturedImageUrl() can
+// use to fetch a fresh thumbnail later instead of relying on a Graph thumbnail URL that can expire.
+// Both legacy callers (no driveId/itemId) and the Remove action (empty url, no ref) are supported —
+// Remove clears EventImageRef too, so a stale reference never outlives the photo it pointed to.
+async function pickEvPhoto(evId,url,driveId,itemId){
   const ev=EVENTS.find(x=>String(x.id)===String(evId));if(!ev)return;
   try{
     const token=await getToken(true);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{EventImageURL:url}})});
-    if(!res.ok){
-      const errText=await res.text();
-      const m=errText.match(/Field '([^']+)' is not recognized/);
-      throw new Error(m?`The ${m[1]} column doesn't exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.`:'HTTP '+res.status);
+    const ref=driveId&&itemId?JSON.stringify({driveId,itemId}):'';
+    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,token,{EventImageURL:url,EventImageRef:ref});
+    const urlFailed=result.failed.find(f=>f.field==='EventImageURL');
+    if(urlFailed){
+      const m=(urlFailed.error||'').match(/Field '([^']+)' is not recognized/);
+      throw new Error(m?`The ${m[1]} column doesn't exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.`:urlFailed.error||'Could not save the photo.');
     }
     ev.eventImageUrl=url;
+    ev.eventImageRef=ref?{driveId,itemId}:null;
     showPop(evId);
   }catch(e){
     alert('Could not set photo: '+e.message);
   }
 }
 
-// Browses the Activity's linked job/artwork folder inline, without leaving the popup — resolves
-// the folder's sharing URL (written back by the Power Automate flow) to its real drive item via
-// Graph's Shares API, since that URL alone has no item id to list children from.
+// Resolves a sharing URL (what Power Automate writes back, and what a person pastes when linking
+// an artwork folder) to its real drive item via Graph's Shares API, since the URL alone has no
+// item id to list children from.
 function encodeSharingUrlForGraph(url){
   const base64=btoa(unescape(encodeURIComponent(url))).replace(/=+$/,'').replace(/\//g,'_').replace(/\+/g,'-');
   return'u!'+base64;
 }
-async function loadEvJobFolder(evId){
-  const ev=EVENTS.find(x=>String(x.id)===String(evId));if(!ev||!ev.jobFolderUrl)return;
-  const box=document.getElementById('evFolderBox-'+evId);
-  if(!box)return;
-  const opening=box.style.display==='none';
-  box.style.display=opening?'':'none';
-  if(!opening)return;
-  box.innerHTML='<div style="font-size:11px;color:var(--text3);padding:6px">Loading folder…</div>';
+
+// Generalised folder browser shared by the "This Activity's Files" and "Linked Artwork Folder"
+// tabs. Supports navigating into subfolders (breadcrumb-based), which the old single-level
+// "View files" never did. Deliberately never auto-picks an image just because the folder was
+// opened — that was the confirmed bug: viewing the folder used to silently set the featured photo
+// to whatever image came first.
+async function renderEvPhotoFolderTab(evId,bodyEl,folderUrl,source,emptyMsg){
+  if(!folderUrl){bodyEl.innerHTML=`<div style="font-size:11.5px;color:var(--text3);padding:10px">${emptyMsg||'No folder linked yet.'}</div>`;return;}
+  const stackKey=`${evId}:${source}`;
+  if(!_evFolderStack[stackKey])_evFolderStack[stackKey]=[{id:null,name:'Folder root'}];
+  bodyEl.innerHTML='<div style="font-size:11px;color:var(--text3);padding:10px">Loading…</div>';
   try{
     const token=await getToken();
-    const shareId=encodeSharingUrlForGraph(ev.jobFolderUrl);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$expand=children($select=id,name,webUrl,file,folder,thumbnails;$expand=thumbnails)`,{headers:{Authorization:'Bearer '+token}});
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const data=await res.json();
-    const children=data.children||[];
+    const stack=_evFolderStack[stackKey];
+    const crumb=stack[stack.length-1];
+    let children,rootDriveId;
+    if(!crumb.id){
+      const shareId=encodeSharingUrlForGraph(folderUrl);
+      const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$expand=children($select=id,name,webUrl,file,folder,thumbnails,parentReference;$expand=thumbnails)`,{headers:{Authorization:'Bearer '+token}});
+      if(!res.ok)throw new Error('HTTP '+res.status);
+      const data=await res.json();
+      children=data.children||[];
+      rootDriveId=data.parentReference?.driveId||children[0]?.parentReference?.driveId;
+      stack[0].driveId=rootDriveId;
+    }else{
+      const res=await fetch(`https://graph.microsoft.com/v1.0/drives/${crumb.driveId}/items/${crumb.id}/children?$select=id,name,webUrl,file,folder,thumbnails,parentReference&$expand=thumbnails`,{headers:{Authorization:'Bearer '+token}});
+      if(!res.ok)throw new Error('HTTP '+res.status);
+      children=(await res.json()).value||[];
+      rootDriveId=crumb.driveId;
+    }
     const images=children.filter(c=>!c.folder&&ptIsImage(c.name));
-    const others=children.filter(c=>c.folder||!ptIsImage(c.name));
+    const folders=children.filter(c=>c.folder);
+    const others=children.filter(c=>!c.folder&&!ptIsImage(c.name));
     const thumbOf=c=>c.thumbnails?.[0]?.large?.url||c.thumbnails?.[0]?.medium?.url||c.thumbnails?.[0]?.small?.url||'';
-    box.innerHTML=children.length?`
-      ${images.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;margin-bottom:8px">${images.map(c=>{
+    const breadcrumbHtml=stack.map((c,i)=>i===stack.length-1
+      ?`<strong>${escapeAttr(c.name)}</strong>`
+      :`<span style="cursor:pointer;color:var(--accent)" onclick="evFolderJumpTo(${evId},'${source}',${i})">${escapeAttr(c.name)}</span> / `).join('');
+    bodyEl.innerHTML=`<div style="font-size:11px;color:var(--text3);margin-bottom:8px">${breadcrumbHtml}</div>`+
+      (folders.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;margin-bottom:8px">${folders.map(f=>`
+        <div style="cursor:pointer;text-align:center" onclick="evFolderOpen(${evId},'${source}','${f.id}',${JSON.stringify(f.name)},'${rootDriveId}')">
+          <div style="font-size:22px">📁</div><div style="font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeAttr(f.name)}">${escapeAttr(f.name)}</div>
+        </div>`).join('')}</div>`:'')+
+      (images.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;margin-bottom:8px">${images.map(c=>{
         const thumb=thumbOf(c);
-        return`<div style="cursor:pointer" onclick="pickEvPhoto(${evId},'${thumb.replace(/'/g,"\\'")}')" title="${escapeAttr(c.name)} — set as promo image">
+        return`<div style="cursor:pointer" onclick="pickEvPhoto(${evId},'${thumb.replace(/'/g,"\\'")}','${rootDriveId}','${c.id}')" title="${escapeAttr(c.name)} — use as featured image">
           <div style="aspect-ratio:1;background:var(--surface2) url('${thumb.replace(/'/g,"%27")}') center/cover;border-radius:6px;border:1px solid var(--border)"></div>
         </div>`;
-      }).join('')}</div>`:''}
-      ${others.map(c=>`<a href="${c.webUrl}" target="_blank" style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);text-decoration:none;padding:4px 6px;border-radius:5px">${c.folder?'📁':'📄'} <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(c.name)}</span></a>`).join('')}
-      ${images.length?'<div style="font-size:10px;color:var(--text3);padding:4px 6px">Click an image to use it as this Activity\'s promo image.</div>':''}
-    `:'<div style="font-size:11px;color:var(--text3);padding:6px">Folder is empty.</div>';
-    // Nothing picked yet and artwork has landed in the folder — default to the first image rather
-    // than leaving the Artwork feed blank until someone remembers to pick one by hand. A manual
-    // pick (here or via the Featured Photo search) always overrides this.
-    if(!ev.eventImageUrl&&images.length){
-      const firstThumb=thumbOf(images[0]);
-      if(firstThumb)pickEvPhoto(evId,firstThumb);
-    }
+      }).join('')}</div>`:'')+
+      (others.length?others.map(c=>`<a href="${c.webUrl}" target="_blank" style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);text-decoration:none;padding:4px 6px">📄 <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(c.name)}</span></a>`).join(''):'')+
+      (!folders.length&&!images.length&&!others.length?'<div style="font-size:11px;color:var(--text3);padding:6px">Folder is empty.</div>':'')+
+      (images.length?'<div style="font-size:10px;color:var(--text3);padding:4px 6px;margin-top:4px">Click an image to use it as this Activity\'s featured image.</div>':'');
   }catch(e){
-    box.innerHTML=`<div style="font-size:11px;color:var(--red);padding:6px">Could not load folder contents: ${escapeAttr(e.message)}</div>`;
+    bodyEl.innerHTML=`<div style="font-size:11px;color:var(--red);padding:6px">Could not load folder contents: ${escapeAttr(e.message)}</div>`;
   }
+}
+function evFolderOpen(evId,source,folderId,folderName,driveId){
+  _evFolderStack[`${evId}:${source}`].push({id:folderId,name:folderName,driveId});
+  renderEvPhotoSource(evId);
+}
+function evFolderJumpTo(evId,source,index){
+  const stackKey=`${evId}:${source}`;
+  _evFolderStack[stackKey]=_evFolderStack[stackKey].slice(0,index+1);
+  renderEvPhotoSource(evId);
+}
+
+// Linked Artwork Folder tab — a second, independently-linkable SharePoint folder for completed
+// artwork that sometimes lives somewhere other than the Power Automate–created Activity folder.
+// Linking only stores the folder's sharing URL; nothing is moved, copied, or created.
+function renderEvPhotoArtworkTab(evId,bodyEl,ev){
+  if(!ev.linkedArtworkFolderUrl){
+    bodyEl.innerHTML=`<div style="font-size:11.5px;color:var(--text2);margin-bottom:8px">Link an existing SharePoint folder — nothing is moved or copied, this Activity just gets a second place to pick images from.</div>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="evArtworkFolderInput-${evId}" placeholder="Paste a SharePoint folder link…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text)">
+        <button class="btn btn-s" style="font-size:11px" onclick="linkEvArtworkFolder(${evId})">Link folder</button>
+      </div><div id="evArtworkFolderMsg-${evId}" class="form-msg" style="margin-top:6px"></div>`;
+    return;
+  }
+  bodyEl.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <a href="${ev.linkedArtworkFolderUrl}" target="_blank" style="font-size:11.5px;color:var(--accent)">Open folder →</a>
+    <button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="unlinkEvArtworkFolder(${evId})">Unlink</button>
+  </div><div id="evArtworkFolderBrowse-${evId}"></div>`;
+  renderEvPhotoFolderTab(evId,document.getElementById(`evArtworkFolderBrowse-${evId}`),ev.linkedArtworkFolderUrl,'artwork');
+}
+async function linkEvArtworkFolder(evId){
+  const ev=EVENTS.find(x=>String(x.id)===String(evId));if(!ev)return;
+  const input=document.getElementById('evArtworkFolderInput-'+evId);
+  const url=(input?.value||'').trim();
+  const msgEl=document.getElementById('evArtworkFolderMsg-'+evId);
+  if(!url){if(msgEl){msgEl.textContent='Paste a SharePoint folder link first.';msgEl.className='form-msg err';}return;}
+  if(msgEl){msgEl.textContent='Checking folder…';msgEl.className='form-msg';}
+  try{
+    const token=await getToken();
+    const shareId=encodeSharingUrlForGraph(url);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$select=id,name,folder`,{headers:{Authorization:'Bearer '+token}});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    if(!data.folder)throw new Error('That link isn\'t a folder.');
+    const saveToken=await getToken(true);
+    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,saveToken,{LinkedArtworkFolderURL:url});
+    if(result.failed.length)throw new Error('The LinkedArtworkFolderURL column doesn\'t exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.');
+    ev.linkedArtworkFolderUrl=url;
+    delete _evFolderStack[`${evId}:artwork`];
+    renderEvPhotoSource(evId);
+  }catch(e){
+    if(msgEl){msgEl.textContent='Could not link that folder: '+e.message;msgEl.className='form-msg err';}
+  }
+}
+async function unlinkEvArtworkFolder(evId){
+  const ev=EVENTS.find(x=>String(x.id)===String(evId));if(!ev)return;
+  if(!confirm('Unlink this artwork folder? The folder and its files are not affected — this only removes the link from the Activity.'))return;
+  try{
+    const token=await getToken(true);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{LinkedArtworkFolderURL:''}})});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    ev.linkedArtworkFolderUrl='';
+    delete _evFolderStack[`${evId}:artwork`];
+    renderEvPhotoSource(evId);
+  }catch(e){alert('Could not unlink: '+e.message);}
+}
+
+// Dynamic thumbnail resolution — a picked photo's cached EventImageURL is a signed Graph thumbnail
+// link that can expire; eventImageRef (driveId+itemId) is the stable identity that survives that.
+// Renders show the cached URL immediately (no blank flash while this resolves), then
+// upgradeFeaturedImages() swaps in a freshly-resolved thumbnail once fetched. Falls back to the
+// cached value if the reference can't be resolved (permissions changed, item moved) rather than
+// breaking the image.
+const _featuredImgUrlCache={};
+async function resolveFeaturedImageUrl(ev){
+  if(!ev.eventImageRef?.driveId||!ev.eventImageRef?.itemId)return ev.eventImageUrl||ev.artworkFile||'';
+  const{driveId,itemId}=ev.eventImageRef;
+  const key=driveId+'/'+itemId;
+  if(_featuredImgUrlCache[key])return _featuredImgUrlCache[key];
+  try{
+    const token=await getToken();
+    const res=await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}?$select=id&$expand=thumbnails`,{headers:{Authorization:'Bearer '+token}});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const fresh=data.thumbnails?.[0]?.large?.url||data.thumbnails?.[0]?.medium?.url||data.thumbnails?.[0]?.small?.url||'';
+    if(fresh){_featuredImgUrlCache[key]=fresh;return fresh;}
+  }catch(e){console.warn('Could not resolve a fresh thumbnail for',key,e);}
+  return ev.eventImageUrl||ev.artworkFile||'';
+}
+// Finds every <img data-img-ref-ev> inside scopeSelector and swaps in a freshly-resolved thumbnail
+// for any Activity that has a stable image reference. Safe to call after any render that includes
+// featured-image <img> tags — a no-op for Activities without a reference.
+function upgradeFeaturedImages(scopeSelector){
+  document.querySelectorAll(`${scopeSelector} img[data-img-ref-ev]`).forEach(async img=>{
+    const ev=EVENTS.find(e=>String(e.id)===String(img.dataset.imgRefEv));
+    if(!ev?.eventImageRef)return;
+    const fresh=await resolveFeaturedImageUrl(ev);
+    if(fresh&&img.src!==fresh)img.src=fresh;
+  });
 }
 
 // ═══════════════════════════════════════
@@ -10394,10 +10554,11 @@ function renderArtwork(){
     const monthDate=new Date(key+'-01T00:00:00');const label=monthDate.toLocaleDateString('en-AU',{month:'long',year:'numeric'});
     return`<section class="art-month"><div class="art-month-head"><div class="art-month-title">${escapeAttr(label)}</div><div class="art-month-count">${groups[key].length} activit${groups[key].length===1?'y':'ies'}</div></div><div class="art-grid">${groups[key].map(e=>{
       const url=imageFor(e),project=PROJECTS.find(p=>String(p.id)===String(e.projectId)),health=healthCheck(e);
-      const image=url?`<img loading="lazy" src="${escapeAttr(url)}" alt="${escapeAttr(e.title||'Activity artwork')}" onerror="this.remove();this.parentElement.textContent='Image unavailable — open the Activity to check its SharePoint link.'">`:`<span onclick="event.stopPropagation();openActivityPhotoPicker(${e.id})" style="cursor:pointer;color:var(--accent);font-weight:600">📷 No featured image<br><small style="color:var(--text3);font-weight:400">Click to add or select one</small></span>`;
+      const image=url?`<img loading="lazy" data-img-ref-ev="${e.id}" src="${escapeAttr(url)}" alt="${escapeAttr(e.title||'Activity artwork')}" onerror="this.remove();this.parentElement.textContent='Image unavailable — open the Activity to check its SharePoint link.'">`:`<span onclick="event.stopPropagation();openActivityPhotoPicker(${e.id})" style="cursor:pointer;color:var(--accent);font-weight:600">📷 No featured image<br><small style="color:var(--text3);font-weight:400">Click to add or select one</small></span>`;
       return`<article class="art-card" onclick="showActivityPage(${e.id})"><div class="art-img">${image}</div><div class="art-body"><div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text3)"><span style="width:7px;height:7px;border-radius:50%;background:${vColor(e.venue).c};flex-shrink:0"></span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(e.venue||'No venue')}</span></div><div style="font-size:12.5px;font-weight:600;line-height:1.35">${escapeAttr(e.title)}</div><div style="font-size:10.5px;color:var(--text3)">${project?escapeAttr(project.title)+' · ':''}${escapeAttr(fmtShort(e.start))}</div><div style="display:flex;gap:5px;flex-wrap:wrap"><span class="tag t-gr">${escapeAttr(stageLabel(e.stage))}</span>${health.level!=='green'?`<span class="tag ${health.level==='red'?'t-r':'t-o'}">${escapeAttr(health.label)}</span>`:''}</div></div></article>`;
     }).join('')}</div></section>`;
   }).join('');
+  upgradeFeaturedImages('#artworkFeed');
 }
 
 // ═══════════════════════════════════════
@@ -11198,7 +11359,9 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'LoadedBasePrice',displayName:'Loaded Base Price',type:'number',purpose:'Loaded member price used for offer comparisons.'},
   {listKey:'campaigns',name:'JobFolderURL',displayName:'Job Folder URL',type:'text',purpose:'Folder link written back by the existing Power Automate flow.'},
   {listKey:'campaigns',name:'AssigneeName',displayName:'Assignee Name',type:'text',purpose:'Owner/assignee as plain text — the existing Assignee column is Person/Group, which silently drops a plain name string on save instead of erroring.'},
-  {listKey:'campaigns',name:'EventImageURL',displayName:'Event Image URL',type:'text',purpose:'Featured photo link, set from the Digital Media library picker or a job folder image — shown on the Calendar hover card and Artwork feed.'},
+  {listKey:'campaigns',name:'EventImageURL',displayName:'Event Image URL',type:'text',purpose:'Featured photo link, set from the Activity\'s own folder, a linked artwork folder, or the Digital Media library — shown on the Calendar hover card and Artwork feed.'},
+  {listKey:'campaigns',name:'EventImageRef',displayName:'Event Image Reference',type:'text',purpose:'Stable {driveId,itemId} JSON reference for the featured image, so a fresh thumbnail can be resolved later instead of relying only on EventImageURL, which can expire.'},
+  {listKey:'campaigns',name:'LinkedArtworkFolderURL',displayName:'Linked Artwork Folder URL',type:'text',purpose:'A second, independently-linkable SharePoint folder for completed artwork, separate from the Power Automate–created JobFolderURL.'},
   {listKey:'campaigns',name:'RecurringEvent',displayName:'Recurring Event',type:'choice',choices:'Yes',purpose:'Independent Yes/No toggle for whether the activity repeats — separate from Event Format so a ticketed event can also be recurring.'},
   {listKey:'campaigns',name:'ActivityGroup',displayName:'Activity Group',type:'choice',choices:Object.keys(ACTIVITY_GROUPS).join(', '),purpose:'Finer classification layer alongside Activity Type (Food & Beverage, Promotions & Offers, Events & Entertainment, etc.) — additive, does not replace Activity Type.'},
   // Text, not Choice — the ~60 subtype values across all groups are already constrained by the
@@ -14169,20 +14332,21 @@ function renderActivityDetail(id,mode){
   // Artwork folder link
   h+=`<div class="pop-field" style="margin-top:6px"><div class="pop-lbl">Job / Artwork Folder</div>`;
   if(ev.jobFolderUrl){
-    h+=`<div style="display:flex;align-items:center;gap:8px"><a href="${ev.jobFolderUrl}" target="_blank" style="font-size:12px;color:var(--accent);font-weight:600;text-decoration:none">📁 Open artwork folder →</a><button class="btn btn-s" style="font-size:10.5px;padding:3px 8px" onclick="loadEvJobFolder(${ev.id})">👁 View files</button></div>
-    <div id="evFolderBox-${ev.id}" style="display:none;margin-top:6px;max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px"></div>`;
+    h+=`<a href="${ev.jobFolderUrl}" target="_blank" style="font-size:12px;color:var(--accent);font-weight:600;text-decoration:none">📁 Open artwork folder →</a>`;
   } else {
     // The existing Power Automate flow owns folder creation and writes JobFolderURL back later.
     // The Hub must not claim it creates or rolls back folders itself.
     h+=`<div style="font-size:11.5px;color:var(--text3)">Folder pending — the Power Automate flow will place the link here after approval.</div>`;
   }
+  if(ev.linkedArtworkFolderUrl)h+=`<div style="margin-top:4px"><a href="${ev.linkedArtworkFolderUrl}" target="_blank" style="font-size:11px;color:var(--accent)">🔗 Linked artwork folder →</a></div>`;
   if(ev.artworkFile)h+=`<div style="margin-top:4px"><a href="${ev.artworkFile}" target="_blank" style="font-size:11px;color:var(--accent)">🖼 Latest artwork →</a></div>`;
   h+=`</div>`;
 
-  // Featured photo — pulled from the Digital Media library (Photo Tagging), so the same search by
-  // tag that finds "beer" photos there can set one as this Activity's card/calendar image.
+  // Featured photo — picked from this Activity's own folder, a separately-linked artwork folder,
+  // or the Digital Media library (Photo Tagging). Browsing a folder here never auto-assigns an
+  // image anymore — see renderEvPhotoFolderTab()'s comment for why that was removed.
   h+=`<div class="pop-field" style="margin-top:6px"><div class="pop-lbl">Featured Photo</div>
-    <div id="evPhotoPreview-${ev.id}">${ev.eventImageUrl?`<div style="display:flex;align-items:center;gap:8px"><img src="${escapeAttr(ev.eventImageUrl)}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" onerror="this.style.display='none'"><button class="btn btn-s" style="font-size:10.5px;padding:4px 8px" onclick="openEvPhotoPicker(${ev.id})">Change</button><button class="btn btn-s" style="font-size:10.5px;padding:4px 8px;color:var(--red)" onclick="pickEvPhoto(${ev.id},'')">Remove</button></div>`:`<button class="btn btn-s" style="font-size:10.5px;padding:4px 10px" onclick="openEvPhotoPicker(${ev.id})">📷 Add photo from Digital Media library</button>`}</div>
+    <div id="evPhotoPreview-${ev.id}">${ev.eventImageUrl?`<div style="display:flex;align-items:center;gap:8px"><img data-img-ref-ev="${ev.id}" src="${escapeAttr(ev.eventImageUrl)}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" onerror="this.style.display='none'"><button class="btn btn-s" style="font-size:10.5px;padding:4px 8px" onclick="openEvPhotoPicker(${ev.id})">Change</button><button class="btn btn-s" style="font-size:10.5px;padding:4px 8px;color:var(--red)" onclick="pickEvPhoto(${ev.id},'')">Remove</button></div>`:`<button class="btn btn-s" style="font-size:10.5px;padding:4px 10px" onclick="openEvPhotoPicker(${ev.id})">📷 Set featured photo</button>`}</div>
     <div id="evPhotoPickerBox-${ev.id}" style="display:none;margin-top:8px"></div>
   </div>`;
 
@@ -14298,6 +14462,7 @@ function renderActivityDetail(id,mode){
   if(mode==='popup')h+=`<button class="btn btn-s" onclick="closePop()">Close</button>`;
   h+=`</div>`;
   document.getElementById(bodyElId).innerHTML=h;
+  upgradeFeaturedImages('#'+bodyElId);
   if(!canEdit){
     [document.getElementById(titleElId),document.getElementById(bodyElId)].forEach(root=>root?.querySelectorAll('.pop-edit-inp,.pop-edit-sel').forEach(el=>{el.disabled=true;el.style.opacity='.8';el.style.cursor='default';}));
   }
