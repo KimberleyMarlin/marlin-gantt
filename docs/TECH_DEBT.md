@@ -4,9 +4,13 @@
 
 **Issue:** The Hub previously wrote the Updates Required text to an unconfirmed `POSNotes` field, so SharePoint could reject and skip it. v16 preserves those notes inside a tagged section of the existing Description field and separates them again when loading. **Risk:** The fallback is reliable and human-readable, but POS notes are not independently filterable or reportable in SharePoint. **Recommended future fix:** Create a confirmed multiple-lines-of-text column for POS update notes, record its real internal name, migrate the tagged Description sections, then switch the Hub mapping to that column.
 
-## Approval playbook exists but is not connected
+## Approval playbook exists but is not connected — RESOLVED 2026-10-14
 
-**Issue:** `runPlaybook(ev)` contains task templates for design, web, social, EDM, POS, signage and other work, but no production code calls it. `approveCampaign()` currently changes `WorkflowStage` from `Intake` to `In Design` and sends notifications only. It creates no linked task or design brief. **Risk:** The Hub visually implies an activity has entered planning/design while Luca and the other delivery owners may have received no actionable job. **Priority:** High. **Recommended future fix:** Add an approval preview that shows the proposed jobs derived from `Channels`, `AssetsNeeded`, ticketing, Loaded and POS answers. Let the approver confirm owners and due dates, then create only those tasks, link them to the activity, and mark the activity's creation flags only after all required writes succeed.
+**Issue (as it was):** `runPlaybook(ev)` contained task templates for design, web, social, EDM, POS, signage and other work, but no production code called it. `approveCampaign()` only changed `WorkflowStage` from `Intake` to `In Design` and sent notifications. It created no linked task or design brief, even though the Hub visually implied planning/design had started.
+
+**Fix:** The first (Intake → In Design) approval now opens a preview overlay of the proposed jobs for that activity's playbook template, with editable owner/due date per row and the ability to untick any that aren't needed. Only ticked rows are created, each correctly linked via `CampaignLookupId` (the "Campaign task lookup" fix above). Only once every ticked row succeeds does the activity actually advance to In Design, with `DesignJobCreated` set so re-approving (or double-clicking) never creates a second set of tasks. A partial failure keeps the activity at Intake and shows exactly which tasks didn't land, so nothing is silently half-done. "Skip tasks, just approve" remains available for activities that genuinely need none. The old `runPlaybook()` is left in the file, archived with a comment, not deleted — it was never wired up and the new preview/confirm flow fully replaces what it would have done.
+
+**Still open:** the playbook template choice (`autoSelectPlaybook`) is still driven by `ActivityType`/`EventFormat`/`BusinessStream` rather than the richer Activity Group taxonomy the briefing-system work proposes — revisit once that taxonomy exists.
 
 ## Campaign task lookup is not consistently mapped — RESOLVED 2026-10-14
 

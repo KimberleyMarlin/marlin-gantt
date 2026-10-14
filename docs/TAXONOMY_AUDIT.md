@@ -92,7 +92,7 @@ campaigns (master Activities/Campaigns — "Marketing & Activations 2026"), myTa
 - ~~Automatic Activity naming engine (`[Venue/Brand] | [Type] | [Name] | [Period]`)~~ — **done 2026-10-14**: `composeAutoActivityTitle()` builds this live on the Submit form from Venue/Brand, Activity Type (or the active template's name), Activity Detail and Start Date; stays editable, stops auto-overwriting once hand-edited. The old narrower "{Template} — {Item}" builder (`composeActivityTitle()`) is archived in place, not deleted, in case this needs rolling back.
 - Food & Beverage, full Events, and Promotions conditional templates at the depth described (PLU/SKU, dietary/allergen, guest collateral, bump-in/out, canonical single offer definition shared across briefs) — none of this exists today.
 - Digital Advertising, Website, Email, SMS briefs as structured work items — don't exist; today it's a free-text Channels multi-select only.
-- Approval → task-creation connection itself (wiring `runPlaybook`-equivalent logic to the approval flow, with the preview/confirm step the brief asks for, not immediate silent creation).
+- ~~Approval → task-creation connection~~ — **done 2026-10-14**: the first approval now shows a preview of proposed jobs (editable owner/due date, untickable), creates only what's confirmed, and only advances the stage once that succeeds. See `TECH_DEBT.md`.
 - Reporting/completion capture (attendance, redemptions, reach, etc.) with roll-up by venue/brand/stream/type/silo/project/period — only budget/spend/tickets-sold exist today.
 
 ## 3. Compatibility risks

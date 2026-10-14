@@ -2254,6 +2254,25 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 </div>
 </div>
 
+<!-- APPROVAL TASK PREVIEW — shown before the first (Intake → In Design) approval creates any work,
+     per "display suggested work items... let the approver confirm owners and due dates, then create
+     only those tasks" rather than silently persisting the whole template checklist. -->
+<div class="overlay" id="approvalPreviewOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closeApprovalPreview()">
+  <div class="popup" style="max-width:640px">
+    <div class="pop-h"><div class="pop-title" id="approvalPreviewTitle">Proposed work</div><button class="pop-close" onclick="closeApprovalPreview()">✕</button></div>
+    <div class="pop-body">
+      <div class="form-notice">Approving moves this to Planning. Untick anything not needed, or adjust owner / due date — these are suggestions based on the activity's type, not fixed.</div>
+      <div id="approvalPreviewMsg" class="form-msg"></div>
+      <div id="approvalPreviewRows"></div>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button class="btn btn-p" id="approvalPreviewCreateBtn" onclick="confirmApprovalTasks()">Create tasks &amp; Approve</button>
+        <button class="btn btn-s" onclick="skipApprovalTasks()">Skip tasks, just approve</button>
+        <button class="btn btn-s" onclick="closeApprovalPreview()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- POPUP -->
 <div class="overlay" id="evOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closePop()">
   <div class="popup">
@@ -2954,6 +2973,11 @@ const PLAYBOOK_TEMPLATES={
 // Role → default assignee email (populated once M365 users load or roles are set)
 let ROLE_EMAILS={designer:'',web:'',marketing:'',ops:''};
 
+// ARCHIVED 2026-10-14, not deleted — kept in case the preview/confirm approval flow below needs
+// rolling back. Was never actually wired up (TECH_DEBT.md: "Approval playbook exists but is not
+// connected") — it would have created every template task immediately with no review step and no
+// duplicate-prevention flag, which is exactly what openApprovalPreview()/confirmApprovalTasks()
+// (further down) replace it with. No longer called from anywhere.
 async function runPlaybook(ev){
   if(!canApproveCampaigns())return{created:0,errors:['You do not have permission to approve campaigns.']};
   if(!isAuthed||!ev?.spId)return{created:0,errors:[]};
@@ -3012,34 +3036,142 @@ async function approveCampaign(evId,btn){
   if(!canApproveCampaigns()){alert('You do not have permission to approve campaigns.');return;}
   const ev=EVENTS.find(e=>e.id===evId||e.spId==evId);
   if(!ev)return;
+  // Intake → In Design (first triage) is where delivery work actually starts, so show the proposed
+  // jobs first unless they've already been created for this activity (DesignJobCreated — prevents
+  // re-approving or double-clicking from creating a second set of tasks). Review → Live (final
+  // go-live) never proposes new work, so it stays a plain one-click approval.
+  const nextStage=ev.stage==='Review'?'Live':'In Design';
+  if(nextStage==='In Design'&&!ev.designJobCreated){
+    openApprovalPreview(ev.id);
+    return;
+  }
   btn=btn||document.getElementById('approveBtn-'+evId);
   if(btn){btn.disabled=true;btn.textContent='Approving…';}
-  // Intake → In Design (first triage). Review → Live (final go-live approval).
-  const nextStage=ev.stage==='Review'?'Live':'In Design';
   try{
-    const token=await getToken(true);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{
-      method:'PATCH',
-      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-      body:JSON.stringify({fields:{WorkflowStage:nextStage}})
-    });
-    if(!res.ok){
-      const errText=await res.text();
-      throw new Error('HTTP '+res.status+': '+errText);
-    }
-    ev.stage=nextStage;
-    notifySubmitter(ev,nextStage==='Live'?'Your event has been approved and is now Live! 🎉':'Your submission has been approved and moved to Planning.');
-    generateNotifications&&generateNotifications();
-    // refresh whichever views are showing
-    renderPipeline&&renderPipeline();
-    renderOverview&&renderOverview();
-    renderApprovals&&renderApprovals();
+    await advanceCampaignStage(ev,nextStage);
     if(typeof showToast==='function')showToast(`"${ev.title}" approved → ${nextStage}`);
   }catch(e){
     console.error('Approve failed:',e);
     showApprovalError(`Could not approve "${ev.title}" → ${nextStage}: ${e.message}`);
   }
   if(btn){btn.disabled=false;btn.textContent='Approve';}
+}
+
+// Shared by the plain approval path and the task-preview's own Approve step — PATCHes the stage
+// (and DesignJobCreated when given) and only updates local state / notifies once SharePoint confirms.
+// If DesignJobCreated turns out not to be a real column, retries with just the stage change so an
+// unconfirmed extra field can never block the approval itself.
+async function advanceCampaignStage(ev,nextStage,extraFields={}){
+  const token=await getToken(true);
+  const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`;
+  let res=await fetch(url,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{WorkflowStage:nextStage,...extraFields}})});
+  let appliedExtra=Object.keys(extraFields).length>0;
+  if(!res.ok&&appliedExtra){
+    res=await fetch(url,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{WorkflowStage:nextStage}})});
+    appliedExtra=false;
+  }
+  if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+  ev.stage=nextStage;
+  if(appliedExtra&&'DesignJobCreated' in extraFields)ev.designJobCreated=!!extraFields.DesignJobCreated;
+  notifySubmitter(ev,nextStage==='Live'?'Your event has been approved and is now Live! 🎉':'Your submission has been approved and moved to Planning.');
+  generateNotifications&&generateNotifications();
+  renderPipeline&&renderPipeline();
+  renderOverview&&renderOverview();
+  renderApprovals&&renderApprovals();
+}
+
+let APPROVAL_PREVIEW_EV_ID=null;
+function openApprovalPreview(evId){
+  const ev=EVENTS.find(e=>e.id===evId);
+  if(!ev)return;
+  APPROVAL_PREVIEW_EV_ID=evId;
+  const templateKey=autoSelectPlaybook(ev);
+  const template=PLAYBOOK_TEMPLATES[templateKey]||PLAYBOOK_TEMPLATES['default'];
+  const startDate=new Date(ev.start+'T00:00:00');
+  const people=M365_USERS.length?M365_USERS:[];
+  document.getElementById('approvalPreviewTitle').textContent=`Proposed work — "${ev.title}"`;
+  document.getElementById('approvalPreviewMsg').textContent='';
+  document.getElementById('approvalPreviewMsg').className='form-msg';
+  document.getElementById('approvalPreviewRows').innerHTML=template.map((task,i)=>{
+    const dueDate=new Date(startDate);dueDate.setDate(dueDate.getDate()-task.leadDays);
+    const defaultOwner=ROLE_EMAILS[task.assignKey]||'';
+    return`<div class="form-group full" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)" data-approval-row="${i}" data-task-title="${escapeAttr(task.title)}" data-task-type="${escapeAttr(task.taskType)}" data-task-priority="${escapeAttr(task.priority)}">
+      <input type="checkbox" checked style="flex-shrink:0">
+      <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:500">${escapeAttr(task.title)}</div><div style="font-size:10.5px;color:var(--text3)">${escapeAttr(task.taskType)} · ${escapeAttr(task.priority)}</div></div>
+      <select class="form-select" style="max-width:150px;font-size:11.5px"><option value="">Unassigned</option>${people.map(u=>`<option value="${escapeAttr(u.email)}" ${u.email===defaultOwner?'selected':''}>${escapeAttr(u.name)}</option>`).join('')}</select>
+      <input type="date" class="form-input" style="max-width:135px;font-size:11.5px" value="${toLocalISODate(dueDate)}">
+    </div>`;
+  }).join('');
+  document.getElementById('approvalPreviewCreateBtn').textContent='Create tasks & Approve';
+  document.getElementById('approvalPreviewCreateBtn').disabled=false;
+  document.getElementById('approvalPreviewOv').classList.add('show');
+}
+function closeApprovalPreview(){
+  document.getElementById('approvalPreviewOv').classList.remove('show');
+  APPROVAL_PREVIEW_EV_ID=null;
+}
+async function skipApprovalTasks(){
+  const ev=EVENTS.find(e=>e.id===APPROVAL_PREVIEW_EV_ID);
+  if(!ev)return;
+  try{
+    await advanceCampaignStage(ev,'In Design');
+    closeApprovalPreview();
+    if(typeof showToast==='function')showToast(`"${ev.title}" approved → In Design (no tasks created)`);
+  }catch(e){
+    const msg=document.getElementById('approvalPreviewMsg');
+    msg.textContent='Could not approve: '+e.message;msg.className='form-msg err';
+  }
+}
+// Creates only the rows still ticked, skipping any this call has already created (tracked via
+// data-created, so a retry after a partial failure doesn't duplicate the ones that already landed).
+// Only advances the stage once every ticked row has succeeded — "if required task creation fails,
+// the activity remains in Intake and shows the exact failure", not a silent partial success.
+async function confirmApprovalTasks(){
+  const ev=EVENTS.find(e=>e.id===APPROVAL_PREVIEW_EV_ID);
+  if(!ev)return;
+  const msg=document.getElementById('approvalPreviewMsg');
+  const createBtn=document.getElementById('approvalPreviewCreateBtn');
+  createBtn.disabled=true;createBtn.textContent='Creating…';
+  const rows=[...document.querySelectorAll('#approvalPreviewRows [data-approval-row]')];
+  const token=await getToken(true);
+  const failures=[];
+  for(const row of rows){
+    if(row.dataset.created==='1')continue;
+    const checkbox=row.querySelector('input[type=checkbox]');
+    if(!checkbox.checked)continue;
+    const owner=row.querySelector('select').value;
+    const dueDate=row.querySelector('input[type=date]').value;
+    const fields={
+      Title:`[${ev.title}] ${row.dataset.taskTitle}`,
+      TaskType:row.dataset.taskType,
+      Status:'Not Started',
+      Priority:row.dataset.taskPriority,
+      CampaignLookupId:Number(ev.spId),
+      Notes:`Approved for campaign: ${ev.title} (${ev.venue})\nCampaign start: ${ev.start}`,
+    };
+    if(dueDate)fields.DueDate=dueDate+'T12:00:00Z';
+    if(owner)fields.AssignedTo=owner;
+    try{
+      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+      if(res.ok){row.dataset.created='1';checkbox.disabled=true;}
+      else failures.push(`${row.dataset.taskTitle}: HTTP ${res.status}`);
+    }catch(e){failures.push(`${row.dataset.taskTitle}: ${e.message}`);}
+  }
+  if(failures.length){
+    msg.textContent=`${failures.length} task${failures.length===1?'':'s'} could not be created — the activity stays at Intake. ${failures.join('; ')}`;
+    msg.className='form-msg err';
+    createBtn.disabled=false;createBtn.textContent='Retry remaining & Approve';
+    return;
+  }
+  try{
+    await advanceCampaignStage(ev,'In Design',{DesignJobCreated:true});
+    closeApprovalPreview();
+    if(typeof showToast==='function')showToast(`"${ev.title}" approved → In Design, tasks created`);
+  }catch(e){
+    msg.textContent='Tasks were created, but the activity could not be moved to In Design: '+e.message;
+    msg.className='form-msg err';
+    createBtn.disabled=false;createBtn.textContent='Retry approval';
+  }
 }
 
 async function persistArchiveState(ev,noteHeading,noteLabel,reason){
@@ -10546,6 +10678,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'personalTasks',name:'Sequence',displayName:'Sequence',type:'number',purpose:'Persists Kimberley’s drag-and-drop task order.'},
   {listKey:'ideas',name:'ActivityType',displayName:'Activity Type',type:'choice',choices:ACTIVITY_TYPE_OPTIONS.join(', '),purpose:'Captured at idea stage so "Continue Brief" can prefill it on the Activity submission form.'},
   {listKey:'ideas',name:'PromotedActivityId',displayName:'Promoted Activity Id',type:'number',purpose:'Links an idea to the real Activity created from it via "Continue Brief", so reopening a promoted idea opens that Activity instead of letting it be promoted twice.'},
+  {listKey:'campaigns',name:'DesignJobCreated',displayName:'Design Job Created',type:'yesno',purpose:'Marks that approval has already created this activity\'s proposed work items, so re-approving never creates a second set. Already read by the Hub; this is the first time anything writes to it.'},
   {listKey:'campaigns',name:'WebStatus',displayName:'Web Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Didier’s web build status.'},
   {listKey:'campaigns',name:'LoadedStatus',displayName:'Loaded Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Amelia’s Loaded Rewards build status.'},
   {listKey:'campaigns',name:'SocialStatus',displayName:'Social Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Marketing’s social build status.'}
