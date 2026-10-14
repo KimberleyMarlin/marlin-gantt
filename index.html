@@ -311,6 +311,18 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .wk-ev-sub{font-size:10px;opacity:.75;margin-top:2px;display:flex;align-items:center;gap:4px}
 .wk-empty{font-size:11px;color:var(--text3);text-align:center;padding:24px 6px}
 .cal-more:hover{background:var(--accent);color:#fff}
+/* Month-only range bars. Each row is a calendar week; multi-day Activities occupy
+   one real spanning grid item, not 7 repeated day chips. The 7-column layout and
+   internal gap must always agree between week cells and their bar overlay. */
+.cal-month-header{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px}
+.cal-month-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;position:relative;margin-top:7px}
+.cal-month-week .cal-day{height:auto;min-width:0}
+.cal-month-bars{position:absolute;top:30px;left:0;right:0;z-index:2;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px 7px;grid-auto-rows:21px;pointer-events:none}
+.cal-month-bar{display:flex;align-items:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;pointer-events:auto;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:600;line-height:17px;transition:filter .15s;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.cal-month-bar:hover{filter:brightness(.88)}
+.cal-month-bar .cal-month-bar-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-month-details{position:relative;z-index:1}
+@media(max-width:479px){.cal-month-header,.cal-month-week{gap:4px}.cal-month-bar{font-size:8px;padding:2px 4px}.cal-month-bars{gap:2px 4px;top:26px}}
 
 /* ── VENUE CARDS ── */
 .venue-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;width:100%}
@@ -9150,6 +9162,43 @@ function renderCalProjectsStrip(){
   </div>`;
 }
 
+// A multi-day Activity appears as one continuous bar per calendar week, including month-long
+// promotions. Recurring events (weekly quizzes, Wednesday specials, etc.) stay as dated
+// occurrences: their Start/End bounds do NOT make them run continuously.
+function isCalendarContinuousActivity(ev){
+  return !!(ev.start&&ev.end&&ev.end>ev.start&&!(ev.recurringDay&&ev.recurringDay.length));
+}
+function calendarMonthMatchesFilters(ev){
+  if(isArchived(ev))return false;
+  if(calVenueFilter&&ev.venue!==calVenueFilter&&ev.venue!=='All Venues')return false;
+  if(calCatFilter==='holiday')return['Public Holiday','National Calendar Event','School Holidays'].includes(ev.activityType||ev.eventFormat||ev.businessStream);
+  return !calCatFilter||ev.activityType===calCatFilter||ev.eventFormat===calCatFilter||ev.businessStream===calCatFilter;
+}
+// Clip each Activity to the visible 7-day week and the selected calendar date range.
+// Use the lowest free row so overlapping ranges never cover each other.
+function calendarMonthWeekBars(weekDates){
+  const segments=EVENTS.filter(ev=>isCalendarContinuousActivity(ev)&&calendarMonthMatchesFilters(ev))
+    .map(ev=>{
+      const start=weekDates.findIndex(d=>d>=ev.start&&d<=ev.end&&calendarDateInRange(d));
+      if(start<0)return null;
+      let end=start;
+      while(end<6&&weekDates[end+1]>=ev.start&&weekDates[end+1]<=ev.end&&calendarDateInRange(weekDates[end+1]))end++;
+      return{ev,start,end};
+    }).filter(Boolean)
+    .sort((a,b)=>(b.end-b.start)-(a.end-a.start)
+      ||Number(!!b.ev.loadedRewards)-Number(!!a.ev.loadedRewards)
+      ||String(a.ev.title||'').localeCompare(String(b.ev.title||''))
+      ||String(a.ev.id).localeCompare(String(b.ev.id)));
+  const occupiedUntil=[];
+  for(const segment of segments){
+    let lane=occupiedUntil.findIndex(end=>end<segment.start);
+    if(lane<0)lane=occupiedUntil.length;
+    occupiedUntil[lane]=segment.end;
+    segment.lane=lane;
+  }
+  return segments;
+}
+
 function renderCalendar(){
   if(!isAuthed)return;
 
@@ -9164,7 +9213,7 @@ function renderCalendar(){
   }
 
   document.getElementById('calLabel').textContent=new Date(calYear,calMonth,1).toLocaleDateString('en-AU',{month:'long',year:'numeric'});
-  {const grid=document.getElementById('calGrid');grid.style.display='grid';grid.style.gridTemplateColumns='repeat(7,1fr)';}
+  {const grid=document.getElementById('calGrid');grid.style.display='block';grid.style.gridTemplateColumns='';}
 
   // Venue trade intensity banner
   const venues5=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
@@ -9182,10 +9231,15 @@ function renderCalendar(){
   const dip=new Date(calYear,calMonth,0).getDate();
   const today=new Date();today.setHours(0,0,0,0);
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  let h=dayNames.map(d=>`<div class="cal-dn">${d}</div>`).join('');
+  let h=`<div class="cal-month-header">${dayNames.map(d=>`<div class="cal-dn">${d}</div>`).join('')}</div>`;
   const total=Math.ceil((firstDay+dim)/7)*7;
 
-  for(let i=0;i<total;i++){
+  for(let weekOffset=0;weekOffset<total;weekOffset+=7){
+    const weekDates=Array.from({length:7},(_,d)=>toLocalISODate(new Date(calYear,calMonth,1-firstDay+weekOffset+d)));
+    const weekBars=calendarMonthWeekBars(weekDates);
+    const barRows=weekBars.length?Math.max(...weekBars.map(s=>s.lane))+1:0;
+    h+='<div class="cal-month-week">';
+    for(let i=weekOffset;i<weekOffset+7;i++){
     let day,isOther=false;
     if(i<firstDay){day=dip-firstDay+i+1;isOther=true;}
     else if(i>=firstDay+dim){day=i-firstDay-dim+1;isOther=true;}
@@ -9198,8 +9252,8 @@ function renderCalendar(){
     const dateStr=toLocalISODate(realDate);
     const inSelectedRange=calendarDateInRange(dateStr);
     let dayEvts=inSelectedRange?EVENTS.filter(e=>{
-      if(isArchived(e))return false;
-      const s=new Date(e.start+'T00:00:00'),en=new Date(e.end+'T00:00:00');
+      if(isArchived(e)||isCalendarContinuousActivity(e))return false;
+      const s=new Date(e.start+'T00:00:00'),en=new Date((e.end||e.start)+'T00:00:00');
       // Recurring parent events only count on days matching their RecurringDay + RecurringFrequency
       if(e.recurringDay&&e.recurringDay.length){
         return recurringMatchesDate(e,realDate)&&realDate>=s&&realDate<=en;
@@ -9238,8 +9292,9 @@ function renderCalendar(){
     const shown=dayEvts.slice(0,maxShow);
     const extra=dayEvts.length-maxShow;
 
-    h+=`<div class="cal-day${isOther?' om':''}${isToday?' td':''}${isPublicHoliday?' cd-hol':''}${!inSelectedRange?' cal-day-out':''}">
+    h+=`<div class="cal-day${isOther?' om':''}${isToday?' td':''}${isPublicHoliday?' cd-hol':''}${!inSelectedRange?' cal-day-out':''}" style="min-height:${Math.max(116,barRows*23+105)}px">
       <div class="cal-num">${day}</div>
+      <div class="cal-month-details" style="margin-top:${barRows*23+2}px">
       ${dayKeyDates.map(k=>`<div style="font-size:9px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:1px 4px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
       ${dayBriefsDue.map(ev=>`<div style="font-size:9px;font-weight:600;color:#7c3aed;padding:1px 4px;border-radius:3px;background:#ede9fe;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✏️ Brief: ${ev.title}</div>`).join('')}
       ${dayMarketingStarts.map(ev=>`<div style="font-size:9px;font-weight:600;color:#9a6b0a;padding:1px 4px;border-radius:3px;background:#fdf3d8;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
@@ -9250,7 +9305,16 @@ function renderCalendar(){
         return`<div class="cal-ev" style="${style};font-size:10px;font-weight:500" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calVenueDot(ev)}${icon?icon+' ':''}${ev.title}</div>`;
       }).join('')}
       ${extra>0?`<div class="cal-more" onclick="showCalDayPopup(event,${y},${m},${day})">+${extra} more</div>`:''}
+      </div>
     </div>`;
+    }
+    h+=`<div class="cal-month-bars">${weekBars.map(({ev,start,end,lane})=>{
+      const color=calEvtColor(ev);
+      const continuesBefore=ev.start<weekDates[start],continuesAfter=ev.end>weekDates[end];
+      const icon=ev.loadedRewards?'⭐ ':ev.ticketed?'🎫 ':'';
+      const label=`${continuesBefore?'← ':''}${icon}${ev.title}${continuesAfter?' →':''}`;
+      return`<div class="cal-month-bar" style="grid-column:${start+1}/span ${end-start+1};grid-row:${lane+1};background:${color};color:${contrastText(color)};opacity:${calEvtOpacity(ev)}" title="${escapeAttr(ev.title)} (${ev.start} – ${ev.end})" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calVenueDot(ev)}<span class="cal-month-bar-title">${escapeAttr(label)}</span></div>`;
+    }).join('')}</div></div>`;
   }
   document.getElementById('calGrid').innerHTML=h;
 }
