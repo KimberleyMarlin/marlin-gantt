@@ -1852,18 +1852,25 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <div class="form-group"><label class="form-label">Marketing Funnel</label>
               <select class="form-select" id="fStream" onchange="updateActivityConditionalSections()">
                 <option value="">Select…</option>
-                <option>Venue Marketing</option><option>Loaded Rewards</option><option>Functions</option><option>Gift Cards</option><option>Events Program</option><option>Group / Brand Marketing</option>
               </select>
               <div style="font-size:10.5px;color:var(--text3);margin-top:3px">Who's paying for marketing on this, or which department owns the activity — not a person (that's set separately once it's reviewed)</div>
+            </div>
+            <div class="form-group"><label class="form-label">Marketing Silo</label>
+              <select class="form-select" id="fCampaignSilo">
+                <option value="">Select…</option>
+              </select>
+              <div style="font-size:10.5px;color:var(--text3);margin-top:3px">Planning priority — how much lead time this needs. Marketing can set or correct this at triage if you're not sure.</div>
+            </div>
+            <div class="form-group"><label class="form-label">Primary Brand</label>
+              <select class="form-select" id="fBrand">
+                <option value="">Select…</option>
+              </select>
             </div>
             <div class="form-group"><label class="form-label">Start Date <span class="req">*</span></label><input class="form-input" id="fStart" type="date"></div>
             <div class="form-group"><label class="form-label">End Date</label><input class="form-input" id="fEnd" type="date"></div>
             <div class="form-group"><label class="form-label">Activity Type <span class="req">*</span></label>
               <select class="form-select" id="fActType" onchange="updateSubmitForm()">
                 <option value="">Select…</option>
-                <option value="Event">Event</option>
-                <option value="Promotion / Offer">Promotion / Offer</option>
-                <option value="Campaign">Campaign</option>
               </select>
             </div>
             <div class="form-group" id="fEventFormatGroup" style="display:none"><label class="form-label">Event Format</label>
@@ -2272,7 +2279,6 @@ const GOOGLE_DRIVE_SCOPE='https://www.googleapis.com/auth/drive.readonly';
 const GOOGLE_VISION_API_KEY='AIzaSyDRuH5I4E_zWv02o8atS4CR2zLMZkq88zU';
 const DIGITAL_MEDIA_DRIVE_ID='b!nNEymQHH-USapvbmTivj6MUjOnOvRKdGt3tKLEHQKgW6fFNcyMOoR51GxWrNifrc';
 const SP_SITE='marlingroupaus.sharepoint.com,9932d19c-c701-44f9-9aa6-f6e64e2be3e8';
-const LISTS={campaigns:'269191b2-47c7-4c0c-94bb-52c25ecb467f'};
 
 // SharePoint list IDs — update these once you have them
 // To find: go to list → Settings → the URL contains the list GUID
@@ -2293,6 +2299,32 @@ const LIST_IDS={
   sponsorships:null,
   comments:'4d41274c-6a2e-459c-8658-b5d4593aa175',
 };
+
+// Canonical taxonomy lists — single source of truth for the Submit form, the Activity detail
+// popup editor, and bulk import validation, which previously each hardcoded their own
+// slightly-different copy of these (confirmed via audit: Activity Type was 3 values on Submit vs
+// 4 in the detail popup; Business Stream was 6 vs 7; Campaign Silo and Brand had no Submit-form
+// field at all). Extending any of these to add a real new choice still needs the matching
+// SharePoint Choice column option added — this only fixes the three places staying in sync with
+// each other and with whatever the live column already supports.
+const ACTIVITY_TYPE_OPTIONS=['Event','Promotion / Offer','Campaign','Maintenance / Update'];
+const BUSINESS_STREAM_OPTIONS=['Venue Marketing','Loaded Rewards','Functions','Gift Cards','Events Program','Group / Brand Marketing','Marketing Operations'];
+const CAMPAIGN_SILO_OPTIONS=['Hero','Momentum','Always-On','Organic','Maintenance'];
+const BRAND_OPTIONS=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Loaded Rewards','Beerland Brewing'];
+// Fills a <select>'s options from a canonical list, keeping its existing blank/placeholder <option>.
+// Used so the Submit form reads from the same single list the Activity detail popup's editField()
+// calls use, instead of each maintaining its own hand-copied option list.
+function populateCanonicalSelect(id,options){
+  const el=document.getElementById(id);if(!el)return;
+  [...el.options].slice(1).forEach(o=>o.remove());
+  options.forEach(value=>{const opt=document.createElement('option');opt.value=value;opt.textContent=value;el.appendChild(opt);});
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  populateCanonicalSelect('fActType',ACTIVITY_TYPE_OPTIONS);
+  populateCanonicalSelect('fStream',BUSINESS_STREAM_OPTIONS);
+  populateCanonicalSelect('fCampaignSilo',CAMPAIGN_SILO_OPTIONS);
+  populateCanonicalSelect('fBrand',BRAND_OPTIONS);
+});
 
 let CAMPAIGN_COLUMNS=new Map();
 const CAMPAIGN_LOOKUPS={Supplier:null,Product:null};
@@ -5110,9 +5142,6 @@ async function loadCampaigns(){
         recurringFrequency:recurringFreq,
         // Computed
         autoCompleted:isPast&&storedStage!=='Done',
-        // Legacy aliases kept for backward compat
-        campaignSilo:f.CampaignSilo||'',
-        activationType:actType,
       });
     });
     if(currentVenueAccess){
@@ -5242,7 +5271,7 @@ function renderVenueMonth(){
 // IDEA BANK
 // ═══════════════════════════════════════
 let IDEAS=[];
-let IDEA_LIST_ID='545ce799-48ff-4cfa-8686-27f083194ebc';
+const IDEA_LIST_ID=LIST_IDS.ideas; // single source of truth — was a duplicated hardcoded GUID
 
 const GOAL_ICONS={'Revenue / upsell':'💰','Increase Foot Traffic':'👣','Product push':'🍺','Brand / awareness':'📣','Functions / private bookings':'🥂','General idea':'💡'};
 const GOAL_COLORS={'Revenue / upsell':'var(--gold-bg)','Increase Foot Traffic':'var(--accent-bg)','Product push':'var(--blue-bg)','Brand / awareness':'var(--purple-bg)','Functions / private bookings':'var(--orange-bg)','General idea':'var(--surface2)'};
@@ -8683,7 +8712,7 @@ function renderCampaigns(){
     if(venue&&e.venue!==venue)return false;
     if(pt&&(e.activityType||e.eventFormat||e.businessStream)!==pt)return false;
     if(stat&&e.stage!==stat)return false;
-    if(silo&&e.campaignSilo!==silo)return false;
+    if(silo&&e.marketingSilo!==silo)return false;
     if(loadedFilter==='yes'&&!e.loadedRewards)return false;
     if(loadedFilter==='no'&&e.loadedRewards)return false;
     return true;
@@ -12561,8 +12590,12 @@ async function preflightBulkImport(){
       const start=row.Start;
       const end=row.End||row.Start;
       let status='new',reason='No live title/date overlap found';
+      const matchedActivityType=ACTIVITY_TYPE_OPTIONS.find(opt=>normaliseImportText(opt)===normaliseImportText(row['Activity Type']));
+      if(matchedActivityType)row['Activity Type']=matchedActivityType; // normalise CSV casing to the canonical value
       if(!row.Title||!row.Venue||!start||!end||!row['Activity Type']){
         status='invalid';reason='Missing required title, venue, date or activity type';
+      }else if(!matchedActivityType){
+        status='invalid';reason=`Activity Type "${row['Activity Type']}" doesn't match a supported value (${ACTIVITY_TYPE_OPTIONS.join(', ')})`;
       }else if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||end<start){
         status='invalid';reason='Invalid or reversed date range';
       }else if(start<'2026-07-01'){
@@ -12757,6 +12790,8 @@ async function submitEvent(){
     const seating=document.getElementById('fEventSeating')?.value;if(seating)fields.EventSeating=seating;
     const recurring=!!document.getElementById('fRecurring')?.checked;if(recurring)fields.RecurringEvent=true;
     const stream=document.getElementById('fStream')?.value;if(stream)fields.BusinessStream=stream;
+    const silo=document.getElementById('fCampaignSilo')?.value;if(silo)fields.CampaignSilo=silo;
+    const brandSel=document.getElementById('fBrand')?.value;if(brandSel)fields.Brand=brandSel;
     const rrp=document.getElementById('fRegularPrice')?.value;if(rrp)fields.RegularPrice=parseFloat(rrp)||0;
     const discPrice=document.getElementById('fLoadedBasePrice')?.value;if(discPrice)fields.LoadedBasePrice=parseFloat(discPrice)||0;
 
@@ -12894,7 +12929,7 @@ async function submitEvent(){
 function showFMsg(msg,type){const el=document.getElementById('fMsg');if(!el)return;el.textContent=msg;el.className='form-msg '+type;el.scrollIntoView({behavior:'smooth',block:'nearest'});}
 function clearForm(){
   ['fTitle','fDesc','fLongDescription','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['fVenue','fActType','fEventFormat','fEventSeating','fStream','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  ['fVenue','fActType','fEventFormat','fEventSeating','fStream','fCampaignSilo','fBrand','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
   const productSel=document.getElementById('fProductLookup');if(productSel)[...productSel.options].forEach(o=>o.selected=false);
   ['fSupplierInvolved','fPOSRequired','fTicketed','fRecurring','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   togglePOSDetails();
@@ -12983,7 +13018,7 @@ function renderActivityDetail(id,mode){
   h+=editField('End Date',ev.end,'End','date');
   h+=editField('Stage',ev.stage,'WorkflowStage','select',['Intake','In Design','In Build','Review','Ready for Live','Live','Done']);
   h+=editField('Status',ev.status||'Active','Status','select',campaignColumnDefinition('Status')?.choice?.choices||['Active','Paused','Cancelled','Archive']);
-  h+=editField('Activity Type',ev.activityType,'ActivityType','select',['Event','Promotion / Offer','Campaign','Maintenance / Update']);
+  h+=editField('Activity Type',ev.activityType,'ActivityType','select',ACTIVITY_TYPE_OPTIONS);
   // Event Format is genre only now — Ticketed? and Recurring? are independent toggles below
   // (previously this one field conflated genre, ticketing and recurrence, so "Ticketed Event"
   // and "Recurring Event" couldn't be combined, e.g. a ticketed trivia night held weekly).
@@ -12995,9 +13030,9 @@ function renderActivityDetail(id,mode){
       </select></div>`;
   }
   h+=editField('Seating / Setup',ev.seating,'EventSeating','select',['','Seated','Standing','Table Service','Mixed']);
-  h+=editField('Marketing Silo',ev.marketingSilo,'CampaignSilo','select',['','Hero','Momentum','Always-On','Organic','Maintenance']);
-  h+=editField('Marketing Funnel',ev.businessStream,'BusinessStream','select',['','Venue Marketing','Loaded Rewards','Functions','Gift Cards','Events Program','Group / Brand Marketing','Marketing Operations']);
-  h+=editField('Primary Brand',ev.brand,'Brand','select',['','The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Loaded Rewards','Beerland Brewing']);
+  h+=editField('Marketing Silo',ev.marketingSilo,'CampaignSilo','select',['',...CAMPAIGN_SILO_OPTIONS]);
+  h+=editField('Marketing Funnel',ev.businessStream,'BusinessStream','select',['',...BUSINESS_STREAM_OPTIONS]);
+  h+=editField('Primary Brand',ev.brand,'Brand','select',['',...BRAND_OPTIONS]);
   h+=editLookup('Supplier','Supplier',ev.supplierId,ev.supplierLookup);
   h+=editLookup('Product','Product',ev.productId,ev.product);
   if(ev.department)h+=editField('Department',ev.department,'Departement');
