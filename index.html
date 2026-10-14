@@ -1959,6 +1959,27 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <div class="form-grid">
               <div class="form-group"><label class="form-label">Supplier</label><select class="form-select" id="fSupplierLookup"><option value="">Loading SharePoint lookup…</option></select><div class="lookup-note" id="fSupplierLookupNote"></div></div>
               <div class="form-group"><label class="form-label">Product</label><select class="form-select" id="fProductLookup"><option value="">Loading SharePoint lookup…</option></select><div class="lookup-note" id="fProductLookupNote"></div></div>
+              <div class="form-group full" style="display:flex;gap:20px;flex-wrap:wrap">
+                <label class="checkbox-row"><input type="checkbox" id="fSupplierFunded"> Supplier-funded</label>
+                <label class="checkbox-row"><input type="checkbox" id="fSupplierReporting"> Proof of advertising / supplier reporting required</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Promotions & Offers conditional template (brief Section 10) — only the genuinely new
+               questions. Regular Price, Member Price, Long Description (what the offer is), Start/End,
+               Supplier and POS are already asked elsewhere — this doesn't repeat them. "One canonical
+               offer definition" per the brief: this is the one place these get captured, not
+               re-entered separately for design/POS/digital briefs. -->
+          <div id="fPromoGroup" style="display:none">
+            <div class="form-section-head">Offer Details</div>
+            <div class="form-grid">
+              <div class="form-group"><label class="form-label">Promotional Price ($)</label><input class="form-input" id="fPromoPrice" type="number" step="0.01" min="0"><div style="font-size:10.5px;color:var(--text3);margin-top:3px">The price for all customers during the promo — separate from the Loaded member price below</div></div>
+              <div class="form-group"><label class="form-label">Eligible Customer Segment</label><select class="form-select" id="fPromoSegment"><option value="">All Customers</option><option>Loaded Members Only</option><option>New Customers</option><option>Returning Customers</option><option>VIP / Invite Only</option></select></div>
+              <div class="form-group full"><label class="form-label">Offer Conditions</label><input class="form-input" id="fPromoConditions" type="text" placeholder="e.g. Eligible days/times, redemption limit, limited stock, exclusions"></div>
+              <div class="form-group full"><label class="form-label">Terms &amp; Conditions</label><input class="form-input" id="fPromoTerms" type="text" placeholder="e.g. Not valid with any other offer, dine-in only"></div>
+              <div class="form-group full"><label class="form-label">Staff Instructions</label><input class="form-input" id="fPromoStaffInstructions" type="text" placeholder="e.g. How to ring up, what to tell guests"></div>
+              <div class="form-group full"><label class="checkbox-row"><input type="checkbox" id="fPromoCombinable"> Can be combined with other offers</label></div>
             </div>
           </div>
 
@@ -5280,6 +5301,15 @@ async function loadCampaigns(){
         eventFoodService:f.EventFoodService||'',
         eventBeverageService:f.EventBeverageService||'',
         eventOperationsNotes:f.EventOperationsNotes||'',
+        // Promotions & Offers conditional template — same read-only-for-now treatment.
+        promoPrice:parseFloat(f.PromoPrice||0),
+        eligibleSegment:f.EligibleSegment||'',
+        offerConditions:f.OfferConditions||'',
+        offerTerms:f.OfferTerms||'',
+        staffInstructions:f.StaffInstructions||'',
+        combinableWithOtherOffers:f.CombinableWithOtherOffers===true||f.CombinableWithOtherOffers==='Yes',
+        supplierFunded:f.SupplierFunded===true||f.SupplierFunded==='Yes',
+        supplierReportingRequired:f.SupplierReportingRequired===true||f.SupplierReportingRequired==='Yes',
         marketingSilo:f.CampaignSilo||'', // internal name CampaignSilo
         businessStream:f.BusinessStream||'',
         stage:isPast&&storedStage!=='Done'?'Done':storedStage,
@@ -10785,6 +10815,14 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'EventFoodService',displayName:'Food',type:'choice',choices:'No Food, À la carte, Set Menu, Shared Menu, Canapés, Grazing, Buffet, Food Package',purpose:'Events & Entertainment conditional template.'},
   {listKey:'campaigns',name:'EventBeverageService',displayName:'Beverages',type:'choice',choices:'Cash Bar, Bar Tab, Beverage Package, Drinks List, Welcome Drink, Included Beverages',purpose:'Events & Entertainment conditional template.'},
   {listKey:'campaigns',name:'EventOperationsNotes',displayName:'Operations Notes',type:'text',purpose:'Events & Entertainment conditional template — staffing, entertainment, suppliers, equipment, decorations, bump-in/out, internal deadlines, combined into one free-text field rather than seven separate columns.'},
+  {listKey:'campaigns',name:'PromoPrice',displayName:'Promotional Price',type:'number',purpose:'Promotions & Offers conditional template — the price for all customers during the promo, separate from the existing Loaded member price field.'},
+  {listKey:'campaigns',name:'EligibleSegment',displayName:'Eligible Customer Segment',type:'choice',choices:'All Customers, Loaded Members Only, New Customers, Returning Customers, VIP / Invite Only',purpose:'Promotions & Offers conditional template.'},
+  {listKey:'campaigns',name:'OfferConditions',displayName:'Offer Conditions',type:'text',purpose:'Promotions & Offers conditional template — eligible days/times, redemption limit, limited stock, exclusions, combined into one free-text field rather than four separate columns.'},
+  {listKey:'campaigns',name:'OfferTerms',displayName:'Terms & Conditions',type:'text',purpose:'Promotions & Offers conditional template.'},
+  {listKey:'campaigns',name:'StaffInstructions',displayName:'Staff Instructions',type:'text',purpose:'Promotions & Offers conditional template — distinct from Staff Briefing Required (a yes/no flag), this is the actual instruction text.'},
+  {listKey:'campaigns',name:'CombinableWithOtherOffers',displayName:'Combinable With Other Offers',type:'choice',choices:'Yes',purpose:'Promotions & Offers conditional template.'},
+  {listKey:'campaigns',name:'SupplierFunded',displayName:'Supplier-Funded',type:'choice',choices:'Yes',purpose:'Shown whenever a supplier is involved — whether they\'re funding this activity.'},
+  {listKey:'campaigns',name:'SupplierReportingRequired',displayName:'Supplier Reporting Required',type:'choice',choices:'Yes',purpose:'Shown whenever a supplier is involved — whether proof of advertising or results reporting is owed back to them.'},
   {listKey:'campaigns',name:'LoadedRewards',displayName:'Loaded Rewards',type:'choice',choices:'Yes',purpose:'Independent Yes/No flag for whether Loaded Rewards is involved — separate from Brand/Business Stream so an activity under a different brand can still have a Loaded component. Only needed if none of LoadedRewards/Loaded Rewards/LoadedRewardsPromo/IsLoaded already exist.'},
   {listKey:'campaigns',name:'EventSeating',displayName:'Event Seating',type:'choice',choices:'Seated, Standing, Table Service, Mixed',purpose:'The seating/setup breakdown for the event.'},
   {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number',purpose:'Groups Activities that belong to one recurring series.'},
@@ -11917,16 +11955,18 @@ function updateActivityConditionalSections(){
   // Ticketed? is its own checkbox, independent of Event Format/Recurring — matches the same
   // split used on the activity's detail popup.
   const isTicketed=!!document.getElementById('fTicketed')?.checked;
-  const showPricing=isLoaded||type==='Promotion / Offer'||isTicketed;
+  const isPromo=document.getElementById('fActGroup')?.value==='Promotions & Offers';
+  const showPricing=isLoaded||type==='Promotion / Offer'||isTicketed||isPromo;
   const isFoodBev=document.getElementById('fActGroup')?.value==='Food & Beverage';
   const isEvents=document.getElementById('fActGroup')?.value==='Events & Entertainment';
   const show=(id,on)=>{const el=document.getElementById(id);if(el)el.style.display=on?'':'none';};
   // Long Description is customer-facing marketing copy — only worth asking for once there's
   // actually a promotion, design work or Loaded listing that would use it.
-  show('fLongDescriptionGroup',isLoaded||needsChannels||needsDesign);
+  show('fLongDescriptionGroup',isLoaded||needsChannels||needsDesign||isPromo);
   show('fLoadedAppGroup',isLoaded);
   show('fRegularPriceGroup',showPricing);
-  show('fLoadedPriceGroup',isLoaded||type==='Promotion / Offer');
+  show('fLoadedPriceGroup',isLoaded||type==='Promotion / Offer'||isPromo);
+  show('fPromoGroup',isPromo);
   show('fTicketingGroup',isTicketed);
   show('fChannelsGroup',needsChannels||needsDesign);
   show('fSupplierProductGroup',supplierInvolved);
@@ -13223,6 +13263,22 @@ async function submitEvent(){
       const evBeverage=document.getElementById('fEventBeverage')?.value;if(evBeverage)fields.EventBeverageService=evBeverage;
       const evOpsNotes=document.getElementById('fEventOpsNotes')?.value.trim();if(evOpsNotes)fields.EventOperationsNotes=evOpsNotes;
     }
+
+    // Promotions & Offers conditional template — only sent when that section is visible. One
+    // canonical offer definition, not re-entered separately per downstream brief.
+    if(actGroup==='Promotions & Offers'){
+      const promoPrice=document.getElementById('fPromoPrice')?.value;if(promoPrice)fields.PromoPrice=parseFloat(promoPrice);
+      const promoSegment=document.getElementById('fPromoSegment')?.value;if(promoSegment)fields.EligibleSegment=promoSegment;
+      const promoConditions=document.getElementById('fPromoConditions')?.value.trim();if(promoConditions)fields.OfferConditions=promoConditions;
+      const promoTerms=document.getElementById('fPromoTerms')?.value.trim();if(promoTerms)fields.OfferTerms=promoTerms;
+      const promoStaff=document.getElementById('fPromoStaffInstructions')?.value.trim();if(promoStaff)fields.StaffInstructions=promoStaff;
+      if(document.getElementById('fPromoCombinable')?.checked)fields.CombinableWithOtherOffers=true;
+    }
+    // Supplier funding/reporting — shown whenever a supplier is involved, not just for Promotions.
+    if(document.getElementById('fSupplierInvolved')?.checked){
+      if(document.getElementById('fSupplierFunded')?.checked)fields.SupplierFunded=true;
+      if(document.getElementById('fSupplierReporting')?.checked)fields.SupplierReportingRequired=true;
+    }
     const seating=document.getElementById('fEventSeating')?.value;if(seating)fields.EventSeating=seating;
     const recurring=!!document.getElementById('fRecurring')?.checked;if(recurring)fields.RecurringEvent=true;
     const stream=document.getElementById('fStream')?.value;if(stream)fields.BusinessStream=stream;
@@ -13307,7 +13363,7 @@ async function submitEvent(){
     // Fields most likely to not exist as SharePoint columns yet, tried as removable groups if the
     // full payload is rejected — a generic 400 on create doesn't tell us which field is the problem,
     // unlike editing an existing item, so we strip the newest/least-confirmed fields first and retry.
-    const removableGroups=[[productKey],[supplierKey],['SupplierInvolved'],['TicketURL'],['TicketPlatform','TicketPrice','Capacity','TicketedEvent'],['RegularPrice','LoadedBasePrice'],['AssetTVsDetail'],['AssetNewsletterDetail'],['DesignStatus'],['AssetsNeeded'],['Channels'],['GoogleAdsEligible'],['AppShortDescription'],['AppHeading','AppDescription'],['NewsletterRequired'],['AppRequired'],['BookingURL'],['LoadedRewards'],['Brand'],['ActivityGroup'],['ActivitySubtype'],['ItemStatus','DietaryAllergenInfo','FBAvailabilityNotes','ProductPhotographyAvailable','SupplierBrandingAvailable','PrintedMenuUpdateRequired','DigitalMenuUpdateRequired','StaffBriefingRequired'],['EntryType','DoorsOpenTime','MinAttendance','ReservedSeatingRequired','EventFoodService','EventBeverageService','EventOperationsNotes']].filter(group=>group.some(Boolean));
+    const removableGroups=[[productKey],[supplierKey],['SupplierInvolved'],['TicketURL'],['TicketPlatform','TicketPrice','Capacity','TicketedEvent'],['RegularPrice','LoadedBasePrice'],['AssetTVsDetail'],['AssetNewsletterDetail'],['DesignStatus'],['AssetsNeeded'],['Channels'],['GoogleAdsEligible'],['AppShortDescription'],['AppHeading','AppDescription'],['NewsletterRequired'],['AppRequired'],['BookingURL'],['LoadedRewards'],['Brand'],['ActivityGroup'],['ActivitySubtype'],['ItemStatus','DietaryAllergenInfo','FBAvailabilityNotes','ProductPhotographyAvailable','SupplierBrandingAvailable','PrintedMenuUpdateRequired','DigitalMenuUpdateRequired','StaffBriefingRequired'],['EntryType','DoorsOpenTime','MinAttendance','ReservedSeatingRequired','EventFoodService','EventBeverageService','EventOperationsNotes'],['PromoPrice','EligibleSegment','OfferConditions','OfferTerms','StaffInstructions','CombinableWithOtherOffers'],['SupplierFunded','SupplierReportingRequired']].filter(group=>group.some(Boolean));
     let payload={...fields};
     const dropped=[];
     let res,ok=false,resBody='';
@@ -13381,10 +13437,10 @@ async function submitEvent(){
 }
 function showFMsg(msg,type){const el=document.getElementById('fMsg');if(!el)return;el.textContent=msg;el.className='form-msg '+type;el.scrollIntoView({behavior:'smooth',block:'nearest'});}
 function clearForm(){
-  ['fTitle','fDesc','fLongDescription','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails','fFBDietary','fFBAvailability','fEventDoorsOpen','fEventMinAttendance','fEventOpsNotes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['fVenue','fActType','fActGroup','fActSubtype','fEventFormat','fEventSeating','fStream','fCampaignSilo','fBrand','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup','fFBStatus','fEventEntry','fEventFood','fEventBeverage'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  ['fTitle','fDesc','fLongDescription','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails','fFBDietary','fFBAvailability','fEventDoorsOpen','fEventMinAttendance','fEventOpsNotes','fPromoPrice','fPromoConditions','fPromoTerms','fPromoStaffInstructions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['fVenue','fActType','fActGroup','fActSubtype','fEventFormat','fEventSeating','fStream','fCampaignSilo','fBrand','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup','fFBStatus','fEventEntry','fEventFood','fEventBeverage','fPromoSegment'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
   const productSel=document.getElementById('fProductLookup');if(productSel)[...productSel.options].forEach(o=>o.selected=false);
-  ['fSupplierInvolved','fPOSRequired','fTicketed','fRecurring','fLoadedRewardsFlag','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff','fFBPhotography','fFBSupplierBranding','fFBPrintMenu','fFBDigitalMenu','fFBStaffBriefing','fEventReservedSeating'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  ['fSupplierInvolved','fPOSRequired','fTicketed','fRecurring','fLoadedRewardsFlag','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff','fFBPhotography','fFBSupplierBranding','fFBPrintMenu','fFBDigitalMenu','fFBStaffBriefing','fEventReservedSeating','fPromoCombinable','fSupplierFunded','fSupplierReporting'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   togglePOSDetails();
   fTitleTouched=false;
   fAppHeadingTouched=false;
@@ -13635,6 +13691,19 @@ function renderActivityDetail(id,mode){
     if(ev.eventBeverageService)h+=`<div class="pop-field"><div class="pop-lbl">Beverages</div><div class="pop-val">${ev.eventBeverageService}</div></div>`;
     if(ev.eventOperationsNotes)h+=`<div class="pop-field"><div class="pop-lbl">Operations Notes</div><div class="pop-val">${ev.eventOperationsNotes}</div></div>`;
     if(ev.eventReservedSeating)h+=`<div class="pop-field"><div class="pop-lbl">Notes</div><div class="pop-val">Reserved seating required</div></div>`;
+  }
+  if(ev.activityGroup==='Promotions & Offers'&&(ev.promoPrice||ev.eligibleSegment||ev.offerConditions||ev.offerTerms||ev.staffInstructions||ev.combinableWithOtherOffers)){
+    h+=`<div class="pop-section">🏷 Offer Details</div>`;
+    if(ev.promoPrice)h+=`<div class="pop-field"><div class="pop-lbl">Promotional Price</div><div class="pop-val">$${ev.promoPrice.toFixed(2)}</div></div>`;
+    if(ev.eligibleSegment)h+=`<div class="pop-field"><div class="pop-lbl">Eligible Segment</div><div class="pop-val">${ev.eligibleSegment}</div></div>`;
+    if(ev.offerConditions)h+=`<div class="pop-field"><div class="pop-lbl">Offer Conditions</div><div class="pop-val">${ev.offerConditions}</div></div>`;
+    if(ev.offerTerms)h+=`<div class="pop-field"><div class="pop-lbl">Terms &amp; Conditions</div><div class="pop-val">${ev.offerTerms}</div></div>`;
+    if(ev.staffInstructions)h+=`<div class="pop-field"><div class="pop-lbl">Staff Instructions</div><div class="pop-val">${ev.staffInstructions}</div></div>`;
+    if(ev.combinableWithOtherOffers)h+=`<div class="pop-field"><div class="pop-lbl">Notes</div><div class="pop-val">Can be combined with other offers</div></div>`;
+  }
+  if((ev.supplierFunded||ev.supplierReportingRequired)&&ev.supplierInvolved){
+    const supplierFlags=[ev.supplierFunded&&'Supplier-funded',ev.supplierReportingRequired&&'Proof of advertising/reporting required'].filter(Boolean);
+    h+=`<div class="pop-field"><div class="pop-lbl">Supplier Notes</div><div class="pop-val">${supplierFlags.join(' · ')}</div></div>`;
   }
   if(ev.mktLeadWeeks)h+=`<div class="pop-field"><div class="pop-lbl">Lead Time</div><div class="pop-val">${ev.mktLeadWeeks} weeks (auto-calculated)</div></div>`;
   if(ev.marketingStartDate)h+=`<div class="pop-field"><div class="pop-lbl">Marketing Start</div><div class="pop-val" style="font-weight:600;color:var(--accent)">${fmtDate(ev.marketingStartDate)}</div></div>`;
