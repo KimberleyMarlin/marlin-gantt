@@ -1844,7 +1844,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div class="form-notice">📌 Fill in what you know — the marketing team will add channels and next steps after it's submitted.</div>
           <div id="fMsg" class="form-msg"></div>
           <div class="form-grid">
-            <div class="form-group full"><label class="form-label">Activation <span class="req">*</span></label><input class="form-input" id="fTitle" type="text" placeholder="e.g. WBC - Beer of the Month - Cheeky Monkey XPA - November 2026" oninput="markTitleTouched()"><div class="field-help" id="fTitleHelp">Auto-built from Venue, Activity Type, Activity Detail and Start Date as you fill them in — edit it directly any time to override.</div><input type="hidden" id="fTitleBase" value=""></div>
+            <div class="form-group full"><label class="form-label">Activation <span class="req">*</span></label><input class="form-input" id="fTitle" type="text" placeholder="e.g. WBC_Beer of the Month_Cheeky Monkey XPA_November 2026" oninput="markTitleTouched()"><div class="field-help" id="fTitleHelp">Auto-built from Venue, Activity Type, Activity Detail and Start Date as you fill them in — edit it directly any time to override.</div><input type="hidden" id="fTitleBase" value=""></div>
             <div class="form-group full"><label class="form-label">Submitted By</label><div id="fSubmittedBy" style="font-size:13px;color:var(--text2);padding:8px 0">—</div></div>
             <div class="form-group full"><label class="form-label">Activity Detail</label><textarea class="form-textarea" id="fDesc" placeholder="e.g. Cheeky Monkey pints" style="min-height:70px" oninput="syncAppHeadingFromItem();composeAutoActivityTitle()"></textarea><div class="field-help" id="fDescHelp">The specific product, offer or execution for this occurrence.</div></div>
             <div class="form-group full" id="fLongDescriptionGroup" style="display:none"><label class="form-label">Long Description</label><textarea class="form-textarea" id="fLongDescription" placeholder="Full customer-facing copy for web, listings and campaign materials" style="min-height:90px"></textarea><div class="field-help" id="fLongDescriptionHelp">Master long-form copy. Loaded can use this by default, with an optional app-specific override below.</div></div>
@@ -1916,6 +1916,22 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
               <div class="form-group"><label class="form-label">Ticket Price ($)</label><input class="form-input" id="fTicketPrice" type="number" step="0.01" min="0"></div>
               <div class="form-group"><label class="form-label">Capacity</label><input class="form-input" id="fTicketCapacity" type="number" step="1" min="0"></div>
               <div class="form-group"><label class="form-label">Ticket Link</label><input class="form-input" id="fTicketURL" type="url" placeholder="https://"></div>
+            </div>
+          </div>
+
+          <!-- Events & Entertainment conditional template (brief Section 9) — only the genuinely
+               new questions. Ticketed?, Ticketing details, Capacity, Seating/Setup and Recurring?
+               are already asked above — this doesn't repeat them. -->
+          <div id="fEventsGroup" style="display:none">
+            <div class="form-section-head">Event Details</div>
+            <div class="form-grid">
+              <div class="form-group"><label class="form-label">Entry</label><select class="form-select" id="fEventEntry"><option value="">Select…</option><option>Free Entry</option><option>Paid Entry</option><option>RSVP</option><option>Walk-in</option><option>Invitation Only</option></select></div>
+              <div class="form-group"><label class="form-label">Doors Open / Guest Arrival</label><input class="form-input" id="fEventDoorsOpen" type="time"></div>
+              <div class="form-group"><label class="form-label">Minimum Attendance</label><input class="form-input" id="fEventMinAttendance" type="number" step="1" min="0"></div>
+              <div class="form-group"><label class="checkbox-row" style="padding-top:22px"><input type="checkbox" id="fEventReservedSeating"> Reserved seating required</label></div>
+              <div class="form-group"><label class="form-label">Food</label><select class="form-select" id="fEventFood"><option value="">Select…</option><option>No Food</option><option>À la carte</option><option>Set Menu</option><option>Shared Menu</option><option>Canapés</option><option>Grazing</option><option>Buffet</option><option>Food Package</option></select></div>
+              <div class="form-group"><label class="form-label">Beverages</label><select class="form-select" id="fEventBeverage"><option value="">Select…</option><option>Cash Bar</option><option>Bar Tab</option><option>Beverage Package</option><option>Drinks List</option><option>Welcome Drink</option><option>Included Beverages</option></select></div>
+              <div class="form-group full"><label class="form-label">Operations Notes</label><input class="form-input" id="fEventOpsNotes" type="text" placeholder="e.g. Staffing, entertainment, suppliers, equipment, decorations, bump-in/out, internal deadlines"></div>
             </div>
           </div>
 
@@ -2365,7 +2381,7 @@ const BUSINESS_STREAM_OPTIONS=['Venue Marketing','Loaded Rewards','Functions','G
 const CAMPAIGN_SILO_OPTIONS=['Hero','Momentum','Always-On','Organic','Maintenance'];
 const BRAND_OPTIONS=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Loaded Rewards','Beerland Brewing'];
 // Short codes for the automatic Activity naming engine (see composeAutoActivityTitle below) — e.g.
-// "WBC - Beer of the Month - Cheeky Monkey XPA - November 2026" instead of the full venue name.
+// "WBC_Beer of the Month_Cheeky Monkey XPA_November 2026" instead of the full venue name.
 const VENUE_SHORT_CODES={'The Left Bank':'LB','The Ravenswood':'RAV','Whitfords Brewing Co':'WBC','Hotel Darwin':'HD','Mustang Bar':'MB','Beerland Brewing':'BL','Loaded Rewards':'Loaded Rewards','All Venues':'All Venues'};
 // Fills a <select>'s options from a canonical list, keeping its existing blank/placeholder <option>.
 // Used so the Submit form reads from the same single list the Activity detail popup's editField()
@@ -5256,6 +5272,14 @@ async function loadCampaigns(){
         fbPrintMenuRequired:f.PrintedMenuUpdateRequired===true||f.PrintedMenuUpdateRequired==='Yes',
         fbDigitalMenuRequired:f.DigitalMenuUpdateRequired===true||f.DigitalMenuUpdateRequired==='Yes',
         staffBriefingRequired:f.StaffBriefingRequired===true||f.StaffBriefingRequired==='Yes',
+        // Events & Entertainment conditional template — same read-only-for-now treatment as F&B above.
+        eventEntry:f.EntryType||'',
+        eventDoorsOpen:f.DoorsOpenTime||'',
+        eventMinAttendance:parseInt(f.MinAttendance||0)||0,
+        eventReservedSeating:f.ReservedSeatingRequired===true||f.ReservedSeatingRequired==='Yes',
+        eventFoodService:f.EventFoodService||'',
+        eventBeverageService:f.EventBeverageService||'',
+        eventOperationsNotes:f.EventOperationsNotes||'',
         marketingSilo:f.CampaignSilo||'', // internal name CampaignSilo
         businessStream:f.BusinessStream||'',
         stage:isPast&&storedStage!=='Done'?'Done':storedStage,
@@ -10754,6 +10778,13 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'PrintedMenuUpdateRequired',displayName:'Printed Menu Update Required',type:'choice',choices:'Yes',purpose:'Food & Beverage conditional template.'},
   {listKey:'campaigns',name:'DigitalMenuUpdateRequired',displayName:'Digital Menu Update Required',type:'choice',choices:'Yes',purpose:'Food & Beverage conditional template.'},
   {listKey:'campaigns',name:'StaffBriefingRequired',displayName:'Staff Briefing Required',type:'choice',choices:'Yes',purpose:'Surfaced first on the Food & Beverage template, but generic enough to reuse for other activity types later.'},
+  {listKey:'campaigns',name:'EntryType',displayName:'Entry',type:'choice',choices:'Free Entry, Paid Entry, RSVP, Walk-in, Invitation Only',purpose:'Events & Entertainment conditional template.'},
+  {listKey:'campaigns',name:'DoorsOpenTime',displayName:'Doors Open / Guest Arrival',type:'text',purpose:'Events & Entertainment conditional template — stored as text (e.g. "6:30pm") rather than a time column, since it\'s descriptive, not used in date math.'},
+  {listKey:'campaigns',name:'MinAttendance',displayName:'Minimum Attendance',type:'number',purpose:'Events & Entertainment conditional template.'},
+  {listKey:'campaigns',name:'ReservedSeatingRequired',displayName:'Reserved Seating Required',type:'choice',choices:'Yes',purpose:'Events & Entertainment conditional template.'},
+  {listKey:'campaigns',name:'EventFoodService',displayName:'Food',type:'choice',choices:'No Food, À la carte, Set Menu, Shared Menu, Canapés, Grazing, Buffet, Food Package',purpose:'Events & Entertainment conditional template.'},
+  {listKey:'campaigns',name:'EventBeverageService',displayName:'Beverages',type:'choice',choices:'Cash Bar, Bar Tab, Beverage Package, Drinks List, Welcome Drink, Included Beverages',purpose:'Events & Entertainment conditional template.'},
+  {listKey:'campaigns',name:'EventOperationsNotes',displayName:'Operations Notes',type:'text',purpose:'Events & Entertainment conditional template — staffing, entertainment, suppliers, equipment, decorations, bump-in/out, internal deadlines, combined into one free-text field rather than seven separate columns.'},
   {listKey:'campaigns',name:'LoadedRewards',displayName:'Loaded Rewards',type:'choice',choices:'Yes',purpose:'Independent Yes/No flag for whether Loaded Rewards is involved — separate from Brand/Business Stream so an activity under a different brand can still have a Loaded component. Only needed if none of LoadedRewards/Loaded Rewards/LoadedRewardsPromo/IsLoaded already exist.'},
   {listKey:'campaigns',name:'EventSeating',displayName:'Event Seating',type:'choice',choices:'Seated, Standing, Table Service, Mixed',purpose:'The seating/setup breakdown for the event.'},
   {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number',purpose:'Groups Activities that belong to one recurring series.'},
@@ -11888,6 +11919,7 @@ function updateActivityConditionalSections(){
   const isTicketed=!!document.getElementById('fTicketed')?.checked;
   const showPricing=isLoaded||type==='Promotion / Offer'||isTicketed;
   const isFoodBev=document.getElementById('fActGroup')?.value==='Food & Beverage';
+  const isEvents=document.getElementById('fActGroup')?.value==='Events & Entertainment';
   const show=(id,on)=>{const el=document.getElementById(id);if(el)el.style.display=on?'':'none';};
   // Long Description is customer-facing marketing copy — only worth asking for once there's
   // actually a promotion, design work or Loaded listing that would use it.
@@ -11899,6 +11931,7 @@ function updateActivityConditionalSections(){
   show('fChannelsGroup',needsChannels||needsDesign);
   show('fSupplierProductGroup',supplierInvolved);
   show('fFoodBevGroup',isFoodBev);
+  show('fEventsGroup',isEvents);
   updatePromoteArtworkColumns();
   updateAssetDetailVisibility();
 }
@@ -11992,10 +12025,12 @@ function composeAutoActivityTitle(){
   const period=monthYearFromDateInput(document.getElementById('fStart')?.value||'');
   const parts=[venueLabel,typeLabel,specificName,period].filter(Boolean);
   const titleEl=document.getElementById('fTitle');
-  // " - " not " | " — the Activity Title feeds the Power Automate folder-creation flow directly,
+  // "_" not " | " — the Activity Title feeds the Power Automate folder-creation flow directly,
   // and "|" is one of the characters SharePoint/Windows forbid in a file or folder name, which was
-  // silently breaking folder creation for every new activity until this fix.
-  if(titleEl&&parts.length)titleEl.value=parts.join(' - ');
+  // silently breaking folder creation for every new activity. No surrounding spaces, since the flow
+  // also turns spaces into underscores when building the folder name — " _ " would come out as
+  // doubled/tripled underscores there.
+  if(titleEl&&parts.length)titleEl.value=parts.join('_');
 }
 
 function applyActivityTemplate(key){
@@ -13177,6 +13212,17 @@ async function submitEvent(){
       if(document.getElementById('fFBDigitalMenu')?.checked)fields.DigitalMenuUpdateRequired=true;
       if(document.getElementById('fFBStaffBriefing')?.checked)fields.StaffBriefingRequired=true;
     }
+
+    // Events & Entertainment conditional template — only sent when that section is visible.
+    if(actGroup==='Events & Entertainment'){
+      const evEntry=document.getElementById('fEventEntry')?.value;if(evEntry)fields.EntryType=evEntry;
+      const evDoors=document.getElementById('fEventDoorsOpen')?.value;if(evDoors)fields.DoorsOpenTime=evDoors;
+      const evMinAttend=document.getElementById('fEventMinAttendance')?.value;if(evMinAttend)fields.MinAttendance=parseInt(evMinAttend,10);
+      if(document.getElementById('fEventReservedSeating')?.checked)fields.ReservedSeatingRequired=true;
+      const evFood=document.getElementById('fEventFood')?.value;if(evFood)fields.EventFoodService=evFood;
+      const evBeverage=document.getElementById('fEventBeverage')?.value;if(evBeverage)fields.EventBeverageService=evBeverage;
+      const evOpsNotes=document.getElementById('fEventOpsNotes')?.value.trim();if(evOpsNotes)fields.EventOperationsNotes=evOpsNotes;
+    }
     const seating=document.getElementById('fEventSeating')?.value;if(seating)fields.EventSeating=seating;
     const recurring=!!document.getElementById('fRecurring')?.checked;if(recurring)fields.RecurringEvent=true;
     const stream=document.getElementById('fStream')?.value;if(stream)fields.BusinessStream=stream;
@@ -13261,7 +13307,7 @@ async function submitEvent(){
     // Fields most likely to not exist as SharePoint columns yet, tried as removable groups if the
     // full payload is rejected — a generic 400 on create doesn't tell us which field is the problem,
     // unlike editing an existing item, so we strip the newest/least-confirmed fields first and retry.
-    const removableGroups=[[productKey],[supplierKey],['SupplierInvolved'],['TicketURL'],['TicketPlatform','TicketPrice','Capacity','TicketedEvent'],['RegularPrice','LoadedBasePrice'],['AssetTVsDetail'],['AssetNewsletterDetail'],['DesignStatus'],['AssetsNeeded'],['Channels'],['GoogleAdsEligible'],['AppShortDescription'],['AppHeading','AppDescription'],['NewsletterRequired'],['AppRequired'],['BookingURL'],['LoadedRewards'],['Brand'],['ActivityGroup'],['ActivitySubtype'],['ItemStatus','DietaryAllergenInfo','FBAvailabilityNotes','ProductPhotographyAvailable','SupplierBrandingAvailable','PrintedMenuUpdateRequired','DigitalMenuUpdateRequired','StaffBriefingRequired']].filter(group=>group.some(Boolean));
+    const removableGroups=[[productKey],[supplierKey],['SupplierInvolved'],['TicketURL'],['TicketPlatform','TicketPrice','Capacity','TicketedEvent'],['RegularPrice','LoadedBasePrice'],['AssetTVsDetail'],['AssetNewsletterDetail'],['DesignStatus'],['AssetsNeeded'],['Channels'],['GoogleAdsEligible'],['AppShortDescription'],['AppHeading','AppDescription'],['NewsletterRequired'],['AppRequired'],['BookingURL'],['LoadedRewards'],['Brand'],['ActivityGroup'],['ActivitySubtype'],['ItemStatus','DietaryAllergenInfo','FBAvailabilityNotes','ProductPhotographyAvailable','SupplierBrandingAvailable','PrintedMenuUpdateRequired','DigitalMenuUpdateRequired','StaffBriefingRequired'],['EntryType','DoorsOpenTime','MinAttendance','ReservedSeatingRequired','EventFoodService','EventBeverageService','EventOperationsNotes']].filter(group=>group.some(Boolean));
     let payload={...fields};
     const dropped=[];
     let res,ok=false,resBody='';
@@ -13335,10 +13381,10 @@ async function submitEvent(){
 }
 function showFMsg(msg,type){const el=document.getElementById('fMsg');if(!el)return;el.textContent=msg;el.className='form-msg '+type;el.scrollIntoView({behavior:'smooth',block:'nearest'});}
 function clearForm(){
-  ['fTitle','fDesc','fLongDescription','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails','fFBDietary','fFBAvailability'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['fVenue','fActType','fActGroup','fActSubtype','fEventFormat','fEventSeating','fStream','fCampaignSilo','fBrand','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup','fFBStatus'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  ['fTitle','fDesc','fLongDescription','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails','fFBDietary','fFBAvailability','fEventDoorsOpen','fEventMinAttendance','fEventOpsNotes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['fVenue','fActType','fActGroup','fActSubtype','fEventFormat','fEventSeating','fStream','fCampaignSilo','fBrand','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup','fFBStatus','fEventEntry','fEventFood','fEventBeverage'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
   const productSel=document.getElementById('fProductLookup');if(productSel)[...productSel.options].forEach(o=>o.selected=false);
-  ['fSupplierInvolved','fPOSRequired','fTicketed','fRecurring','fLoadedRewardsFlag','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff','fFBPhotography','fFBSupplierBranding','fFBPrintMenu','fFBDigitalMenu','fFBStaffBriefing'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  ['fSupplierInvolved','fPOSRequired','fTicketed','fRecurring','fLoadedRewardsFlag','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff','fFBPhotography','fFBSupplierBranding','fFBPrintMenu','fFBDigitalMenu','fFBStaffBriefing','fEventReservedSeating'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   togglePOSDetails();
   fTitleTouched=false;
   fAppHeadingTouched=false;
@@ -13579,6 +13625,16 @@ function renderActivityDetail(id,mode){
     if(ev.fbAvailabilityNotes)h+=`<div class="pop-field"><div class="pop-lbl">Availability Notes</div><div class="pop-val">${ev.fbAvailabilityNotes}</div></div>`;
     const fbFlags=[ev.fbPhotographyAvailable&&'Photography available',ev.fbSupplierBrandingAvailable&&'Supplier branding available',ev.fbPrintMenuRequired&&'Printed menu update required',ev.fbDigitalMenuRequired&&'Digital menu update required',ev.staffBriefingRequired&&'Staff briefing required'].filter(Boolean);
     if(fbFlags.length)h+=`<div class="pop-field"><div class="pop-lbl">Notes</div><div class="pop-val">${fbFlags.join(' · ')}</div></div>`;
+  }
+  if(ev.activityGroup==='Events & Entertainment'&&(ev.eventEntry||ev.eventDoorsOpen||ev.eventMinAttendance||ev.eventReservedSeating||ev.eventFoodService||ev.eventBeverageService||ev.eventOperationsNotes)){
+    h+=`<div class="pop-section">🎉 Event Details</div>`;
+    if(ev.eventEntry)h+=`<div class="pop-field"><div class="pop-lbl">Entry</div><div class="pop-val">${ev.eventEntry}</div></div>`;
+    if(ev.eventDoorsOpen)h+=`<div class="pop-field"><div class="pop-lbl">Doors Open</div><div class="pop-val">${ev.eventDoorsOpen}</div></div>`;
+    if(ev.eventMinAttendance)h+=`<div class="pop-field"><div class="pop-lbl">Minimum Attendance</div><div class="pop-val">${ev.eventMinAttendance}</div></div>`;
+    if(ev.eventFoodService)h+=`<div class="pop-field"><div class="pop-lbl">Food</div><div class="pop-val">${ev.eventFoodService}</div></div>`;
+    if(ev.eventBeverageService)h+=`<div class="pop-field"><div class="pop-lbl">Beverages</div><div class="pop-val">${ev.eventBeverageService}</div></div>`;
+    if(ev.eventOperationsNotes)h+=`<div class="pop-field"><div class="pop-lbl">Operations Notes</div><div class="pop-val">${ev.eventOperationsNotes}</div></div>`;
+    if(ev.eventReservedSeating)h+=`<div class="pop-field"><div class="pop-lbl">Notes</div><div class="pop-val">Reserved seating required</div></div>`;
   }
   if(ev.mktLeadWeeks)h+=`<div class="pop-field"><div class="pop-lbl">Lead Time</div><div class="pop-val">${ev.mktLeadWeeks} weeks (auto-calculated)</div></div>`;
   if(ev.marketingStartDate)h+=`<div class="pop-field"><div class="pop-lbl">Marketing Start</div><div class="pop-val" style="font-weight:600;color:var(--accent)">${fmtDate(ev.marketingStartDate)}</div></div>`;
