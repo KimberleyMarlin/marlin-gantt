@@ -6718,6 +6718,19 @@ async function pickEvPhoto(evId,url,driveId,itemId){
       throw new Error(m?`The ${m[1]} column doesn't exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.`:urlFailed.error||'Could not save the photo.');
     }
     ev.eventImageUrl=url;
+    // The reference only counts as linked if it actually persisted. If EventImageURL saved but
+    // EventImageRef didn't (e.g. the column doesn't exist yet), do not claim the photo is
+    // permanently linked via a stable reference — resolveFeaturedImageUrl() would otherwise try to
+    // use a reference that was never written, and the next reload from SharePoint would silently
+    // lose it anyway since nothing was actually saved.
+    const refFailed=ref&&result.failed.find(f=>f.field==='EventImageRef');
+    if(refFailed){
+      ev.eventImageRef=null;
+      showPop(evId);
+      const m=(refFailed.error||'').match(/Field '([^']+)' is not recognized/);
+      alert(`Photo set, but the stable reference couldn't be saved${m?` — the ${m[1]} column doesn't exist in SharePoint yet`:''}. It'll display fine for now, but may need re-picking later if the link expires.`);
+      return;
+    }
     ev.eventImageRef=ref?{driveId,itemId}:null;
     showPop(evId);
   }catch(e){
