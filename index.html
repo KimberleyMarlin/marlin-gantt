@@ -11473,7 +11473,7 @@ function schemaColumnDefinition(type,name,displayName,choicesRaw){
   if(type==='choice'){
     const choices=(choicesRaw||'').split(',').map(c=>c.trim()).filter(Boolean);
     if(!choices.length)return null;
-    return{...base,choice:{choices,displayAs:'dropDownMenu',allowFillIn:false}};
+    return{...base,choice:{choices,displayAs:'dropDownMenu',allowTextEntry:false}};
   }
   return null;
 }
@@ -11611,10 +11611,11 @@ async function createKnownSchemaGaps(){
   for(const gap of missing){
     const listId=LIST_IDS[SCHEMA_TOOL_LISTS[gap.listKey].listIdKey];
     const def=schemaColumnDefinition(gap.type,gap.name,gap.displayName,gap.choices||'');
+    if(!def){failures.push(`${SCHEMA_TOOL_LISTS[gap.listKey].label}.${gap.name}: invalid definition; no request sent`);continue;}
     const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/columns`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(def)});
     if(res.ok)created++;else failures.push(`${SCHEMA_TOOL_LISTS[gap.listKey].label}.${gap.name}: HTTP ${res.status} ${await res.text()}`);
   }
-  alert(`Created ${created} column(s)${failures.length?`, ${failures.length} failed — see console.`:'.'}`);
+  alert(`Created ${created} column(s)${failures.length?`, ${failures.length} failed. First error: ${failures[0].slice(0,500)} — see console for all errors.`:'.'}`);
   failures.forEach(f=>console.error('Schema Tools:',f));
   await renderSchemaTools(true);
 }
