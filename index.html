@@ -2016,6 +2016,15 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <div class="form-section-head" style="margin-top:14px">Loaded Offer Structure</div>
             <div class="field-help">Selections are saved as Offer Variants linked to this activity. New custom values are added to Offer Mechanics for reuse.</div>
             <div id="loadedOfferSubmitFields" style="margin-top:9px"><div style="font-size:11px;color:var(--text3)">Loading Offer Mechanics…</div></div>
+            <!-- Loaded Rewards Campaign template depth (brief Section 11) — Offer Mechanics +
+                 Communications opt-ins. These columns already exist on Offer Variants and were
+                 already being read (loadOfferVariants()) but nothing in the Hub could set them —
+                 this fills that gap rather than adding new SharePoint columns. One shared value per
+                 activity (not per tier): applied identically to every Offer Variant row this
+                 activity creates, same as how the rest of this form avoids re-asking the same
+                 question per audience tier. -->
+            <div class="form-section-head" style="margin-top:14px">Communications &amp; Redemption</div>
+            <div id="loadedOfferExtraFields" style="margin-top:9px"></div>
           </div>
 
           <div class="form-section-head">Supplier &amp; Product</div>
@@ -9572,6 +9581,24 @@ function loadedOfferValue(prefix,key){const select=document.getElementById(`${pr
 function populateLoadedOfferSubmitFields(error=''){
   const el=document.getElementById('loadedOfferSubmitFields');if(!el)return;
   el.innerHTML=error?`<div style="font-size:11px;color:var(--red)">Could not load Offer Mechanics: ${escapeAttr(error)}</div>`:loadedOfferFieldsHtml('fLoaded','');
+  const extrasEl=document.getElementById('loadedOfferExtraFields');
+  if(extrasEl)extrasEl.innerHTML=error?'':loadedOfferExtrasHtml('fLoaded','');
+}
+// Shared-across-all-variants fields (not per audience tier) — Redemption Period, Stackable, Push
+// Notification Copy and Email/EDM Copy. Pulled from whichever active variant this campaign already
+// has, since saveLoadedOfferComponents() writes the same value onto every one of them.
+function loadedOfferExtrasCurrent(campaignId){
+  const variant=campaignId?OFFER_VARIANTS.find(v=>v.active!==false&&String(v.campaignId)===String(campaignId)):null;
+  return{redemptionPeriod:variant?.redemptionPeriod||'',pushCopy:variant?.pushCopy||'',emailCopy:variant?.emailCopy||'',stackable:!!variant?.stackable};
+}
+function loadedOfferExtrasHtml(prefix,campaignId=''){
+  const cur=loadedOfferExtrasCurrent(campaignId);
+  return`<div class="form-grid">
+    <div class="form-group"><label class="form-label">Redemption Period</label><input class="form-input" id="${prefix}_redemptionPeriod" type="text" placeholder="e.g. Mon-Thu 5-7pm, dine-in only" value="${escapeAttr(cur.redemptionPeriod)}"></div>
+    <div class="form-group full"><label class="checkbox-row" style="padding-top:22px"><input type="checkbox" id="${prefix}_stackable" ${cur.stackable?'checked':''}> Can be combined with other Loaded offers</label></div>
+    <div class="form-group full"><label class="form-label">Push Notification Copy</label><input class="form-input" id="${prefix}_pushCopy" type="text" placeholder="What the app push notification should say" value="${escapeAttr(cur.pushCopy)}"></div>
+    <div class="form-group full"><label class="form-label">Email / EDM Copy</label><input class="form-input" id="${prefix}_emailCopy" type="text" placeholder="What the newsletter/EDM blurb should say" value="${escapeAttr(cur.emailCopy)}"></div>
+  </div>`;
 }
 
 async function ensureOfferMechanic(label,category,token){
@@ -9603,6 +9630,11 @@ async function saveLoadedOfferComponents(campaignId,campaignTitle,prefix,token){
     if(missing.length)throw new Error(`Offer Variants column "${tierColumn.displayName||tierColumn.name}" needs these dropdown choices added in SharePoint: ${missing.join(', ')}.`);
   }
   if(reCategory)await ensureOfferMechanic(reCategory,LOADED_COMPONENTS.reCategory.category,token);
+  // Shared across every variant this activity creates, not per tier — see loadedOfferExtrasHtml().
+  const redemptionPeriod=document.getElementById(`${prefix}_redemptionPeriod`)?.value.trim()||'';
+  const stackable=!!document.getElementById(`${prefix}_stackable`)?.checked;
+  const pushCopy=document.getElementById(`${prefix}_pushCopy`)?.value.trim()||'';
+  const emailCopy=document.getElementById(`${prefix}_emailCopy`)?.value.trim()||'';
   for(const key of ['base','gold','platinum','newSignup','birthday','venueHopper','allMembers','reOffer','referral','staff','comp','marketing']){
     const def=LOADED_COMPONENTS[key],value=loadedOfferValue(prefix,key),existing=loadedVariantFor(campaignId,def.tier);
     if(!value){
@@ -9617,6 +9649,10 @@ async function saveLoadedOfferComponents(campaignId,campaignTitle,prefix,token){
     addOfferVariantField(optional,['OfferValue','Offer Value'],value);
     if(key==='reOffer'&&reCategory)addOfferVariantField(optional,['OfferDescription','Offer Description'],reCategory);
     addOfferVariantField(optional,['Active'],true);
+    if(redemptionPeriod)addOfferVariantField(optional,['RedemptionPeriod'],redemptionPeriod);
+    if(stackable)addOfferVariantField(optional,['Stackable'],true);
+    if(pushCopy)addOfferVariantField(optional,['PushNotificationCopy'],pushCopy);
+    if(emailCopy)addOfferVariantField(optional,['EmailCopy'],emailCopy);
     if(existing){
       const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.offerVariants}/items/${existing.id}`,token,{...fields,...optional});
       if(result.failed.length)throw new Error(`${def.label} failed: ${result.failed.map(f=>f.field).join(', ')}`);
@@ -9633,7 +9669,7 @@ async function saveLoadedOfferComponents(campaignId,campaignTitle,prefix,token){
 function openLoadedOfferEditor(evId){
   const ev=EVENTS.find(item=>item.id===evId);if(!ev||!ev.loadedRewards)return;
   document.getElementById('loadedOfferEditorOv')?.remove();const ov=document.createElement('div');ov.id='loadedOfferEditorOv';ov.className='overlay show';ov.onclick=event=>{if(event.target===ov)ov.remove();};
-  ov.innerHTML=`<div class="popup" style="max-width:760px"><div class="pop-h"><div class="pop-title">⭐ Loaded offer setup · ${escapeAttr(ev.title)}</div><button class="pop-close" onclick="document.getElementById('loadedOfferEditorOv').remove()">✕</button></div><div class="pop-body"><div class="form-notice">Each selection becomes a linked Offer Variant. Custom values are added to Offer Mechanics for future dropdowns.</div><div id="loadedOfferEditorMsg" class="form-msg"></div>${loadedOfferFieldsHtml('loadedEdit',ev.spId)}<div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-p" onclick="saveLoadedOfferEditor(${ev.id},this)">Save offer setup</button><button class="btn btn-s" onclick="document.getElementById('loadedOfferEditorOv').remove()">Cancel</button></div></div></div>`;document.body.appendChild(ov);
+  ov.innerHTML=`<div class="popup" style="max-width:760px"><div class="pop-h"><div class="pop-title">⭐ Loaded offer setup · ${escapeAttr(ev.title)}</div><button class="pop-close" onclick="document.getElementById('loadedOfferEditorOv').remove()">✕</button></div><div class="pop-body"><div class="form-notice">Each selection becomes a linked Offer Variant. Custom values are added to Offer Mechanics for future dropdowns.</div><div id="loadedOfferEditorMsg" class="form-msg"></div>${loadedOfferFieldsHtml('loadedEdit',ev.spId)}<div class="form-section-head" style="margin-top:14px">Communications &amp; Redemption</div>${loadedOfferExtrasHtml('loadedEdit',ev.spId)}<div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-p" onclick="saveLoadedOfferEditor(${ev.id},this)">Save offer setup</button><button class="btn btn-s" onclick="document.getElementById('loadedOfferEditorOv').remove()">Cancel</button></div></div></div>`;document.body.appendChild(ov);
 }
 async function saveLoadedOfferEditor(evId,button){
   const ev=EVENTS.find(item=>item.id===evId);if(!ev)return;button.disabled=true;button.textContent='Saving…';const message=document.getElementById('loadedOfferEditorMsg');
@@ -9742,6 +9778,7 @@ function renderLoaded(){
       ${loadedOfferGridHtml(ev,variants)}
       ${ev.supplierLookup?`<div style="display:flex;gap:16px;padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">🤝 Supplier: <strong style="color:var(--text2)">${ev.supplierLookup}</strong>${ev.supplierContrib?` · 💰 <strong style="color:var(--accent)">$${ev.supplierContrib.toLocaleString()}</strong>`:''}</div>`:''}
       ${variants.length&&variants.some(v=>v.pushCopy)?`<div style="padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">📱 ${variants.find(v=>v.pushCopy).pushCopy}</div>`:''}
+      ${(()=>{const rp=variants.find(v=>v.redemptionPeriod)?.redemptionPeriod,stackable=variants.some(v=>v.stackable);return(rp||stackable)?`<div style="display:flex;gap:14px;padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">${rp?`⏱ ${escapeAttr(rp)}`:''}${stackable?'<span>🔗 Stackable with other offers</span>':''}</div>`:'';})()}
     </div>`;
   }).join('');
 }

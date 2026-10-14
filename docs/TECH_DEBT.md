@@ -20,6 +20,12 @@
 
 **Still open:** Personal Tasks (a separate, private list) uses its own pair, `LinkedActivityId`/`LinkedCampaignID` — already id-based and not affected by this issue, left as-is.
 
+## Offer Variants has several columns that are read but still never written
+
+**Issue:** `loadOfferVariants()` reads `MinimumSpend`, `MaximumDiscount`, `ValidVenues`, `ValidDays`, `RedemptionLimit`, `RedemtionTarget` (SharePoint's own spelling) and `ActualRedemtion` off every Offer Variant row — all real, already-existing columns — but nothing in the Hub ever writes them, so they sit permanently blank. `RedemptionPeriod`, `Stackable`, `PushNotificationCopy` and `EmailCopy` were in the same state until 2026-10-14, when a shared "Communications & Redemption" section was added to the Loaded Rewards submit form and the post-creation offer editor, writing those four identically onto every tier's Offer Variant row (see `TAXONOMY_AUDIT.md`).
+
+**Recommended future fix:** the remaining fields look like per-tier, not shared-across-all, values (a Platinum offer plausibly having a different `MinimumSpend` or `ValidDays` than Gold) — fold them into the per-tier `loadedOfferSelectHtml()` block instead of the shared-extras pattern used for the first four, or confirm with Kimberley they're meant to be set once per campaign like the others before building either way.
+
 ## Financial data is not yet separated at the SharePoint layer
 
 The Hub hides financial fields from roles without `canViewBudget`, and v12 closes the known UI gaps. This is presentation-level control, not column-level security. Users who can read the Campaigns list can potentially inspect the raw Microsoft Graph response.
