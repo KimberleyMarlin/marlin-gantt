@@ -12988,10 +12988,10 @@ function renderActivityDetail(id,mode){
   h+=editField('Landing Page URL',ev.landingPageUrl,'LandingPageURL','text');
   // Always rendered (just hidden) so the Ticketed? toggle above can reveal it live.
   h+=`<div id="ticketingBox-${ev.id}" style="display:${ev.ticketed?'contents':'none'}">
-    ${editField('Booking / Ticket Link',ev.bookingUrl||ev.ticketUrl,'BookingURL','text')}
     ${editField('Ticket Platform',ev.ticketPlatform,'TicketPlatform','select',['','Humanitix','TryBooking','Eventbrite','Oztix','Now Book It'])}
     ${editField('Ticket Price ($)',ev.ticketPrice||'','TicketPrice','number')}
     ${editField('Capacity',ev.capacity||'','Capacity','number')}
+    ${editField('Booking / Ticket Link',ev.bookingUrl||ev.ticketUrl,'BookingURL','text')}
   </div>`;
   h+=editField('RRP ($)',ev.regularPrice||'','RegularPrice','number');
   h+=editField('Discount / Member Price ($)',ev.loadedBasePrice||'','LoadedBasePrice','number');
