@@ -1855,6 +1855,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
               </select>
               <div style="font-size:10.5px;color:var(--text3);margin-top:3px">Who's paying for marketing on this, or which department owns the activity — not a person (that's set separately once it's reviewed)</div>
             </div>
+            <div class="form-group full"><label class="checkbox-row"><input type="checkbox" id="fLoadedRewardsFlag" onchange="updateActivityConditionalSections()"> Loaded Rewards Activity? <span style="color:var(--text3);font-weight:400">(tick this if a Loaded component is involved, even under a different Marketing Funnel or Brand)</span></label></div>
             <div class="form-group"><label class="form-label">Marketing Silo</label>
               <select class="form-select" id="fCampaignSilo">
                 <option value="">Select…</option>
@@ -10431,6 +10432,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'AssigneeName',displayName:'Assignee Name',type:'text',purpose:'Owner/assignee as plain text — the existing Assignee column is Person/Group, which silently drops a plain name string on save instead of erroring.'},
   {listKey:'campaigns',name:'EventImageURL',displayName:'Event Image URL',type:'text',purpose:'Featured photo link, set from the Digital Media library picker or a job folder image — shown on the Calendar hover card and Artwork feed.'},
   {listKey:'campaigns',name:'RecurringEvent',displayName:'Recurring Event',type:'choice',choices:'Yes',purpose:'Independent Yes/No toggle for whether the activity repeats — separate from Event Format so a ticketed event can also be recurring.'},
+  {listKey:'campaigns',name:'LoadedRewards',displayName:'Loaded Rewards',type:'choice',choices:'Yes',purpose:'Independent Yes/No flag for whether Loaded Rewards is involved — separate from Brand/Business Stream so an activity under a different brand can still have a Loaded component. Only needed if none of LoadedRewards/Loaded Rewards/LoadedRewardsPromo/IsLoaded already exist.'},
   {listKey:'campaigns',name:'EventSeating',displayName:'Event Seating',type:'choice',choices:'Seated, Standing, Table Service, Mixed',purpose:'The seating/setup breakdown for the event.'},
   {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number',purpose:'Groups Activities that belong to one recurring series.'},
   {listKey:'campaigns',name:'ProjectId',displayName:'Project Id',type:'number',purpose:'Links each Activity to its one parent Project.'},
@@ -11547,9 +11549,10 @@ function updateSubmitForm(){
 
 function updateActivityConditionalSections(){
   const type=document.getElementById('fActType')?.value||'';
-  // Loaded Rewards setup only appears for an activity actually funded through that funnel —
-  // no separate yes/no question needed, it's implied by the Marketing Funnel choice.
-  const isLoaded=document.getElementById('fStream')?.value==='Loaded Rewards';
+  // Loaded Rewards setup reveals when Marketing Funnel = Loaded Rewards, or independently when the
+  // "Loaded Rewards Activity?" checkbox is ticked (e.g. a Venue Marketing activity that also needs
+  // a Loaded component, without changing its Brand/Business Stream).
+  const isLoaded=document.getElementById('fStream')?.value==='Loaded Rewards'||!!document.getElementById('fLoadedRewardsFlag')?.checked;
   const needsChannels=!!document.getElementById('fNeedsChannels')?.checked;
   const needsDesign=!!document.getElementById('fNeedsDesign')?.checked;
   const supplierInvolved=!!document.getElementById('fSupplierInvolved')?.checked;
@@ -12827,11 +12830,19 @@ async function submitEvent(){
       const ticketURL=document.getElementById('fTicketURL')?.value.trim();if(ticketURL)fields.TicketURL=ticketURL;
     }
 
-    // Loaded — implied by Marketing Funnel = Loaded Rewards, not a separate checkbox.
-    const isLoaded=stream==='Loaded Rewards';
-    if(isLoaded){
+    // Loaded Rewards setup reveals either when Marketing Funnel = Loaded Rewards (which also forces
+    // Brand/Business Stream, since that path means the activity IS a Loaded Rewards activity), or
+    // when the independent "Loaded Rewards Activity?" checkbox is ticked on its own — e.g. a Venue
+    // Marketing activity under a different brand that also needs a Loaded component, without that
+    // component taking over its Brand/Business Stream.
+    const isLoadedStream=stream==='Loaded Rewards';
+    const loadedFlagChecked=!!document.getElementById('fLoadedRewardsFlag')?.checked;
+    const isLoaded=isLoadedStream||loadedFlagChecked;
+    if(isLoadedStream){
       fields.Brand='Loaded Rewards';
       if(!fields.BusinessStream)fields.BusinessStream='Loaded Rewards';
+    }
+    if(isLoaded){
       addCampaignField(fields,['LoadedRewards','Loaded Rewards','LoadedRewardsPromo','IsLoaded'],true);
       const appRequired=document.getElementById('fAppRequired')?.value;if(appRequired)addCampaignField(fields,['AppRequired','App Required','Required in App'],appRequired);
       const newsletterRequired=document.getElementById('fNewsletterRequired')?.value;if(newsletterRequired)fields.NewsletterRequired=newsletterRequired;
@@ -12938,7 +12949,7 @@ function clearForm(){
   ['fTitle','fDesc','fLongDescription','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['fVenue','fActType','fEventFormat','fEventSeating','fStream','fCampaignSilo','fBrand','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
   const productSel=document.getElementById('fProductLookup');if(productSel)[...productSel.options].forEach(o=>o.selected=false);
-  ['fSupplierInvolved','fPOSRequired','fTicketed','fRecurring','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  ['fSupplierInvolved','fPOSRequired','fTicketed','fRecurring','fLoadedRewardsFlag','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   togglePOSDetails();
   SUBMIT_PEOPLE_SELECTED.clear();
   const peopleSearch=document.getElementById('fPeopleSearch');if(peopleSearch)peopleSearch.value='';
@@ -13040,6 +13051,13 @@ function renderActivityDetail(id,mode){
   h+=editField('Marketing Silo',ev.marketingSilo,'CampaignSilo','select',['',...CAMPAIGN_SILO_OPTIONS]);
   h+=editField('Marketing Funnel',ev.businessStream,'BusinessStream','select',['',...BUSINESS_STREAM_OPTIONS]);
   h+=editField('Primary Brand',ev.brand,'Brand','select',['',...BRAND_OPTIONS]);
+  // Independent Loaded Rewards flag — previously "is this Loaded Rewards?" was only ever inferred
+  // from Brand/Business Stream/Department, with no direct way to mark an activity as Loaded
+  // Rewards on its own (e.g. a Venue Marketing activity that also needs a Loaded component).
+  {
+    const loadedFlagKey=writableCampaignKey('LoadedRewards','Loaded Rewards','LoadedRewardsPromo','IsLoaded')||'LoadedRewards';
+    h+=editField('Loaded Rewards Activity?',ev.loadedFlag?'Yes':'',loadedFlagKey,'select',['','Yes']);
+  }
   h+=editLookup('Supplier','Supplier',ev.supplierId,ev.supplierLookup);
   h+=editLookup('Product','Product',ev.productId,ev.product);
   if(ev.department)h+=editField('Department',ev.department,'Departement');
@@ -13453,6 +13471,7 @@ async function savePopEdit(evId,mode){
     }
     if(f===writableCampaignKey('LongDescription','Long Description'))ev.longDescription=v;
     if(f===writableCampaignKey('AppDescription','App Description','AppLongDescription','Loaded App Description'))ev.appDescription=v;
+    if(f===(writableCampaignKey('LoadedRewards','Loaded Rewards','LoadedRewardsPromo','IsLoaded')||'LoadedRewards'))ev.loadedFlag=v;
     if(f==='WorkflowStage')ev.stage=v;
     if(f==='PosStatus'){
       const posIsRequired=!!v&&v!=='Not Required';
