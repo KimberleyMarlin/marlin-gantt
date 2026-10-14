@@ -10806,7 +10806,8 @@ async function loadTasks(){
           campaignLookup:f.Campaign?.LookupValue||'',
           campaignLookupId:f.Campaign?.LookupId!=null?String(f.Campaign.LookupId):'',
           platform:f.Platform||'',
-          assetSpec:f.AssetSpec||''
+          assetSpec:f.AssetSpec||'',
+          convertedFromPersonalTaskId:f.ConvertedFromPersonalTaskId!=null&&f.ConvertedFromPersonalTaskId!==''?String(f.ConvertedFromPersonalTaskId):''
         };
       });
       // The SharePoint list is the whole-team work register — load every item, then use the
@@ -11072,7 +11073,9 @@ function renderPersonalTasks(){
     return;
   }
   const today=toLocalISODate(new Date());
-  const open=PERSONAL_TASKS.filter(task=>task.status!=='Done');
+  // Converted tasks are closed (not "Open") but are intentionally left out of "Completed" too — they
+  // didn't get done here, they became a shared task, which is tracked as its own item in My Tasks.
+  const open=PERSONAL_TASKS.filter(task=>task.status!=='Done'&&task.status!=='Converted');
   const overdue=open.filter(task=>task.due&&task.due<today);
   const done=PERSONAL_TASKS.filter(task=>task.status==='Done');
   const badge=document.getElementById('personalTaskBadge');if(badge){badge.textContent=open.length;badge.style.display=open.length?'':'none';}
@@ -11113,15 +11116,16 @@ function renderPersonalTasks(){
     created:(a,b)=>Number(String(b.id).replace(/\D/g,'')||0)-Number(String(a.id).replace(/\D/g,'')||0),
     custom:(a,b)=>(a.sequence||0)-(b.sequence||0)
   };
-  // Done tasks always sink to the bottom regardless of sort mode; the chosen sort only orders within each group.
-  const sortTasks=list=>list.slice().sort((a,b)=>(a.status==='Done')-(b.status==='Done')||(sortComparators[sortMode]||sortComparators.due)(a,b));
+  // Done/Converted tasks always sink to the bottom regardless of sort mode; the chosen sort only orders within each group.
+  const isClosedPersonalTask=status=>status==='Done'||status==='Converted';
+  const sortTasks=list=>list.slice().sort((a,b)=>Number(isClosedPersonalTask(a.status))-Number(isClosedPersonalTask(b.status))||(sortComparators[sortMode]||sortComparators.due)(a,b));
   const topLevel=sortTasks(filtered.filter(task=>!task.parentId));
   const childrenOf=parentId=>sortTasks(PERSONAL_TASKS.filter(task=>String(task.parentId)===String(parentId)));
   const shownChildIds=new Set();
   const allShownIds=new Set(PERSONAL_TASKS.map(t=>String(t.id)));
   Array.from(personalTaskSelected).forEach(id=>{if(!allShownIds.has(String(id)))personalTaskSelected.delete(id);});
   const personalTaskRowHtml=(task,isSubtask)=>{
-    const isDone=task.status==='Done',isOverdue=!isDone&&task.due&&task.due<today;
+    const isDone=task.status==='Done',isConverted=task.status==='Converted',isClosed=isDone||isConverted,isOverdue=!isClosed&&task.due&&task.due<today;
     const subtasks=isSubtask?[]:childrenOf(task.id);
     const subtasksDone=subtasks.filter(t=>t.status==='Done').length;
     const expanded=personalTaskExpanded.has(String(task.id));
@@ -11142,8 +11146,9 @@ function renderPersonalTasks(){
     // Source='Outlook' and carries the original email's sender/link; a Hub-created task has none
     // of that, read as 'Hub' so nothing changes for existing rows.
     const emailHtml=task.source==='Outlook'?`<span title="${escapeAttr(task.emailSender?'From: '+task.emailSender:'From Outlook')}" style="color:#0a66c2">📧${task.emailLink?` <a href="${escapeAttr(task.emailLink)}" target="_blank" onclick="event.stopPropagation()" style="color:#0a66c2">Open email</a>`:''}</span>`:'';
-    const convertBtn=(!isSubtask&&!isDone)?`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();convertPersonalTaskToShared('${task.id}')" title="Create a linked Shared Task, keep this one as a record">→ Shared</button>`:'';
-    let row=`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${emailHtml}${linkedHtml}${projectHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right">${task.priority?`<span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority)}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}${convertBtn}${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
+    const convertBtn=(!isSubtask&&!isClosed)?`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();convertPersonalTaskToShared('${task.id}')" title="Create a linked Shared Task, keep this one as a record">→ Shared</button>`:'';
+    const cbAttrs=isConverted?`title="Converted to a shared task — see My Tasks"`:`onclick="togglePersonalTask('${task.id}')"`;
+    let row=`<div class="task-item ${task.priority==='Critical'&&!isClosed?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isClosed?'done':''}" ${cbAttrs}>${isDone?'✓':isConverted?'↗':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isClosed?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${emailHtml}${linkedHtml}${projectHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right">${task.priority?`<span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority)}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}${convertBtn}${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
     if(!isSubtask&&subtasks.length&&expanded){
       row+=`<div class="pt-subtasks">${subtasks.map(child=>{shownChildIds.add(child.id);return personalTaskRowHtml(child,true);}).join('')}</div>`;
     } else if(!isSubtask&&subtasks.length){
@@ -11284,17 +11289,36 @@ async function savePersonalTask(){
 
 // "Deliberately convert it into shared work" — for a Personal Task (whether Hub-created or from
 // the planned Outlook flow) that turns out to need the team's visibility. Creates a linked Shared
-// Task carrying over title/notes/due date/Activity link, then marks THIS record Done with a note
-// rather than deleting it — preserves the original as a record without duplicating active work
-// (it leaves the open Personal Tasks queue the moment the new Shared Task exists).
+// Task carrying over title/notes/due date/Activity link, then marks THIS record's own status
+// 'Converted' (distinct from 'Done' — it wasn't finished here, it became a shared task) rather
+// than deleting it — preserves the original as a record without duplicating active work (it
+// leaves the open Personal Tasks queue, and the "Completed" stat, the moment the new Shared Task
+// exists). Idempotent: see the ConvertedFromPersonalTaskId check below.
 async function convertPersonalTaskToShared(taskId){
   const task=PERSONAL_TASKS.find(t=>String(t.id)===String(taskId));if(!task)return;
   if(!LIST_IDS.myTasks){alert('Shared Work Items list isn\'t connected yet.');return;}
+  // Idempotency: the Shared Task created below always carries ConvertedFromPersonalTaskId, written in
+  // the SAME create call as the task itself. That's the authoritative check — not this Personal Task's
+  // own Status — because Status is exactly the field whose later patch-back can fail while the shared
+  // task has already been created. A retry (manual click, or recovering from a prior failure) must find
+  // the existing shared task here rather than create a second one.
+  const existingShared=MY_TASKS.find(t=>String(t.convertedFromPersonalTaskId||'')===String(task.id));
+  if(existingShared){
+    if(task.status==='Converted'){
+      const msg=`Already converted — see "${existingShared.title}" in My Tasks.`;
+      if(typeof showToast==='function')showToast(msg);else alert(msg);
+      return;
+    }
+    if(!confirm(`"${task.title}" was already converted to the shared task "${existingShared.title}" — only this record's own "converted" marker failed to save last time. Mark it now? (No new shared task will be created.)`))return;
+    const token=await getToken(true);
+    await finishPersonalTaskConversion(task,existingShared,token);
+    return;
+  }
   if(!confirm(`Convert "${task.title}" into a shared task? It will appear in the team's My Tasks. This record stays here, marked as converted.`))return;
   try{
     const token=await getToken(true);
     const linkedEvent=task.linkedActivityId?EVENTS.find(e=>String(e.id)===String(task.linkedActivityId)):null;
-    const fields={Title:task.title,Status:'Not Started'};
+    const fields={Title:task.title,Status:'Not Started',ConvertedFromPersonalTaskId:Number(task.id)};
     if(task.priority)fields.Priority=task.priority;
     if(task.notes)fields.Notes=task.notes;
     if(task.due)fields.DueDate=task.due+'T12:00:00Z';
@@ -11302,14 +11326,37 @@ async function convertPersonalTaskToShared(taskId){
     const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
     if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
     const created=await res.json();
-    MY_TASKS.push({id:created.id,title:task.title,status:'Not Started',priority:task.priority||'',category:'',due:task.due,notes:task.notes||'',blocker:'',assignedTo:'',campaignLookup:linkedEvent?.title||'',campaignLookupId:linkedEvent?.spId?String(linkedEvent.spId):''});
-    const tag='[Converted to shared task — see My Tasks]';
-    const newNotes=task.notes?`${task.notes}\n\n${tag}`:tag;
-    const patchRes=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${task.id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:'Done',Notes:newNotes}})});
-    if(patchRes.ok){task.status='Done';task.notes=newNotes;}
-    renderPersonalTasks();
-    if(typeof showToast==='function')showToast(`"${task.title}" is now a shared task.`);
+    const newShared={id:created.id,title:task.title,status:'Not Started',priority:task.priority||'',category:'',due:task.due,notes:task.notes||'',blocker:'',assignedTo:'',campaignLookup:linkedEvent?.title||'',campaignLookupId:linkedEvent?.spId?String(linkedEvent.spId):'',convertedFromPersonalTaskId:String(task.id)};
+    MY_TASKS.push(newShared);
+    await finishPersonalTaskConversion(task,newShared,token);
   }catch(e){alert('Could not convert to a shared task: '+e.message);}
+}
+
+// Second half of a conversion — marks the Personal Task record as converted and warns if the new
+// shared task has no assignee. Split out so a retry (existingShared found above) can call just this
+// half without re-creating the shared task.
+async function finishPersonalTaskConversion(task,sharedTask,token){
+  const tag=`[Converted to shared task — see My Tasks: "${sharedTask.title}"]`;
+  const newNotes=task.notes&&task.notes.includes(tag)?task.notes:(task.notes?`${task.notes}\n\n${tag}`:tag);
+  try{
+    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${task.id}`,token,{Status:'Converted',Notes:newNotes});
+    const statusFailed=result.failed.find(f=>f.field==='Status');
+    if(statusFailed){
+      renderPersonalTasks();
+      alert(`The shared task "${sharedTask.title}" exists, but marking this record as converted failed (${statusFailed.error||'unknown error'}). The "→ Shared" button will stay visible — clicking it again is safe and will reuse this same shared task rather than creating a new one.`);
+    }else{
+      task.status='Converted';task.notes=newNotes;
+      renderPersonalTasks();
+      if(typeof showToast==='function')showToast(`"${task.title}" is now a shared task.`);
+    }
+  }catch(e){
+    renderPersonalTasks();
+    alert(`The shared task "${sharedTask.title}" exists, but marking this record as converted failed: ${e.message}. Clicking "→ Shared" again is safe and will reuse this same shared task.`);
+  }
+  if(!sharedTask.assignedTo){
+    const warn=`Heads up: the shared task "${sharedTask.title}" has no assignee yet — open My Tasks to assign someone.`;
+    if(typeof showToast==='function')showToast(warn);else alert(warn);
+  }
 }
 
 async function togglePersonalTask(id){
@@ -11466,6 +11513,7 @@ async function bulkDeletePersonalTasks(){
 // ═══════════════════════════════════════
 const SCHEMA_TOOL_LISTS={
   campaigns:{label:'Marketing & Activations 2026',listIdKey:'campaigns'},
+  myTasks:{label:'Shared Work Items (My Tasks)',listIdKey:'myTasks'},
   personalTasks:{label:'My Tasks (personal)',listIdKey:'personalTasks'},
   projects:{label:'Marketing Projects',listIdKey:'projects'},
   ideas:{label:'Idea Bank',listIdKey:'ideas'},
@@ -11538,6 +11586,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'personalTasks',name:'EmailSender',displayName:'Email Sender',type:'text',purpose:'Outlook email-to-task — the original email\'s sender, for a Source=Outlook task.'},
   {listKey:'personalTasks',name:'EmailLink',displayName:'Email Link',type:'text',purpose:'Outlook email-to-task — a link back to the original email in Outlook.'},
   {listKey:'personalTasks',name:'EmailMessageId',displayName:'Email Message Id',type:'text',purpose:'Outlook email-to-task — the email\'s stable internet message id, used by the Power Automate flow to detect duplicates (including when a flagged email is later edited).'},
+  {listKey:'myTasks',name:'ConvertedFromPersonalTaskId',displayName:'Converted From Personal Task Id',type:'number',purpose:'Back-reference to the private Personal Task this shared task was converted from, written at creation time. The authoritative idempotency check for convertPersonalTaskToShared — a retry after a failed patch-back on the Personal Task side reuses this record instead of creating a duplicate.'},
   {listKey:'ideas',name:'ActivityType',displayName:'Activity Type',type:'choice',choices:ACTIVITY_TYPE_OPTIONS.join(', '),purpose:'Captured at idea stage so "Continue Brief" can prefill it on the Activity submission form.'},
   {listKey:'ideas',name:'PromotedActivityId',displayName:'Promoted Activity Id',type:'number',purpose:'Links an idea to the real Activity created from it via "Continue Brief", so reopening a promoted idea opens that Activity instead of letting it be promoted twice.'},
   {listKey:'campaigns',name:'DesignJobCreated',displayName:'Design Job Created',type:'yesno',purpose:'Marks that approval has already created this activity\'s proposed work items, so re-approving never creates a second set. Already read by the Hub; this is the first time anything writes to it.'},
@@ -12198,7 +12247,7 @@ function renderProjects(){
   // and shouldn't make every new project card look like it's on fire.
   const isUrgentRisk=r=>/passed|at risk/i.test(r);
   list.innerHTML=shown.length?`<div class="proj-grid">${shown.map(({p,linked,risks})=>{
-    const workCount=(canAccessPanel('personaltasks')?PERSONAL_TASKS.filter(t=>String(t.projectId)===String(p.id)&&t.status!=='Done').length:0)+MY_TASKS.filter(t=>t.status!=='Done'&&linked.some(e=>t.campaignLookupId?(String(e.spId)===String(t.campaignLookupId)||String(e.id)===String(t.campaignLookupId)):(e.title||'').toLowerCase()===(t.campaignLookup||'').toLowerCase())).length;
+    const workCount=(canAccessPanel('personaltasks')?PERSONAL_TASKS.filter(t=>String(t.projectId)===String(p.id)&&t.status!=='Done'&&t.status!=='Converted').length:0)+MY_TASKS.filter(t=>t.status!=='Done'&&linked.some(e=>t.campaignLookupId?(String(e.spId)===String(t.campaignLookupId)||String(e.id)===String(t.campaignLookupId)):(e.title||'').toLowerCase()===(t.campaignLookup||'').toLowerCase())).length;
     const hasUrgent=risks.some(isUrgentRisk);
     return`<article class="proj-card" onclick="openEditProject('${escapeAttr(String(p.id))}')" style="${hasUrgent?'border-left:3px solid var(--red)':''}">
       <div class="proj-card-head">
