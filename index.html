@@ -1844,11 +1844,11 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <div class="form-notice">📌 Fill in what you know — the marketing team will add channels and next steps after it's submitted.</div>
           <div id="fMsg" class="form-msg"></div>
           <div class="form-grid">
-            <div class="form-group full"><label class="form-label">Activation <span class="req">*</span></label><input class="form-input" id="fTitle" type="text" placeholder="e.g. Beer of the Month"><div class="field-help" id="fTitleHelp">The repeatable promotion or event name. The month is taken from Start Date.</div><input type="hidden" id="fTitleBase" value=""></div>
+            <div class="form-group full"><label class="form-label">Activation <span class="req">*</span></label><input class="form-input" id="fTitle" type="text" placeholder="e.g. WBC | Beer of the Month | Cheeky Monkey XPA | November 2026" oninput="markTitleTouched()"><div class="field-help" id="fTitleHelp">Auto-built from Venue, Activity Type, Activity Detail and Start Date as you fill them in — edit it directly any time to override.</div><input type="hidden" id="fTitleBase" value=""></div>
             <div class="form-group full"><label class="form-label">Submitted By</label><div id="fSubmittedBy" style="font-size:13px;color:var(--text2);padding:8px 0">—</div></div>
-            <div class="form-group full"><label class="form-label">Activity Detail</label><textarea class="form-textarea" id="fDesc" placeholder="e.g. Cheeky Monkey pints" style="min-height:70px" oninput="composeActivityTitle()"></textarea><div class="field-help" id="fDescHelp">The specific product, offer or execution for this occurrence.</div></div>
+            <div class="form-group full"><label class="form-label">Activity Detail</label><textarea class="form-textarea" id="fDesc" placeholder="e.g. Cheeky Monkey pints" style="min-height:70px" oninput="syncAppHeadingFromItem();composeAutoActivityTitle()"></textarea><div class="field-help" id="fDescHelp">The specific product, offer or execution for this occurrence.</div></div>
             <div class="form-group full" id="fLongDescriptionGroup" style="display:none"><label class="form-label">Long Description</label><textarea class="form-textarea" id="fLongDescription" placeholder="Full customer-facing copy for web, listings and campaign materials" style="min-height:90px"></textarea><div class="field-help" id="fLongDescriptionHelp">Master long-form copy. Loaded can use this by default, with an optional app-specific override below.</div></div>
-            <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="fVenue"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option><option>All Venues</option></select></div>
+            <div class="form-group"><label class="form-label">Venue <span class="req">*</span></label><select class="form-select" id="fVenue" onchange="composeAutoActivityTitle()"><option value="">Select…</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option><option>All Venues</option></select></div>
             <div class="form-group"><label class="form-label">Marketing Funnel</label>
               <select class="form-select" id="fStream" onchange="updateActivityConditionalSections()">
                 <option value="">Select…</option>
@@ -1863,14 +1863,14 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
               <div style="font-size:10.5px;color:var(--text3);margin-top:3px">Planning priority — how much lead time this needs. Marketing can set or correct this at triage if you're not sure.</div>
             </div>
             <div class="form-group"><label class="form-label">Primary Brand</label>
-              <select class="form-select" id="fBrand">
+              <select class="form-select" id="fBrand" onchange="composeAutoActivityTitle()">
                 <option value="">Select…</option>
               </select>
             </div>
-            <div class="form-group"><label class="form-label">Start Date <span class="req">*</span></label><input class="form-input" id="fStart" type="date"></div>
+            <div class="form-group"><label class="form-label">Start Date <span class="req">*</span></label><input class="form-input" id="fStart" type="date" onchange="composeAutoActivityTitle()"></div>
             <div class="form-group"><label class="form-label">End Date</label><input class="form-input" id="fEnd" type="date"></div>
             <div class="form-group"><label class="form-label">Activity Type <span class="req">*</span></label>
-              <select class="form-select" id="fActType" onchange="updateSubmitForm()">
+              <select class="form-select" id="fActType" onchange="updateSubmitForm();composeAutoActivityTitle()">
                 <option value="">Select…</option>
               </select>
             </div>
@@ -2312,6 +2312,9 @@ const ACTIVITY_TYPE_OPTIONS=['Event','Promotion / Offer','Campaign','Maintenance
 const BUSINESS_STREAM_OPTIONS=['Venue Marketing','Loaded Rewards','Functions','Gift Cards','Events Program','Group / Brand Marketing','Marketing Operations'];
 const CAMPAIGN_SILO_OPTIONS=['Hero','Momentum','Always-On','Organic','Maintenance'];
 const BRAND_OPTIONS=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Loaded Rewards','Beerland Brewing'];
+// Short codes for the automatic Activity naming engine (see composeAutoActivityTitle below) — e.g.
+// "WBC | Beer of the Month | Cheeky Monkey XPA | November 2026" instead of the full venue name.
+const VENUE_SHORT_CODES={'The Left Bank':'LB','The Ravenswood':'RAV','Whitfords Brewing Co':'WBC','Hotel Darwin':'HD','Mustang Bar':'MB','Beerland Brewing':'BL','Loaded Rewards':'Loaded Rewards','All Venues':'All Venues'};
 // Fills a <select>'s options from a canonical list, keeping its existing blank/placeholder <option>.
 // Used so the Submit form reads from the same single list the Activity detail popup's editField()
 // calls use, instead of each maintaining its own hand-copied option list.
@@ -11489,9 +11492,11 @@ function pickSubmitPath(path){
     if(titleBaseEl){
       titleBaseEl.value=templateKey&&ACTIVITY_TEMPLATES[templateKey]?ACTIVITY_TEMPLATES[templateKey].title:'';
       fAppHeadingTouched=false;
-      if(descHelpEl)descHelpEl.textContent=titleBaseEl.value?`The specific item (e.g. "Feral Hop Hog") — combines with "${titleBaseEl.value}" to form the Title, and fills App Heading until you edit that yourself.`:'The specific product, offer or execution for this occurrence.';
-      if(titleHelpEl)titleHelpEl.textContent=titleBaseEl.value?`Auto-built from "${titleBaseEl.value}" plus whatever you type in Activity Detail below.`:'The repeatable promotion or event name. The month is taken from Start Date.';
-      composeActivityTitle();
+      fTitleTouched=false;
+      if(descHelpEl)descHelpEl.textContent=titleBaseEl.value?`The specific item (e.g. "Feral Hop Hog") — combines with Venue, "${titleBaseEl.value}" and Start Date to form the Title, and fills App Heading until you edit that yourself.`:'The specific product, offer or execution for this occurrence.';
+      if(titleHelpEl)titleHelpEl.textContent=titleBaseEl.value?`Auto-built from Venue, "${titleBaseEl.value}", whatever you type in Activity Detail below, and Start Date.`:'Auto-built from Venue, Activity Type, Activity Detail and Start Date as you fill them in — edit it directly any time to override.';
+      syncAppHeadingFromItem();
+      composeAutoActivityTitle();
     }
   }
   // Populate job assignee
@@ -11619,6 +11624,18 @@ function togglePOSDetails(){
 // Whether App Heading has been hand-edited since the last template pick — while untouched it keeps
 // mirroring the Activity Detail item name; once the user types into it directly, it stops.
 let fAppHeadingTouched=false;
+function syncAppHeadingFromItem(){
+  if(fAppHeadingTouched)return;
+  const base=document.getElementById('fTitleBase')?.value||'';
+  const item=document.getElementById('fDesc')?.value.trim()||'';
+  const headingEl=document.getElementById('fAppHeading');
+  if(headingEl&&(item||base))headingEl.value=item||base;
+}
+// ARCHIVED 2026-10-14, not deleted — kept so it can be called back if the naming-engine replacement
+// below doesn't work out. Was the live Title builder for templated activities ("{Template} — {Item}",
+// e.g. "Beer of the Month — Feral Hop Hog") before composeAutoActivityTitle() replaced it per the
+// Master Briefing brief's [Venue/Brand] | [Type] | [Name] | [Period] format. No longer called from
+// anywhere — the App Heading mirroring half of what it did lives on in syncAppHeadingFromItem() above.
 function composeActivityTitle(){
   const base=document.getElementById('fTitleBase')?.value||'';
   if(!base)return; // no template active — Title and Activity Detail are independent free text
@@ -11629,6 +11646,29 @@ function composeActivityTitle(){
     const headingEl=document.getElementById('fAppHeading');
     if(headingEl)headingEl.value=item||base;
   }
+}
+// Automatic Activity naming engine — [Venue/Brand] | [Activity Type] | [Specific Name] | [Period].
+// A template's own name (e.g. "Beer of the Month") stands in for Activity Type when one is active,
+// since it's a more specific, recognisable label than the underlying Event/Promotion/Campaign value.
+// Stops overwriting Title once the user has edited it directly (fTitleTouched), same pattern as
+// fAppHeadingTouched — "display the generated title and allow it to be refined", not force it.
+let fTitleTouched=false;
+function markTitleTouched(){fTitleTouched=true;}
+function monthYearFromDateInput(dateStr){
+  if(!dateStr)return'';
+  const d=new Date(dateStr+'T00:00:00');
+  return isNaN(d)?'':d.toLocaleString('en-AU',{month:'long',year:'numeric'});
+}
+function composeAutoActivityTitle(){
+  if(fTitleTouched)return;
+  const venueOrBrand=document.getElementById('fBrand')?.value||document.getElementById('fVenue')?.value||'';
+  const venueLabel=VENUE_SHORT_CODES[venueOrBrand]||venueOrBrand;
+  const typeLabel=document.getElementById('fTitleBase')?.value||document.getElementById('fActType')?.value||'';
+  const specificName=document.getElementById('fDesc')?.value.trim()||'';
+  const period=monthYearFromDateInput(document.getElementById('fStart')?.value||'');
+  const parts=[venueLabel,typeLabel,specificName,period].filter(Boolean);
+  const titleEl=document.getElementById('fTitle');
+  if(titleEl&&parts.length)titleEl.value=parts.join(' | ');
 }
 
 function applyActivityTemplate(key){
@@ -12951,6 +12991,8 @@ function clearForm(){
   const productSel=document.getElementById('fProductLookup');if(productSel)[...productSel.options].forEach(o=>o.selected=false);
   ['fSupplierInvolved','fPOSRequired','fTicketed','fRecurring','fLoadedRewardsFlag','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   togglePOSDetails();
+  fTitleTouched=false;
+  fAppHeadingTouched=false;
   SUBMIT_PEOPLE_SELECTED.clear();
   const peopleSearch=document.getElementById('fPeopleSearch');if(peopleSearch)peopleSearch.value='';
   renderSubmitPeopleResults('');
