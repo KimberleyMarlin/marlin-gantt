@@ -2101,15 +2101,16 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
                 <table class="tbl" style="min-width:420px">
                   <thead><tr><th>Surface</th><th style="text-align:center">Promote</th><th style="text-align:center">Artwork</th></tr></thead>
                   <tbody id="promoteArtworkMatrixBody">
-                    <tr><td>Website</td><td style="text-align:center"><input type="checkbox" id="fChanWebsite" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetWebsite" class="pa-artwork"></td></tr>
-                    <tr><td>Meta</td><td style="text-align:center"><input type="checkbox" id="fChanMeta" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetMeta" class="pa-artwork"></td></tr>
+                    <tr><td>Website</td><td style="text-align:center"><input type="checkbox" id="fChanWebsite" class="pa-promote" onchange="updateActivityConditionalSections()"></td><td style="text-align:center"><input type="checkbox" id="fAssetWebsite" class="pa-artwork" onchange="updateActivityConditionalSections()"></td></tr>
+                    <tr><td>Meta</td><td style="text-align:center"><input type="checkbox" id="fChanMeta" class="pa-promote" onchange="updateActivityConditionalSections()"></td><td style="text-align:center"><input type="checkbox" id="fAssetMeta" class="pa-artwork" onchange="updateActivityConditionalSections()"></td></tr>
                     <tr><td>Newsletter</td><td style="text-align:center"><input type="checkbox" id="fChanNewsletter" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetNewsletter" class="pa-artwork" onchange="updateAssetDetailVisibility()"></td></tr>
                     <tr><td>In-venue</td><td style="text-align:center"><input type="checkbox" id="fChanInVenue" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetInVenue" class="pa-artwork"></td></tr>
                     <tr><td>TVs</td><td style="text-align:center;color:var(--text3)">—</td><td style="text-align:center"><input type="checkbox" id="fAssetTVs" class="pa-artwork" onchange="updateAssetDetailVisibility()"></td></tr>
                     <tr><td>Loaded app</td><td style="text-align:center"><input type="checkbox" id="fChanLoaded" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetLoaded" class="pa-artwork"></td></tr>
-                    <tr><td>Google Ads</td><td style="text-align:center"><input type="checkbox" id="fChanGoogleAds" class="pa-promote"></td><td style="text-align:center"><input type="checkbox" id="fAssetPaidAd" class="pa-artwork"></td></tr>
+                    <tr><td>Google Ads</td><td style="text-align:center"><input type="checkbox" id="fChanGoogleAds" class="pa-promote" onchange="updateActivityConditionalSections()"></td><td style="text-align:center"><input type="checkbox" id="fAssetPaidAd" class="pa-artwork" onchange="updateActivityConditionalSections()"></td></tr>
                     <tr><td>Google Business Profile</td><td style="text-align:center"><input type="checkbox" id="fChanGBP" class="pa-promote"></td><td style="text-align:center;color:var(--text3)">—</td></tr>
                     <tr><td>Radio</td><td style="text-align:center"><input type="checkbox" id="fChanRadio" class="pa-promote"></td><td style="text-align:center;color:var(--text3)">—</td></tr>
+                    <tr><td>SMS</td><td style="text-align:center"><input type="checkbox" id="fChanSMS" class="pa-promote" onchange="updateActivityConditionalSections()"></td><td style="text-align:center;color:var(--text3)">—</td></tr>
                     <tr><td>Staff / internal</td><td style="text-align:center;color:var(--text3)">—</td><td style="text-align:center"><input type="checkbox" id="fAssetStaff" class="pa-artwork"></td></tr>
                   </tbody>
                 </table>
@@ -2118,6 +2119,14 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <div class="form-group full"><label class="form-label">Other</label><input class="form-input" id="fChanOther" type="text" placeholder="Anywhere else customers might see this"></div>
             <div class="form-group full" id="fAssetTVsDetailGroup" style="display:none"><label class="form-label">TV sizes, orientation or venue screens</label><input class="form-input" id="fAssetTVsDetail" type="text" placeholder="e.g. 1920×1080 landscape, all venue TVs"></div>
             <div class="form-group full" id="fAssetNewsletterDetailGroup" style="display:none"><label class="form-label">Newsletter requirements</label><input class="form-input" id="fAssetNewsletterDetail" type="text" placeholder="e.g. hero image and short offer tile"></div>
+            <!-- Specialist briefs (brief Section 14 — Digital Advertising, Website, Email, SMS as
+                 structured work items). Shown once the matching channel is ticked, either to
+                 promote it or to have artwork made for it — whoever picks this up shouldn't have to
+                 chase the submitter for direction that could've been captured up front. -->
+            <div class="form-group full" id="fChanWebsiteDetailGroup" style="display:none"><label class="form-label">Website Brief</label><textarea class="form-textarea" id="fChanWebsiteDetail" placeholder="e.g. Which page/section, what changes or content is needed, any link it should point to" style="min-height:60px"></textarea></div>
+            <div class="form-group full" id="fChanMetaDetailGroup" style="display:none"><label class="form-label">Meta / Social Brief</label><textarea class="form-textarea" id="fChanMetaDetail" placeholder="e.g. Audience, format, angle or offer to lead with" style="min-height:60px"></textarea></div>
+            <div class="form-group full" id="fChanGoogleAdsDetailGroup" style="display:none"><label class="form-label">Google Ads Brief</label><textarea class="form-textarea" id="fChanGoogleAdsDetail" placeholder="e.g. Keywords, search intent, landing page" style="min-height:60px"></textarea></div>
+            <div class="form-group full" id="fChanSMSDetailGroup" style="display:none"><label class="form-label">SMS Copy</label><input class="form-input" id="fChanSMSDetail" type="text" placeholder="The message to send — keep it short"></div>
           </div>
 
           <div class="form-section-head">Loop anyone else in?</div>
@@ -5386,6 +5395,12 @@ async function loadCampaigns(){
         combinableWithOtherOffers:f.CombinableWithOtherOffers===true||f.CombinableWithOtherOffers==='Yes',
         supplierFunded:f.SupplierFunded===true||f.SupplierFunded==='Yes',
         supplierReportingRequired:f.SupplierReportingRequired===true||f.SupplierReportingRequired==='Yes',
+        // Specialist briefs (brief Section 14) — same read-only-for-now treatment as the rest of
+        // this session's conditional templates.
+        websiteBriefNotes:f.WebsiteBriefNotes||'',
+        metaBriefNotes:f.MetaBriefNotes||'',
+        googleAdsBriefNotes:f.GoogleAdsBriefNotes||'',
+        smsCopy:f.SmsCopy||'',
         marketingSilo:f.CampaignSilo||'', // internal name CampaignSilo
         businessStream:f.BusinessStream||'',
         stage:isPast&&storedStage!=='Done'?'Done':storedStage,
@@ -11084,6 +11099,10 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'CombinableWithOtherOffers',displayName:'Combinable With Other Offers',type:'choice',choices:'Yes',purpose:'Promotions & Offers conditional template.'},
   {listKey:'campaigns',name:'SupplierFunded',displayName:'Supplier-Funded',type:'choice',choices:'Yes',purpose:'Shown whenever a supplier is involved — whether they\'re funding this activity.'},
   {listKey:'campaigns',name:'SupplierReportingRequired',displayName:'Supplier Reporting Required',type:'choice',choices:'Yes',purpose:'Shown whenever a supplier is involved — whether proof of advertising or results reporting is owed back to them.'},
+  {listKey:'campaigns',name:'WebsiteBriefNotes',displayName:'Website Brief Notes',type:'text',purpose:'Specialist brief — which page/section, what changes or content is needed, any link it should point to.'},
+  {listKey:'campaigns',name:'MetaBriefNotes',displayName:'Meta Brief Notes',type:'text',purpose:'Specialist brief — audience, format, angle or offer to lead with for Meta/social.'},
+  {listKey:'campaigns',name:'GoogleAdsBriefNotes',displayName:'Google Ads Brief Notes',type:'text',purpose:'Specialist brief — keywords, search intent, landing page for Google Ads.'},
+  {listKey:'campaigns',name:'SmsCopy',displayName:'SMS Copy',type:'text',purpose:'The actual SMS message text, for activities promoted via SMS.'},
   {listKey:'campaigns',name:'LoadedRewards',displayName:'Loaded Rewards',type:'choice',choices:'Yes',purpose:'Independent Yes/No flag for whether Loaded Rewards is involved — separate from Brand/Business Stream so an activity under a different brand can still have a Loaded component. Only needed if none of LoadedRewards/Loaded Rewards/LoadedRewardsPromo/IsLoaded already exist.'},
   {listKey:'campaigns',name:'EventSeating',displayName:'Event Seating',type:'choice',choices:'Seated, Standing, Table Service, Mixed',purpose:'The seating/setup breakdown for the event.'},
   {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number',purpose:'Groups Activities that belong to one recurring series.'},
@@ -12249,10 +12268,18 @@ function updatePromoteArtworkColumns(){
 }
 
 function updateAssetDetailVisibility(){
+  const needsChannels=!!document.getElementById('fNeedsChannels')?.checked;
   const needsDesign=!!document.getElementById('fNeedsDesign')?.checked;
   const show=(id,on)=>{const el=document.getElementById(id);if(el)el.style.display=on?'':'none';};
   show('fAssetTVsDetailGroup',needsDesign&&!!document.getElementById('fAssetTVs')?.checked);
   show('fAssetNewsletterDetailGroup',needsDesign&&!!document.getElementById('fAssetNewsletter')?.checked);
+  // Specialist briefs — triggered by either promoting the channel or needing artwork for it,
+  // whichever applies. SMS has no artwork column, so it's promote-only.
+  const checked=id=>!!document.getElementById(id)?.checked;
+  show('fChanWebsiteDetailGroup',(needsChannels&&checked('fChanWebsite'))||(needsDesign&&checked('fAssetWebsite')));
+  show('fChanMetaDetailGroup',(needsChannels&&checked('fChanMeta'))||(needsDesign&&checked('fAssetMeta')));
+  show('fChanGoogleAdsDetailGroup',(needsChannels&&checked('fChanGoogleAds'))||(needsDesign&&checked('fAssetPaidAd')));
+  show('fChanSMSDetailGroup',needsChannels&&checked('fChanSMS'));
 }
 function toggleMultiSelectDD(panelId){
   const panel=document.getElementById(panelId);
@@ -13604,7 +13631,7 @@ async function submitEvent(){
 
     // Channels
     const channels=[];
-    [['fChanWebsite','Website'],['fChanMeta','Meta'],['fChanNewsletter','Newsletter'],['fChanLoaded','Loaded'],['fChanGBP','Google Business Profile'],['fChanGoogleAds','Google Ads'],['fChanInVenue','In-venue'],['fChanRadio','Radio']].forEach(([id,label])=>{
+    [['fChanWebsite','Website'],['fChanMeta','Meta'],['fChanNewsletter','Newsletter'],['fChanLoaded','Loaded'],['fChanGBP','Google Business Profile'],['fChanGoogleAds','Google Ads'],['fChanInVenue','In-venue'],['fChanRadio','Radio'],['fChanSMS','SMS']].forEach(([id,label])=>{
       if(document.getElementById('fNeedsChannels')?.checked&&document.getElementById(id)?.checked)channels.push(label);
     });
     const chanOther=document.getElementById('fNeedsChannels')?.checked?document.getElementById('fChanOther')?.value.trim():'';if(chanOther)channels.push(chanOther);
@@ -13620,11 +13647,17 @@ async function submitEvent(){
     const tvDetail=document.getElementById('fAssetTVsDetail')?.value.trim();if(tvDetail)fields.AssetTVsDetail=tvDetail;
     const newsletterDetail=document.getElementById('fAssetNewsletterDetail')?.value.trim();if(newsletterDetail)fields.AssetNewsletterDetail=newsletterDetail;
 
+    // Specialist briefs (brief Section 14) — only sent when their section is actually showing.
+    const websiteBrief=document.getElementById('fChanWebsiteDetail')?.value.trim();if(websiteBrief)fields.WebsiteBriefNotes=websiteBrief;
+    const metaBrief=document.getElementById('fChanMetaDetail')?.value.trim();if(metaBrief)fields.MetaBriefNotes=metaBrief;
+    const googleAdsBrief=document.getElementById('fChanGoogleAdsDetail')?.value.trim();if(googleAdsBrief)fields.GoogleAdsBriefNotes=googleAdsBrief;
+    const smsCopy=document.getElementById('fChanSMSDetail')?.value.trim();if(smsCopy)fields.SmsCopy=smsCopy;
+
     console.log('Submitting fields:',JSON.stringify(fields,null,2));
     // Fields most likely to not exist as SharePoint columns yet, tried as removable groups if the
     // full payload is rejected — a generic 400 on create doesn't tell us which field is the problem,
     // unlike editing an existing item, so we strip the newest/least-confirmed fields first and retry.
-    const removableGroups=[[productKey],[supplierKey],['SupplierInvolved'],['TicketURL'],['TicketPlatform','TicketPrice','Capacity','TicketedEvent'],['RegularPrice','LoadedBasePrice'],['AssetTVsDetail'],['AssetNewsletterDetail'],['DesignStatus'],['AssetsNeeded'],['Channels'],['GoogleAdsEligible'],['AppShortDescription'],['AppHeading','AppDescription'],['NewsletterRequired'],['AppRequired'],['BookingURL'],['LoadedRewards'],['Brand'],['ActivityGroup'],['ActivitySubtype'],['ItemStatus','DietaryAllergenInfo','FBAvailabilityNotes','ProductPhotographyAvailable','SupplierBrandingAvailable','PrintedMenuUpdateRequired','DigitalMenuUpdateRequired','StaffBriefingRequired'],['EntryType','DoorsOpenTime','MinAttendance','ReservedSeatingRequired','EventFoodService','EventBeverageService','EventOperationsNotes'],['PromoPrice','EligibleSegment','OfferConditions','OfferTerms','StaffInstructions','CombinableWithOtherOffers'],['SupplierFunded','SupplierReportingRequired']].filter(group=>group.some(Boolean));
+    const removableGroups=[[productKey],[supplierKey],['SupplierInvolved'],['TicketURL'],['TicketPlatform','TicketPrice','Capacity','TicketedEvent'],['RegularPrice','LoadedBasePrice'],['AssetTVsDetail'],['AssetNewsletterDetail'],['DesignStatus'],['AssetsNeeded'],['Channels'],['GoogleAdsEligible'],['AppShortDescription'],['AppHeading','AppDescription'],['NewsletterRequired'],['AppRequired'],['BookingURL'],['LoadedRewards'],['Brand'],['ActivityGroup'],['ActivitySubtype'],['ItemStatus','DietaryAllergenInfo','FBAvailabilityNotes','ProductPhotographyAvailable','SupplierBrandingAvailable','PrintedMenuUpdateRequired','DigitalMenuUpdateRequired','StaffBriefingRequired'],['EntryType','DoorsOpenTime','MinAttendance','ReservedSeatingRequired','EventFoodService','EventBeverageService','EventOperationsNotes'],['PromoPrice','EligibleSegment','OfferConditions','OfferTerms','StaffInstructions','CombinableWithOtherOffers'],['SupplierFunded','SupplierReportingRequired'],['WebsiteBriefNotes'],['MetaBriefNotes'],['GoogleAdsBriefNotes'],['SmsCopy']].filter(group=>group.some(Boolean));
     let payload={...fields};
     const dropped=[];
     let res,ok=false,resBody='';
@@ -13698,10 +13731,10 @@ async function submitEvent(){
 }
 function showFMsg(msg,type){const el=document.getElementById('fMsg');if(!el)return;el.textContent=msg;el.className='form-msg '+type;el.scrollIntoView({behavior:'smooth',block:'nearest'});}
 function clearForm(){
-  ['fTitle','fDesc','fLongDescription','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails','fFBDietary','fFBAvailability','fEventDoorsOpen','fEventMinAttendance','fEventOpsNotes','fPromoPrice','fPromoConditions','fPromoTerms','fPromoStaffInstructions'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['fTitle','fDesc','fLongDescription','fStart','fEnd','fRegularPrice','fLoadedBasePrice','fTicketPrice','fTicketCapacity','fTicketURL','fChanOther','fAssetTVsDetail','fAssetNewsletterDetail','fAppHeading','fAppShortDescription','fAppDescription','fLoadedBookingLink','fAdditionalOther','fPOSDetails','fFBDietary','fFBAvailability','fEventDoorsOpen','fEventMinAttendance','fEventOpsNotes','fPromoPrice','fPromoConditions','fPromoTerms','fPromoStaffInstructions','fChanWebsiteDetail','fChanMetaDetail','fChanGoogleAdsDetail','fChanSMSDetail'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['fVenue','fActType','fActGroup','fActSubtype','fEventFormat','fEventSeating','fStream','fCampaignSilo','fBrand','fTicketPlatform','fAppRequired','fNewsletterRequired','fSupplierLookup','fFBStatus','fEventEntry','fEventFood','fEventBeverage','fPromoSegment'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
   const productSel=document.getElementById('fProductLookup');if(productSel)[...productSel.options].forEach(o=>o.selected=false);
-  ['fSupplierInvolved','fPOSRequired','fTicketed','fRecurring','fLoadedRewardsFlag','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff','fFBPhotography','fFBSupplierBranding','fFBPrintMenu','fFBDigitalMenu','fFBStaffBriefing','fEventReservedSeating','fPromoCombinable','fSupplierFunded','fSupplierReporting'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  ['fSupplierInvolved','fPOSRequired','fTicketed','fRecurring','fLoadedRewardsFlag','fNeedsChannels','fNeedsDesign','fChanWebsite','fChanMeta','fChanNewsletter','fChanLoaded','fChanGBP','fChanGoogleAds','fChanInVenue','fChanRadio','fChanSMS','fAssetWebsite','fAssetMeta','fAssetNewsletter','fAssetTVs','fAssetInVenue','fAssetLoaded','fAssetPaidAd','fAssetStaff','fFBPhotography','fFBSupplierBranding','fFBPrintMenu','fFBDigitalMenu','fFBStaffBriefing','fEventReservedSeating','fPromoCombinable','fSupplierFunded','fSupplierReporting'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   togglePOSDetails();
   fTitleTouched=false;
   fAppHeadingTouched=false;
@@ -13965,6 +13998,13 @@ function renderActivityDetail(id,mode){
   if((ev.supplierFunded||ev.supplierReportingRequired)&&ev.supplierInvolved){
     const supplierFlags=[ev.supplierFunded&&'Supplier-funded',ev.supplierReportingRequired&&'Proof of advertising/reporting required'].filter(Boolean);
     h+=`<div class="pop-field"><div class="pop-lbl">Supplier Notes</div><div class="pop-val">${supplierFlags.join(' · ')}</div></div>`;
+  }
+  if(ev.websiteBriefNotes||ev.metaBriefNotes||ev.googleAdsBriefNotes||ev.smsCopy){
+    h+=`<div class="pop-section">📣 Specialist Briefs</div>`;
+    if(ev.websiteBriefNotes)h+=`<div class="pop-field"><div class="pop-lbl">Website Brief</div><div class="pop-val">${ev.websiteBriefNotes}</div></div>`;
+    if(ev.metaBriefNotes)h+=`<div class="pop-field"><div class="pop-lbl">Meta / Social Brief</div><div class="pop-val">${ev.metaBriefNotes}</div></div>`;
+    if(ev.googleAdsBriefNotes)h+=`<div class="pop-field"><div class="pop-lbl">Google Ads Brief</div><div class="pop-val">${ev.googleAdsBriefNotes}</div></div>`;
+    if(ev.smsCopy)h+=`<div class="pop-field"><div class="pop-lbl">SMS Copy</div><div class="pop-val">${ev.smsCopy}</div></div>`;
   }
   if(ev.mktLeadWeeks)h+=`<div class="pop-field"><div class="pop-lbl">Lead Time</div><div class="pop-val">${ev.mktLeadWeeks} weeks (auto-calculated)</div></div>`;
   if(ev.marketingStartDate)h+=`<div class="pop-field"><div class="pop-lbl">Marketing Start</div><div class="pop-val" style="font-weight:600;color:var(--accent)">${fmtDate(ev.marketingStartDate)}</div></div>`;
