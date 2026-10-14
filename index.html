@@ -8724,7 +8724,11 @@ function renderCampaigns(){
 let OFFER_VARIANTS=[],OFFER_MECHANICS=[],OFFER_VARIANT_COLUMNS=[],OFFER_MECHANIC_COLUMNS=[];
 const LOADED_COMPONENTS={
   base:{tier:'Base Member Deal',label:'Base member deal',category:'Base Member Deal',defaults:['$9','$10','$11','$12','$13','$15','$17','$50','3+1 Stamp Card','4+1 Stamp Card','National promo only','Free upgrade']},
-  premium:{tier:'Premium',label:'Premium member deal',category:'Premium',defaults:['$7','$8','$9','$10','$11','50% off x 1','Free x 1','3+1 Stamp Card','N/A']},
+  // Split out of a single "Premium" bucket — the three upper tiers are visibly separate because
+  // they're named differently venue to venue, and need to be reportable on individually.
+  gold:{tier:'Gold',label:'Gold member deal',category:'Gold',defaults:['$7','$8','$9','$10','$11','50% off x 1','Free x 1','3+1 Stamp Card','N/A']},
+  platinum:{tier:'Platinum',label:'Platinum member deal',category:'Platinum',defaults:['$7','$8','$9','$10','$11','50% off x 1','Free x 1','3+1 Stamp Card','N/A']},
+  inviteClub:{tier:'Invitation Only Club Members',label:'Invitation Only Club deal',category:'Invitation Only Club Members',defaults:['$7','$8','$9','$10','$11','50% off x 1','Free x 1','3+1 Stamp Card','N/A']},
   reCategory:{label:'Re-engagement category',category:'Re-engagement Category',defaults:['Any Cocktail','Any Spirit','Any RTD','Any Guinness','Inactive for 6 months']},
   reOffer:{tier:'Re-engagement',label:'Re-engagement offer',category:'Re-engagement Offer',defaults:['Free x 1','50% off x 1','Free x 1 glass']},
   referral:{tier:'Referral',label:'Referral',category:'Referral',defaults:['Free x 1','$10 x 1','N/A']},
@@ -8733,7 +8737,7 @@ const LOADED_COMPONENTS={
   marketing:{tier:'Marketing Spend',label:'Marketing spend',category:'Marketing Spend',defaults:['$0','$500','$1,000','$1,500','$2,500']}
 };
 
-const LOADED_OFFER_DISPLAY=['base','premium','reOffer','referral','staff','comp','marketing'];
+const LOADED_OFFER_DISPLAY=['base','gold','platinum','inviteClub','reOffer','referral','staff','comp','marketing'];
 
 function loadedOfferSchemaState(){
   const check=(columns,aliases,requiredType='')=>{
@@ -8923,7 +8927,20 @@ function loadedOfferSelectHtml(prefix,key,current=''){
   return`<div class="form-group"><label class="form-label">${escapeAttr(def.label)}</label><select class="form-select" id="${prefix}_${key}" onchange="toggleLoadedOfferCustom('${prefix}','${key}')"><option value="">Not included</option>${choices.map(choice=>`<option value="${escapeAttr(choice)}"${normaliseImportText(choice)===normaliseImportText(current)?' selected':''}>${escapeAttr(choice)}</option>`).join('')}<option value="__custom__"${current&&!known?' selected':''}>Other / custom…</option></select><input class="form-input" id="${prefix}_${key}_custom" value="${current&&!known?escapeAttr(current):''}" placeholder="Enter a reusable value" style="display:${current&&!known?'block':'none'};margin-top:5px"></div>`;
 }
 function loadedOfferFieldsHtml(prefix,campaignId=''){
-  return`<div class="form-grid">${['base','premium','reCategory','reOffer','referral','staff','comp','marketing'].map(key=>loadedOfferSelectHtml(prefix,key,loadedOfferCurrent(campaignId,key))).join('')}</div>`;
+  return`<div class="form-grid">${['base','gold','platinum','inviteClub','reCategory','reOffer','referral','staff','comp','marketing'].map(key=>loadedOfferSelectHtml(prefix,key,loadedOfferCurrent(campaignId,key))).join('')}</div>
+    <button type="button" class="tb-btn" style="font-size:10.5px;margin-top:6px" onclick="copyLoadedOfferValue('${prefix}','gold',['platinum','inviteClub'])">Copy Gold's deal to Platinum &amp; Invitation Only Club</button>`;
+}
+// Convenience for "same offer, several tiers" — copies one field's select/custom value into others
+// without forcing every tier through the same value (each still saves as its own Offer Variant row).
+function copyLoadedOfferValue(prefix,fromKey,toKeys){
+  const fromSelect=document.getElementById(`${prefix}_${fromKey}`);if(!fromSelect)return;
+  const fromCustom=document.getElementById(`${prefix}_${fromKey}_custom`);
+  toKeys.forEach(key=>{
+    const select=document.getElementById(`${prefix}_${key}`);if(!select)return;
+    if([...select.options].some(o=>o.value===fromSelect.value))select.value=fromSelect.value;
+    else{select.value='__custom__';const custom=document.getElementById(`${prefix}_${key}_custom`);if(custom)custom.value=fromCustom?.value||fromSelect.value;}
+    toggleLoadedOfferCustom(prefix,key);
+  });
 }
 function toggleLoadedOfferCustom(prefix,key){const select=document.getElementById(`${prefix}_${key}`),input=document.getElementById(`${prefix}_${key}_custom`);if(input)input.style.display=select?.value==='__custom__'?'block':'none';}
 function loadedOfferValue(prefix,key){const select=document.getElementById(`${prefix}_${key}`);if(!select)return'';return select.value==='__custom__'?(document.getElementById(`${prefix}_${key}_custom`)?.value.trim()||''):select.value;}
@@ -8955,13 +8972,13 @@ async function saveLoadedOfferComponents(campaignId,campaignTitle,prefix,token){
   const reCategory=loadedOfferValue(prefix,'reCategory'),reOffer=loadedOfferValue(prefix,'reOffer');let saved=0,deactivated=0;
   if(reCategory&&!reOffer)throw new Error('Choose a Re-engagement offer as well as its category.');
   if(reOffer&&!reCategory)throw new Error('Choose the Re-engagement category as well as its offer.');
-  const selectedTiers=['base','premium','reOffer','referral','staff','comp','marketing'].filter(key=>loadedOfferValue(prefix,key)).map(key=>LOADED_COMPONENTS[key].tier);
+  const selectedTiers=['base','gold','platinum','inviteClub','reOffer','referral','staff','comp','marketing'].filter(key=>loadedOfferValue(prefix,key)).map(key=>LOADED_COMPONENTS[key].tier);
   if(tierColumn.choice?.choices?.length&&!tierColumn.choice.allowTextEntry){
     const missing=[...new Set(selectedTiers.filter(tier=>!tierColumn.choice.choices.some(choice=>normaliseImportText(choice)===normaliseImportText(tier))))];
     if(missing.length)throw new Error(`Offer Variants column "${tierColumn.displayName||tierColumn.name}" needs these dropdown choices added in SharePoint: ${missing.join(', ')}.`);
   }
   if(reCategory)await ensureOfferMechanic(reCategory,LOADED_COMPONENTS.reCategory.category,token);
-  for(const key of ['base','premium','reOffer','referral','staff','comp','marketing']){
+  for(const key of ['base','gold','platinum','inviteClub','reOffer','referral','staff','comp','marketing']){
     const def=LOADED_COMPONENTS[key],value=loadedOfferValue(prefix,key),existing=loadedVariantFor(campaignId,def.tier);
     if(!value){
       if(existing){const activeKey=offerVariantKey('Active');if(activeKey){await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.offerVariants}/items/${existing.id}`,token,{[activeKey]:false});deactivated++;}}
@@ -9000,8 +9017,8 @@ async function saveLoadedOfferEditor(evId,button){
 }
 
 const TIER_ICONS={
-  'Silver':'🥈','Gold':'🥇','Platinum':'💎',
-  'Base Member':'⭐','Base Member Deal':'⭐','Premium':'💎',
+  'Silver':'🥈','Gold':'🥇','Platinum':'💎','Invitation Only Club Members':'🔒',
+  'Base Member':'⭐','Base Member Deal':'⭐','Premium':'💎', // Premium kept for older saved offers
   'Re-engagement':'🔄','Re-Engagement':'🔄',
   'New Sign-up':'⭐','Refer a Friend':'👥','Referral':'👥',
   'Staff Incentive':'👔','Staff':'👔',
