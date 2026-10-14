@@ -8,9 +8,13 @@
 
 **Issue:** `runPlaybook(ev)` contains task templates for design, web, social, EDM, POS, signage and other work, but no production code calls it. `approveCampaign()` currently changes `WorkflowStage` from `Intake` to `In Design` and sends notifications only. It creates no linked task or design brief. **Risk:** The Hub visually implies an activity has entered planning/design while Luca and the other delivery owners may have received no actionable job. **Priority:** High. **Recommended future fix:** Add an approval preview that shows the proposed jobs derived from `Channels`, `AssetsNeeded`, ticketing, Loaded and POS answers. Let the approver confirm owners and due dates, then create only those tasks, link them to the activity, and mark the activity's creation flags only after all required writes succeed.
 
-## Campaign task lookup is not consistently mapped
+## Campaign task lookup is not consistently mapped — RESOLVED 2026-10-14
 
-**Issue:** Manually submitted jobs write `RelatedCampaignId`, while the existing task model and earlier specifications refer to `LinkedCampaignID` or a campaign lookup. Auto-playbook tasks currently write neither. **Risk:** Design and delivery tickets cannot reliably navigate back to their parent activity, and duplicate prevention is weak. **Priority:** High, before connecting automatic job creation. **Recommended future fix:** Confirm the actual My Tasks lookup column internal name and type, then use that one mapping in manual jobs, design briefs and playbook tasks.
+**Issue (confirmed via audit):** `loadMyTasks()` read the real "Campaign" Lookup column (`f.Campaign.LookupValue`) into `campaignLookup`, but manual job submission (`submitJob`) wrote a completely different, never-read field (`RelatedCampaignId`) — so selecting a campaign when submitting a job had no visible effect anywhere in the Hub. The dead `runPlaybook()` wrote neither. Downstream code (`myWorkItems()`'s shared-tasks mapping, the Projects work-count rollup) then matched a task back to its Activity by **title text**, which breaks if the Activity is ever renamed.
+
+**Fix:** `submitJob()` now writes `CampaignLookupId` (the standard Graph write key for a Lookup column named `Campaign`), matching what `loadMyTasks()` already reads. `runPlaybook()` (still disconnected — see below) does the same, so it's correctly set up for whenever it's wired in. `loadMyTasks()` now also captures `f.Campaign.LookupId` as `campaignLookupId`; both places that resolved a task's Activity by title now try that stable id first, falling back to title matching only for older records saved before this fix.
+
+**Still open:** Personal Tasks (a separate, private list) uses its own pair, `LinkedActivityId`/`LinkedCampaignID` — already id-based and not affected by this issue, left as-is.
 
 ## Financial data is not yet separated at the SharePoint layer
 

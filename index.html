@@ -2968,6 +2968,7 @@ async function runPlaybook(ev){
         Priority:task.priority,
         DueDate:toLocalISODate(dueDate)+'T12:00:00Z',
         Notes:`Auto-created by Marlin OS playbook for campaign: ${ev.title} (${ev.venue})\nCampaign start: ${ev.start}\nLead time: ${task.leadDays} days`,
+        CampaignLookupId:Number(ev.spId), // same Campaign Lookup column submitJob() writes — see consolidation note there
       };
       if(ROLE_EMAILS[task.assignKey])fields.AssignedTo=ROLE_EMAILS[task.assignKey];
       try{
@@ -9387,6 +9388,8 @@ function myWorkItems(){
   const canSeePersonal=canAccessPanel('personaltasks');
   const projectById=id=>PROJECTS.find(p=>String(p.id)===String(id));
   const eventById=id=>EVENTS.find(e=>String(e.id)===String(id)||String(e.spId)===String(id));
+  // Title match is a fallback only, for older records saved before campaignLookupId existed — the
+  // real link is the Campaign Lookup column's id, which survives the activity being renamed.
   const eventByTitle=title=>EVENTS.find(e=>(e.title||'').toLowerCase()===(title||'').toLowerCase());
   const personal=canSeePersonal?PERSONAL_TASKS.map(t=>{
     const ev=t.linkedActivityId?eventById(t.linkedActivityId):null;
@@ -9394,7 +9397,7 @@ function myWorkItems(){
     return{...t,kind:'personal',key:'personal:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.linkedCampaign||'',venue:ev?.venue||''};
   }):[];
   const shared=MY_TASKS.filter(t=>t.assignedTo&&isCurrentUserAssignment(t.assignedTo)).map(t=>{
-    const ev=eventByTitle(t.campaignLookup);
+    const ev=t.campaignLookupId?eventById(t.campaignLookupId):eventByTitle(t.campaignLookup);
     const project=projectById(ev?.projectId);
     return{...t,kind:'shared',key:'shared:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:ev?.venue||''};
   });
@@ -9786,6 +9789,7 @@ async function loadTasks(){
           blocker:f.BlockedReason||'',
           assignedTo:(typeof f.AssignedTo==='string'?f.AssignedTo:(f.AssignedTo?.email||f.AssignedTo?.EmailAddress||f.AssignedTo?.LookupValue||f.AssignedTo?.Title))||'',
           campaignLookup:f.Campaign?.LookupValue||'',
+          campaignLookupId:f.Campaign?.LookupId!=null?String(f.Campaign.LookupId):'',
           platform:f.Platform||'',
           assetSpec:f.AssetSpec||''
         };
@@ -11094,7 +11098,7 @@ function renderProjects(){
   // and shouldn't make every new project card look like it's on fire.
   const isUrgentRisk=r=>/passed|at risk/i.test(r);
   list.innerHTML=shown.length?`<div class="proj-grid">${shown.map(({p,linked,risks})=>{
-    const workCount=(canAccessPanel('personaltasks')?PERSONAL_TASKS.filter(t=>String(t.projectId)===String(p.id)&&t.status!=='Done').length:0)+MY_TASKS.filter(t=>t.status!=='Done'&&linked.some(e=>(e.title||'').toLowerCase()===(t.campaignLookup||'').toLowerCase())).length;
+    const workCount=(canAccessPanel('personaltasks')?PERSONAL_TASKS.filter(t=>String(t.projectId)===String(p.id)&&t.status!=='Done').length:0)+MY_TASKS.filter(t=>t.status!=='Done'&&linked.some(e=>t.campaignLookupId?(String(e.spId)===String(t.campaignLookupId)||String(e.id)===String(t.campaignLookupId)):(e.title||'').toLowerCase()===(t.campaignLookup||'').toLowerCase())).length;
     const hasUrgent=risks.some(isUrgentRisk);
     return`<article class="proj-card" onclick="openEditProject('${escapeAttr(String(p.id))}')" style="${hasUrgent?'border-left:3px solid var(--red)':''}">
       <div class="proj-card-head">
@@ -11698,8 +11702,11 @@ async function submitJob(){
   const notes=[venue?`Venue: ${venue}`:'',rawNotes].filter(Boolean).join('\n\n');
   if(notes)fields.Notes=notes;
   const assign=document.getElementById('fJobAssign').value;if(assign)fields.AssignedTo=assign;
-  // Campaign & digital linkage
-  const relatedCampaign=document.getElementById('fJobCampaign').value;if(relatedCampaign)fields.RelatedCampaignId=relatedCampaign;
+  // Campaign & digital linkage — writes the real "Campaign" Lookup column (CampaignLookupId is
+  // the standard Graph write key for a Lookup column named "Campaign"). Previously this wrote
+  // RelatedCampaignId instead, a field loadMyTasks() never reads, so picking a campaign here had
+  // no visible effect at all — the job never showed as linked to it anywhere in the Hub.
+  const relatedCampaign=document.getElementById('fJobCampaign').value;if(relatedCampaign)fields.CampaignLookupId=parseInt(relatedCampaign,10);
   fields.MetaCampaignRequired=document.getElementById('fJobMetaCampaign').value;
   const metaNotes=document.getElementById('fJobMetaNotes').value.trim();if(metaNotes)fields.MetaCampaignNotes=metaNotes;
   fields.GoogleCampaignRequired=document.getElementById('fJobGoogleCampaign').value;
