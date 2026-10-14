@@ -10967,7 +10967,10 @@ async function loadPersonalTasks(){
   try{
     const token=await getToken();
     const items=await fetchGraphItems(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items?expand=fields&$top=200`,token);
-    PERSONAL_TASKS=items.map(item=>{const f=item.fields||{};return{id:String(item.id),title:f.Title||'',status:f.Status||f.Progress||'Not Started',priority:f.Priority||'Medium',workstream:f.Workstream||f.Category||f.TaskType||'',venue:f.Venue||'',due:f.DueDate?String(f.DueDate).split('T')[0]:'',notes:f.Notes||'',blocker:f.Blocker||f.BlockedReason||'',linkedCampaign:(typeof f.LinkedCampaign==='string'?f.LinkedCampaign:(f.LinkedCampaign?.LookupValue||f.LinkedCampaign?.Title))||f.LinkedCampaignID||'',parentId:f.ParentTaskId!=null&&f.ParentTaskId!==''?String(f.ParentTaskId):'',linkedActivityId:f.LinkedActivityId!=null&&f.LinkedActivityId!==''?String(f.LinkedActivityId):'',projectId:f.ProjectId!=null&&f.ProjectId!==''?String(f.ProjectId):'',sequence:f.Sequence!=null&&f.Sequence!==''?Number(f.Sequence):0};});
+    // Source/Email* — populated by the planned Outlook email-to-task Power Automate flow (not yet
+    // built; this is the Hub-side half, ready for when it is). A Hub-created task simply has no
+    // Source value, read as 'Hub' so existing rows aren't affected.
+    PERSONAL_TASKS=items.map(item=>{const f=item.fields||{};return{id:String(item.id),title:f.Title||'',status:f.Status||f.Progress||'Not Started',priority:f.Priority||'Medium',workstream:f.Workstream||f.Category||f.TaskType||'',venue:f.Venue||'',due:f.DueDate?String(f.DueDate).split('T')[0]:'',notes:f.Notes||'',blocker:f.Blocker||f.BlockedReason||'',linkedCampaign:(typeof f.LinkedCampaign==='string'?f.LinkedCampaign:(f.LinkedCampaign?.LookupValue||f.LinkedCampaign?.Title))||f.LinkedCampaignID||'',parentId:f.ParentTaskId!=null&&f.ParentTaskId!==''?String(f.ParentTaskId):'',linkedActivityId:f.LinkedActivityId!=null&&f.LinkedActivityId!==''?String(f.LinkedActivityId):'',projectId:f.ProjectId!=null&&f.ProjectId!==''?String(f.ProjectId):'',sequence:f.Sequence!=null&&f.Sequence!==''?Number(f.Sequence):0,source:f.Source||'Hub',emailSender:f.EmailSender||'',emailLink:f.EmailLink||'',emailMessageId:f.EmailMessageId||''};});
     PERSONAL_TASKS_ERROR='';
   }catch(e){console.error('Personal tasks load error:',e);PERSONAL_TASKS_ERROR=e.message||'Unknown error';}
   renderPersonalTasks();
@@ -11050,7 +11053,12 @@ function renderPersonalTasks(){
     // (see ptDrop) rather than requiring that mode to be picked first, which wasn't obvious.
     const dragAttrs=`draggable="true" ondragstart="ptDragStart(event,'${task.id}')" ondragover="ptDragOver(event)" ondragleave="ptDragLeave(event)" ondrop="ptDrop(event,'${task.id}')" ondragend="ptDragEnd(event)"`;
     const dragHandle='<span class="pt-drag-handle" title="Drag to reorder">⋮⋮</span>';
-    let row=`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${linkedHtml}${projectHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right">${task.priority?`<span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority)}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
+    // Source badge — a task created by the (planned) Outlook email-to-task flow is tagged
+    // Source='Outlook' and carries the original email's sender/link; a Hub-created task has none
+    // of that, read as 'Hub' so nothing changes for existing rows.
+    const emailHtml=task.source==='Outlook'?`<span title="${escapeAttr(task.emailSender?'From: '+task.emailSender:'From Outlook')}" style="color:#0a66c2">📧${task.emailLink?` <a href="${escapeAttr(task.emailLink)}" target="_blank" onclick="event.stopPropagation()" style="color:#0a66c2">Open email</a>`:''}</span>`:'';
+    const convertBtn=(!isSubtask&&!isDone)?`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();convertPersonalTaskToShared('${task.id}')" title="Create a linked Shared Task, keep this one as a record">→ Shared</button>`:'';
+    let row=`<div class="task-item ${task.priority==='Critical'&&!isDone?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isDone?'done':''}" onclick="togglePersonalTask('${task.id}')">${isDone?'✓':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isDone?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${emailHtml}${linkedHtml}${projectHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right">${task.priority?`<span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority)}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}${convertBtn}${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
     if(!isSubtask&&subtasks.length&&expanded){
       row+=`<div class="pt-subtasks">${subtasks.map(child=>{shownChildIds.add(child.id);return personalTaskRowHtml(child,true);}).join('')}</div>`;
     } else if(!isSubtask&&subtasks.length){
@@ -11187,6 +11195,36 @@ async function savePersonalTask(){
     closeAddPersonalTask();
   }catch(e){msg.textContent='Could not save: '+e.message;msg.className='form-msg err';}
   }finally{if(saveBtn)saveBtn.disabled=false;}
+}
+
+// "Deliberately convert it into shared work" — for a Personal Task (whether Hub-created or from
+// the planned Outlook flow) that turns out to need the team's visibility. Creates a linked Shared
+// Task carrying over title/notes/due date/Activity link, then marks THIS record Done with a note
+// rather than deleting it — preserves the original as a record without duplicating active work
+// (it leaves the open Personal Tasks queue the moment the new Shared Task exists).
+async function convertPersonalTaskToShared(taskId){
+  const task=PERSONAL_TASKS.find(t=>String(t.id)===String(taskId));if(!task)return;
+  if(!LIST_IDS.myTasks){alert('Shared Work Items list isn\'t connected yet.');return;}
+  if(!confirm(`Convert "${task.title}" into a shared task? It will appear in the team's My Tasks. This record stays here, marked as converted.`))return;
+  try{
+    const token=await getToken(true);
+    const linkedEvent=task.linkedActivityId?EVENTS.find(e=>String(e.id)===String(task.linkedActivityId)):null;
+    const fields={Title:task.title,Status:'Not Started'};
+    if(task.priority)fields.Priority=task.priority;
+    if(task.notes)fields.Notes=task.notes;
+    if(task.due)fields.DueDate=task.due+'T12:00:00Z';
+    if(linkedEvent?.spId)fields.CampaignLookupId=Number(linkedEvent.spId);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+    const created=await res.json();
+    MY_TASKS.push({id:created.id,title:task.title,status:'Not Started',priority:task.priority||'',category:'',due:task.due,notes:task.notes||'',blocker:'',assignedTo:'',campaignLookup:linkedEvent?.title||'',campaignLookupId:linkedEvent?.spId?String(linkedEvent.spId):''});
+    const tag='[Converted to shared task — see My Tasks]';
+    const newNotes=task.notes?`${task.notes}\n\n${tag}`:tag;
+    const patchRes=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${task.id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:'Done',Notes:newNotes}})});
+    if(patchRes.ok){task.status='Done';task.notes=newNotes;}
+    renderPersonalTasks();
+    if(typeof showToast==='function')showToast(`"${task.title}" is now a shared task.`);
+  }catch(e){alert('Could not convert to a shared task: '+e.message);}
 }
 
 async function togglePersonalTask(id){
@@ -11411,6 +11449,10 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'personalTasks',name:'LinkedActivityId',displayName:'Linked Activity Id',type:'number',purpose:'Optionally links a private task to one Activity.'},
   {listKey:'personalTasks',name:'ProjectId',displayName:'Project Id',type:'number',purpose:'Optionally links a private task to one Project.'},
   {listKey:'personalTasks',name:'Sequence',displayName:'Sequence',type:'number',purpose:'Persists Kimberley’s drag-and-drop task order.'},
+  {listKey:'personalTasks',name:'Source',displayName:'Source',type:'choice',choices:'Hub, Outlook',purpose:'Distinguishes a task created in the Hub from one created by the planned Outlook email-to-task flow.'},
+  {listKey:'personalTasks',name:'EmailSender',displayName:'Email Sender',type:'text',purpose:'Outlook email-to-task — the original email\'s sender, for a Source=Outlook task.'},
+  {listKey:'personalTasks',name:'EmailLink',displayName:'Email Link',type:'text',purpose:'Outlook email-to-task — a link back to the original email in Outlook.'},
+  {listKey:'personalTasks',name:'EmailMessageId',displayName:'Email Message Id',type:'text',purpose:'Outlook email-to-task — the email\'s stable internet message id, used by the Power Automate flow to detect duplicates (including when a flagged email is later edited).'},
   {listKey:'ideas',name:'ActivityType',displayName:'Activity Type',type:'choice',choices:ACTIVITY_TYPE_OPTIONS.join(', '),purpose:'Captured at idea stage so "Continue Brief" can prefill it on the Activity submission form.'},
   {listKey:'ideas',name:'PromotedActivityId',displayName:'Promoted Activity Id',type:'number',purpose:'Links an idea to the real Activity created from it via "Continue Brief", so reopening a promoted idea opens that Activity instead of letting it be promoted twice.'},
   {listKey:'campaigns',name:'DesignJobCreated',displayName:'Design Job Created',type:'yesno',purpose:'Marks that approval has already created this activity\'s proposed work items, so re-approving never creates a second set. Already read by the Hub; this is the first time anything writes to it.'},
