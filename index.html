@@ -8728,9 +8728,15 @@ const LOADED_COMPONENTS={
   // New Sign-up, Refer a Friend, Birthday, Staff Incentive, Venue Hopper, All Members, Premium Tiers.
   base:{tier:'Silver',label:'Silver member deal',category:'Silver',defaults:['$9','$10','$11','$12','$13','$15','$17','$50','3+1 Stamp Card','4+1 Stamp Card','National promo only','Free upgrade']},
   // Gold/Platinum were a single "Premium" bucket — split out because they're reportable tiers in
-  // their own right in SharePoint, not one combined thing.
+  // their own right in SharePoint, not one combined thing. The invitation-only club is folded into
+  // Platinum (not a separate tier) — rename the "Platinum" choice in SharePoint to "Platinum and
+  // Invitation Only" to match (SharePoint carries the rename onto any item already tagged Platinum).
   gold:{tier:'Gold',label:'Gold member deal',category:'Gold',defaults:['$7','$8','$9','$10','$11','50% off x 1','Free x 1','3+1 Stamp Card','N/A']},
-  platinum:{tier:'Platinum',label:'Platinum member deal',category:'Platinum',defaults:['$7','$8','$9','$10','$11','50% off x 1','Free x 1','3+1 Stamp Card','N/A']},
+  platinum:{tier:'Platinum and Invitation Only',label:'Platinum & Invitation Only deal',category:'Platinum and Invitation Only',defaults:['$7','$8','$9','$10','$11','50% off x 1','Free x 1','3+1 Stamp Card','N/A']},
+  newSignup:{tier:'New Sign-up',label:'New sign-up offer',category:'New Sign-up',defaults:['Free x 1','50% off x 1','$10 x 1','N/A']},
+  birthday:{tier:'Birthday',label:'Birthday offer',category:'Birthday',defaults:['Free x 1','$10 x 1','Free dessert','N/A']},
+  venueHopper:{tier:'Venue Hopper',label:'Venue Hopper offer',category:'Venue Hopper',defaults:['Free x 1','50% off x 1','N/A']},
+  allMembers:{tier:'All Members',label:'All Members offer',category:'All Members',defaults:['Free x 1','50% off x 1','N/A']},
   reCategory:{label:'Re-engagement category',category:'Re-engagement Category',defaults:['Any Cocktail','Any Spirit','Any RTD','Any Guinness','Inactive for 6 months']},
   reOffer:{tier:'Re-Engagement',label:'Re-engagement offer',category:'Re-Engagement',defaults:['Free x 1','50% off x 1','Free x 1 glass']},
   referral:{tier:'Refer a Friend',label:'Referral',category:'Refer a Friend',defaults:['Free x 1','$10 x 1','N/A']},
@@ -8739,7 +8745,7 @@ const LOADED_COMPONENTS={
   marketing:{tier:'Marketing Spend',label:'Marketing spend',category:'Marketing Spend',defaults:['$0','$500','$1,000','$1,500','$2,500']}
 };
 
-const LOADED_OFFER_DISPLAY=['base','gold','platinum','reOffer','referral','staff','comp','marketing'];
+const LOADED_OFFER_DISPLAY=['base','gold','platinum','newSignup','birthday','venueHopper','allMembers','reOffer','referral','staff','comp','marketing'];
 
 function loadedOfferSchemaState(){
   const check=(columns,aliases,requiredType='')=>{
@@ -8929,8 +8935,8 @@ function loadedOfferSelectHtml(prefix,key,current=''){
   return`<div class="form-group"><label class="form-label">${escapeAttr(def.label)}</label><select class="form-select" id="${prefix}_${key}" onchange="toggleLoadedOfferCustom('${prefix}','${key}')"><option value="">Not included</option>${choices.map(choice=>`<option value="${escapeAttr(choice)}"${normaliseImportText(choice)===normaliseImportText(current)?' selected':''}>${escapeAttr(choice)}</option>`).join('')}<option value="__custom__"${current&&!known?' selected':''}>Other / custom…</option></select><input class="form-input" id="${prefix}_${key}_custom" value="${current&&!known?escapeAttr(current):''}" placeholder="Enter a reusable value" style="display:${current&&!known?'block':'none'};margin-top:5px"></div>`;
 }
 function loadedOfferFieldsHtml(prefix,campaignId=''){
-  return`<div class="form-grid">${['base','gold','platinum','reCategory','reOffer','referral','staff','comp','marketing'].map(key=>loadedOfferSelectHtml(prefix,key,loadedOfferCurrent(campaignId,key))).join('')}</div>
-    <button type="button" class="tb-btn" style="font-size:10.5px;margin-top:6px" onclick="copyLoadedOfferValue('${prefix}','gold',['platinum'])">Copy Gold's deal to Platinum</button>`;
+  return`<div class="form-grid">${['base','gold','platinum','newSignup','birthday','venueHopper','allMembers','reCategory','reOffer','referral','staff','comp','marketing'].map(key=>loadedOfferSelectHtml(prefix,key,loadedOfferCurrent(campaignId,key))).join('')}</div>
+    <button type="button" class="tb-btn" style="font-size:10.5px;margin-top:6px" onclick="copyLoadedOfferValue('${prefix}','gold',['platinum'])">Copy Gold's deal to Platinum &amp; Invitation Only</button>`;
 }
 // Convenience for "same offer, several tiers" — copies one field's select/custom value into others
 // without forcing every tier through the same value (each still saves as its own Offer Variant row).
@@ -8974,13 +8980,13 @@ async function saveLoadedOfferComponents(campaignId,campaignTitle,prefix,token){
   const reCategory=loadedOfferValue(prefix,'reCategory'),reOffer=loadedOfferValue(prefix,'reOffer');let saved=0,deactivated=0;
   if(reCategory&&!reOffer)throw new Error('Choose a Re-engagement offer as well as its category.');
   if(reOffer&&!reCategory)throw new Error('Choose the Re-engagement category as well as its offer.');
-  const selectedTiers=['base','gold','platinum','reOffer','referral','staff','comp','marketing'].filter(key=>loadedOfferValue(prefix,key)).map(key=>LOADED_COMPONENTS[key].tier);
+  const selectedTiers=['base','gold','platinum','newSignup','birthday','venueHopper','allMembers','reOffer','referral','staff','comp','marketing'].filter(key=>loadedOfferValue(prefix,key)).map(key=>LOADED_COMPONENTS[key].tier);
   if(tierColumn.choice?.choices?.length&&!tierColumn.choice.allowTextEntry){
     const missing=[...new Set(selectedTiers.filter(tier=>!tierColumn.choice.choices.some(choice=>normaliseImportText(choice)===normaliseImportText(tier))))];
     if(missing.length)throw new Error(`Offer Variants column "${tierColumn.displayName||tierColumn.name}" needs these dropdown choices added in SharePoint: ${missing.join(', ')}.`);
   }
   if(reCategory)await ensureOfferMechanic(reCategory,LOADED_COMPONENTS.reCategory.category,token);
-  for(const key of ['base','gold','platinum','reOffer','referral','staff','comp','marketing']){
+  for(const key of ['base','gold','platinum','newSignup','birthday','venueHopper','allMembers','reOffer','referral','staff','comp','marketing']){
     const def=LOADED_COMPONENTS[key],value=loadedOfferValue(prefix,key),existing=loadedVariantFor(campaignId,def.tier);
     if(!value){
       if(existing){const activeKey=offerVariantKey('Active');if(activeKey){await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.offerVariants}/items/${existing.id}`,token,{[activeKey]:false});deactivated++;}}
@@ -9019,13 +9025,13 @@ async function saveLoadedOfferEditor(evId,button){
 }
 
 const TIER_ICONS={
-  'Silver':'🥈','Gold':'🥇','Platinum':'💎','Premium Tiers':'💎',
+  'Silver':'🥈','Gold':'🥇','Platinum and Invitation Only':'💎','Platinum':'💎','Premium Tiers':'💎',
   'Base Member':'⭐','Base Member Deal':'⭐','Premium':'💎', // legacy labels kept for older saved offers
   'Re-engagement':'🔄','Re-Engagement':'🔄',
   'New Sign-up':'⭐','Refer a Friend':'👥','Referral':'👥',
   'Staff Incentive':'👔','Staff':'👔',
   'Comp Metric':'🎁','Comp Metrics':'🎁','Marketing Spend':'📣',
-  'Birthday':'🎂','Venue Hopper':'🏨'
+  'Birthday':'🎂','Venue Hopper':'🏨','All Members':'👥'
 };
 
 function renderLoaded(){
