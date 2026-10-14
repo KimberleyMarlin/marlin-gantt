@@ -9464,21 +9464,29 @@ function renderCalendarWeek(){
 // Does a recurring activity actually land on this date, given its ticked day(s) AND its Recurring
 // Frequency? Frequency was being stored and shown as a dropdown but never actually consulted here —
 // ticking Thursday showed it every single Thursday regardless of whether Frequency said Weekly,
-// Fortnightly or Monthly. Anchored off the activity's own Start date: if Start falls on the 2nd
-// Thursday of its month, "Monthly" means the 2nd Thursday of every later month; "Fortnightly" means
-// every 14 days from Start. Caller is still responsible for the Start–End range check.
+// Fortnightly or Monthly. "Monthly" means the Nth occurrence of that weekday in every later month
+// (e.g. every 2nd Thursday); "Fortnightly" means every 14 days from the first real occurrence.
+// Caller is still responsible for the Start–End range check.
+//
+// Anchored off the first actual occurrence of THIS weekday on/after Start, never off Start itself —
+// Start/End is documented to Kimberley as just "the whole run" (see the Recurring Schedule box's own
+// help text), with no requirement that Start fall on one of the ticked days. The previous version
+// anchored Fortnightly's day-count and Monthly's date-of-month math directly off Start: whenever
+// Start didn't land on a ticked weekday (the common case — Start is often just "today" or a series'
+// opening date, not literally the first Wednesday), Fortnightly's (date-start)%14 could never land on
+// a multiple of 14 on any actual Wednesday, so the activity silently never appeared on the calendar
+// at all, for any week, ever.
 function recurringMatchesDate(ev,date){
   if(!ev.recurringDay||!ev.recurringDay.length)return false;
   const dayNames=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
   if(!ev.recurringDay.some(rd=>(rd||'').toLowerCase()===dayNames[date.getDay()]))return false;
   const freq=(ev.recurringFrequency||'').toLowerCase();
-  if(freq==='fortnightly'){
+  if(freq==='fortnightly'||freq==='monthly'){
     const start=new Date(ev.start+'T00:00:00');
-    return Math.round((date-start)/864e5)%14===0;
-  }
-  if(freq==='monthly'){
-    const start=new Date(ev.start+'T00:00:00');
-    return Math.ceil(start.getDate()/7)===Math.ceil(date.getDate()/7);
+    const anchor=new Date(start);
+    while(anchor.getDay()!==date.getDay())anchor.setDate(anchor.getDate()+1);
+    if(freq==='fortnightly')return Math.round((date-anchor)/864e5)%14===0;
+    return Math.ceil(anchor.getDate()/7)===Math.ceil(date.getDate()/7); // same Nth-weekday-of-month as the anchor
   }
   return true; // Weekly, or no frequency set — every matching weekday in range
 }
