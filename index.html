@@ -14713,6 +14713,17 @@ function syncRecurringDayField(evId){
 // not just caught by the regex below. Remove an entry here once its column has been created.
 const UNCONFIRMED_COLUMNS=['AppShortDescription','RegularPrice','LoadedBasePrice','ProjectId'];
 
+// Re-renders whichever calendar view is currently on screen, if any — shared by savePopEdit()'s
+// failure paths below so a rolled-back field (e.g. Recurring Day after a failed save) disappears
+// from the calendar immediately, rather than only on the next unrelated refresh.
+function refreshCalendarIfVisible(){
+  if(!document.getElementById('p-calendar')?.classList.contains('active'))return;
+  if(scheduleView==='month'||scheduleView==='week')renderCalendar();
+  else if(scheduleView==='gantt')renderGantt();
+  else if(scheduleView==='venuemonth')renderVenueMonth();
+  else if(scheduleView==='crossvenue')renderCrossVenue();
+}
+
 async function savePopEdit(evId,mode){
   if(!canEditCampaigns()){alert('You do not have permission to edit campaigns.');return;}
   const ev=EVENTS.find(e=>e.id===evId);
@@ -14724,6 +14735,17 @@ async function savePopEdit(evId,mode){
   const fields={};
   let requestedPOSNotes=null;
   let recurringDayError=null;
+  // Recurring fields get written to local state optimistically below (same as every other field
+  // here), but unlike most fields a wrong value for these doesn't just look stale in a text box —
+  // it makes the Activity actually recur on the wrong day(s), or indefinitely, on every calendar
+  // view for the rest of this session. Snapshotted here so a failed/skipped save can roll them
+  // back instead of leaving the calendar showing recurrence that was never actually saved.
+  const preSaveRecurring={recurring:ev.recurring,recurringDay:ev.recurringDay,recurringFrequency:ev.recurringFrequency};
+  const rollbackRecurringFields=(failedFields)=>{
+    if(failedFields.includes('RecurringEvent'))ev.recurring=preSaveRecurring.recurring;
+    if(failedFields.includes('RecurringDay'))ev.recurringDay=preSaveRecurring.recurringDay;
+    if(failedFields.includes('RecurringFrequency'))ev.recurringFrequency=preSaveRecurring.recurringFrequency;
+  };
   const editElements=roots.flatMap(root=>[...root.querySelectorAll('.pop-edit-inp,.pop-edit-sel')]);
   editElements.forEach(el=>{
     let f=el.dataset.field;
@@ -14927,6 +14949,7 @@ async function savePopEdit(evId,mode){
       }catch(e){console.warn('Post-save verification skipped:',e);}
 
       if(mismatches.length){
+        rollbackRecurringFields(mismatches);
         setBtns(`⚠️ Saved, but didn't stick: ${mismatches.join(', ')}`,{disabled:false,bg:'var(--red)',color:'#fff'});
         console.error('These fields returned 200 OK but did not actually persist — the internal column name is likely wrong, or the column is read-only / controlled by a workflow:',mismatches.join(', '));
       } else {
@@ -14948,15 +14971,23 @@ async function savePopEdit(evId,mode){
         else if(scheduleView==='crossvenue')renderCrossVenue();
       }
     } else if(allSkipped){
+      rollbackRecurringFields(skipped);
       setBtns(`⚠️ Not saved — missing in SharePoint: ${skipped.join(', ')}`,{disabled:false,bg:'var(--gold)',color:'#fff'});
       console.warn('Nothing to save — every changed field is a column that doesn\'t exist in SharePoint yet:',skipped.join(', '));
       setTimeout(()=>setBtns('Save changes',{disabled:false,bg:'',color:'',display:'none'}),3600);
+      refreshCalendarIfVisible();
     } else {
+      rollbackRecurringFields(skipped);
       setBtns('❌ Save failed — see console',{disabled:false,bg:'var(--red)',color:'#fff'});
+      refreshCalendarIfVisible();
     }
   }catch(e){
     console.error('Save error:',e);
+    // Nothing is confirmed saved at this point — roll back every recurring field this edit
+    // touched rather than guessing which ones might have made it through.
+    rollbackRecurringFields(['RecurringEvent','RecurringDay','RecurringFrequency']);
     setBtns('Error: '+e.message.substring(0,30),{disabled:false});
+    refreshCalendarIfVisible();
   }
 }
 
