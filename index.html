@@ -14903,6 +14903,18 @@ async function savePopEdit(evId,mode){
       break; // some other error — stop retrying
     }
 
+    // Exactly one field was left when the loop above gave up (a generic error that named no
+    // field, e.g. a 500, on the last field standing) — the individual-retry block below only
+    // triggers for >1 remaining fields, so a lone failed field here would otherwise never be
+    // classified as skipped/failed at all: not rolled back (e.g. a Recurring field would keep
+    // showing as set locally), and not mentioned in the save result shown to the user.
+    if(!ok&&Object.keys(payload).length===1){
+      const soloField=Object.keys(payload)[0];
+      skipped.push(soloField);
+      console.error(`Field ${soloField} failed:`,lastErrText);
+      payload={};
+    }
+
     // Every field in this save turned out to be an unrecognized column (e.g. editing just Design
     // Status when that column doesn't exist in SharePoint yet) — there's nothing left to retry, and
     // this isn't the same as a real failure, so say so plainly instead of "Save failed".
