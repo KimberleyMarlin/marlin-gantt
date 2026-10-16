@@ -9129,6 +9129,11 @@ function calEvtOpacity(ev){
 // Small venue-colour dot so venue stays visible at a glance even though the chip's main colour
 // now signals ActivityType instead.
 function calVenueDot(ev){return`<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${vColor(ev.venue).c};margin-right:3px;flex-shrink:0"></span>`;}
+// Same idea as calVenueDot above, but for status/stage — used on the Month view's continuous
+// range bars, where the bar itself is coloured by venue (see calendarMonthWeekBars' render loop)
+// so different specials/campaigns stay visually distinct at a glance instead of nearly every bar
+// rendering as the same solid colour whenever most activities share one stage (e.g. "Live").
+function calStatusDot(ev){return`<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${calEvtColor(ev)};margin-right:3px;flex-shrink:0"></span>`;}
 
 // Calculate relative luminance of a hex colour and return black or white for contrast
 function contrastText(hex){
@@ -9334,11 +9339,15 @@ function renderCalendar(){
     </div>`;
     }
     h+=`<div class="cal-month-bars">${weekBars.map(({ev,start,end,lane})=>{
-      const color=calEvtColor(ev);
+      // Bar colour = venue (so different specials/campaigns stay visually distinct even when most
+      // share the same stage, e.g. "Live" — previously the bar itself was stage-coloured, which
+      // made nearly every bar render as the same solid green and merge together at a glance).
+      // Status/stage moves to the small dot instead, same pattern as calVenueDot for day chips.
+      const color=vColor(ev.venue).c;
       const continuesBefore=ev.start<weekDates[start],continuesAfter=ev.end>weekDates[end];
       const icon=ev.loadedRewards?'⭐ ':ev.ticketed?'🎫 ':'';
       const label=`${continuesBefore?'← ':''}${icon}${ev.title}${continuesAfter?' →':''}`;
-      return`<div class="cal-month-bar" style="grid-column:${start+1}/span ${end-start+1};grid-row:${lane+1};background:${color};color:${contrastText(color)};opacity:${calEvtOpacity(ev)}" title="${escapeAttr(ev.title)} (${ev.start} – ${ev.end})" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calVenueDot(ev)}<span class="cal-month-bar-title">${escapeAttr(label)}</span></div>`;
+      return`<div class="cal-month-bar" style="grid-column:${start+1}/span ${end-start+1};grid-row:${lane+1};background:${color};color:${contrastText(color)};opacity:${calEvtOpacity(ev)}" title="${escapeAttr(ev.title)} (${ev.start} – ${ev.end})" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calStatusDot(ev)}<span class="cal-month-bar-title">${escapeAttr(label)}</span></div>`;
     }).join('')}</div></div>`;
   }
   document.getElementById('calGrid').innerHTML=h;
