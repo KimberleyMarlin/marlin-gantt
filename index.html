@@ -5355,11 +5355,15 @@ async function loadCampaigns(){
       // ActivityType is the new primary type field (replaces old ActivationType/Category)
       const actType=f.ActivityType||f.ActivationType||'';
       const storedStage=normaliseStage(f.WorkflowStage);
-      // RecurringDay is MultiChoice — normalise to array
+      // RecurringDay is a comma-separated Text column (see SCHEMA_KNOWN_GAPS — Microsoft Graph's
+      // column-creation API has no multi-select facet for Choice columns, so a genuine SharePoint
+      // MultiChoice column could never actually be created for this) — normalise to an array of
+      // day names. Array.isArray is kept only in case some other MultiChoice column by this name
+      // is already in live use; savePopEdit() itself always writes the comma-separated string form.
       const recurringDayRaw=f.RecurringDay;
       const recurringDay=Array.isArray(recurringDayRaw)
         ?recurringDayRaw
-        :(recurringDayRaw?[recurringDayRaw]:[]);
+        :(recurringDayRaw?String(recurringDayRaw).split(',').map(s=>s.trim()).filter(Boolean):[]);
       // RecurringFrequency is single Choice
       const recurringFreq=f.RecurringFrequency||'';
       // Recurring? — also true for an activity saved under the old EventFormat="Recurring Event"
@@ -11542,6 +11546,13 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'EventImageRef',displayName:'Event Image Reference',type:'text',purpose:'Stable {driveId,itemId} JSON reference for the featured image, so a fresh thumbnail can be resolved later instead of relying only on EventImageURL, which can expire.'},
   {listKey:'campaigns',name:'LinkedArtworkFolderURL',displayName:'Linked Artwork Folder URL',type:'text',purpose:'A second, independently-linkable SharePoint folder for completed artwork, separate from the Power Automate–created JobFolderURL.'},
   {listKey:'campaigns',name:'RecurringEvent',displayName:'Recurring Event',type:'choice',choices:'Yes',purpose:'Independent Yes/No toggle for whether the activity repeats — separate from Event Format so a ticketed event can also be recurring.'},
+  // Text, not Choice — Microsoft Graph's column-creation API has no multi-select facet for Choice
+  // columns (only Lookup columns can be created with allowMultipleValues), so a genuine SharePoint
+  // MultiChoice column can't be created through Schema Tools at all. Comma-separated text sidesteps
+  // that limitation entirely and matches how the Recurring Schedule checkboxes already serialise
+  // ticked days before savePopEdit() ever reads them.
+  {listKey:'campaigns',name:'RecurringDay',displayName:'Recurring Day',type:'text',purpose:'Comma-separated day name(s) an Activity marked Recurring actually happens on, e.g. "Wednesday" or "Monday,Thursday".'},
+  {listKey:'campaigns',name:'RecurringFrequency',displayName:'Recurring Frequency',type:'choice',choices:'Weekly, Fortnightly, Monthly',purpose:'How often a Recurring Activity\'s ticked day(s) repeat within its Start–End run.'},
   {listKey:'campaigns',name:'ActivityGroup',displayName:'Activity Group',type:'choice',choices:Object.keys(ACTIVITY_GROUPS).join(', '),purpose:'Finer classification layer alongside Activity Type (Food & Beverage, Promotions & Offers, Events & Entertainment, etc.) — additive, does not replace Activity Type.'},
   // Text, not Choice — the ~60 subtype values across all groups are already constrained by the
   // Hub's own cascading dropdown (ACTIVITY_GROUPS), so a SharePoint Choice column would just be a
@@ -14767,24 +14778,14 @@ async function savePopEdit(evId,mode){
         if(kind==='Product'){ev.productId=v;ev.product=selected?.label||'';}
       }
     } else if(f==='RecurringDay'){
-      // SharePoint's RecurringDay choices might not literally be "Monday".."Sunday" — match loosely
-      // against its real defined choices (same idea as the Offer Variants AudienceTier check) and
-      // report exactly which day(s) aren't valid choices there, instead of a generic 400 "Invalid
-      // request" that gives no clue what's actually wrong.
-      const days=v?v.split(',').map(s=>s.trim()).filter(Boolean):[];
-      const dayColumn=campaignColumnDefinition('RecurringDay');
-      if(dayColumn?.choice?.choices?.length){
-        const matched=[],missing=[];
-        days.forEach(day=>{
-          const hit=dayColumn.choice.choices.find(choice=>normaliseImportText(choice)===normaliseImportText(day));
-          if(hit)matched.push(hit);else missing.push(day);
-        });
-        if(missing.length){recurringDayError=`The RecurringDay column needs these dropdown choices added in SharePoint: ${missing.join(', ')}.`;return;}
-        fields[f]=matched;
-      } else {
-        fields[f]=days;
-      }
-      ev.recurringDay=days;
+      // RecurringDay is a plain comma-separated Text column (see SCHEMA_KNOWN_GAPS) — Microsoft
+      // Graph's column-creation API has no multi-select facet for Choice columns, so a genuine
+      // SharePoint MultiChoice column could never actually be created here; sending a string
+      // sidesteps that limitation rather than fighting it. The ticked days all come from the Hub's
+      // own fixed Monday..Sunday checkbox list, so there's no external SharePoint choice list to
+      // validate against — the value is already exactly what's safe to send.
+      fields[f]=v||null;
+      ev.recurringDay=v?v.split(',').map(s=>s.trim()).filter(Boolean):[];
     } else if(f==='BudgetAllocated'||f==='ActualSpend'||f==='SupplierContribution'||f==='MarketingBudget'||f==='TicketPrice'||f==='Capacity'||f==='ProjectId'){
       fields[f]=v?(f==='Capacity'||f==='ProjectId'?parseInt(v,10):parseFloat(v)):null;
     } else if(f==='Start'||f==='End'){
