@@ -9211,41 +9211,60 @@ function renderDashProjectsMonthStrip(){
     </div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No projects spanning this month</div>';
 }
 
-// Monthly Features strip — now sits at the top of the Calendar's Month view where the Projects
-// strip used to be. One section per "X of the Month" Activity Subtype currently running (Beer of
-// the Month, Wine of the Month, Cocktail of the Month, or any future one named the same way), each
-// listing every venue as a fixed template row so a gap (no feature set for a venue) is as visible
-// at a glance as a filled one. The row's value is the Activity Detail text (e.g. "Weinstephaner")
-// of whichever matching Activity overlaps the visible month for that venue.
-const MONTHLY_FEATURE_VENUES=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
-const MONTHLY_FEATURE_ICON={'Beer of the Month':'🍺','Wine of the Month':'🍷','Cocktail of the Month':'🍸'};
-const MONTHLY_FEATURE_ORDER=['Beer of the Month','Wine of the Month','Cocktail of the Month'];
+// Monthly Features strip — sits at the top of the Calendar's Month view where the Projects strip
+// used to be. Two parts, matching Kim's mockup:
+//  - LOADED REWARDS: "X of the Month" Activities scoped to venue="All Venues" (i.e. it covers every
+//    venue at once, same meaning as elsewhere in the Hub) — one pill per feature, no venue column.
+//  - VENUE grid: a proper table, rows = feature ("Feature Beer","Feature Wine",…), columns = each
+//    actual venue, cell = a venue-coloured pill holding the Activity Detail text (e.g.
+//    "Weinstephaner"), or blank if that venue has nothing set for that feature this month.
+// Feature rows are derived from whatever Activity Subtype(s) ending in "of the Month" are actually
+// in use this month (Beer/Wine/Cocktail of the Month today), so a new one added later just appears.
+const MONTHLY_FEATURE_VENUES=['The Ravenswood','The Left Bank','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
+const MONTHLY_FEATURE_VENUE_LABELS={'The Left Bank':'Left Bank','The Ravenswood':'Ravenswood','Whitfords Brewing Co':'Whitfords','Hotel Darwin':'Hotel Darwin','Mustang Bar':'Mustang Bar','Beerland Brewing':'Beerland'};
+const MONTHLY_FEATURE_NOUN_ORDER=['Beer','Wine','Cocktail','Spirit'];
+const MONTHLY_FEATURE_LOADED_COLOR='#f3c892';
+function monthlyFeatureNoun(subtype){
+  const m=/^(.*?)\s+of the month$/i.exec(String(subtype||'').trim());
+  return m?m[1]:String(subtype||'').replace(/^feature\s+/i,'');
+}
 function renderCalMonthlyFeatures(){
   const monthStart=new Date(calYear,calMonth,1),monthEnd=new Date(calYear,calMonth+1,0);
   const candidates=EVENTS.filter(e=>!isArchived(e)&&/of the month$/i.test(e.activitySubtype||'')
     &&new Date(e.start+'T00:00:00')<=monthEnd&&new Date((e.end||e.start)+'T00:00:00')>=monthStart);
   if(!candidates.length)return'';
-  const subtypes=[...new Set(candidates.map(e=>e.activitySubtype))].sort((a,b)=>{
-    const ai=MONTHLY_FEATURE_ORDER.indexOf(a),bi=MONTHLY_FEATURE_ORDER.indexOf(b);
+  const latestMatch=(noun,venue)=>candidates.filter(e=>monthlyFeatureNoun(e.activitySubtype)===noun&&e.venue===venue)
+    .sort((a,b)=>b.start.localeCompare(a.start))[0]||null;
+  const nouns=[...new Set(candidates.map(e=>monthlyFeatureNoun(e.activitySubtype)))].sort((a,b)=>{
+    const ai=MONTHLY_FEATURE_NOUN_ORDER.indexOf(a),bi=MONTHLY_FEATURE_NOUN_ORDER.indexOf(b);
     if(ai!==-1||bi!==-1)return(ai===-1?99:ai)-(bi===-1?99:bi);
     return a.localeCompare(b);
   });
-  return`<div class="card" style="margin-bottom:12px;padding:10px 14px 12px">
-    ${subtypes.map(subtype=>{
-      const rows=MONTHLY_FEATURE_VENUES.map(venue=>{
-        const matches=candidates.filter(e=>e.activitySubtype===subtype&&e.venue===venue).sort((a,b)=>b.start.localeCompare(a.start));
-        return{venue,ev:matches[0]||null};
-      });
-      return`<div style="margin-bottom:10px">
-        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">${MONTHLY_FEATURE_ICON[subtype]||'⭐'} ${escapeAttr(subtype)}</div>
-        ${rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;${r.ev?'cursor:pointer':''}" ${r.ev?`onclick="showPop(${r.ev.id})"`:''}>
-          <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${vColor(r.venue).c};flex-shrink:0"></span>
-          <div style="width:134px;flex-shrink:0;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shortVenue(r.venue)}</div>
-          <div style="flex:1;font-size:11px;color:${r.ev?'var(--text)':'var(--text3)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.ev?escapeAttr(activityDetailLabel(r.ev)||r.ev.title):''}">${r.ev?escapeAttr(activityDetailLabel(r.ev)||r.ev.title):'Not set'}</div>
-        </div>`).join('')}
-      </div>`;
-    }).join('')}
-  </div>`;
+  const loadedRows=nouns.map(noun=>({noun,ev:latestMatch(noun,'All Venues')})).filter(r=>r.ev);
+  const loadedHtml=loadedRows.length?`<div style="margin-bottom:16px">
+    <div style="font-size:13px;font-weight:800;letter-spacing:.02em;margin-bottom:8px">LOADED REWARDS</div>
+    ${loadedRows.map(r=>`<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <div style="width:100px;flex-shrink:0;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Feature ${escapeAttr(r.noun)}</div>
+      <div onclick="showPop(${r.ev.id})" style="cursor:pointer;display:inline-block;padding:5px 16px;border-radius:999px;background:${MONTHLY_FEATURE_LOADED_COLOR};color:#1a1a18;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px" title="${escapeAttr(activityDetailLabel(r.ev)||r.ev.title)}">${escapeAttr(activityDetailLabel(r.ev)||r.ev.title)}</div>
+    </div>`).join('')}
+  </div>`:'';
+  const hasGridData=nouns.some(noun=>MONTHLY_FEATURE_VENUES.some(v=>latestMatch(noun,v)));
+  const gridHtml=hasGridData?`<div>
+    <div style="font-size:13px;font-weight:800;letter-spacing:.02em;margin-bottom:8px">VENUE</div>
+    <div style="display:grid;grid-template-columns:100px repeat(${MONTHLY_FEATURE_VENUES.length},1fr);gap:8px 10px;align-items:center">
+      <div></div>
+      ${MONTHLY_FEATURE_VENUES.map(v=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;text-align:center">${escapeAttr(MONTHLY_FEATURE_VENUE_LABELS[v]||v)}</div>`).join('')}
+      ${nouns.map(noun=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Feature ${escapeAttr(noun)}</div>
+        ${MONTHLY_FEATURE_VENUES.map(v=>{
+          const ev=latestMatch(noun,v);
+          if(!ev)return'<div></div>';
+          const vc=vColor(v).c,label=activityDetailLabel(ev)||ev.title;
+          return`<div onclick="showPop(${ev.id})" style="cursor:pointer;text-align:center;padding:5px 8px;border-radius:999px;background:${vc};color:${contrastText(vc)};font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(label)}">${escapeAttr(label)}</div>`;
+        }).join('')}`).join('')}
+    </div>
+  </div>`:'';
+  if(!loadedHtml&&!gridHtml)return'';
+  return`<div class="card" style="margin-bottom:12px;padding:14px 16px">${loadedHtml}${gridHtml}</div>`;
 }
 
 // A multi-day Activity appears as one continuous bar per calendar week, including month-long
