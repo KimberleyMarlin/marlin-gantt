@@ -9129,11 +9129,18 @@ function calEvtOpacity(ev){
 // Small venue-colour dot so venue stays visible at a glance even though the chip's main colour
 // now signals ActivityType instead.
 function calVenueDot(ev){return`<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${vColor(ev.venue).c};margin-right:3px;flex-shrink:0"></span>`;}
-// Same idea as calVenueDot above, but for status/stage — used on the Month view's continuous
-// range bars, where the bar itself is coloured by venue (see calendarMonthWeekBars' render loop)
-// so different specials/campaigns stay visually distinct at a glance instead of nearly every bar
-// rendering as the same solid colour whenever most activities share one stage (e.g. "Live").
-function calStatusDot(ev){return`<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${calEvtColor(ev)};margin-right:3px;flex-shrink:0"></span>`;}
+// Base icon for the Activity's top-level type (ACTIVITY_TYPE_OPTIONS) — shown wherever a more
+// specific icon (Loaded Rewards, Ticketed, Functions, Sporting Screening, etc.) doesn't already
+// apply, so every calendar item shows at a glance what kind of activity it is, not just the few
+// with a special-case icon. Falls back to '' only for a type outside the known set.
+function calTypeIcon(ev){
+  const t=ev.activityType||'';
+  if(t==='Event')return'🍸';
+  if(t==='Promotion / Offer')return'💲';
+  if(t==='Campaign')return'📣';
+  if(t==='Maintenance / Update')return'🔧';
+  return'';
+}
 
 // Calculate relative luminance of a hex colour and return black or white for contrast
 function contrastText(hex){
@@ -9330,8 +9337,7 @@ function renderCalendar(){
       ${dayMarketingStarts.map(ev=>`<div style="font-size:9px;font-weight:600;color:#9a6b0a;padding:1px 4px;border-radius:3px;background:#fdf3d8;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
       ${shown.map(ev=>{
         const style=calEvtStyle(ev);
-        const aType=ev.activityType||'';
-        const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.ticketed?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':'';
+        const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.ticketed?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':calTypeIcon(ev);
         return`<div class="cal-ev" style="${style};font-size:10px;font-weight:500" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calVenueDot(ev)}${icon?icon+' ':''}${ev.title}</div>`;
       }).join('')}
       ${extra>0?`<div class="cal-more" onclick="showCalDayPopup(event,${y},${m},${day})">+${extra} more</div>`:''}
@@ -9342,12 +9348,14 @@ function renderCalendar(){
       // Bar colour = venue (so different specials/campaigns stay visually distinct even when most
       // share the same stage, e.g. "Live" — previously the bar itself was stage-coloured, which
       // made nearly every bar render as the same solid green and merge together at a glance).
-      // Status/stage moves to the small dot instead, same pattern as calVenueDot for day chips.
+      // The leading icon shows what kind of activity it is (Event/Promotion/Campaign/Maintenance,
+      // or a more specific one like Loaded Rewards/Ticketed) instead of a status dot — status is
+      // still available via the hover tooltip/popup rather than taking its own slot on the bar.
       const color=vColor(ev.venue).c;
       const continuesBefore=ev.start<weekDates[start],continuesAfter=ev.end>weekDates[end];
-      const icon=ev.loadedRewards?'⭐ ':ev.ticketed?'🎫 ':'';
+      const icon=ev.loadedRewards?'⭐ ':ev.ticketed?'🎫 ':calTypeIcon(ev)+' ';
       const label=`${continuesBefore?'← ':''}${icon}${ev.title}${continuesAfter?' →':''}`;
-      return`<div class="cal-month-bar" style="grid-column:${start+1}/span ${end-start+1};grid-row:${lane+1};background:${color};color:${contrastText(color)};opacity:${calEvtOpacity(ev)}" title="${escapeAttr(ev.title)} (${ev.start} – ${ev.end})" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calStatusDot(ev)}<span class="cal-month-bar-title">${escapeAttr(label)}</span></div>`;
+      return`<div class="cal-month-bar" style="grid-column:${start+1}/span ${end-start+1};grid-row:${lane+1};background:${color};color:${contrastText(color)};opacity:${calEvtOpacity(ev)}" title="${escapeAttr(ev.title)} (${ev.start} – ${ev.end})" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()"><span class="cal-month-bar-title">${escapeAttr(label)}</span></div>`;
     }).join('')}</div></div>`;
   }
   document.getElementById('calGrid').innerHTML=h;
@@ -9404,7 +9412,7 @@ function showCalDayPopup(evt,y,m,day){
     </div>
     ${dayEvts.map(ev=>{
       const style=calEvtStyle(ev);
-      const icon=ev.loadedRewards?'⭐':ev.ticketed||ev.eventFormat==='Live Music / Entertainment'?'🎫':ev.businessStream==='Functions'?'🥂':ev.supplierInvolved?'🤝':'';
+      const icon=ev.loadedRewards?'⭐':ev.ticketed||ev.eventFormat==='Live Music / Entertainment'?'🎫':ev.businessStream==='Functions'?'🥂':ev.supplierInvolved?'🤝':calTypeIcon(ev);
       return`<div onclick="document.getElementById('calDayOv').remove();showPop(${ev.id})" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;margin-bottom:6px;cursor:pointer;${style}">
         <span>${icon}</span>
         <div><div style="font-weight:500;font-size:13px">${ev.title}</div><div style="font-size:11px;opacity:.7">${shortVenue(ev.venue)}</div></div>
@@ -9466,7 +9474,7 @@ function renderCalendarWeek(){
       ${dayKeyDates.map(k=>`<div style="font-size:9.5px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:2px 5px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:5px;display:inline-block" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
       ${dayEvts.length?dayEvts.map(ev=>{
         const style=calEvtStyle(ev);
-        const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.ticketed||ev.eventFormat==='Live Music / Entertainment'?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':'';
+        const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.ticketed||ev.eventFormat==='Live Music / Entertainment'?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':calTypeIcon(ev);
         return`<div class="wk-ev" style="${style}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">
           <div class="wk-ev-title">${icon?icon+' ':''}${ev.title}</div>
           <div class="wk-ev-sub"><span style="width:6px;height:6px;border-radius:50%;background:${vColor(ev.venue).c};display:inline-block;flex-shrink:0"></span>${shortVenue(ev.venue)}${ev.eventFormat||ev.activityType?' · '+(ev.eventFormat||ev.activityType):''}</div>
@@ -9569,7 +9577,7 @@ function renderCalendarDay(){
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)"><span style="width:8px;height:8px;border-radius:50%;background:${vc.c};flex-shrink:0"></span><span style="font-size:13px;font-weight:700">${escapeAttr(shortVenue(venue)||venue)}</span><span style="font-size:11px;color:var(--text3)">${vEvts.length} item${vEvts.length===1?'':'s'}</span></div>
       <div style="display:flex;flex-direction:column;gap:6px">${vEvts.map(ev=>{
         const style=calEvtStyle(ev);
-        const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.ticketed?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':'';
+        const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.ticketed?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':calTypeIcon(ev);
         const health=healthCheck(ev);
         return`<div onclick="showPop(${ev.id})" style="display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:8px;cursor:pointer;${style}">
           <span style="font-size:14px;flex-shrink:0">${icon}</span>
