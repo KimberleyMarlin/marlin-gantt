@@ -9251,15 +9251,31 @@ function renderCalMonthlyFeatures(){
   });
   const colTemplate=`100px repeat(${MONTHLY_FEATURE_VENUES.length},1fr)`;
   const loadedRows=nouns.map(noun=>({noun,ev:latestMatch(noun,'All Venues')})).filter(r=>r.ev);
-  // The Loaded pill spans every venue column (grid-column:2/-1) instead of sitting at its own
-  // content width, so it visually reads as "this one covers every venue" rather than looking like
-  // just another single-venue cell that happens to be under the first column.
+  // Reuses the Hub's own Loaded Rewards card look (.lr-card/.lr-head — the dark navy gradient card
+  // with the Loaded logo, used on the actual Loaded Rewards page) instead of a plain pill, compacted
+  // down for this calendar strip — Kim wants this section to read like the Loaded screen itself.
   const loadedHtml=loadedRows.length?`<div style="margin-bottom:14px">
     <div style="margin:0 -16px 8px;padding:6px 16px;background:${MONTHLY_DEALS_NAVY};color:${MONTHLY_DEALS_ACCENT};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Loaded Rewards</div>
-    <div style="display:grid;grid-template-columns:${colTemplate};gap:8px 10px;align-items:center">
-      ${loadedRows.map(r=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Feature ${escapeAttr(r.noun)}</div>
-        <div onclick="showPop(${r.ev.id})" style="grid-column:2 / -1;cursor:pointer;text-align:center;padding:5px 16px;border-radius:999px;background:${MONTHLY_FEATURE_LOADED_COLOR};color:#1a1a18;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(activityDetailLabel(r.ev)||r.ev.title)} — covers all venues">${escapeAttr(activityDetailLabel(r.ev)||r.ev.title)}</div>`).join('')}
-    </div>
+    ${loadedRows.map(r=>{
+      const label=activityDetailLabel(r.ev)||r.ev.title;
+      const running=fmtShort(r.ev.start)+(r.ev.end&&r.ev.end!==r.ev.start?' → '+fmtShort(r.ev.end):'');
+      return`<div class="lr-card" style="margin-bottom:8px;cursor:pointer" onclick="showPop(${r.ev.id})">
+        <div class="lr-head" style="padding:10px 14px">
+          <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+            ${venueLogoBox(r.ev,true)}
+            <div style="min-width:0">
+              <div class="lr-activation-label">Feature ${escapeAttr(r.noun)}</div>
+              <div class="lr-title" style="font-size:13px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(label)}</div>
+              <div class="lr-summary-fields" style="margin-top:3px;gap:12px">
+                ${r.ev.supplierLookup?`<div class="lr-summary-field"><div class="activity-summary-label">Supplier</div><div class="activity-summary-value">${escapeAttr(r.ev.supplierLookup)}</div></div>`:''}
+                <div class="lr-summary-field"><div class="activity-summary-label">Running</div><div class="activity-summary-value">${escapeAttr(running)}</div></div>
+                <div class="lr-summary-field"><div class="activity-summary-label">Venues</div><div class="activity-summary-value">All Venues</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
   </div>`:'';
   // Every venue is always a column and every feature a row — a venue with nothing set for a feature
   // this month shows an explicit "Not set" pill rather than an empty gap, so the template reads the
