@@ -326,18 +326,11 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .wk-ev-sub{font-size:10px;opacity:.75;margin-top:2px;display:flex;align-items:center;gap:4px}
 .wk-empty{font-size:11px;color:var(--text3);text-align:center;padding:24px 6px}
 .cal-more:hover{background:var(--accent);color:#fff}
-/* Month-only range bars. Each row is a calendar week; multi-day Activities occupy
-   one real spanning grid item, not 7 repeated day chips. The 7-column layout and
-   internal gap must always agree between week cells and their bar overlay. */
 .cal-month-header{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px}
 .cal-month-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;position:relative;margin-top:7px}
 .cal-month-week .cal-day{height:auto;min-width:0}
-.cal-month-bars{position:absolute;top:30px;left:0;right:0;z-index:2;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px 7px;grid-auto-rows:21px;pointer-events:none}
-.cal-month-bar{display:flex;align-items:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;pointer-events:auto;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:600;line-height:17px;transition:filter .15s;box-shadow:0 1px 2px rgba(0,0,0,.1)}
-.cal-month-bar:hover{filter:brightness(.88)}
-.cal-month-bar .cal-month-bar-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cal-month-details{position:relative;z-index:1}
-@media(max-width:479px){.cal-month-header,.cal-month-week{gap:4px}.cal-month-bar{font-size:8px;padding:2px 4px}.cal-month-bars{gap:2px 4px;top:26px}}
+@media(max-width:479px){.cal-month-header,.cal-month-week{gap:4px}}
 
 /* ── VENUE CARDS ── */
 .venue-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;width:100%}
@@ -9170,11 +9163,6 @@ function calEvtOpacity(ev){
 // Small venue-colour dot so venue stays visible at a glance even though the chip's main colour
 // now signals ActivityType instead.
 function calVenueDot(ev){return`<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${vColor(ev.venue).c};margin-right:3px;flex-shrink:0"></span>`;}
-// Same idea as calVenueDot above, but for status/stage — used on the Month view's continuous
-// range bars, where the bar itself is coloured by venue (see calendarMonthWeekBars' render loop)
-// so different specials/campaigns stay visually distinct at a glance instead of nearly every bar
-// rendering as the same solid colour whenever most activities share one stage (e.g. "Live").
-function calStatusDot(ev){return`<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${calEvtColor(ev)};margin-right:3px;flex-shrink:0"></span>`;}
 
 // Calculate relative luminance of a hex colour and return black or white for contrast
 function contrastText(hex){
@@ -9240,9 +9228,12 @@ function renderDashProjectsMonthStrip(){
 }
 
 // Monthly Features strip — sits at the top of the Calendar's Month view where the Projects strip
-// used to be. Two parts, matching Kim's mockup:
-//  - LOADED REWARDS: "X of the Month" Activities scoped to venue="All Venues" (i.e. it covers every
-//    venue at once, same meaning as elsewhere in the Hub) — one pill per feature, no venue column.
+// used to be. Two parts:
+//  - LOADED REWARDS: Loaded's own group-wide supplier specials this month (e.g. Hahn 3.5, Jameson)
+//    — identified by Primary Brand = "Loaded Rewards", a compact card each (logo, Supplier, Product,
+//    Running, Venues + the real Offer Mechanics grid). NOT the same thing as a venue's own "Beer of
+//    the Month" being flagged loadedRewards (that's a venue-specific deal, still Loaded-app-enabled,
+//    but not one of Loaded's own specials) — see renderMonthlyDealsLoadedCard.
 //  - VENUE grid: a proper table, rows = feature ("Feature Beer","Feature Wine",…), columns = each
 //    actual venue, cell = a venue-coloured pill holding the Activity Detail text (e.g.
 //    "Weinstephaner"), or blank if that venue has nothing set for that feature this month.
@@ -9263,11 +9254,37 @@ function monthlyFeatureNoun(subtype){
   const m=/^(.*?)\s+of the month$/i.exec(String(subtype||'').trim());
   return m?m[1]:String(subtype||'').replace(/^feature\s+/i,'');
 }
+// The compact horizontal card for the Monthly Deals "Loaded Rewards" section — a navy box (logo +
+// Supplier/Product/Running/Venues) beside the real Offer Mechanics grid, per Kim's reference
+// screenshot. Deliberately not the full renderLoadedRewardsCard (that stays as-is on the actual
+// Loaded Rewards page) — this one needs to sit two-up, compact, not stack vertically.
+function renderMonthlyDealsLoadedCard(ev){
+  const variants=loadedVariantsForEvent(ev);
+  const running=fmtShort(ev.start)+(ev.end&&ev.end!==ev.start?' - '+fmtShort(ev.end):'');
+  const product=ev.product||activityDetailLabel(ev)||'';
+  const venues=ev.venue&&ev.venue!=='All Venues'?shortVenue(ev.venue):'';
+  const fields=[['Supplier',ev.supplierLookup||''],['Product',product],['Running',running],['Venues',venues]];
+  return`<div style="display:flex;border-radius:10px;overflow:hidden;margin-bottom:10px;border:1px solid var(--border)">
+    <div style="flex:0 0 240px;background:linear-gradient(135deg,#0a1628 0%,#1a3a6e 100%);padding:14px;display:flex;gap:10px;align-items:flex-start;cursor:pointer" onclick="showPop(${ev.id})">
+      ${venueLogoBox(ev,true)}
+      <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+        ${fields.map(([label,value])=>`<div><div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--theme-loadedrewards)">${escapeAttr(label)}</div><div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(value)||'&nbsp;'}</div></div>`).join('')}
+      </div>
+    </div>
+    <div style="flex:1;min-width:0">${loadedOfferGridHtml(ev,variants)}</div>
+  </div>`;
+}
 function renderCalMonthlyFeatures(){
   const monthStart=new Date(calYear,calMonth,1),monthEnd=new Date(calYear,calMonth+1,0);
-  const candidates=EVENTS.filter(e=>!isArchived(e)&&/of the month$/i.test(e.activitySubtype||'')
-    &&new Date(e.start+'T00:00:00')<=monthEnd&&new Date((e.end||e.start)+'T00:00:00')>=monthStart);
-  if(!candidates.length)return'';
+  const inMonth=e=>new Date(e.start+'T00:00:00')<=monthEnd&&new Date((e.end||e.start)+'T00:00:00')>=monthStart;
+  const candidates=EVENTS.filter(e=>!isArchived(e)&&/of the month$/i.test(e.activitySubtype||'')&&inMonth(e));
+  // Loaded's own group-wide supplier specials (this month: Hahn 3.5, Jameson) — identified by
+  // Primary Brand = "Loaded Rewards", NOT by the loadedRewards flag. Every venue's own "Beer of the
+  // Month" etc. is also flagged loadedRewards (it goes through the Loaded app too), but that's a
+  // venue-specific deal, not one of Loaded's own group specials — those still only show in the
+  // Venue grid below, never duplicated up here.
+  const loadedEvents=EVENTS.filter(e=>!isArchived(e)&&e.brand==='Loaded Rewards'&&inMonth(e));
+  if(!candidates.length&&!loadedEvents.length)return'';
   const latestMatch=(noun,venue)=>candidates.filter(e=>monthlyFeatureNoun(e.activitySubtype)===noun&&e.venue===venue)
     .sort((a,b)=>b.start.localeCompare(a.start))[0]||null;
   const nouns=[...new Set(candidates.map(e=>monthlyFeatureNoun(e.activitySubtype)))].sort((a,b)=>{
@@ -9276,24 +9293,14 @@ function renderCalMonthlyFeatures(){
     return a.localeCompare(b);
   });
   const colTemplate=`100px repeat(${MONTHLY_FEATURE_VENUES.length},1fr)`;
-  // Every "of the Month" Activity actually flagged as Loaded gets its own card here, whatever venue
-  // it's scoped to — most of Kim's real Beer/Wine/Cocktail of the Month activities are venue-specific
-  // (not "All Venues"), so restricting this to All-Venues-only left the section always empty even
-  // though the Venue grid below had real data. One venue running its own Loaded deal is still a
-  // Loaded deal; the Venue grid still shows it in its own column too, same as the real Loaded
-  // Rewards page lists every campaign individually regardless of venue.
-  const loadedEvents=candidates.filter(e=>e.loadedRewards)
-    .sort((a,b)=>monthlyFeatureNoun(a.activitySubtype).localeCompare(monthlyFeatureNoun(b.activitySubtype))||String(a.venue||'').localeCompare(String(b.venue||'')));
-  // The exact same card as the real Loaded Rewards page (renderLoadedRewardsCard) — not a
-  // compacted/invented variant — per Kim's reference screenshot of that page.
   const loadedHtml=loadedEvents.length?`<div style="margin-bottom:14px">
     <div style="font-size:12.5px;font-weight:800;color:var(--theme-loadedrewards);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Loaded Rewards</div>
-    ${loadedEvents.map(renderLoadedRewardsCard).join('')}
+    ${loadedEvents.map(renderMonthlyDealsLoadedCard).join('')}
   </div>`:'';
   // Every venue is always a column and every feature a row — a venue with nothing set for a feature
   // this month shows an explicit "Not set" pill rather than an empty gap, so the template reads the
   // same whether a cell is filled or not.
-  const gridHtml=`<div>
+  const gridHtml=nouns.length?`<div>
     <div style="margin:0 -16px 8px;padding:6px 16px;background:${MONTHLY_DEALS_NAVY};color:${MONTHLY_DEALS_ACCENT};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Venue</div>
     <div style="display:grid;grid-template-columns:${colTemplate};gap:8px 10px;align-items:center">
       <div></div>
@@ -9306,7 +9313,7 @@ function renderCalMonthlyFeatures(){
           return`<div onclick="showPop(${ev.id})" style="cursor:pointer;text-align:center;padding:5px 8px;border-radius:999px;background:${vc};color:${contrastText(vc)};font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(label)}">${escapeAttr(label)}</div>`;
         }).join('')}`).join('')}
     </div>
-  </div>`;
+  </div>`:'';
   return`<div class="card" style="margin-bottom:12px;padding:14px 16px;overflow:hidden">
     <div style="font-size:15px;font-weight:800;letter-spacing:.01em;margin-bottom:12px;color:var(--theme-monthlydeals)">Monthly Deals</div>
     ${loadedHtml}${gridHtml}
@@ -9338,37 +9345,6 @@ function calDayChipSort(a,b){
   if(aS!==bS)return aS-bS;
   return(CAL_CHIP_CAT_ORDER[a.eventFormat||a.activityType]||99)-(CAL_CHIP_CAT_ORDER[b.eventFormat||b.activityType]||99);
 }
-function calendarMonthMatchesFilters(ev){
-  if(isArchived(ev))return false;
-  if(calVenueFilter&&ev.venue!==calVenueFilter&&ev.venue!=='All Venues')return false;
-  if(calCatFilter==='holiday')return['Public Holiday','National Calendar Event','School Holidays'].includes(ev.activityType||ev.eventFormat||ev.businessStream);
-  return !calCatFilter||ev.activityType===calCatFilter||ev.eventFormat===calCatFilter||ev.businessStream===calCatFilter;
-}
-// Clip each Activity to the visible 7-day week and the selected calendar date range.
-// Use the lowest free row so overlapping ranges never cover each other.
-function calendarMonthWeekBars(weekDates){
-  const segments=EVENTS.filter(ev=>isCalendarContinuousActivity(ev)&&calendarMonthMatchesFilters(ev))
-    .map(ev=>{
-      const start=weekDates.findIndex(d=>d>=ev.start&&d<=ev.end&&calendarDateInRange(d));
-      if(start<0)return null;
-      let end=start;
-      while(end<6&&weekDates[end+1]>=ev.start&&weekDates[end+1]<=ev.end&&calendarDateInRange(weekDates[end+1]))end++;
-      return{ev,start,end};
-    }).filter(Boolean)
-    .sort((a,b)=>(b.end-b.start)-(a.end-a.start)
-      ||Number(!!b.ev.loadedRewards)-Number(!!a.ev.loadedRewards)
-      ||String(a.ev.title||'').localeCompare(String(b.ev.title||''))
-      ||String(a.ev.id).localeCompare(String(b.ev.id)));
-  const occupiedUntil=[];
-  for(const segment of segments){
-    let lane=occupiedUntil.findIndex(end=>end<segment.start);
-    if(lane<0)lane=occupiedUntil.length;
-    occupiedUntil[lane]=segment.end;
-    segment.lane=lane;
-  }
-  return segments;
-}
-
 function renderCalendar(){
   if(!isAuthed)return;
 
@@ -9405,9 +9381,6 @@ function renderCalendar(){
   const total=Math.ceil((firstDay+dim)/7)*7;
 
   for(let weekOffset=0;weekOffset<total;weekOffset+=7){
-    const weekDates=Array.from({length:7},(_,d)=>toLocalISODate(new Date(calYear,calMonth,1-firstDay+weekOffset+d)));
-    const weekBars=calendarMonthWeekBars(weekDates);
-    const barRows=weekBars.length?Math.max(...weekBars.map(s=>s.lane))+1:0;
     h+='<div class="cal-month-week">';
     for(let i=weekOffset;i<weekOffset+7;i++){
     let day,isOther=false;
@@ -9422,7 +9395,7 @@ function renderCalendar(){
     const dateStr=toLocalISODate(realDate);
     const inSelectedRange=calendarDateInRange(dateStr);
     let dayEvts=inSelectedRange?EVENTS.filter(e=>{
-      if(isArchived(e)||isCalendarContinuousActivity(e))return false;
+      if(isArchived(e))return false;
       const s=new Date(e.start+'T00:00:00'),en=new Date((e.end||e.start)+'T00:00:00');
       // Recurring parent events only count on days matching their RecurringDay + RecurringFrequency
       if(e.recurringDay&&e.recurringDay.length){
@@ -9457,33 +9430,28 @@ function renderCalendar(){
     const shown=dayEvts.slice(0,maxShow);
     const extra=dayEvts.length-maxShow;
 
-    h+=`<div class="cal-day${isOther?' om':''}${isToday?' td':''}${isPublicHoliday?' cd-hol':''}${!inSelectedRange?' cal-day-out':''}" style="min-height:${Math.max(116,barRows*23+105)}px">
+    h+=`<div class="cal-day${isOther?' om':''}${isToday?' td':''}${isPublicHoliday?' cd-hol':''}${!inSelectedRange?' cal-day-out':''}" style="min-height:116px">
       <div class="cal-num">${day}</div>
-      <div class="cal-month-details" style="margin-top:${barRows*23+2}px">
+      <div class="cal-month-details">
       ${dayKeyDates.map(k=>`<div style="font-size:9px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:1px 4px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
       ${dayBriefsDue.map(ev=>`<div class="cal-ev" style="color:#7c3aed;background:#ede9fe" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✏️ Brief: ${ev.title}</div>`).join('')}
       ${dayMarketingStarts.map(ev=>`<div class="cal-ev" style="color:#9a6b0a;background:#fdf3d8" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
       ${shown.map(ev=>{
         const style=calEvtStyle(ev);
-        const aType=ev.activityType||'';
         const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.ticketed?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':'';
-        return`<div class="cal-ev" style="${style}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calVenueDot(ev)}${icon?icon+' ':''}${ev.title}</div>`;
+        // A continuous multi-day Activity (not a Recurring one) gets a continuation arrow on
+        // whichever side(s) it runs past this day — same small chip as everything else, just with
+        // a hint that it keeps going, instead of a separate oversized bar overlay.
+        const isContinuous=isCalendarContinuousActivity(ev);
+        const continuesBefore=isContinuous&&ev.start<dateStr,continuesAfter=isContinuous&&ev.end>dateStr;
+        const label=`${continuesBefore?'← ':''}${icon?icon+' ':''}${ev.title}${continuesAfter?' →':''}`;
+        return`<div class="cal-ev" style="${style}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calVenueDot(ev)}${escapeAttr(label)}</div>`;
       }).join('')}
       ${extra>0?`<div class="cal-more" onclick="showCalDayPopup(event,${y},${m},${day})">+${extra} more</div>`:''}
       </div>
     </div>`;
     }
-    h+=`<div class="cal-month-bars">${weekBars.map(({ev,start,end,lane})=>{
-      // Bar colour = venue (so different specials/campaigns stay visually distinct even when most
-      // share the same stage, e.g. "Live" — previously the bar itself was stage-coloured, which
-      // made nearly every bar render as the same solid green and merge together at a glance).
-      // Status/stage moves to the small dot instead, same pattern as calVenueDot for day chips.
-      const color=vColor(ev.venue).c;
-      const continuesBefore=ev.start<weekDates[start],continuesAfter=ev.end>weekDates[end];
-      const icon=ev.loadedRewards?'⭐ ':ev.ticketed?'🎫 ':'';
-      const label=`${continuesBefore?'← ':''}${icon}${ev.title}${continuesAfter?' →':''}`;
-      return`<div class="cal-month-bar" style="grid-column:${start+1}/span ${end-start+1};grid-row:${lane+1};background:${color};color:${contrastText(color)};opacity:${calEvtOpacity(ev)}" title="${escapeAttr(ev.title)} (${ev.start} – ${ev.end})" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calStatusDot(ev)}<span class="cal-month-bar-title">${escapeAttr(label)}</span></div>`;
-    }).join('')}</div></div>`;
+    h+='</div>';
   }
   document.getElementById('calGrid').innerHTML=h;
 }
