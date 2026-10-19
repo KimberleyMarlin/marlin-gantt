@@ -9276,12 +9276,19 @@ function renderCalMonthlyFeatures(){
     return a.localeCompare(b);
   });
   const colTemplate=`100px repeat(${MONTHLY_FEATURE_VENUES.length},1fr)`;
-  const loadedRows=nouns.map(noun=>({noun,ev:latestMatch(noun,'All Venues')})).filter(r=>r.ev);
+  // Every "of the Month" Activity actually flagged as Loaded gets its own card here, whatever venue
+  // it's scoped to — most of Kim's real Beer/Wine/Cocktail of the Month activities are venue-specific
+  // (not "All Venues"), so restricting this to All-Venues-only left the section always empty even
+  // though the Venue grid below had real data. One venue running its own Loaded deal is still a
+  // Loaded deal; the Venue grid still shows it in its own column too, same as the real Loaded
+  // Rewards page lists every campaign individually regardless of venue.
+  const loadedEvents=candidates.filter(e=>e.loadedRewards)
+    .sort((a,b)=>monthlyFeatureNoun(a.activitySubtype).localeCompare(monthlyFeatureNoun(b.activitySubtype))||String(a.venue||'').localeCompare(String(b.venue||'')));
   // The exact same card as the real Loaded Rewards page (renderLoadedRewardsCard) — not a
   // compacted/invented variant — per Kim's reference screenshot of that page.
-  const loadedHtml=loadedRows.length?`<div style="margin-bottom:14px">
+  const loadedHtml=loadedEvents.length?`<div style="margin-bottom:14px">
     <div style="font-size:12.5px;font-weight:800;color:var(--theme-loadedrewards);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Loaded Rewards</div>
-    ${loadedRows.map(r=>renderLoadedRewardsCard(r.ev)).join('')}
+    ${loadedEvents.map(renderLoadedRewardsCard).join('')}
   </div>`:'';
   // Every venue is always a column and every feature a row — a venue with nothing set for a feature
   // this month shows an explicit "Not set" pill rather than an empty gap, so the template reads the
