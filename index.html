@@ -9264,6 +9264,9 @@ function renderDashProjectsMonthStrip(){
 const MONTHLY_FEATURE_VENUES=['The Ravenswood','The Left Bank','Whitfords Brewing Co','Hotel Darwin'];
 const MONTHLY_FEATURE_VENUE_LABELS={'The Left Bank':'Left Bank','The Ravenswood':'Ravenswood','Whitfords Brewing Co':'Whitfords','Hotel Darwin':'Hotel Darwin','Mustang Bar':'Mustang Bar','Beerland Brewing':'Beerland'};
 const MONTHLY_FEATURE_NOUN_ORDER=['Beer','Wine','Cocktail','Spirit'];
+// Nouns that are already a whole feature name, not an ingredient to prefix with "Feature " —
+// "Feature Chef's Special" would read oddly where "Chef's Special" alone doesn't.
+const MONTHLY_FEATURE_WHOLE_LABEL=new Set(["Chef's Special"]);
 // Dark navy header bars with a bright accent-orange title, borrowed from the Loaded Rewards app's
 // own screens — Kim asked for this box to read more like a Loaded screen (compacted) than a plain
 // card with underlined section labels.
@@ -9273,10 +9276,12 @@ function monthlyFeatureNoun(subtype){
   const m=/^(.*?)\s+of the month$/i.exec(String(subtype||'').trim());
   return m?m[1]:String(subtype||'').replace(/^feature\s+/i,'');
 }
-// The compact horizontal card for the Monthly Deals "Loaded Rewards" section — a navy box (logo +
-// Supplier/Product/Running/Venues) beside the real Offer Mechanics grid, per Kim's reference
-// screenshot. Deliberately not the full renderLoadedRewardsCard (that stays as-is on the actual
-// Loaded Rewards page) — this one needs to sit two-up, compact, not stack vertically.
+// The compact horizontal card for the Monthly Deals "Loaded Rewards" section — a navy box
+// (Supplier/Product/Running/Venue + artwork) beside the real Offer Mechanics grid, per Kim's
+// reference screenshot. Deliberately not the full renderLoadedRewardsCard (that stays as-is on the
+// actual Loaded Rewards page) — this one needs to sit two-up, compact, not stack vertically. The
+// Loaded logo itself now lives once in the section banner above (see renderCalMonthlyFeatures)
+// instead of being repeated on every card.
 function renderMonthlyDealsLoadedCard(ev){
   const variants=loadedVariantsForEvent(ev);
   const running=fmtShort(ev.start)+(ev.end&&ev.end!==ev.start?' - '+fmtShort(ev.end):'');
@@ -9286,14 +9291,11 @@ function renderMonthlyDealsLoadedCard(ev){
   const fields=[['Supplier',ev.supplierLookup||''],['Product',product],['Running',running],['Venue',ev.venue||'']];
   const artworkUrl=ev.eventImageUrl||ev.artworkFile||'';
   return`<div style="display:flex;border-radius:10px;overflow:hidden;margin-bottom:10px;border:1px solid var(--border)">
-    <div style="flex:0 0 260px;background:linear-gradient(135deg,#0a1628 0%,#1a3a6e 100%);padding:14px;display:flex;gap:10px;align-items:flex-start;cursor:pointer" onclick="showPop(${ev.id})">
-      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
-        ${venueLogoBox(ev,true)}
-        ${artworkUrl?`<img src="${escapeAttr(artworkUrl)}" style="width:52px;height:52px;object-fit:cover;border-radius:9px;border:1px solid rgba(255,255,255,.24)" onerror="this.remove()">`:''}
-      </div>
-      <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+    <div style="flex:0 0 260px;background:linear-gradient(135deg,#0a1628 0%,#1a3a6e 100%);padding:14px;display:flex;gap:12px;align-items:center;cursor:pointer" onclick="showPop(${ev.id})">
+      <div style="display:flex;flex-direction:column;gap:5px;min-width:0;flex:1">
         ${fields.map(([label,value])=>`<div><div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--theme-loadedrewards)">${escapeAttr(label)}</div><div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(value)||'&nbsp;'}</div></div>`).join('')}
       </div>
+      ${artworkUrl?`<img src="${escapeAttr(artworkUrl)}" style="width:60px;height:60px;object-fit:cover;border-radius:9px;border:1px solid rgba(255,255,255,.24);flex-shrink:0" onerror="this.remove()">`:''}
     </div>
     <div style="flex:1;min-width:0">${loadedOfferGridHtml(ev,variants,true)}</div>
   </div>`;
@@ -9301,7 +9303,7 @@ function renderMonthlyDealsLoadedCard(ev){
 function renderCalMonthlyFeatures(){
   const monthStart=new Date(calYear,calMonth,1),monthEnd=new Date(calYear,calMonth+1,0);
   const inMonth=e=>new Date(e.start+'T00:00:00')<=monthEnd&&new Date((e.end||e.start)+'T00:00:00')>=monthStart;
-  const candidates=EVENTS.filter(e=>!isArchived(e)&&/of the month$/i.test(e.activitySubtype||'')&&inMonth(e));
+  const candidates=EVENTS.filter(e=>!isArchived(e)&&(/of the month$/i.test(e.activitySubtype||'')||e.activitySubtype==="Chef's Special")&&inMonth(e));
   // Loaded's own group-wide supplier specials (this month: Hahn 3.5, Jameson) — identified by
   // Primary Brand = "Loaded Rewards", NOT by the loadedRewards flag. Every venue's own "Beer of the
   // Month" etc. is also flagged loadedRewards (it goes through the Loaded app too), but that's a
@@ -9318,7 +9320,10 @@ function renderCalMonthlyFeatures(){
   });
   const colTemplate=`100px repeat(${MONTHLY_FEATURE_VENUES.length},1fr)`;
   const loadedHtml=loadedEvents.length?`<div style="margin-bottom:14px">
-    <div style="font-size:12.5px;font-weight:800;color:var(--theme-loadedrewards);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Loaded Rewards</div>
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:linear-gradient(135deg,#0a1628 0%,#1a3a6e 100%);border-radius:8px;margin-bottom:8px">
+      <img src="${LR_LOGO}" style="height:22px;width:auto;object-fit:contain" onerror="this.style.display='none'">
+      <span style="font-size:12.5px;font-weight:800;color:var(--theme-loadedrewards);text-transform:uppercase;letter-spacing:.04em">Loaded Rewards</span>
+    </div>
     ${loadedEvents.map(renderMonthlyDealsLoadedCard).join('')}
   </div>`:'';
   // Every venue is always a column and every feature a row — a venue with nothing set for a feature
@@ -9329,12 +9334,12 @@ function renderCalMonthlyFeatures(){
     <div style="display:grid;grid-template-columns:${colTemplate};gap:8px 10px;align-items:center">
       <div></div>
       ${MONTHLY_FEATURE_VENUES.map(v=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;text-align:center">${escapeAttr(MONTHLY_FEATURE_VENUE_LABELS[v]||v)}</div>`).join('')}
-      ${nouns.map(noun=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Feature ${escapeAttr(noun)}</div>
+      ${nouns.map(noun=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">${MONTHLY_FEATURE_WHOLE_LABEL.has(noun)?escapeAttr(noun):`Feature ${escapeAttr(noun)}`}</div>
         ${MONTHLY_FEATURE_VENUES.map(v=>{
           const ev=latestMatch(noun,v);
-          if(!ev)return`<div style="text-align:center;padding:5px 8px;border-radius:999px;background:var(--surface2);color:var(--text3);font-size:11px;font-weight:600">Not set</div>`;
+          if(!ev)return`<div style="text-align:center;padding:5px 8px;border-radius:7px;background:var(--surface2);color:var(--text3);font-size:11px;font-weight:600">Not set</div>`;
           const vc=vColor(v).c,label=activityDetailLabel(ev)||ev.title;
-          return`<div onclick="showPop(${ev.id})" style="cursor:pointer;text-align:center;padding:5px 8px;border-radius:999px;background:${vc};color:${contrastText(vc)};font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(label)}">${escapeAttr(label)}</div>`;
+          return`<div onclick="showPop(${ev.id})" style="cursor:pointer;text-align:center;padding:5px 8px;border-radius:7px;background:${vc};color:${contrastText(vc)};font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(label)}">${escapeAttr(label)}</div>`;
         }).join('')}`).join('')}
     </div>
   </div>`:'';
@@ -9880,7 +9885,10 @@ const LOADED_COMPONENTS={
   marketing:{tier:'Marketing Spend',label:'Marketing spend',category:'Marketing Spend',defaults:['$0','$500','$1,000','$1,500','$2,500']}
 };
 
-const LOADED_OFFER_DISPLAY=['base','gold','platinum','newSignup','birthday','venueHopper','allMembers','reOffer','referral','staff','comp','marketing'];
+// New Sign-up, Birthday and Venue Hopper are deliberately left out of the summary grid — they're
+// still fully settable via "Edit offers" (loadedOfferFieldsHtml lists every component regardless of
+// this display list), just not cluttering the at-a-glance tile grid everywhere it's shown.
+const LOADED_OFFER_DISPLAY=['base','gold','platinum','allMembers','reOffer','referral','staff','comp','marketing'];
 
 function loadedOfferSchemaState(){
   const check=(columns,aliases,requiredType='')=>{
