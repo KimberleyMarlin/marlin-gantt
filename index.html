@@ -5355,12 +5355,14 @@ async function loadCampaigns(){
       // ActivityType is the new primary type field (replaces old ActivationType/Category)
       const actType=f.ActivityType||f.ActivationType||'';
       const storedStage=normaliseStage(f.WorkflowStage);
-      // RecurringDay is a comma-separated Text column (see SCHEMA_KNOWN_GAPS — Microsoft Graph's
+      // RecurringWeekday is a comma-separated Text column (see SCHEMA_KNOWN_GAPS — Microsoft Graph's
       // column-creation API has no multi-select facet for Choice columns, so a genuine SharePoint
       // MultiChoice column could never actually be created for this) — normalise to an array of
-      // day names. Array.isArray is kept only in case some other MultiChoice column by this name
-      // is already in live use; savePopEdit() itself always writes the comma-separated string form.
-      const recurringDayRaw=f.RecurringDay;
+      // day names. Deliberately NOT named "RecurringDay": an old, differently-typed column by that
+      // name already exists on this list and silently blocked Schema Tools from creating a working
+      // one, which is why recurring-day saves always failed with a generic 500. Still read the old
+      // field as a fallback in case any legacy items only have data under the old name.
+      const recurringDayRaw=f.RecurringWeekday!==undefined?f.RecurringWeekday:f.RecurringDay;
       const recurringDay=Array.isArray(recurringDayRaw)
         ?recurringDayRaw
         :(recurringDayRaw?String(recurringDayRaw).split(',').map(s=>s.trim()).filter(Boolean):[]);
@@ -11559,8 +11561,11 @@ const SCHEMA_KNOWN_GAPS=[
   // columns (only Lookup columns can be created with allowMultipleValues), so a genuine SharePoint
   // MultiChoice column can't be created through Schema Tools at all. Comma-separated text sidesteps
   // that limitation entirely and matches how the Recurring Schedule checkboxes already serialise
-  // ticked days before savePopEdit() ever reads them.
-  {listKey:'campaigns',name:'RecurringDay',displayName:'Recurring Day',type:'text',purpose:'Comma-separated day name(s) an Activity marked Recurring actually happens on, e.g. "Wednesday" or "Monday,Thursday".'},
+  // ticked days before savePopEdit() ever reads them. Named "RecurringWeekday" rather than
+  // "RecurringDay" because an old, differently-typed column already exists under that name on the
+  // list — Schema Tools' exists-check matches by name only, so it silently treated that column as
+  // satisfying this gap and never created a working one, which is why saves always failed.
+  {listKey:'campaigns',name:'RecurringWeekday',displayName:'Recurring Weekday',type:'text',purpose:'Comma-separated day name(s) an Activity marked Recurring actually happens on, e.g. "Wednesday" or "Monday,Thursday". (Not named RecurringDay — an old, incompatible column already uses that name.)'},
   {listKey:'campaigns',name:'RecurringFrequency',displayName:'Recurring Frequency',type:'choice',choices:'Weekly, Fortnightly, Monthly',purpose:'How often a Recurring Activity\'s ticked day(s) repeat within its Start–End run.'},
   {listKey:'campaigns',name:'ActivityGroup',displayName:'Activity Group',type:'choice',choices:Object.keys(ACTIVITY_GROUPS).join(', '),purpose:'Finer classification layer alongside Activity Type (Food & Beverage, Promotions & Offers, Events & Entertainment, etc.) — additive, does not replace Activity Type.'},
   // Text, not Choice — the ~60 subtype values across all groups are already constrained by the
@@ -14442,7 +14447,7 @@ function renderActivityDetail(id,mode){
       <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Start/End above is the whole run. Tick the day(s) it actually happens on — the Calendar only shows it on these days within that range.</div>
       <div id="recurringDayBox-${ev.id}" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
         ${dayDefs.map(([full,short])=>`<label style="display:flex;align-items:center;gap:4px;font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;cursor:pointer"><input type="checkbox" value="${full}" ${currentDaysLower.includes(full.toLowerCase())?'checked':''} onchange="syncRecurringDayField(${ev.id})" style="margin:0">${short}</label>`).join('')}
-        <input type="hidden" class="pop-edit-inp" data-field="RecurringDay" data-original="${escapeAttr(currentDays.join(','))}" value="${escapeAttr(currentDays.join(','))}">
+        <input type="hidden" class="pop-edit-inp" data-field="RecurringWeekday" data-original="${escapeAttr(currentDays.join(','))}" value="${escapeAttr(currentDays.join(','))}">
       </div>
       <div style="display:grid;grid-template-columns:1fr;gap:6px">${editField('Recurring Frequency',ev.recurringFrequency,'RecurringFrequency','select',['',...freqChoices])}</div>
     </div>`;
@@ -14717,7 +14722,7 @@ function toggleTicketingBox(selectEl,evId){
 }
 
 // Recurring-day checkboxes have no single input value, so they're collected into one hidden
-// .pop-edit-inp (data-field="RecurringDay") that savePopEdit already knows how to read.
+// .pop-edit-inp (data-field="RecurringWeekday") that savePopEdit already knows how to read.
 function syncRecurringDayField(evId){
   const box=document.getElementById('recurringDayBox-'+evId);
   if(!box)return;
@@ -14763,7 +14768,7 @@ async function savePopEdit(evId,mode){
   const preSaveRecurring={recurring:ev.recurring,recurringDay:ev.recurringDay,recurringFrequency:ev.recurringFrequency};
   const rollbackRecurringFields=(failedFields)=>{
     if(failedFields.includes('RecurringEvent'))ev.recurring=preSaveRecurring.recurring;
-    if(failedFields.includes('RecurringDay'))ev.recurringDay=preSaveRecurring.recurringDay;
+    if(failedFields.includes('RecurringWeekday'))ev.recurringDay=preSaveRecurring.recurringDay;
     if(failedFields.includes('RecurringFrequency'))ev.recurringFrequency=preSaveRecurring.recurringFrequency;
   };
   const editElements=roots.flatMap(root=>[...root.querySelectorAll('.pop-edit-inp,.pop-edit-sel')]);
@@ -14786,13 +14791,15 @@ async function savePopEdit(evId,mode){
         if(kind==='Supplier'){ev.supplierId=v;ev.supplierLookup=selected?.label||'';}
         if(kind==='Product'){ev.productId=v;ev.product=selected?.label||'';}
       }
-    } else if(f==='RecurringDay'){
-      // RecurringDay is a plain comma-separated Text column (see SCHEMA_KNOWN_GAPS) — Microsoft
+    } else if(f==='RecurringWeekday'){
+      // RecurringWeekday is a plain comma-separated Text column (see SCHEMA_KNOWN_GAPS) — Microsoft
       // Graph's column-creation API has no multi-select facet for Choice columns, so a genuine
       // SharePoint MultiChoice column could never actually be created here; sending a string
       // sidesteps that limitation rather than fighting it. The ticked days all come from the Hub's
       // own fixed Monday..Sunday checkbox list, so there's no external SharePoint choice list to
-      // validate against — the value is already exactly what's safe to send.
+      // validate against — the value is already exactly what's safe to send. Deliberately not named
+      // "RecurringDay": an old, differently-typed column already uses that name and always rejected
+      // writes with a generic 500 regardless of value shape.
       fields[f]=v||null;
       ev.recurringDay=v?v.split(',').map(s=>s.trim()).filter(Boolean):[];
     } else if(f==='BudgetAllocated'||f==='ActualSpend'||f==='SupplierContribution'||f==='MarketingBudget'||f==='TicketPrice'||f==='Capacity'||f==='ProjectId'){
@@ -15007,7 +15014,7 @@ async function savePopEdit(evId,mode){
     console.error('Save error:',e);
     // Nothing is confirmed saved at this point — roll back every recurring field this edit
     // touched rather than guessing which ones might have made it through.
-    rollbackRecurringFields(['RecurringEvent','RecurringDay','RecurringFrequency']);
+    rollbackRecurringFields(['RecurringEvent','RecurringWeekday','RecurringFrequency']);
     setBtns('Error: '+e.message.substring(0,30),{disabled:false});
     refreshCalendarIfVisible();
   }
