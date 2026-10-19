@@ -9220,7 +9220,9 @@ function renderDashProjectsMonthStrip(){
 //    "Weinstephaner"), or blank if that venue has nothing set for that feature this month.
 // Feature rows are derived from whatever Activity Subtype(s) ending in "of the Month" are actually
 // in use this month (Beer/Wine/Cocktail of the Month today), so a new one added later just appears.
-const MONTHLY_FEATURE_VENUES=['The Ravenswood','The Left Bank','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
+// Mustang Bar and Beerland Brewing are intentionally left out of this grid for now (no Monthly
+// Deals data worth showing for them yet) — add them back here once there is.
+const MONTHLY_FEATURE_VENUES=['The Ravenswood','The Left Bank','Whitfords Brewing Co','Hotel Darwin'];
 const MONTHLY_FEATURE_VENUE_LABELS={'The Left Bank':'Left Bank','The Ravenswood':'Ravenswood','Whitfords Brewing Co':'Whitfords','Hotel Darwin':'Hotel Darwin','Mustang Bar':'Mustang Bar','Beerland Brewing':'Beerland'};
 const MONTHLY_FEATURE_NOUN_ORDER=['Beer','Wine','Cocktail','Spirit'];
 const MONTHLY_FEATURE_LOADED_COLOR='#f3c892';
@@ -9240,31 +9242,39 @@ function renderCalMonthlyFeatures(){
     if(ai!==-1||bi!==-1)return(ai===-1?99:ai)-(bi===-1?99:bi);
     return a.localeCompare(b);
   });
+  const colTemplate=`100px repeat(${MONTHLY_FEATURE_VENUES.length},1fr)`;
   const loadedRows=nouns.map(noun=>({noun,ev:latestMatch(noun,'All Venues')})).filter(r=>r.ev);
-  const loadedHtml=loadedRows.length?`<div style="margin-bottom:16px">
-    <div style="font-size:13px;font-weight:800;letter-spacing:.02em;margin-bottom:8px">LOADED REWARDS</div>
-    ${loadedRows.map(r=>`<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-      <div style="width:100px;flex-shrink:0;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Feature ${escapeAttr(r.noun)}</div>
-      <div onclick="showPop(${r.ev.id})" style="cursor:pointer;display:inline-block;padding:5px 16px;border-radius:999px;background:${MONTHLY_FEATURE_LOADED_COLOR};color:#1a1a18;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px" title="${escapeAttr(activityDetailLabel(r.ev)||r.ev.title)}">${escapeAttr(activityDetailLabel(r.ev)||r.ev.title)}</div>
-    </div>`).join('')}
+  // The Loaded pill spans every venue column (grid-column:2/-1) instead of sitting at its own
+  // content width, so it visually reads as "this one covers every venue" rather than looking like
+  // just another single-venue cell that happens to be under the first column.
+  const loadedHtml=loadedRows.length?`<div style="margin-bottom:14px">
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Loaded Rewards</div>
+    <div style="display:grid;grid-template-columns:${colTemplate};gap:8px 10px;align-items:center">
+      ${loadedRows.map(r=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Feature ${escapeAttr(r.noun)}</div>
+        <div onclick="showPop(${r.ev.id})" style="grid-column:2 / -1;cursor:pointer;text-align:center;padding:5px 16px;border-radius:999px;background:${MONTHLY_FEATURE_LOADED_COLOR};color:#1a1a18;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(activityDetailLabel(r.ev)||r.ev.title)} — covers all venues">${escapeAttr(activityDetailLabel(r.ev)||r.ev.title)}</div>`).join('')}
+    </div>
   </div>`:'';
-  const hasGridData=nouns.some(noun=>MONTHLY_FEATURE_VENUES.some(v=>latestMatch(noun,v)));
-  const gridHtml=hasGridData?`<div>
-    <div style="font-size:13px;font-weight:800;letter-spacing:.02em;margin-bottom:8px">VENUE</div>
-    <div style="display:grid;grid-template-columns:100px repeat(${MONTHLY_FEATURE_VENUES.length},1fr);gap:8px 10px;align-items:center">
+  // Every venue is always a column and every feature a row — a venue with nothing set for a feature
+  // this month shows an explicit "Not set" pill rather than an empty gap, so the template reads the
+  // same whether a cell is filled or not.
+  const gridHtml=`<div>
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Venue</div>
+    <div style="display:grid;grid-template-columns:${colTemplate};gap:8px 10px;align-items:center">
       <div></div>
       ${MONTHLY_FEATURE_VENUES.map(v=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;text-align:center">${escapeAttr(MONTHLY_FEATURE_VENUE_LABELS[v]||v)}</div>`).join('')}
       ${nouns.map(noun=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Feature ${escapeAttr(noun)}</div>
         ${MONTHLY_FEATURE_VENUES.map(v=>{
           const ev=latestMatch(noun,v);
-          if(!ev)return'<div></div>';
+          if(!ev)return`<div style="text-align:center;padding:5px 8px;border-radius:999px;background:var(--surface2);color:var(--text3);font-size:11px;font-weight:600">Not set</div>`;
           const vc=vColor(v).c,label=activityDetailLabel(ev)||ev.title;
           return`<div onclick="showPop(${ev.id})" style="cursor:pointer;text-align:center;padding:5px 8px;border-radius:999px;background:${vc};color:${contrastText(vc)};font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(label)}">${escapeAttr(label)}</div>`;
         }).join('')}`).join('')}
     </div>
-  </div>`:'';
-  if(!loadedHtml&&!gridHtml)return'';
-  return`<div class="card" style="margin-bottom:12px;padding:14px 16px">${loadedHtml}${gridHtml}</div>`;
+  </div>`;
+  return`<div class="card" style="margin-bottom:12px;padding:14px 16px">
+    <div style="font-size:15px;font-weight:800;letter-spacing:.01em;margin-bottom:12px">Monthly Deals</div>
+    ${loadedHtml}${gridHtml}
+  </div>`;
 }
 
 // A multi-day Activity appears as one continuous bar per calendar week, including month-long
@@ -9272,6 +9282,25 @@ function renderCalMonthlyFeatures(){
 // occurrences: their Start/End bounds do NOT make them run continuously.
 function isCalendarContinuousActivity(ev){
   return !!(ev.start&&ev.end&&ev.end>ev.start&&!(ev.recurringDay&&ev.recurringDay.length));
+}
+// An item that runs across more than one day — a continuous multi-day range (a week-long promo) or
+// a Recurring Activity ticked for one or more days of the week (a Mon–Fri Happy Hour) — reads as the
+// "backbone" of a day, so it always sorts above a single one-off, single-day item within the same
+// day's chip list. Keeps the Calendar reading clean, like an ordinary day planner lists an all-day
+// event before single appointments.
+function isCalSpanningChip(ev){
+  return !!(ev.recurringDay&&ev.recurringDay.length)||!!(ev.end&&ev.end>ev.start);
+}
+const CAL_CHIP_CAT_ORDER={'Ticketed Event':1,'Live Music / Entertainment':2,'Campaign':3,'Functions':5,'Event':8,'Sporting Screening':9,'Community Event':11};
+// Shared ordering for every place the Calendar lists a day's Activities as chips/rows: Loaded
+// Rewards first (already established elsewhere in the Hub — Loaded covers every venue), then
+// spanning/recurring items, then the existing category order as a final tiebreak.
+function calDayChipSort(a,b){
+  const aL=a.loadedRewards?0:1,bL=b.loadedRewards?0:1;
+  if(aL!==bL)return aL-bL;
+  const aS=isCalSpanningChip(a)?0:1,bS=isCalSpanningChip(b)?0:1;
+  if(aS!==bS)return aS-bS;
+  return(CAL_CHIP_CAT_ORDER[a.eventFormat||a.activityType]||99)-(CAL_CHIP_CAT_ORDER[b.eventFormat||b.activityType]||99);
 }
 function calendarMonthMatchesFilters(ev){
   if(isArchived(ev))return false;
@@ -9371,13 +9400,8 @@ function renderCalendar(){
       else{dayEvts=dayEvts.filter(e=>(e.activityType===calCatFilter||e.eventFormat===calCatFilter||e.businessStream===calCatFilter));}
     }
 
-    const catOrder={'Ticketed Event':1,'Live Music / Entertainment':2,'Campaign':3,'Functions':5,'Event':8,'Sporting Screening':9,'Community Event':11};
-    // Loaded Rewards always sorts first (uses the real LoadedRewards flag, not just category text), venue items follow
-    dayEvts.sort((a,b)=>{
-      const aL=a.loadedRewards?0:1,bL=b.loadedRewards?0:1;
-      if(aL!==bL)return aL-bL;
-      return (catOrder[a.eventFormat||a.activityType]||99)-(catOrder[b.eventFormat||b.activityType]||99);
-    });
+    // Loaded Rewards first, then spanning/recurring items, then category — see calDayChipSort.
+    dayEvts.sort(calDayChipSort);
 
     // Key dates for this day (public holidays + calendar reference)
     const dayKeyDates=inSelectedRange?KEY_DATES.filter(k=>{
@@ -9464,6 +9488,7 @@ function showCalDayPopup(evt,y,m,day){
     return realDate>=s&&realDate<=en&&!isArchived(e);
   }):[];
   if(calVenueFilter)dayEvts=dayEvts.filter(e=>e.venue===calVenueFilter||e.venue==='All Venues');
+  dayEvts.sort(calDayChipSort);
   const dateStr=realDate.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'});
   // Show in a simple overlay
   const existing=document.getElementById('calDayOv');if(existing)existing.remove();
@@ -9523,13 +9548,8 @@ function renderCalendarWeek(){
       else{dayEvts=dayEvts.filter(e=>(e.activityType===calCatFilter||e.eventFormat===calCatFilter||e.businessStream===calCatFilter));}
     }
 
-    const catOrder={'Ticketed Event':1,'Live Music / Entertainment':2,'Campaign':3,'Functions':5,'Event':8,'Sporting Screening':9,'Community Event':11};
-    // Loaded Rewards always sorts first (uses the real LoadedRewards flag, not just category text), venue items follow
-    dayEvts.sort((a,b)=>{
-      const aL=a.loadedRewards?0:1,bL=b.loadedRewards?0:1;
-      if(aL!==bL)return aL-bL;
-      return (catOrder[a.eventFormat||a.activityType]||99)-(catOrder[b.eventFormat||b.activityType]||99);
-    });
+    // Loaded Rewards first, then spanning/recurring items, then category — see calDayChipSort.
+    dayEvts.sort(calDayChipSort);
 
     // Week view has room to spare (7 columns vs. month's ~35 cells), so show everything in a
     // scrollable column with fuller rows — title + venue + type — instead of capping at a
@@ -9636,9 +9656,7 @@ function renderCalendarDay(){
     return;
   }
   grid.innerHTML=keyDatesHtml+venues.map(venue=>{
-    const vEvts=dayEvts.filter(e=>(e.venue||'No venue')===venue).sort((a,b)=>{
-      const aL=a.loadedRewards?0:1,bL=b.loadedRewards?0:1;return aL-bL;
-    });
+    const vEvts=dayEvts.filter(e=>(e.venue||'No venue')===venue).sort(calDayChipSort);
     const vc=vColor(venue);
     return`<div style="margin-bottom:22px">
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)"><span style="width:8px;height:8px;border-radius:50%;background:${vc.c};flex-shrink:0"></span><span style="font-size:13px;font-weight:700">${escapeAttr(shortVenue(venue)||venue)}</span><span style="font-size:11px;color:var(--text3)">${vEvts.length} item${vEvts.length===1?'':'s'}</span></div>
