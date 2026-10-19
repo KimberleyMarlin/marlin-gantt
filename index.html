@@ -7,6 +7,17 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>
 (function(){
+  // Apply any saved Appearance colour overrides (see the Appearance settings page) as early as
+  // possible — directly on <html>, before the rest of the page even starts loading — so there's no
+  // flash of the default colour before the saved one takes over. Generic by design: whatever CSS
+  // custom-property names are saved here get applied, with no need to duplicate the token list.
+  try{
+    var themeRaw=localStorage.getItem('marlin_theme_overrides');
+    if(themeRaw){
+      var themeOverrides=JSON.parse(themeRaw);
+      Object.keys(themeOverrides).forEach(function(k){document.documentElement.style.setProperty('--'+k,themeOverrides[k]);});
+    }
+  }catch(e){}
   function load(src,cb,fb){var s=document.createElement('script');s.src=src;s.onload=function(){if(cb)cb();};s.onerror=function(){if(fb)load(fb,cb,null);};document.head.appendChild(s);}
   window._msalReady=false;
   window._xlsxReady=false;
@@ -51,6 +62,10 @@ body .entry-content>*:not(#mkt-hub-app),body .entry-content h1,body .entry-conte
   --rw-accent:#2d6b45;
   --mb-primary:#c05c1a;    /* Mustang Bar — orange */
   --mb-accent:#e07830;
+
+  /* APPEARANCE-EDITABLE (see the Appearance settings page) — overridden per-browser via
+     localStorage, inline on :root, by applyThemeOverrides() on load. */
+  --theme-monthlydeals:#1a4fa0;--theme-loadedrewards:#e8935c;
 
   --sidebar:248px;--sidebar-sm:220px;
   --topbar:50px;
@@ -293,7 +308,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .cal-day.cd-hol{background:#fff8f8;border-color:#f3d9d9}.dark .cal-day.cd-hol{background:#2a1515;border-color:#4a2525}
 .cal-day.cal-day-out{background:var(--surface2);opacity:.42}
 .cal-num{font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:4px}
-.cal-ev{font-size:9.5px;font-weight:600;padding:3px 6px;border-radius:6px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.4;transition:var(--tr)}
+.cal-ev{font-size:10.5px;font-weight:600;padding:4px 7px;border-radius:7px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.4;transition:var(--tr)}
 .cal-ev:hover{filter:brightness(0.95);transform:translateX(1px)}
 .cal-more{font-size:9.5px;color:var(--accent);font-weight:600;cursor:pointer;padding:2px 6px;border-radius:6px;background:var(--accent-bg);display:inline-block;margin-top:1px}
 .cal-hover-card{position:fixed;z-index:2000;width:220px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.22);overflow:hidden;pointer-events:none;animation:calHoverIn .1s ease-out}
@@ -730,6 +745,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <button class="sb-item" data-p="budget" onclick="nav(this)"><span class="ico">◈</span>Finance</button>
     <button class="sb-item" data-p="operations" onclick="nav(this)"><span class="ico">⌘</span>Oversight</button>
     <button class="sb-item" data-p="schema" onclick="nav(this)"><span class="ico">🛠</span>Admin &amp; Schema</button>
+    <button class="sb-item" data-p="appearance" onclick="nav(this)"><span class="ico">🎨</span>Appearance</button>
   </div>
   <div class="sb-submit-wrap">
     <button class="sb-cta" onclick="navTo('submit')">＋ Submit something</button>
@@ -932,6 +948,18 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <details class="dash-card">
           <summary class="card-h"><span class="card-title">◧ Project Progress</span><span class="card-act" onclick="event.preventDefault();navTo('projects')">Full view →</span></summary>
           <div id="ovProjectProgress"><div class="loading"><div class="spinner"></div></div></div>
+        </details>
+      </div>
+
+      <!-- WIDGET LIBRARY: PROJECTS THIS MONTH — the mini-timeline strip that used to sit at the top
+           of the Calendar's Month view, moved here so the Calendar top slot could be freed up for
+           the Monthly Features (Beer/Wine of the Month) strip instead. Same mini-timeline markup,
+           just injected into this widget's div instead of the Calendar's. -->
+      <div class="dash-widget" data-widget="projectsmonth" style="margin-bottom:12px">
+        <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
+        <details class="dash-card">
+          <summary class="card-h"><span class="card-title">🗓 Projects This Month</span><span class="card-act" onclick="event.preventDefault();navTo('projects')">Full view →</span></summary>
+          <div id="ovProjectsMonth"><div class="loading"><div class="spinner"></div></div></div>
         </details>
       </div>
 
@@ -1175,7 +1203,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       </div>
     </div>
     <div class="ca">
-      <div id="calProjectsStrip"></div>
+      <div id="calMonthlyFeatures"></div>
       <div class="card">
         <div id="calBusyness"></div>
         <div style="display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
@@ -1672,6 +1700,16 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <button class="btn btn-p" style="margin-top:10px" id="schemaItemSaveBtn" onclick="createSchemaItem()" disabled>Create item</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- APPEARANCE -->
+  <div class="panel" id="p-appearance">
+    <div class="ph">
+      <div><div class="ph-eye">Kimberley Only</div><div class="ph-title"><em>Appearance</em></div><div class="ph-sub">Pick colours for parts of the Hub's look. Saved to this browser and applied immediately — reset any one back to its default any time.</div></div>
+    </div>
+    <div class="ca">
+      <div id="appearanceTokens"></div>
     </div>
   </div>
 
@@ -6188,7 +6226,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',appearance:'<em>Appearance</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -6212,7 +6250,7 @@ function canAccessPrivatePersonalTasks(){
 }
 function canAccessPanel(id){
   if(id==='personaltasks')return canAccessPrivatePersonalTasks();
-  if(id==='schema')return isPreviewMode||currentRole==='admin';
+  if(id==='schema'||id==='appearance')return isPreviewMode||currentRole==='admin';
   if(id==='crm')return canAccessMailing();
   return !rolePermissions().hidePanels.includes(id);
 }
@@ -6244,7 +6282,7 @@ function showPanel(id){
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
   // Activities consolidation: Pipeline is a sub-view of 'campaigns' now — hide it when navigating elsewhere.
   if(id!=='campaigns'){const pipePanel=document.getElementById('p-pipeline');if(pipePanel)pipePanel.style.display='none';}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging};
+  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,appearance:renderAppearanceSettings,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
   // Skip this for 'campaigns' while its Pipeline sub-view is showing — that block just hid the
@@ -7360,17 +7398,17 @@ function renderCrossVenue(){
 
 // ── Dashboard widget order (localStorage persisted, per signed-in user) ──
 // Recommended layout for a brand-new user with no saved preferences yet.
-const DEFAULT_WIDGET_ORDER=['needsaction','mypriorities','next14days','thismonth','newsubmissions','mytasks','upcominglaunches','overdueblocked','reportrequired','keydates','teamworkload','projectprogress','loadedcampaigns','venuesnap','charts'];
+const DEFAULT_WIDGET_ORDER=['needsaction','mypriorities','next14days','thismonth','newsubmissions','mytasks','upcominglaunches','overdueblocked','reportrequired','keydates','teamworkload','projectprogress','projectsmonth','loadedcampaigns','venuesnap','charts'];
 // Widgets added in this round that start hidden even in the recommended layout — available any
 // time from the Widget Library, but don't crowd the default view uninvited.
 const DEFAULT_HIDDEN_WIDGETS=['upcominglaunches','overdueblocked','teamworkload','projectprogress','loadedcampaigns'];
 const ALL_WIDGET_IDS=[...new Set([...DEFAULT_WIDGET_ORDER,...DEFAULT_HIDDEN_WIDGETS])];
 // Human-readable names for the Widget Library "add section" picker in Customize mode.
-const WIDGET_TITLES={needsaction:'🔴 Needs Action',mypriorities:'⚡ My Priorities',next14days:'⏱ Next 14 Days',thismonth:"📅 This Month's Overview",newsubmissions:'📥 New Submissions',mytasks:'☐ My Tasks',overdueblocked:'🚫 Overdue / Blocked Work',upcominglaunches:'🚀 Upcoming Launches',reportrequired:'📊 Reporting & Performance',keydates:'🗓 Key Dates Ahead',teamworkload:'👥 Team Workload',projectprogress:'◧ Project Progress',loadedcampaigns:'⭐ Loaded Rewards Campaigns',venuesnap:'◉ Venue Activity Snapshot',charts:'Existing Charts & Graphs'};
+const WIDGET_TITLES={needsaction:'🔴 Needs Action',mypriorities:'⚡ My Priorities',next14days:'⏱ Next 14 Days',thismonth:"📅 This Month's Overview",newsubmissions:'📥 New Submissions',mytasks:'☐ My Tasks',overdueblocked:'🚫 Overdue / Blocked Work',upcominglaunches:'🚀 Upcoming Launches',reportrequired:'📊 Reporting & Performance',keydates:'🗓 Key Dates Ahead',teamworkload:'👥 Team Workload',projectprogress:'◧ Project Progress',projectsmonth:'🗓 Projects This Month',loadedcampaigns:'⭐ Loaded Rewards Campaigns',venuesnap:'◉ Venue Activity Snapshot',charts:'Existing Charts & Graphs'};
 // Widgets that surface data gated behind a specific panel permission — stays hidden for any role
 // that couldn't open that panel directly, even if the id is sitting in a saved order/hidden list
 // (e.g. from before a role change). This is the real security boundary, not just UI tidiness.
-const WIDGET_PERMISSIONS={teamworkload:'workload',projectprogress:'projects',loadedcampaigns:'loaded'};
+const WIDGET_PERMISSIONS={teamworkload:'workload',projectprogress:'projects',projectsmonth:'projects',loadedcampaigns:'loaded'};
 function widgetAllowed(id){const panel=WIDGET_PERMISSIONS[id];return !panel||canAccessPanel(panel);}
 function dashStorageKey(){return 'marlin_dash_layout_'+(currentUserEmail||'anon');}
 function getWidgetOrder(){
@@ -7891,6 +7929,7 @@ function renderOverview(){
   renderDashUpcomingLaunches();
   if(widgetAllowed('teamworkload'))renderWorkload('dashTeamWorkload',6);
   renderDashProjectProgress();
+  renderDashProjectsMonthStrip();
   renderDashLoadedCampaigns();
 
   setTimeout(()=>renderDashboardCharts(allEvts),50);
@@ -9154,20 +9193,25 @@ function calEvtStyle(ev){
   if(cat==='Public Holiday'||cat==='National Calendar Event'||cat==='School Holidays'){
     return`background:transparent;border:1.5px dashed ${color};color:${color};opacity:${opacity}`;
   }
-  // Light tinted background + colored text + colored left border — not a solid block
-  return`background:${color}16;border-left:2.5px solid ${color};color:${color};opacity:${opacity}`;
+  // Solid filled block — the actual live/running period is the headline of the day (the "filled"
+  // look Kim asked for), not just a tinted outline, so it reads clearly against the lighter
+  // pre-event lifecycle markers (Brief due, Marketing start) sitting above it in the same cell.
+  return`background:${color};color:${contrastText(color)};opacity:${opacity}`;
 }
 
-// A mini-Gantt strip above the Month grid — "what's happening" at the Project level, not just the
-// day-by-day Activities. Projects have no Start date of their own (only a Due date), so a project's
-// span is derived from its linked Activities' earliest/latest dates, clipped to the visible month;
+// A mini-Gantt strip — "what's happening" at the Project level this month, not just the day-by-day
+// Activities. Projects have no Start date of their own (only a Due date), so a project's span is
+// derived from its linked Activities' earliest/latest dates, clipped to the current calendar month;
 // a Project with no dated activities and no Due date simply has nothing to show here yet.
+// Moved here from the top of the Calendar's Month view onto the Dashboard (see renderDashProjectsMonthStrip
+// below) so that slot could be freed up for the Monthly Features (Beer/Wine of the Month) strip instead.
+// Always anchors to the real current month, independent of whatever month the Calendar happens to be showing.
 const PROJ_STRIP_STATUS_COLOR={'In Progress':'#2563eb','Not Started':'#6b7280','On Hold':'#b8860b','Done':'#9ca3af'};
-function renderCalProjectsStrip(){
-  if(!PROJECTS||!PROJECTS.length)return'';
-  const monthStart=new Date(calYear,calMonth,1),monthEnd=new Date(calYear,calMonth+1,0);
+function projectsThisMonthRows(){
+  const now=new Date();
+  const monthStart=new Date(now.getFullYear(),now.getMonth(),1),monthEnd=new Date(now.getFullYear(),now.getMonth()+1,0);
   const totalDays=Math.round((monthEnd-monthStart)/864e5)+1;
-  const rows=PROJECTS.filter(p=>p.status!=='Done').map(p=>{
+  return(PROJECTS||[]).filter(p=>p.status!=='Done').map(p=>{
     const linked=EVENTS.filter(e=>String(e.projectId)===String(p.id)&&!isArchived(e));
     const dates=linked.flatMap(e=>[e.start,e.end]).filter(Boolean);
     if(p.due)dates.push(p.due);
@@ -9181,16 +9225,84 @@ function renderCalProjectsStrip(){
     const widthPct=Math.max(((clipEnd-clipStart)/864e5+1)/totalDays*100,3);
     return{p,leftPct,widthPct,color:PROJ_STRIP_STATUS_COLOR[p.status]||'#6b7280'};
   }).filter(Boolean);
-  if(!rows.length)return'';
-  return`<div class="card" style="margin-bottom:12px;padding:10px 14px 12px">
-    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Projects this month</div>
-    ${rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer" onclick="openEditProject('${escapeAttr(String(r.p.id))}')">
+}
+function renderDashProjectsMonthStrip(){
+  const el=document.getElementById('ovProjectsMonth');if(!el)return;
+  if(!widgetAllowed('projectsmonth')){el.innerHTML='';return;}
+  const rows=projectsThisMonthRows();
+  el.innerHTML=rows.length?rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer" onclick="openEditProject('${escapeAttr(String(r.p.id))}')">
       <div style="width:140px;flex-shrink:0;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(r.p.title)}">${escapeAttr(r.p.title)}</div>
       <div style="flex:1;position:relative;height:14px;background:var(--surface2);border-radius:4px">
         <div style="position:absolute;left:${r.leftPct}%;width:${r.widthPct}%;height:100%;border-radius:4px;background:${r.color}" title="${escapeAttr(r.p.title)} — ${escapeAttr(r.p.status)}${r.p.due?' · due '+escapeAttr(fmtShort(r.p.due)):''}"></div>
       </div>
       <div style="width:54px;flex-shrink:0;font-size:10px;color:var(--text3);text-align:right">${r.p.progress||0}%</div>
-    </div>`).join('')}
+    </div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No projects spanning this month</div>';
+}
+
+// Monthly Features strip — sits at the top of the Calendar's Month view where the Projects strip
+// used to be. Two parts, matching Kim's mockup:
+//  - LOADED REWARDS: "X of the Month" Activities scoped to venue="All Venues" (i.e. it covers every
+//    venue at once, same meaning as elsewhere in the Hub) — one pill per feature, no venue column.
+//  - VENUE grid: a proper table, rows = feature ("Feature Beer","Feature Wine",…), columns = each
+//    actual venue, cell = a venue-coloured pill holding the Activity Detail text (e.g.
+//    "Weinstephaner"), or blank if that venue has nothing set for that feature this month.
+// Feature rows are derived from whatever Activity Subtype(s) ending in "of the Month" are actually
+// in use this month (Beer/Wine/Cocktail of the Month today), so a new one added later just appears.
+// Mustang Bar and Beerland Brewing are intentionally left out of this grid for now (no Monthly
+// Deals data worth showing for them yet) — add them back here once there is.
+const MONTHLY_FEATURE_VENUES=['The Ravenswood','The Left Bank','Whitfords Brewing Co','Hotel Darwin'];
+const MONTHLY_FEATURE_VENUE_LABELS={'The Left Bank':'Left Bank','The Ravenswood':'Ravenswood','Whitfords Brewing Co':'Whitfords','Hotel Darwin':'Hotel Darwin','Mustang Bar':'Mustang Bar','Beerland Brewing':'Beerland'};
+const MONTHLY_FEATURE_NOUN_ORDER=['Beer','Wine','Cocktail','Spirit'];
+const MONTHLY_FEATURE_LOADED_COLOR='#f3c892';
+// Dark navy header bars with a bright accent-orange title, borrowed from the Loaded Rewards app's
+// own screens — Kim asked for this box to read more like a Loaded screen (compacted) than a plain
+// card with underlined section labels.
+const MONTHLY_DEALS_NAVY='#1b2a4a';
+const MONTHLY_DEALS_ACCENT='#f5a623';
+function monthlyFeatureNoun(subtype){
+  const m=/^(.*?)\s+of the month$/i.exec(String(subtype||'').trim());
+  return m?m[1]:String(subtype||'').replace(/^feature\s+/i,'');
+}
+function renderCalMonthlyFeatures(){
+  const monthStart=new Date(calYear,calMonth,1),monthEnd=new Date(calYear,calMonth+1,0);
+  const candidates=EVENTS.filter(e=>!isArchived(e)&&/of the month$/i.test(e.activitySubtype||'')
+    &&new Date(e.start+'T00:00:00')<=monthEnd&&new Date((e.end||e.start)+'T00:00:00')>=monthStart);
+  if(!candidates.length)return'';
+  const latestMatch=(noun,venue)=>candidates.filter(e=>monthlyFeatureNoun(e.activitySubtype)===noun&&e.venue===venue)
+    .sort((a,b)=>b.start.localeCompare(a.start))[0]||null;
+  const nouns=[...new Set(candidates.map(e=>monthlyFeatureNoun(e.activitySubtype)))].sort((a,b)=>{
+    const ai=MONTHLY_FEATURE_NOUN_ORDER.indexOf(a),bi=MONTHLY_FEATURE_NOUN_ORDER.indexOf(b);
+    if(ai!==-1||bi!==-1)return(ai===-1?99:ai)-(bi===-1?99:bi);
+    return a.localeCompare(b);
+  });
+  const colTemplate=`100px repeat(${MONTHLY_FEATURE_VENUES.length},1fr)`;
+  const loadedRows=nouns.map(noun=>({noun,ev:latestMatch(noun,'All Venues')})).filter(r=>r.ev);
+  // The exact same card as the real Loaded Rewards page (renderLoadedRewardsCard) — not a
+  // compacted/invented variant — per Kim's reference screenshot of that page.
+  const loadedHtml=loadedRows.length?`<div style="margin-bottom:14px">
+    <div style="font-size:12.5px;font-weight:800;color:var(--theme-loadedrewards);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Loaded Rewards</div>
+    ${loadedRows.map(r=>renderLoadedRewardsCard(r.ev)).join('')}
+  </div>`:'';
+  // Every venue is always a column and every feature a row — a venue with nothing set for a feature
+  // this month shows an explicit "Not set" pill rather than an empty gap, so the template reads the
+  // same whether a cell is filled or not.
+  const gridHtml=`<div>
+    <div style="margin:0 -16px 8px;padding:6px 16px;background:${MONTHLY_DEALS_NAVY};color:${MONTHLY_DEALS_ACCENT};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Venue</div>
+    <div style="display:grid;grid-template-columns:${colTemplate};gap:8px 10px;align-items:center">
+      <div></div>
+      ${MONTHLY_FEATURE_VENUES.map(v=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;text-align:center">${escapeAttr(MONTHLY_FEATURE_VENUE_LABELS[v]||v)}</div>`).join('')}
+      ${nouns.map(noun=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Feature ${escapeAttr(noun)}</div>
+        ${MONTHLY_FEATURE_VENUES.map(v=>{
+          const ev=latestMatch(noun,v);
+          if(!ev)return`<div style="text-align:center;padding:5px 8px;border-radius:999px;background:var(--surface2);color:var(--text3);font-size:11px;font-weight:600">Not set</div>`;
+          const vc=vColor(v).c,label=activityDetailLabel(ev)||ev.title;
+          return`<div onclick="showPop(${ev.id})" style="cursor:pointer;text-align:center;padding:5px 8px;border-radius:999px;background:${vc};color:${contrastText(vc)};font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(label)}">${escapeAttr(label)}</div>`;
+        }).join('')}`).join('')}
+    </div>
+  </div>`;
+  return`<div class="card" style="margin-bottom:12px;padding:14px 16px;overflow:hidden">
+    <div style="font-size:15px;font-weight:800;letter-spacing:.01em;margin-bottom:12px;color:var(--theme-monthlydeals)">Monthly Deals</div>
+    ${loadedHtml}${gridHtml}
   </div>`;
 }
 
@@ -9199,6 +9311,25 @@ function renderCalProjectsStrip(){
 // occurrences: their Start/End bounds do NOT make them run continuously.
 function isCalendarContinuousActivity(ev){
   return !!(ev.start&&ev.end&&ev.end>ev.start&&!(ev.recurringDay&&ev.recurringDay.length));
+}
+// An item that runs across more than one day — a continuous multi-day range (a week-long promo) or
+// a Recurring Activity ticked for one or more days of the week (a Mon–Fri Happy Hour) — reads as the
+// "backbone" of a day, so it always sorts above a single one-off, single-day item within the same
+// day's chip list. Keeps the Calendar reading clean, like an ordinary day planner lists an all-day
+// event before single appointments.
+function isCalSpanningChip(ev){
+  return !!(ev.recurringDay&&ev.recurringDay.length)||!!(ev.end&&ev.end>ev.start);
+}
+const CAL_CHIP_CAT_ORDER={'Ticketed Event':1,'Live Music / Entertainment':2,'Campaign':3,'Functions':5,'Event':8,'Sporting Screening':9,'Community Event':11};
+// Shared ordering for every place the Calendar lists a day's Activities as chips/rows: Loaded
+// Rewards first (already established elsewhere in the Hub — Loaded covers every venue), then
+// spanning/recurring items, then the existing category order as a final tiebreak.
+function calDayChipSort(a,b){
+  const aL=a.loadedRewards?0:1,bL=b.loadedRewards?0:1;
+  if(aL!==bL)return aL-bL;
+  const aS=isCalSpanningChip(a)?0:1,bS=isCalSpanningChip(b)?0:1;
+  if(aS!==bS)return aS-bS;
+  return(CAL_CHIP_CAT_ORDER[a.eventFormat||a.activityType]||99)-(CAL_CHIP_CAT_ORDER[b.eventFormat||b.activityType]||99);
 }
 function calendarMonthMatchesFilters(ev){
   if(isArchived(ev))return false;
@@ -9255,8 +9386,8 @@ function renderCalendar(){
   </div>`;
   const busDiv=document.getElementById('calBusyness');
   if(busDiv)busDiv.innerHTML=busHtml;
-  const projStripDiv=document.getElementById('calProjectsStrip');
-  if(projStripDiv)projStripDiv.innerHTML=renderCalProjectsStrip();
+  const projStripDiv=document.getElementById('calMonthlyFeatures');
+  if(projStripDiv)projStripDiv.innerHTML=renderCalMonthlyFeatures();
 
   const firstDay=new Date(calYear,calMonth,1).getDay();
   const dim=new Date(calYear,calMonth+1,0).getDate();
@@ -9298,13 +9429,8 @@ function renderCalendar(){
       else{dayEvts=dayEvts.filter(e=>(e.activityType===calCatFilter||e.eventFormat===calCatFilter||e.businessStream===calCatFilter));}
     }
 
-    const catOrder={'Ticketed Event':1,'Live Music / Entertainment':2,'Campaign':3,'Functions':5,'Event':8,'Sporting Screening':9,'Community Event':11};
-    // Loaded Rewards always sorts first (uses the real LoadedRewards flag, not just category text), venue items follow
-    dayEvts.sort((a,b)=>{
-      const aL=a.loadedRewards?0:1,bL=b.loadedRewards?0:1;
-      if(aL!==bL)return aL-bL;
-      return (catOrder[a.eventFormat||a.activityType]||99)-(catOrder[b.eventFormat||b.activityType]||99);
-    });
+    // Loaded Rewards first, then spanning/recurring items, then category — see calDayChipSort.
+    dayEvts.sort(calDayChipSort);
 
     // Key dates for this day (public holidays + calendar reference)
     const dayKeyDates=inSelectedRange?KEY_DATES.filter(k=>{
@@ -9328,13 +9454,13 @@ function renderCalendar(){
       <div class="cal-num">${day}</div>
       <div class="cal-month-details" style="margin-top:${barRows*23+2}px">
       ${dayKeyDates.map(k=>`<div style="font-size:9px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:1px 4px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
-      ${dayBriefsDue.map(ev=>`<div style="font-size:9px;font-weight:600;color:#7c3aed;padding:1px 4px;border-radius:3px;background:#ede9fe;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✏️ Brief: ${ev.title}</div>`).join('')}
-      ${dayMarketingStarts.map(ev=>`<div style="font-size:9px;font-weight:600;color:#9a6b0a;padding:1px 4px;border-radius:3px;background:#fdf3d8;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
+      ${dayBriefsDue.map(ev=>`<div class="cal-ev" style="color:#7c3aed;background:#ede9fe" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✏️ Brief: ${ev.title}</div>`).join('')}
+      ${dayMarketingStarts.map(ev=>`<div class="cal-ev" style="color:#9a6b0a;background:#fdf3d8" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
       ${shown.map(ev=>{
         const style=calEvtStyle(ev);
         const aType=ev.activityType||'';
         const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.ticketed?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':'';
-        return`<div class="cal-ev" style="${style};font-size:10px;font-weight:500" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calVenueDot(ev)}${icon?icon+' ':''}${ev.title}</div>`;
+        return`<div class="cal-ev" style="${style}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calVenueDot(ev)}${icon?icon+' ':''}${ev.title}</div>`;
       }).join('')}
       ${extra>0?`<div class="cal-more" onclick="showCalDayPopup(event,${y},${m},${day})">+${extra} more</div>`:''}
       </div>
@@ -9391,6 +9517,7 @@ function showCalDayPopup(evt,y,m,day){
     return realDate>=s&&realDate<=en&&!isArchived(e);
   }):[];
   if(calVenueFilter)dayEvts=dayEvts.filter(e=>e.venue===calVenueFilter||e.venue==='All Venues');
+  dayEvts.sort(calDayChipSort);
   const dateStr=realDate.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'});
   // Show in a simple overlay
   const existing=document.getElementById('calDayOv');if(existing)existing.remove();
@@ -9424,7 +9551,7 @@ function renderCalendarWeek(){
     ws.toLocaleDateString('en-AU',{day:'numeric',month:'short'})+' – '+we.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
 
   const busDiv=document.getElementById('calBusyness');if(busDiv)busDiv.innerHTML='';
-  const projStripDiv=document.getElementById('calProjectsStrip');if(projStripDiv)projStripDiv.innerHTML='';
+  const projStripDiv=document.getElementById('calMonthlyFeatures');if(projStripDiv)projStripDiv.innerHTML='';
   const today=new Date();today.setHours(0,0,0,0);
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -9450,22 +9577,24 @@ function renderCalendarWeek(){
       else{dayEvts=dayEvts.filter(e=>(e.activityType===calCatFilter||e.eventFormat===calCatFilter||e.businessStream===calCatFilter));}
     }
 
-    const catOrder={'Ticketed Event':1,'Live Music / Entertainment':2,'Campaign':3,'Functions':5,'Event':8,'Sporting Screening':9,'Community Event':11};
-    // Loaded Rewards always sorts first (uses the real LoadedRewards flag, not just category text), venue items follow
-    dayEvts.sort((a,b)=>{
-      const aL=a.loadedRewards?0:1,bL=b.loadedRewards?0:1;
-      if(aL!==bL)return aL-bL;
-      return (catOrder[a.eventFormat||a.activityType]||99)-(catOrder[b.eventFormat||b.activityType]||99);
-    });
+    // Loaded Rewards first, then spanning/recurring items, then category — see calDayChipSort.
+    dayEvts.sort(calDayChipSort);
 
     // Week view has room to spare (7 columns vs. month's ~35 cells), so show everything in a
     // scrollable column with fuller rows — title + venue + type — instead of capping at a
     // handful of tiny chips and hiding the rest behind "+more".
     const dayKeyDates=inSelectedRange?KEY_DATES.filter(k=>k.start&&k.start<=dateKey&&(k.end||k.start)>=dateKey):[];
+    // Same lifecycle lead-up markers as Month view (see renderCalendar) — Design Brief due and
+    // Marketing start — so the full lifecycle of an Activity, not just its live run, shows here too.
+    const wkMatchesCalFilters=e=>(!calVenueFilter||e.venue===calVenueFilter||e.venue==='All Venues')&&(!calCatFilter||calCatFilter==='holiday'||e.activityType===calCatFilter||e.eventFormat===calCatFilter||e.businessStream===calCatFilter);
+    const dayBriefsDue=inSelectedRange?EVENTS.filter(e=>!isArchived(e)&&e.designBriefDue===dateKey&&wkMatchesCalFilters(e)):[];
+    const dayMarketingStarts=inSelectedRange?EVENTS.filter(e=>!isArchived(e)&&e.marketingStartDate===dateKey&&e.marketingStartDate!==e.start&&wkMatchesCalFilters(e)):[];
 
     h+=`<div class="cal-day wk${isToday?' td':''}${!inSelectedRange?' cal-day-out':''}">
       <div class="cal-num">${d.toLocaleDateString('en-AU',{day:'numeric',month:'short'})}</div>
       ${dayKeyDates.map(k=>`<div style="font-size:9.5px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:2px 5px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:5px;display:inline-block" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
+      ${dayBriefsDue.map(ev=>`<div class="cal-ev" style="color:#7c3aed;background:#ede9fe" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✏️ Brief: ${ev.title}</div>`).join('')}
+      ${dayMarketingStarts.map(ev=>`<div class="cal-ev" style="color:#9a6b0a;background:#fdf3d8" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
       ${dayEvts.length?dayEvts.map(ev=>{
         const style=calEvtStyle(ev);
         const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.ticketed||ev.eventFormat==='Live Music / Entertainment'?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':'';
@@ -9539,7 +9668,7 @@ function renderCalendarDay(){
   const d=calDayDate;
   document.getElementById('calLabel').textContent=d.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'});
   const busDiv=document.getElementById('calBusyness');if(busDiv)busDiv.innerHTML='';
-  const projStripDiv=document.getElementById('calProjectsStrip');if(projStripDiv)projStripDiv.innerHTML='';
+  const projStripDiv=document.getElementById('calMonthlyFeatures');if(projStripDiv)projStripDiv.innerHTML='';
   const grid=document.getElementById('calGrid');
   grid.style.display='block';grid.style.gridTemplateColumns='';
 
@@ -9563,9 +9692,7 @@ function renderCalendarDay(){
     return;
   }
   grid.innerHTML=keyDatesHtml+venues.map(venue=>{
-    const vEvts=dayEvts.filter(e=>(e.venue||'No venue')===venue).sort((a,b)=>{
-      const aL=a.loadedRewards?0:1,bL=b.loadedRewards?0:1;return aL-bL;
-    });
+    const vEvts=dayEvts.filter(e=>(e.venue||'No venue')===venue).sort(calDayChipSort);
     const vc=vColor(venue);
     return`<div style="margin-bottom:22px">
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)"><span style="width:8px;height:8px;border-radius:50%;background:${vc.c};flex-shrink:0"></span><span style="font-size:13px;font-weight:700">${escapeAttr(shortVenue(venue)||venue)}</span><span style="font-size:11px;color:var(--text3)">${vEvts.length} item${vEvts.length===1?'':'s'}</span></div>
@@ -9590,7 +9717,7 @@ function renderCalendarDay(){
 function renderCalendarYear(){
   document.getElementById('calLabel').textContent=String(calYear);
   const busDiv=document.getElementById('calBusyness');if(busDiv)busDiv.innerHTML='';
-  const projStripDiv=document.getElementById('calProjectsStrip');if(projStripDiv)projStripDiv.innerHTML='';
+  const projStripDiv=document.getElementById('calMonthlyFeatures');if(projStripDiv)projStripDiv.innerHTML='';
   const grid=document.getElementById('calGrid');
   grid.style.display='block';grid.style.gridTemplateColumns='';
 
@@ -10035,6 +10162,41 @@ const TIER_ICONS={
   'Birthday':'🎂','Venue Hopper':'🏨','All Members':'👥'
 };
 
+// The single Loaded Rewards campaign card — shared verbatim between the Loaded Rewards page itself
+// (renderLoaded, below) and the Calendar's Monthly Deals "Loaded Rewards" section, so the calendar
+// never drifts from "exactly" what the real Loaded Rewards page shows.
+function renderLoadedRewardsCard(ev){
+  const variants=loadedVariantsForEvent(ev);
+  const stageColor={'Intake':'#918d82','In Design':'#2a4272','In Build':'#b8860b','Review':'#6b4a8a','Ready for Live':'#0d9488','Live':'#15803d','Done':'#b4b0a4'}[ev.stage]||'#918d82';
+  const detail=activityDetailLabel(ev)||'Not supplied';
+
+  return`<div class="lr-card" onclick="showPop(${ev.id})">
+    <div class="lr-head" style="cursor:pointer">
+      <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+        ${venueLogoBox(ev,true)}
+        <div style="min-width:0">
+          <div class="lr-activation-label">Activation</div>
+          <div class="lr-title">${escapeAttr(ev.title)}</div>
+          <div class="lr-summary-fields">
+            <div class="lr-summary-field"><div class="activity-summary-label">Month</div><div class="activity-summary-value">${escapeAttr(activityMonthLabel(ev))}</div></div>
+            <div class="lr-summary-field"><div class="activity-summary-label">Activity detail</div><div class="activity-summary-value" title="${escapeAttr(detail)}">${escapeAttr(detail)}</div></div>
+          </div>
+          <div class="lr-venue" style="margin-top:5px">${escapeAttr(shortVenue(ev.venue))} · ${fmtShort(ev.start)}${ev.end!==ev.start?' → '+fmtShort(ev.end):''}</div>
+        </div>
+      </div>
+      <div class="lr-price-panel">
+        <span style="font-size:10px;font-weight:600;color:${stageColor};background:${stageColor}30;padding:2px 8px;border-radius:4px">${ev.stage}</span>
+        ${ev.loadedBasePrice?`<span style="font-size:11px;color:#f4a57a;font-weight:600">Members: $${ev.loadedBasePrice.toFixed(2)}</span>`:''}
+        ${ev.regularPrice?`<span style="font-size:10px;color:rgba(255,255,255,.3);text-decoration:line-through">Regular: $${ev.regularPrice.toFixed(2)}</span>`:''}
+      </div>
+    </div>
+    ${loadedOfferGridHtml(ev,variants)}
+    ${ev.supplierLookup?`<div style="display:flex;gap:16px;padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">🤝 Supplier: <strong style="color:var(--text2)">${ev.supplierLookup}</strong>${ev.supplierContrib?` · 💰 <strong style="color:var(--accent)">$${ev.supplierContrib.toLocaleString()}</strong>`:''}</div>`:''}
+    ${variants.length&&variants.some(v=>v.pushCopy)?`<div style="padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">📱 ${variants.find(v=>v.pushCopy).pushCopy}</div>`:''}
+    ${(()=>{const rp=variants.find(v=>v.redemptionPeriod)?.redemptionPeriod,stackable=variants.some(v=>v.stackable);return(rp||stackable)?`<div style="display:flex;gap:14px;padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">${rp?`⏱ ${escapeAttr(rp)}`:''}${stackable?'<span>🔗 Stackable with other offers</span>':''}</div>`:'';})()}
+  </div>`;
+}
+
 function renderLoaded(){
   if(!isAuthed)return;
   const allLR=EVENTS.filter(e=>e.loadedRewards);
@@ -10098,37 +10260,7 @@ function renderLoaded(){
     </div>`).join('')}
   </div>`;
 
-  document.getElementById('lrCampaigns').innerHTML=tierHtml+lr.map(ev=>{
-    const variants=loadedVariantsForEvent(ev);
-    const stageColor={'Intake':'#918d82','In Design':'#2a4272','In Build':'#b8860b','Review':'#6b4a8a','Ready for Live':'#0d9488','Live':'#15803d','Done':'#b4b0a4'}[ev.stage]||'#918d82';
-    const detail=activityDetailLabel(ev)||'Not supplied';
-
-    return`<div class="lr-card" onclick="showPop(${ev.id})">
-      <div class="lr-head" style="cursor:pointer">
-        <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
-          ${venueLogoBox(ev,true)}
-          <div style="min-width:0">
-            <div class="lr-activation-label">Activation</div>
-            <div class="lr-title">${escapeAttr(ev.title)}</div>
-            <div class="lr-summary-fields">
-              <div class="lr-summary-field"><div class="activity-summary-label">Month</div><div class="activity-summary-value">${escapeAttr(activityMonthLabel(ev))}</div></div>
-              <div class="lr-summary-field"><div class="activity-summary-label">Activity detail</div><div class="activity-summary-value" title="${escapeAttr(detail)}">${escapeAttr(detail)}</div></div>
-            </div>
-            <div class="lr-venue" style="margin-top:5px">${escapeAttr(shortVenue(ev.venue))} · ${fmtShort(ev.start)}${ev.end!==ev.start?' → '+fmtShort(ev.end):''}</div>
-          </div>
-        </div>
-        <div class="lr-price-panel">
-          <span style="font-size:10px;font-weight:600;color:${stageColor};background:${stageColor}30;padding:2px 8px;border-radius:4px">${ev.stage}</span>
-          ${ev.loadedBasePrice?`<span style="font-size:11px;color:#f4a57a;font-weight:600">Members: $${ev.loadedBasePrice.toFixed(2)}</span>`:''}
-          ${ev.regularPrice?`<span style="font-size:10px;color:rgba(255,255,255,.3);text-decoration:line-through">Regular: $${ev.regularPrice.toFixed(2)}</span>`:''}
-        </div>
-      </div>
-      ${loadedOfferGridHtml(ev,variants)}
-      ${ev.supplierLookup?`<div style="display:flex;gap:16px;padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">🤝 Supplier: <strong style="color:var(--text2)">${ev.supplierLookup}</strong>${ev.supplierContrib?` · 💰 <strong style="color:var(--accent)">$${ev.supplierContrib.toLocaleString()}</strong>`:''}</div>`:''}
-      ${variants.length&&variants.some(v=>v.pushCopy)?`<div style="padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">📱 ${variants.find(v=>v.pushCopy).pushCopy}</div>`:''}
-      ${(()=>{const rp=variants.find(v=>v.redemptionPeriod)?.redemptionPeriod,stackable=variants.some(v=>v.stackable);return(rp||stackable)?`<div style="display:flex;gap:14px;padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">${rp?`⏱ ${escapeAttr(rp)}`:''}${stackable?'<span>🔗 Stackable with other offers</span>':''}</div>`:'';})()}
-    </div>`;
-  }).join('');
+  document.getElementById('lrCampaigns').innerHTML=tierHtml+lr.map(renderLoadedRewardsCard).join('');
 }
 
 // ═══════════════════════════════════════
@@ -11730,6 +11862,66 @@ function toggleSchemaChoiceInput(){
   const group=document.getElementById('schemaChoiceGroup');
   if(group)group.style.display=type==='choice'?'':'none';
 }
+
+// ═══════════════════════════════════════
+// APPEARANCE — live colour overrides for CSS custom properties, picked with <input type="color">
+// and saved to this browser's localStorage (applied on every load by the bootstrap script at the
+// very top of <head>, so there's no flash of the default colour first). Add a token here any time a
+// part of the Hub's look should be colour-pickable, and it shows up in the Appearance page with no
+// further wiring — nothing else in the codebase needs to change except using var(--<key>) instead of
+// a hardcoded colour wherever that part is rendered.
+// ═══════════════════════════════════════
+const THEME_TOKENS=[
+  {key:'theme-monthlydeals',label:'Monthly Deals heading',group:'Calendar — Monthly Deals',default:'#1a4fa0'},
+  {key:'theme-loadedrewards',label:'Loaded Rewards heading',group:'Calendar — Monthly Deals',default:'#e8935c'},
+];
+function getThemeOverrides(){
+  try{return JSON.parse(localStorage.getItem('marlin_theme_overrides')||'{}')||{};}catch(e){return{};}
+}
+function saveThemeOverrides(overrides){
+  try{localStorage.setItem('marlin_theme_overrides',JSON.stringify(overrides));}catch(e){}
+}
+function setThemeToken(key,value){
+  document.documentElement.style.setProperty('--'+key,value);
+  const overrides=getThemeOverrides();
+  overrides[key]=value;
+  saveThemeOverrides(overrides);
+}
+function resetThemeToken(key,defaultValue){
+  document.documentElement.style.removeProperty('--'+key);
+  const overrides=getThemeOverrides();
+  delete overrides[key];
+  saveThemeOverrides(overrides);
+  renderAppearanceSettings();
+}
+function resetAllThemeTokens(){
+  THEME_TOKENS.forEach(t=>document.documentElement.style.removeProperty('--'+t.key));
+  saveThemeOverrides({});
+  renderAppearanceSettings();
+}
+function renderAppearanceSettings(){
+  const el=document.getElementById('appearanceTokens');if(!el)return;
+  const overrides=getThemeOverrides();
+  const groups=[...new Set(THEME_TOKENS.map(t=>t.group))];
+  el.innerHTML=groups.map(group=>`<div class="card" style="margin-bottom:16px">
+    <div class="card-h"><span class="card-title">${escapeAttr(group)}</span></div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+      ${THEME_TOKENS.filter(t=>t.group===group).map(t=>{
+        const current=overrides[t.key]||t.default;
+        const isCustom=overrides[t.key]&&overrides[t.key]!==t.default;
+        return`<div style="display:flex;align-items:center;gap:12px">
+          <input type="color" value="${escapeAttr(current)}" onchange="setThemeToken('${t.key}',this.value);renderAppearanceSettings()" style="width:44px;height:34px;padding:0;border:1px solid var(--border);border-radius:6px;cursor:pointer;flex-shrink:0">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600">${escapeAttr(t.label)}</div>
+            <div style="font-size:10.5px;color:var(--text3);font-family:'DM Mono',monospace">${escapeAttr(current)}${isCustom?' · custom':' · default'}</div>
+          </div>
+          ${isCustom?`<button class="tb-btn" onclick="resetThemeToken('${t.key}','${t.default}')">Reset</button>`:''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`).join('')+`<button class="tb-btn" onclick="resetAllThemeTokens()">Reset all to defaults</button>`;
+}
+
 async function renderSchemaTools(forceRefresh){
   if(!canAccessPanel('schema'))return;
   const gapsEl=document.getElementById('schemaKnownGaps');
