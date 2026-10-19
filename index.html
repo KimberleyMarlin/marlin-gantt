@@ -1166,6 +1166,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       <div class="fg"><label>From</label><input type="date" id="calFrom" onchange="applyCalendarRange()"></div>
       <div class="fg"><label>To</label><input type="date" id="calTo" onchange="applyCalendarRange()"></div>
       <button class="tb-btn" type="button" onclick="clearCalendarRange()" style="margin-bottom:1px">Clear dates</button>
+      <button class="tb-btn" type="button" id="calArchiveToggle" onclick="toggleCalArchive()" style="margin-bottom:1px">Show Completed</button>
       <div id="calRangeMsg" style="font-size:10.5px;color:var(--red);padding-bottom:7px"></div>
     </div>
     <div style="padding:10px 20px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -1200,14 +1201,14 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       <div class="card">
         <div id="calBusyness"></div>
         <div style="display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
-          <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;align-self:center">Stage (colour):</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#6b7280;display:inline-block"></span>Intake</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#7c3aed;display:inline-block"></span>In Design</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#2563eb;display:inline-block"></span>In Build</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#b8860b;display:inline-block"></span>Review</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#0891b2;display:inline-block"></span>Ready for Live</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#0a6640;display:inline-block"></span>Live</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#9ca3af;display:inline-block"></span>Done</span>
+          <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;align-self:center">Brand / Venue (colour):</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#5ba4cf;display:inline-block"></span>Left Bank</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#1a3a6e;display:inline-block"></span>Whitfords</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#1a4a2e;display:inline-block"></span>Ravenswood</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#7b1a2e;display:inline-block"></span>Darwin</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#c05c1a;display:inline-block"></span>Mustang</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#a66c1f;display:inline-block"></span>Beerland</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px"><span style="width:10px;height:10px;border-radius:2px;background:#b8860b;display:inline-block"></span>Loaded Rewards</span>
         </div>
         <div style="display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
           <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;align-self:center">Venue (dot):</span>
@@ -7219,7 +7220,9 @@ function cvLegend(){
 function cvRenderBoard(data){
   const stages=['Intake','In Design','In Build','Review','Ready for Live','Live','Done'];
   return `<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:10px;align-items:flex-start">`+stages.map(stage=>{
-    const items=data.filter(e=>e.stage===stage);
+    // Sorted by start date, same convention as the Timeline and By Venue sub-views — previously
+    // unsorted here, so cards sat in arbitrary load order within a column.
+    const items=data.filter(e=>e.stage===stage).sort((a,b)=>String(a.start||'').localeCompare(String(b.start||'')));
     return `<div ondragover="cvDragOver(event)" ondragleave="cvDragLeave(event)" ondrop="cvDrop(event,'${stage}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;min-width:270px;max-width:270px;flex-shrink:0;transition:.1s">
       <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
         <div style="font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:2px;background:${CV_STAGE_COLOR[stage]}"></span>${stageLabel(stage)}</div>
@@ -8638,6 +8641,16 @@ function toggleGanttArchive(){
   if(btn)btn.textContent=ganttShowArchive?'Hide Completed':'Show Completed';
   renderGantt();
 }
+// Same shared ganttShowArchive flag as the Gantt/Pipeline toggles — Week view already respected it
+// silently with no way to flip it from the Calendar itself; this is that control, for all of
+// Day/Week/Month/Year. Historic/Archived/Cancelled Activities still show their real Brand/Venue
+// colour when revealed (see calEvtColor) — calEvtOpacity is what dims them, not a colour swap.
+function toggleCalArchive(){
+  ganttShowArchive=!ganttShowArchive;
+  const btn=document.getElementById('calArchiveToggle');
+  if(btn)btn.textContent=ganttShowArchive?'Hide Completed':'Show Completed';
+  renderCalendar();
+}
 
 function initGanttDates(){
   const today=new Date();
@@ -9134,20 +9147,16 @@ function pickCalCat(el){
   el.classList.add('on');calCatFilter=el.dataset.v;renderCalendar();
 }
 
-// Stage → colour mapping (same STAGE_ORDER keys as healthCheck/the Workflow Stage field) — colour
-// now signals WHERE SOMETHING IS in the pipeline (shared by the Calendar and the Gantt, which both
-// call this), not just what kind of activity it is. Venue stays visible via the small dot, and
-// activityType via its icon, so neither signal is lost by making colour mean stage instead.
-const STAGE_COLOR={'Intake':'#6b7280','In Design':'#7c3aed','In Build':'#2563eb','Review':'#b8860b','Ready for Live':'#0891b2','Live':'#0a6640','Done':'#9ca3af'};
+// Colour signals Primary Brand (or venue, when Brand isn't set) everywhere it's used (shared by the
+// Calendar and the Gantt) — not stage, and not swapped out for grey/red once something is historic
+// (Done/Cancelled/Archived still keep their real brand/venue colour; calEvtOpacity is what dims
+// those, separately, via opacity rather than colour).
 function calEvtColor(ev){
-  // Status overrides everything — historic items stay visible but styled distinctly
-  if(ev.status==='Archive'||ev.status==='Archived')return'#9ca3af';
-  if(ev.status==='Cancelled')return'#dc2626';
   const cat=ev.activityType||ev.eventFormat||'';
   if(cat==='Public Holiday'||cat==='National Calendar Event'||cat==='School Holidays')return'#88887e';
-  if(STAGE_COLOR[ev.stage])return STAGE_COLOR[ev.stage];
-  // No Workflow Stage set yet — fall back to venue colour rather than an unlabelled default
-  const vc=vColor(ev.venue);return vc.c;
+  // vColor already special-cases "Loaded Rewards" (a brand, not a physical venue) with its own
+  // colour, so Brand and Venue can share the same lookup here.
+  return vColor(ev.brand||ev.venue).c;
 }
 
 // Category → opacity (campaigns solid, recurring/specials lighter)
@@ -9244,7 +9253,6 @@ function renderDashProjectsMonthStrip(){
 const MONTHLY_FEATURE_VENUES=['The Ravenswood','The Left Bank','Whitfords Brewing Co','Hotel Darwin'];
 const MONTHLY_FEATURE_VENUE_LABELS={'The Left Bank':'Left Bank','The Ravenswood':'Ravenswood','Whitfords Brewing Co':'Whitfords','Hotel Darwin':'Hotel Darwin','Mustang Bar':'Mustang Bar','Beerland Brewing':'Beerland'};
 const MONTHLY_FEATURE_NOUN_ORDER=['Beer','Wine','Cocktail','Spirit'];
-const MONTHLY_FEATURE_LOADED_COLOR='#f3c892';
 // Dark navy header bars with a bright accent-orange title, borrowed from the Loaded Rewards app's
 // own screens — Kim asked for this box to read more like a Loaded screen (compacted) than a plain
 // card with underlined section labels.
@@ -9347,6 +9355,8 @@ function calDayChipSort(a,b){
 }
 function renderCalendar(){
   if(!isAuthed)return;
+  const archiveBtn=document.getElementById('calArchiveToggle');
+  if(archiveBtn)archiveBtn.textContent=ganttShowArchive?'Hide Completed':'Show Completed';
 
   if(calViewMode==='week'){
     renderCalendarWeek();return;
@@ -9395,7 +9405,7 @@ function renderCalendar(){
     const dateStr=toLocalISODate(realDate);
     const inSelectedRange=calendarDateInRange(dateStr);
     let dayEvts=inSelectedRange?EVENTS.filter(e=>{
-      if(isArchived(e))return false;
+      if(!ganttShowArchive&&isArchived(e))return false;
       const s=new Date(e.start+'T00:00:00'),en=new Date((e.end||e.start)+'T00:00:00');
       // Recurring parent events only count on days matching their RecurringDay + RecurringFrequency
       if(e.recurringDay&&e.recurringDay.length){
@@ -9656,7 +9666,7 @@ function recurringMatchesDate(ev,date){
 function calEventsForDate(realDate,dateStr){
   if(!calendarDateInRange(dateStr))return[];
   let dayEvts=EVENTS.filter(e=>{
-    if(isArchived(e))return false;
+    if(!ganttShowArchive&&isArchived(e))return false;
     const s=new Date(e.start+'T00:00:00'),en=new Date(e.end+'T00:00:00');
     if(e.recurringDay&&e.recurringDay.length){
       return recurringMatchesDate(e,realDate)&&realDate>=s&&realDate<=en;
