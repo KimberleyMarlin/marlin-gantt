@@ -10709,8 +10709,12 @@ function renderMyWork(){
     const collapsed=!!prefs.collapsed[bucket.id];
     const rowsHtml=items.map(t=>{
       const done=['Done','Complete','Completed'].includes(t.status),late=!done&&t.due&&t.due<today;
+      const completeCb=t.kind==='activity'
+        ?`<span class="task-cb" style="visibility:hidden"></span>`
+        :`<div class="task-cb ${done?'done':''}" onclick="event.stopPropagation();mwToggleComplete('${t.kind}','${t.id}')" title="${done?'Mark not done':'Mark complete'}">${done?'✓':''}</div>`;
       return`<div draggable="true" ondragstart="mwDragStart(event,'${t.key}')" ondragend="mwDragEnd(event)" ondragover="mwDragOverRow(event)" ondrop="mwDropOnRow(event,'${bucket.id}','${t.key}')" onclick="mwOpenItem('${t.key}')" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-top:1px solid var(--border);cursor:pointer">
         <span style="color:#d0d0c8;font-size:11px;cursor:grab;flex-shrink:0" title="Drag to move">⠿</span>
+        ${completeCb}
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:12.5px;line-height:1.3;${done?'text-decoration:line-through;color:var(--text3)':''}">${escapeAttr(t.title||'Untitled')}</div>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:3px">
@@ -10794,6 +10798,10 @@ function mwOpenItem(key){
   if(kind==='personal')openEditPersonalTask(id);
   else if(kind==='activity')showPop(Number(id));
   else openEditTask(id);
+}
+function mwToggleComplete(kind,id){
+  if(kind==='personal')togglePersonalTask(id);
+  else if(kind==='shared')toggleTask(id);
 }
 function mwDropOnToday(e,slotIndex){
   e.preventDefault();
