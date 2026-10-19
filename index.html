@@ -9354,7 +9354,7 @@ function renderCalendar(){
       const continuesBefore=ev.start<weekDates[start],continuesAfter=ev.end>weekDates[end];
       const icon=ev.loadedRewards?'⭐ ':ev.ticketed?'🎫 ':'';
       const label=`${continuesBefore?'← ':''}${icon}${ev.title}${continuesAfter?' →':''}`;
-      return`<div class="cal-month-bar" style="grid-column:${start+1}/span ${end-start+1};grid-row:${lane+1};background:${color};color:${contrastText(color)};opacity:${calEvtOpacity(ev)}" title="${escapeAttr(ev.title)} (${ev.start} – ${ev.end})" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calStatusDot(ev)}<span class="cal-month-bar-title">${escapeAttr(label)}</span></div>`;
+      return`<div class="cal-month-bar" style="grid-column:${start+1}/span ${end-start+1};grid-row:${lane+1};background:${color};color:${contrastText(color)};opacity:${calEvtOpacity(ev)}" title="#${escapeAttr(String(ev.spId||ev.id))} ${escapeAttr(ev.title)} (${ev.start} – ${ev.end})" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calStatusDot(ev)}<span class="cal-month-bar-title">${escapeAttr(label)}</span></div>`;
     }).join('')}</div></div>`;
   }
   document.getElementById('calGrid').innerHTML=h;
@@ -9370,7 +9370,7 @@ function calEvtHover(e,evId){
   const card=document.createElement('div');
   card.className='cal-hover-card';
   card.id='calHoverCard';
-  card.innerHTML=`${url?`<img class="cal-hover-img" src="${escapeAttr(url)}" onerror="this.remove()">`:''}<div class="cal-hover-body"><div class="cal-hover-title">${escapeAttr(ev.title)}</div><div class="cal-hover-sub">${escapeAttr(ev.venue||'No venue')}${ev.activityType?' · '+escapeAttr(ev.activityType):''}</div></div>`;
+  card.innerHTML=`${url?`<img class="cal-hover-img" src="${escapeAttr(url)}" onerror="this.remove()">`:''}<div class="cal-hover-body"><div class="cal-hover-title">${escapeAttr(ev.title)}</div><div class="cal-hover-sub">#${escapeAttr(String(ev.spId||ev.id))} · ${escapeAttr(ev.venue||'No venue')}${ev.activityType?' · '+escapeAttr(ev.activityType):''}</div></div>`;
   document.body.appendChild(card);
   const r=e.currentTarget.getBoundingClientRect();
   const cw=card.offsetWidth||220,ch=card.offsetHeight||160;
@@ -9412,7 +9412,7 @@ function showCalDayPopup(evt,y,m,day){
     ${dayEvts.map(ev=>{
       const style=calEvtStyle(ev);
       const icon=ev.loadedRewards?'⭐':ev.ticketed||ev.eventFormat==='Live Music / Entertainment'?'🎫':ev.businessStream==='Functions'?'🥂':ev.supplierInvolved?'🤝':'';
-      return`<div onclick="document.getElementById('calDayOv').remove();showPop(${ev.id})" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;margin-bottom:6px;cursor:pointer;${style}">
+      return`<div onclick="document.getElementById('calDayOv').remove();showPop(${ev.id})" title="#${escapeAttr(String(ev.spId||ev.id))}" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;margin-bottom:6px;cursor:pointer;${style}">
         <span>${icon}</span>
         <div><div style="font-weight:500;font-size:13px">${ev.title}</div><div style="font-size:11px;opacity:.7">${shortVenue(ev.venue)}</div></div>
       </div>`;
@@ -9580,7 +9580,7 @@ function renderCalendarDay(){
         const style=calEvtStyle(ev);
         const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.ticketed?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':'';
         const health=healthCheck(ev);
-        return`<div onclick="showPop(${ev.id})" style="display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:8px;cursor:pointer;${style}">
+        return`<div onclick="showPop(${ev.id})" title="#${escapeAttr(String(ev.spId||ev.id))}" style="display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:8px;cursor:pointer;${style}">
           <span style="font-size:14px;flex-shrink:0">${icon}</span>
           <div style="flex:1;min-width:0">
             <div style="font-weight:600;font-size:13px">${escapeAttr(ev.title)}</div>
