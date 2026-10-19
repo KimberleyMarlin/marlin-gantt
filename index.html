@@ -1397,7 +1397,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <!-- VENUES -->
   <div class="panel" id="p-venues">
     <div class="ph"><div><div class="ph-eye">Venues</div><div class="ph-title">Venue <em>Overview</em></div></div></div>
-    <div class="ca"><div class="venue-grid" id="venueGrid"></div></div>
+    <div class="ca"><div id="venueWeeklySpecials"></div><div class="venue-grid" id="venueGrid"></div></div>
   </div>
 
   <!-- SPONSORSHIPS -->
@@ -10487,8 +10487,42 @@ function groupRollup(events,dim,valueFn,sumsFn){
 // ═══════════════════════════════════════
 // VENUES
 // ═══════════════════════════════════════
+// Weekly Specials — a Venue × Weekday grid of whichever recurring Activity is actually running on
+// each day of the week right now. Answers "what's on Monday at Ravenswood" at a glance, whether
+// that's a fixed weekly special that never changes (Steak Night, always Wednesday — one Activity
+// with a far-future End date) or one that rotates monthly (Monday's deal — a fresh Activity each
+// month, Start/End just that month, same recurringDay). No new data needed for either case; this is
+// just a read over the existing Start/End + Recurring Schedule fields, evaluated as of today.
+const WEEKLY_SPECIALS_VENUES=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
+const WEEKLY_SPECIALS_DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+function renderVenueWeeklySpecials(){
+  const el=document.getElementById('venueWeeklySpecials');if(!el)return;
+  const today=toLocalISODate(new Date());
+  const active=EVENTS.filter(e=>!isArchived(e)&&e.recurringDay&&e.recurringDay.length&&e.start<=today&&(e.end||e.start)>=today);
+  const findSpecial=(venue,day)=>active.filter(e=>e.venue===venue&&e.recurringDay.includes(day))
+    .sort((a,b)=>b.start.localeCompare(a.start))[0]||null;
+  if(!WEEKLY_SPECIALS_VENUES.some(v=>WEEKLY_SPECIALS_DAYS.some(d=>findSpecial(v,d)))){el.innerHTML='';return;}
+  el.innerHTML=`<div class="card" style="margin-bottom:16px;padding:14px 16px;overflow:hidden">
+    <div style="font-size:15px;font-weight:800;margin-bottom:4px">Weekly Specials</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">What's actually running today's week, venue by venue — a fixed special (Steak Night) shows every week; one that rotates monthly shows whichever Activity is ticked for that day this month.</div>
+    <div style="overflow-x:auto">
+    <div style="display:grid;grid-template-columns:130px repeat(7,minmax(110px,1fr));gap:8px 10px;align-items:center;min-width:900px">
+      <div></div>
+      ${WEEKLY_SPECIALS_DAYS.map(d=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;text-align:center">${d.slice(0,3)}</div>`).join('')}
+      ${WEEKLY_SPECIALS_VENUES.map(v=>`<div style="font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(shortVenue(v))}</div>
+        ${WEEKLY_SPECIALS_DAYS.map(d=>{
+          const ev=findSpecial(v,d);
+          if(!ev)return`<div style="text-align:center;padding:5px 6px;border-radius:999px;background:var(--surface2);color:var(--text3);font-size:10.5px;font-weight:600">—</div>`;
+          const vc=vColor(v).c,label=activityDetailLabel(ev)||ev.title;
+          return`<div onclick="showPop(${ev.id})" style="cursor:pointer;text-align:center;padding:5px 6px;border-radius:999px;background:${vc};color:${contrastText(vc)};font-size:10.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(label)}">${escapeAttr(label)}</div>`;
+        }).join('')}`).join('')}
+    </div>
+    </div>
+  </div>`;
+}
 function renderVenues(){
   if(!isAuthed)return;
+  renderVenueWeeklySpecials();
   document.getElementById('venueGrid').innerHTML=VENUES_DATA.map(v=>{
     const evts=EVENTS.filter(e=>e.venue&&e.venue.toLowerCase().includes(v.key));
     const live=evts.filter(e=>e.status==='Live').length;const upcoming=evts.filter(e=>new Date(e.start+'T00:00:00')>new Date()).length;const loaded=evts.filter(e=>e.loadedRewards).length;
