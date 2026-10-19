@@ -381,15 +381,15 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .lr-offer-empty{color:var(--text3);font-weight:500}
 /* Compact variant (~half size) for the Offer Mechanics grid on the Monthly Deals Loaded card —
    the full-size version stays as-is on the real Loaded Rewards page. */
-.lr-offer-wrap-sm{padding:8px 10px}
-.lr-offer-wrap-sm .lr-offer-head{margin-bottom:6px}
-.lr-offer-grid-sm{grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:4px}
-.lr-offer-card-sm{padding:5px 6px;border-radius:6px}
-.lr-offer-card-sm .lr-offer-card-top{gap:3px;margin-bottom:3px}
-.lr-offer-card-sm .lr-offer-card-icon{font-size:10px;width:13px}
-.lr-offer-card-sm .lr-offer-card-label{font-size:7.5px}
-.lr-offer-card-sm .lr-offer-card-value{font-size:9.5px}
-.lr-offer-card-sm .lr-offer-card-meta{font-size:8px;margin-top:2px}
+.lr-offer-wrap-sm{padding:6px 8px}
+.lr-offer-wrap-sm .lr-offer-head{margin-bottom:4px}
+.lr-offer-grid-sm{grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:3px}
+.lr-offer-card-sm{padding:3px 4px;border-radius:5px}
+.lr-offer-card-sm .lr-offer-card-top{gap:2px;margin-bottom:2px}
+.lr-offer-card-sm .lr-offer-card-icon{font-size:9px;width:11px}
+.lr-offer-card-sm .lr-offer-card-label{font-size:6.5px}
+.lr-offer-card-sm .lr-offer-card-value{font-size:8px}
+.lr-offer-card-sm .lr-offer-card-meta{font-size:7px;margin-top:1px}
 .lr-schema-card{border:1px solid var(--border);border-radius:9px;background:var(--surface);margin-bottom:12px;overflow:hidden}
 .lr-schema-card summary{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;list-style:none;font-size:11px;font-weight:700;color:var(--text2)}
 .lr-schema-card summary::-webkit-details-marker{display:none}
@@ -9331,15 +9331,20 @@ function renderCalMonthlyFeatures(){
   // same whether a cell is filled or not.
   const gridHtml=nouns.length?`<div>
     <div style="margin:0 -16px 8px;padding:6px 16px;background:${MONTHLY_DEALS_NAVY};color:${MONTHLY_DEALS_ACCENT};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Venue</div>
-    <div style="display:grid;grid-template-columns:${colTemplate};gap:8px 10px;align-items:center">
+    <div style="display:grid;grid-template-columns:${colTemplate};gap:4px;align-items:center">
       <div></div>
       ${MONTHLY_FEATURE_VENUES.map(v=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;text-align:center">${escapeAttr(MONTHLY_FEATURE_VENUE_LABELS[v]||v)}</div>`).join('')}
       ${nouns.map(noun=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">${MONTHLY_FEATURE_WHOLE_LABEL.has(noun)?escapeAttr(noun):`Feature ${escapeAttr(noun)}`}</div>
         ${MONTHLY_FEATURE_VENUES.map(v=>{
           const ev=latestMatch(noun,v);
-          if(!ev)return`<div style="text-align:center;padding:5px 8px;border-radius:7px;background:var(--surface2);color:var(--text3);font-size:11px;font-weight:600">Not set</div>`;
-          const vc=vColor(v).c,label=activityDetailLabel(ev)||ev.title;
-          return`<div onclick="showPop(${ev.id})" style="cursor:pointer;text-align:center;padding:5px 8px;border-radius:7px;background:${vc};color:${contrastText(vc)};font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(label)}">${escapeAttr(label)}</div>`;
+          const label=ev?(activityDetailLabel(ev)||ev.title):'';
+          // Same small tile look as the Loaded Rewards Offer Mechanics grid (.lr-offer-card-sm) —
+          // one consistent "pill" language across the whole Monthly Deals box, not a separate
+          // full-colour-fill style just for this grid. Venue is already clear from the column
+          // header, so no per-cell colour fill is needed here.
+          return`<div class="lr-offer-card lr-offer-card-sm${ev?' set':''}" ${ev?`onclick="showPop(${ev.id})" style="cursor:pointer"`:''} title="${escapeAttr(label)}">
+            <div class="lr-offer-card-value${ev?'':' lr-offer-empty'}" style="text-align:center">${escapeAttr(label||'Not set')}</div>
+          </div>`;
         }).join('')}`).join('')}
     </div>
   </div>`:'';
