@@ -8645,7 +8645,9 @@ function _renderGanttInner(){
     if(event.start&&(!row.start||event.start<row.start))row.start=event.start;
     if(event.end&&(!row.end||event.end>row.end))row.end=event.end;
   });
-  evts=[...ganttRows.values()];
+  // Loaded Rewards first, same rule as every other calendar view — it runs across every venue, so
+  // it should sit in the top row rather than wherever EVENTS happened to list it.
+  evts=[...ganttRows.values()].sort((a,b)=>Number(!!b.loadedRewards)-Number(!!a.loadedRewards));
 
   const today=new Date();today.setHours(0,0,0,0);
 
@@ -9215,8 +9217,13 @@ function calendarMonthWeekBars(weekDates){
       while(end<6&&weekDates[end+1]>=ev.start&&weekDates[end+1]<=ev.end&&calendarDateInRange(weekDates[end+1]))end++;
       return{ev,start,end};
     }).filter(Boolean)
-    .sort((a,b)=>(b.end-b.start)-(a.end-a.start)
-      ||Number(!!b.ev.loadedRewards)-Number(!!a.ev.loadedRewards)
+    // Loaded Rewards first — it runs across every venue, so it should claim the top lane in every
+    // week rather than losing that spot to whichever campaign happens to run longest (the previous
+    // order: span-length first, Loaded Rewards only as a tiebreaker, so a long non-Loaded campaign
+    // could push Loaded Rewards down a row). Matches the same "Loaded Rewards sorts first" rule
+    // already used for day-chip ordering elsewhere in this file.
+    .sort((a,b)=>Number(!!b.ev.loadedRewards)-Number(!!a.ev.loadedRewards)
+      ||(b.end-b.start)-(a.end-a.start)
       ||String(a.ev.title||'').localeCompare(String(b.ev.title||''))
       ||String(a.ev.id).localeCompare(String(b.ev.id)));
   const occupiedUntil=[];
@@ -9546,8 +9553,10 @@ function renderCalendarDay(){
   const dayEvts=calEventsForDate(d,dateStr);
   const dayKeyDates=inSelectedRange?KEY_DATES.filter(k=>k.start&&k.start<=dateStr&&(k.end||k.start)>=dateStr):[];
 
+  // "All Venues" leads — that's how a Loaded Rewards activity (runs across every venue at once)
+  // is actually stored, and it should surface before any single venue's own section.
   const venues=[...new Set(dayEvts.map(e=>e.venue||'No venue'))].sort((a,b)=>{
-    const order=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
+    const order=['All Venues','The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
     const ia=order.indexOf(a),ib=order.indexOf(b);
     if(ia===-1&&ib===-1)return a.localeCompare(b);
     if(ia===-1)return 1;if(ib===-1)return-1;
@@ -9603,7 +9612,9 @@ function renderCalendarYear(){
       const realDate=new Date(calYear,mIdx,day);
       const dateStr=toLocalISODate(realDate);
       const isToday=realDate.getTime()===today.getTime();
-      const dayEvts=calEventsForDate(realDate,dateStr);
+      // Loaded Rewards first, same rule as every other calendar view, so a busy day's 3-dot cap
+      // doesn't crowd out the activity that actually runs across every venue.
+      const dayEvts=calEventsForDate(realDate,dateStr).slice().sort((a,b)=>Number(!!b.loadedRewards)-Number(!!a.loadedRewards));
       const dots=dayEvts.slice(0,3).map(ev=>`<span style="width:4px;height:4px;border-radius:50%;background:${calEvtColor(ev)};display:inline-block"></span>`).join('');
       cells+=`<div onclick="showCalDayPopup(event,${calYear},${mIdx},${day})" style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;border-radius:4px;font-size:10px;${isToday?'background:var(--accent-bg);font-weight:700;color:var(--accent)':'color:var(--text2)'}">
         <span>${day}</span><span style="display:flex;gap:1px">${dots}</span>
