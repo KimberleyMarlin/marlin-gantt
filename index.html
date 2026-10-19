@@ -9251,31 +9251,11 @@ function renderCalMonthlyFeatures(){
   });
   const colTemplate=`100px repeat(${MONTHLY_FEATURE_VENUES.length},1fr)`;
   const loadedRows=nouns.map(noun=>({noun,ev:latestMatch(noun,'All Venues')})).filter(r=>r.ev);
-  // Reuses the Hub's own Loaded Rewards card look (.lr-card/.lr-head — the dark navy gradient card
-  // with the Loaded logo, used on the actual Loaded Rewards page) instead of a plain pill, compacted
-  // down for this calendar strip — Kim wants this section to read like the Loaded screen itself.
+  // The exact same card as the real Loaded Rewards page (renderLoadedRewardsCard) — not a
+  // compacted/invented variant — per Kim's reference screenshot of that page.
   const loadedHtml=loadedRows.length?`<div style="margin-bottom:14px">
     <div style="margin:0 -16px 8px;padding:6px 16px;background:${MONTHLY_DEALS_NAVY};color:${MONTHLY_DEALS_ACCENT};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Loaded Rewards</div>
-    ${loadedRows.map(r=>{
-      const label=activityDetailLabel(r.ev)||r.ev.title;
-      const running=fmtShort(r.ev.start)+(r.ev.end&&r.ev.end!==r.ev.start?' → '+fmtShort(r.ev.end):'');
-      return`<div class="lr-card" style="margin-bottom:8px;cursor:pointer" onclick="showPop(${r.ev.id})">
-        <div class="lr-head" style="padding:10px 14px">
-          <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
-            ${venueLogoBox(r.ev,true)}
-            <div style="min-width:0">
-              <div class="lr-activation-label">Feature ${escapeAttr(r.noun)}</div>
-              <div class="lr-title" style="font-size:13px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(label)}</div>
-              <div class="lr-summary-fields" style="margin-top:3px;gap:12px">
-                ${r.ev.supplierLookup?`<div class="lr-summary-field"><div class="activity-summary-label">Supplier</div><div class="activity-summary-value">${escapeAttr(r.ev.supplierLookup)}</div></div>`:''}
-                <div class="lr-summary-field"><div class="activity-summary-label">Running</div><div class="activity-summary-value">${escapeAttr(running)}</div></div>
-                <div class="lr-summary-field"><div class="activity-summary-label">Venues</div><div class="activity-summary-value">All Venues</div></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>`;
-    }).join('')}
+    ${loadedRows.map(r=>renderLoadedRewardsCard(r.ev)).join('')}
   </div>`:'';
   // Every venue is always a column and every feature a row — a venue with nothing set for a feature
   // this month shows an explicit "Not set" pill rather than an empty gap, so the template reads the
@@ -10156,6 +10136,41 @@ const TIER_ICONS={
   'Birthday':'🎂','Venue Hopper':'🏨','All Members':'👥'
 };
 
+// The single Loaded Rewards campaign card — shared verbatim between the Loaded Rewards page itself
+// (renderLoaded, below) and the Calendar's Monthly Deals "Loaded Rewards" section, so the calendar
+// never drifts from "exactly" what the real Loaded Rewards page shows.
+function renderLoadedRewardsCard(ev){
+  const variants=loadedVariantsForEvent(ev);
+  const stageColor={'Intake':'#918d82','In Design':'#2a4272','In Build':'#b8860b','Review':'#6b4a8a','Ready for Live':'#0d9488','Live':'#15803d','Done':'#b4b0a4'}[ev.stage]||'#918d82';
+  const detail=activityDetailLabel(ev)||'Not supplied';
+
+  return`<div class="lr-card" onclick="showPop(${ev.id})">
+    <div class="lr-head" style="cursor:pointer">
+      <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+        ${venueLogoBox(ev,true)}
+        <div style="min-width:0">
+          <div class="lr-activation-label">Activation</div>
+          <div class="lr-title">${escapeAttr(ev.title)}</div>
+          <div class="lr-summary-fields">
+            <div class="lr-summary-field"><div class="activity-summary-label">Month</div><div class="activity-summary-value">${escapeAttr(activityMonthLabel(ev))}</div></div>
+            <div class="lr-summary-field"><div class="activity-summary-label">Activity detail</div><div class="activity-summary-value" title="${escapeAttr(detail)}">${escapeAttr(detail)}</div></div>
+          </div>
+          <div class="lr-venue" style="margin-top:5px">${escapeAttr(shortVenue(ev.venue))} · ${fmtShort(ev.start)}${ev.end!==ev.start?' → '+fmtShort(ev.end):''}</div>
+        </div>
+      </div>
+      <div class="lr-price-panel">
+        <span style="font-size:10px;font-weight:600;color:${stageColor};background:${stageColor}30;padding:2px 8px;border-radius:4px">${ev.stage}</span>
+        ${ev.loadedBasePrice?`<span style="font-size:11px;color:#f4a57a;font-weight:600">Members: $${ev.loadedBasePrice.toFixed(2)}</span>`:''}
+        ${ev.regularPrice?`<span style="font-size:10px;color:rgba(255,255,255,.3);text-decoration:line-through">Regular: $${ev.regularPrice.toFixed(2)}</span>`:''}
+      </div>
+    </div>
+    ${loadedOfferGridHtml(ev,variants)}
+    ${ev.supplierLookup?`<div style="display:flex;gap:16px;padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">🤝 Supplier: <strong style="color:var(--text2)">${ev.supplierLookup}</strong>${ev.supplierContrib?` · 💰 <strong style="color:var(--accent)">$${ev.supplierContrib.toLocaleString()}</strong>`:''}</div>`:''}
+    ${variants.length&&variants.some(v=>v.pushCopy)?`<div style="padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">📱 ${variants.find(v=>v.pushCopy).pushCopy}</div>`:''}
+    ${(()=>{const rp=variants.find(v=>v.redemptionPeriod)?.redemptionPeriod,stackable=variants.some(v=>v.stackable);return(rp||stackable)?`<div style="display:flex;gap:14px;padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">${rp?`⏱ ${escapeAttr(rp)}`:''}${stackable?'<span>🔗 Stackable with other offers</span>':''}</div>`:'';})()}
+  </div>`;
+}
+
 function renderLoaded(){
   if(!isAuthed)return;
   const allLR=EVENTS.filter(e=>e.loadedRewards);
@@ -10219,37 +10234,7 @@ function renderLoaded(){
     </div>`).join('')}
   </div>`;
 
-  document.getElementById('lrCampaigns').innerHTML=tierHtml+lr.map(ev=>{
-    const variants=loadedVariantsForEvent(ev);
-    const stageColor={'Intake':'#918d82','In Design':'#2a4272','In Build':'#b8860b','Review':'#6b4a8a','Ready for Live':'#0d9488','Live':'#15803d','Done':'#b4b0a4'}[ev.stage]||'#918d82';
-    const detail=activityDetailLabel(ev)||'Not supplied';
-
-    return`<div class="lr-card" onclick="showPop(${ev.id})">
-      <div class="lr-head" style="cursor:pointer">
-        <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
-          ${venueLogoBox(ev,true)}
-          <div style="min-width:0">
-            <div class="lr-activation-label">Activation</div>
-            <div class="lr-title">${escapeAttr(ev.title)}</div>
-            <div class="lr-summary-fields">
-              <div class="lr-summary-field"><div class="activity-summary-label">Month</div><div class="activity-summary-value">${escapeAttr(activityMonthLabel(ev))}</div></div>
-              <div class="lr-summary-field"><div class="activity-summary-label">Activity detail</div><div class="activity-summary-value" title="${escapeAttr(detail)}">${escapeAttr(detail)}</div></div>
-            </div>
-            <div class="lr-venue" style="margin-top:5px">${escapeAttr(shortVenue(ev.venue))} · ${fmtShort(ev.start)}${ev.end!==ev.start?' → '+fmtShort(ev.end):''}</div>
-          </div>
-        </div>
-        <div class="lr-price-panel">
-          <span style="font-size:10px;font-weight:600;color:${stageColor};background:${stageColor}30;padding:2px 8px;border-radius:4px">${ev.stage}</span>
-          ${ev.loadedBasePrice?`<span style="font-size:11px;color:#f4a57a;font-weight:600">Members: $${ev.loadedBasePrice.toFixed(2)}</span>`:''}
-          ${ev.regularPrice?`<span style="font-size:10px;color:rgba(255,255,255,.3);text-decoration:line-through">Regular: $${ev.regularPrice.toFixed(2)}</span>`:''}
-        </div>
-      </div>
-      ${loadedOfferGridHtml(ev,variants)}
-      ${ev.supplierLookup?`<div style="display:flex;gap:16px;padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">🤝 Supplier: <strong style="color:var(--text2)">${ev.supplierLookup}</strong>${ev.supplierContrib?` · 💰 <strong style="color:var(--accent)">$${ev.supplierContrib.toLocaleString()}</strong>`:''}</div>`:''}
-      ${variants.length&&variants.some(v=>v.pushCopy)?`<div style="padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">📱 ${variants.find(v=>v.pushCopy).pushCopy}</div>`:''}
-      ${(()=>{const rp=variants.find(v=>v.redemptionPeriod)?.redemptionPeriod,stackable=variants.some(v=>v.stackable);return(rp||stackable)?`<div style="display:flex;gap:14px;padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">${rp?`⏱ ${escapeAttr(rp)}`:''}${stackable?'<span>🔗 Stackable with other offers</span>':''}</div>`:'';})()}
-    </div>`;
-  }).join('');
+  document.getElementById('lrCampaigns').innerHTML=tierHtml+lr.map(renderLoadedRewardsCard).join('');
 }
 
 // ═══════════════════════════════════════
