@@ -935,6 +935,18 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         </details>
       </div>
 
+      <!-- WIDGET LIBRARY: PROJECTS THIS MONTH — the mini-timeline strip that used to sit at the top
+           of the Calendar's Month view, moved here so the Calendar top slot could be freed up for
+           the Monthly Features (Beer/Wine of the Month) strip instead. Same mini-timeline markup,
+           just injected into this widget's div instead of the Calendar's. -->
+      <div class="dash-widget" data-widget="projectsmonth" style="margin-bottom:12px">
+        <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
+        <details class="dash-card">
+          <summary class="card-h"><span class="card-title">🗓 Projects This Month</span><span class="card-act" onclick="event.preventDefault();navTo('projects')">Full view →</span></summary>
+          <div id="ovProjectsMonth"><div class="loading"><div class="spinner"></div></div></div>
+        </details>
+      </div>
+
       <!-- WIDGET LIBRARY: LOADED REWARDS CAMPAIGNS — filters the same EVENTS list by the existing
            loadedRewards flag. Permission-gated to roles that can open the Loaded Rewards page. -->
       <div class="dash-widget" data-widget="loadedcampaigns" style="margin-bottom:12px">
@@ -1175,7 +1187,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
       </div>
     </div>
     <div class="ca">
-      <div id="calProjectsStrip"></div>
+      <div id="calMonthlyFeatures"></div>
       <div class="card">
         <div id="calBusyness"></div>
         <div style="display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
@@ -7360,17 +7372,17 @@ function renderCrossVenue(){
 
 // ── Dashboard widget order (localStorage persisted, per signed-in user) ──
 // Recommended layout for a brand-new user with no saved preferences yet.
-const DEFAULT_WIDGET_ORDER=['needsaction','mypriorities','next14days','thismonth','newsubmissions','mytasks','upcominglaunches','overdueblocked','reportrequired','keydates','teamworkload','projectprogress','loadedcampaigns','venuesnap','charts'];
+const DEFAULT_WIDGET_ORDER=['needsaction','mypriorities','next14days','thismonth','newsubmissions','mytasks','upcominglaunches','overdueblocked','reportrequired','keydates','teamworkload','projectprogress','projectsmonth','loadedcampaigns','venuesnap','charts'];
 // Widgets added in this round that start hidden even in the recommended layout — available any
 // time from the Widget Library, but don't crowd the default view uninvited.
 const DEFAULT_HIDDEN_WIDGETS=['upcominglaunches','overdueblocked','teamworkload','projectprogress','loadedcampaigns'];
 const ALL_WIDGET_IDS=[...new Set([...DEFAULT_WIDGET_ORDER,...DEFAULT_HIDDEN_WIDGETS])];
 // Human-readable names for the Widget Library "add section" picker in Customize mode.
-const WIDGET_TITLES={needsaction:'🔴 Needs Action',mypriorities:'⚡ My Priorities',next14days:'⏱ Next 14 Days',thismonth:"📅 This Month's Overview",newsubmissions:'📥 New Submissions',mytasks:'☐ My Tasks',overdueblocked:'🚫 Overdue / Blocked Work',upcominglaunches:'🚀 Upcoming Launches',reportrequired:'📊 Reporting & Performance',keydates:'🗓 Key Dates Ahead',teamworkload:'👥 Team Workload',projectprogress:'◧ Project Progress',loadedcampaigns:'⭐ Loaded Rewards Campaigns',venuesnap:'◉ Venue Activity Snapshot',charts:'Existing Charts & Graphs'};
+const WIDGET_TITLES={needsaction:'🔴 Needs Action',mypriorities:'⚡ My Priorities',next14days:'⏱ Next 14 Days',thismonth:"📅 This Month's Overview",newsubmissions:'📥 New Submissions',mytasks:'☐ My Tasks',overdueblocked:'🚫 Overdue / Blocked Work',upcominglaunches:'🚀 Upcoming Launches',reportrequired:'📊 Reporting & Performance',keydates:'🗓 Key Dates Ahead',teamworkload:'👥 Team Workload',projectprogress:'◧ Project Progress',projectsmonth:'🗓 Projects This Month',loadedcampaigns:'⭐ Loaded Rewards Campaigns',venuesnap:'◉ Venue Activity Snapshot',charts:'Existing Charts & Graphs'};
 // Widgets that surface data gated behind a specific panel permission — stays hidden for any role
 // that couldn't open that panel directly, even if the id is sitting in a saved order/hidden list
 // (e.g. from before a role change). This is the real security boundary, not just UI tidiness.
-const WIDGET_PERMISSIONS={teamworkload:'workload',projectprogress:'projects',loadedcampaigns:'loaded'};
+const WIDGET_PERMISSIONS={teamworkload:'workload',projectprogress:'projects',projectsmonth:'projects',loadedcampaigns:'loaded'};
 function widgetAllowed(id){const panel=WIDGET_PERMISSIONS[id];return !panel||canAccessPanel(panel);}
 function dashStorageKey(){return 'marlin_dash_layout_'+(currentUserEmail||'anon');}
 function getWidgetOrder(){
@@ -7891,6 +7903,7 @@ function renderOverview(){
   renderDashUpcomingLaunches();
   if(widgetAllowed('teamworkload'))renderWorkload('dashTeamWorkload',6);
   renderDashProjectProgress();
+  renderDashProjectsMonthStrip();
   renderDashLoadedCampaigns();
 
   setTimeout(()=>renderDashboardCharts(allEvts),50);
@@ -9158,16 +9171,19 @@ function calEvtStyle(ev){
   return`background:${color}16;border-left:2.5px solid ${color};color:${color};opacity:${opacity}`;
 }
 
-// A mini-Gantt strip above the Month grid — "what's happening" at the Project level, not just the
-// day-by-day Activities. Projects have no Start date of their own (only a Due date), so a project's
-// span is derived from its linked Activities' earliest/latest dates, clipped to the visible month;
+// A mini-Gantt strip — "what's happening" at the Project level this month, not just the day-by-day
+// Activities. Projects have no Start date of their own (only a Due date), so a project's span is
+// derived from its linked Activities' earliest/latest dates, clipped to the current calendar month;
 // a Project with no dated activities and no Due date simply has nothing to show here yet.
+// Moved here from the top of the Calendar's Month view onto the Dashboard (see renderDashProjectsMonthStrip
+// below) so that slot could be freed up for the Monthly Features (Beer/Wine of the Month) strip instead.
+// Always anchors to the real current month, independent of whatever month the Calendar happens to be showing.
 const PROJ_STRIP_STATUS_COLOR={'In Progress':'#2563eb','Not Started':'#6b7280','On Hold':'#b8860b','Done':'#9ca3af'};
-function renderCalProjectsStrip(){
-  if(!PROJECTS||!PROJECTS.length)return'';
-  const monthStart=new Date(calYear,calMonth,1),monthEnd=new Date(calYear,calMonth+1,0);
+function projectsThisMonthRows(){
+  const now=new Date();
+  const monthStart=new Date(now.getFullYear(),now.getMonth(),1),monthEnd=new Date(now.getFullYear(),now.getMonth()+1,0);
   const totalDays=Math.round((monthEnd-monthStart)/864e5)+1;
-  const rows=PROJECTS.filter(p=>p.status!=='Done').map(p=>{
+  return(PROJECTS||[]).filter(p=>p.status!=='Done').map(p=>{
     const linked=EVENTS.filter(e=>String(e.projectId)===String(p.id)&&!isArchived(e));
     const dates=linked.flatMap(e=>[e.start,e.end]).filter(Boolean);
     if(p.due)dates.push(p.due);
@@ -9181,16 +9197,54 @@ function renderCalProjectsStrip(){
     const widthPct=Math.max(((clipEnd-clipStart)/864e5+1)/totalDays*100,3);
     return{p,leftPct,widthPct,color:PROJ_STRIP_STATUS_COLOR[p.status]||'#6b7280'};
   }).filter(Boolean);
-  if(!rows.length)return'';
-  return`<div class="card" style="margin-bottom:12px;padding:10px 14px 12px">
-    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Projects this month</div>
-    ${rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer" onclick="openEditProject('${escapeAttr(String(r.p.id))}')">
+}
+function renderDashProjectsMonthStrip(){
+  const el=document.getElementById('ovProjectsMonth');if(!el)return;
+  if(!widgetAllowed('projectsmonth')){el.innerHTML='';return;}
+  const rows=projectsThisMonthRows();
+  el.innerHTML=rows.length?rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer" onclick="openEditProject('${escapeAttr(String(r.p.id))}')">
       <div style="width:140px;flex-shrink:0;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(r.p.title)}">${escapeAttr(r.p.title)}</div>
       <div style="flex:1;position:relative;height:14px;background:var(--surface2);border-radius:4px">
         <div style="position:absolute;left:${r.leftPct}%;width:${r.widthPct}%;height:100%;border-radius:4px;background:${r.color}" title="${escapeAttr(r.p.title)} — ${escapeAttr(r.p.status)}${r.p.due?' · due '+escapeAttr(fmtShort(r.p.due)):''}"></div>
       </div>
       <div style="width:54px;flex-shrink:0;font-size:10px;color:var(--text3);text-align:right">${r.p.progress||0}%</div>
-    </div>`).join('')}
+    </div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No projects spanning this month</div>';
+}
+
+// Monthly Features strip — now sits at the top of the Calendar's Month view where the Projects
+// strip used to be. One section per "X of the Month" Activity Subtype currently running (Beer of
+// the Month, Wine of the Month, Cocktail of the Month, or any future one named the same way), each
+// listing every venue as a fixed template row so a gap (no feature set for a venue) is as visible
+// at a glance as a filled one. The row's value is the Activity Detail text (e.g. "Weinstephaner")
+// of whichever matching Activity overlaps the visible month for that venue.
+const MONTHLY_FEATURE_VENUES=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
+const MONTHLY_FEATURE_ICON={'Beer of the Month':'🍺','Wine of the Month':'🍷','Cocktail of the Month':'🍸'};
+const MONTHLY_FEATURE_ORDER=['Beer of the Month','Wine of the Month','Cocktail of the Month'];
+function renderCalMonthlyFeatures(){
+  const monthStart=new Date(calYear,calMonth,1),monthEnd=new Date(calYear,calMonth+1,0);
+  const candidates=EVENTS.filter(e=>!isArchived(e)&&/of the month$/i.test(e.activitySubtype||'')
+    &&new Date(e.start+'T00:00:00')<=monthEnd&&new Date((e.end||e.start)+'T00:00:00')>=monthStart);
+  if(!candidates.length)return'';
+  const subtypes=[...new Set(candidates.map(e=>e.activitySubtype))].sort((a,b)=>{
+    const ai=MONTHLY_FEATURE_ORDER.indexOf(a),bi=MONTHLY_FEATURE_ORDER.indexOf(b);
+    if(ai!==-1||bi!==-1)return(ai===-1?99:ai)-(bi===-1?99:bi);
+    return a.localeCompare(b);
+  });
+  return`<div class="card" style="margin-bottom:12px;padding:10px 14px 12px">
+    ${subtypes.map(subtype=>{
+      const rows=MONTHLY_FEATURE_VENUES.map(venue=>{
+        const matches=candidates.filter(e=>e.activitySubtype===subtype&&e.venue===venue).sort((a,b)=>b.start.localeCompare(a.start));
+        return{venue,ev:matches[0]||null};
+      });
+      return`<div style="margin-bottom:10px">
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">${MONTHLY_FEATURE_ICON[subtype]||'⭐'} ${escapeAttr(subtype)}</div>
+        ${rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;${r.ev?'cursor:pointer':''}" ${r.ev?`onclick="showPop(${r.ev.id})"`:''}>
+          <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${vColor(r.venue).c};flex-shrink:0"></span>
+          <div style="width:134px;flex-shrink:0;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shortVenue(r.venue)}</div>
+          <div style="flex:1;font-size:11px;color:${r.ev?'var(--text)':'var(--text3)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.ev?escapeAttr(activityDetailLabel(r.ev)||r.ev.title):''}">${r.ev?escapeAttr(activityDetailLabel(r.ev)||r.ev.title):'Not set'}</div>
+        </div>`).join('')}
+      </div>`;
+    }).join('')}
   </div>`;
 }
 
@@ -9255,8 +9309,8 @@ function renderCalendar(){
   </div>`;
   const busDiv=document.getElementById('calBusyness');
   if(busDiv)busDiv.innerHTML=busHtml;
-  const projStripDiv=document.getElementById('calProjectsStrip');
-  if(projStripDiv)projStripDiv.innerHTML=renderCalProjectsStrip();
+  const projStripDiv=document.getElementById('calMonthlyFeatures');
+  if(projStripDiv)projStripDiv.innerHTML=renderCalMonthlyFeatures();
 
   const firstDay=new Date(calYear,calMonth,1).getDay();
   const dim=new Date(calYear,calMonth+1,0).getDate();
@@ -9424,7 +9478,7 @@ function renderCalendarWeek(){
     ws.toLocaleDateString('en-AU',{day:'numeric',month:'short'})+' – '+we.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
 
   const busDiv=document.getElementById('calBusyness');if(busDiv)busDiv.innerHTML='';
-  const projStripDiv=document.getElementById('calProjectsStrip');if(projStripDiv)projStripDiv.innerHTML='';
+  const projStripDiv=document.getElementById('calMonthlyFeatures');if(projStripDiv)projStripDiv.innerHTML='';
   const today=new Date();today.setHours(0,0,0,0);
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -9539,7 +9593,7 @@ function renderCalendarDay(){
   const d=calDayDate;
   document.getElementById('calLabel').textContent=d.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'});
   const busDiv=document.getElementById('calBusyness');if(busDiv)busDiv.innerHTML='';
-  const projStripDiv=document.getElementById('calProjectsStrip');if(projStripDiv)projStripDiv.innerHTML='';
+  const projStripDiv=document.getElementById('calMonthlyFeatures');if(projStripDiv)projStripDiv.innerHTML='';
   const grid=document.getElementById('calGrid');
   grid.style.display='block';grid.style.gridTemplateColumns='';
 
@@ -9590,7 +9644,7 @@ function renderCalendarDay(){
 function renderCalendarYear(){
   document.getElementById('calLabel').textContent=String(calYear);
   const busDiv=document.getElementById('calBusyness');if(busDiv)busDiv.innerHTML='';
-  const projStripDiv=document.getElementById('calProjectsStrip');if(projStripDiv)projStripDiv.innerHTML='';
+  const projStripDiv=document.getElementById('calMonthlyFeatures');if(projStripDiv)projStripDiv.innerHTML='';
   const grid=document.getElementById('calGrid');
   grid.style.display='block';grid.style.gridTemplateColumns='';
 
