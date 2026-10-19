@@ -293,7 +293,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .cal-day.cd-hol{background:#fff8f8;border-color:#f3d9d9}.dark .cal-day.cd-hol{background:#2a1515;border-color:#4a2525}
 .cal-day.cal-day-out{background:var(--surface2);opacity:.42}
 .cal-num{font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:4px}
-.cal-ev{font-size:9.5px;font-weight:600;padding:3px 6px;border-radius:6px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.4;transition:var(--tr)}
+.cal-ev{font-size:10.5px;font-weight:600;padding:4px 7px;border-radius:7px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.4;transition:var(--tr)}
 .cal-ev:hover{filter:brightness(0.95);transform:translateX(1px)}
 .cal-more{font-size:9.5px;color:var(--accent);font-weight:600;cursor:pointer;padding:2px 6px;border-radius:6px;background:var(--accent-bg);display:inline-block;margin-top:1px}
 .cal-hover-card{position:fixed;z-index:2000;width:220px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.22);overflow:hidden;pointer-events:none;animation:calHoverIn .1s ease-out}
@@ -9167,8 +9167,10 @@ function calEvtStyle(ev){
   if(cat==='Public Holiday'||cat==='National Calendar Event'||cat==='School Holidays'){
     return`background:transparent;border:1.5px dashed ${color};color:${color};opacity:${opacity}`;
   }
-  // Light tinted background + colored text + colored left border — not a solid block
-  return`background:${color}16;border-left:2.5px solid ${color};color:${color};opacity:${opacity}`;
+  // Solid filled block — the actual live/running period is the headline of the day (the "filled"
+  // look Kim asked for), not just a tinted outline, so it reads clearly against the lighter
+  // pre-event lifecycle markers (Brief due, Marketing start) sitting above it in the same cell.
+  return`background:${color};color:${contrastText(color)};opacity:${opacity}`;
 }
 
 // A mini-Gantt strip — "what's happening" at the Project level this month, not just the day-by-day
@@ -9425,13 +9427,13 @@ function renderCalendar(){
       <div class="cal-num">${day}</div>
       <div class="cal-month-details" style="margin-top:${barRows*23+2}px">
       ${dayKeyDates.map(k=>`<div style="font-size:9px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:1px 4px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
-      ${dayBriefsDue.map(ev=>`<div style="font-size:9px;font-weight:600;color:#7c3aed;padding:1px 4px;border-radius:3px;background:#ede9fe;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✏️ Brief: ${ev.title}</div>`).join('')}
-      ${dayMarketingStarts.map(ev=>`<div style="font-size:9px;font-weight:600;color:#9a6b0a;padding:1px 4px;border-radius:3px;background:#fdf3d8;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
+      ${dayBriefsDue.map(ev=>`<div class="cal-ev" style="color:#7c3aed;background:#ede9fe" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✏️ Brief: ${ev.title}</div>`).join('')}
+      ${dayMarketingStarts.map(ev=>`<div class="cal-ev" style="color:#9a6b0a;background:#fdf3d8" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
       ${shown.map(ev=>{
         const style=calEvtStyle(ev);
         const aType=ev.activityType||'';
         const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.ticketed?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':'';
-        return`<div class="cal-ev" style="${style};font-size:10px;font-weight:500" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calVenueDot(ev)}${icon?icon+' ':''}${ev.title}</div>`;
+        return`<div class="cal-ev" style="${style}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calVenueDot(ev)}${icon?icon+' ':''}${ev.title}</div>`;
       }).join('')}
       ${extra>0?`<div class="cal-more" onclick="showCalDayPopup(event,${y},${m},${day})">+${extra} more</div>`:''}
       </div>
@@ -9555,10 +9557,17 @@ function renderCalendarWeek(){
     // scrollable column with fuller rows — title + venue + type — instead of capping at a
     // handful of tiny chips and hiding the rest behind "+more".
     const dayKeyDates=inSelectedRange?KEY_DATES.filter(k=>k.start&&k.start<=dateKey&&(k.end||k.start)>=dateKey):[];
+    // Same lifecycle lead-up markers as Month view (see renderCalendar) — Design Brief due and
+    // Marketing start — so the full lifecycle of an Activity, not just its live run, shows here too.
+    const wkMatchesCalFilters=e=>(!calVenueFilter||e.venue===calVenueFilter||e.venue==='All Venues')&&(!calCatFilter||calCatFilter==='holiday'||e.activityType===calCatFilter||e.eventFormat===calCatFilter||e.businessStream===calCatFilter);
+    const dayBriefsDue=inSelectedRange?EVENTS.filter(e=>!isArchived(e)&&e.designBriefDue===dateKey&&wkMatchesCalFilters(e)):[];
+    const dayMarketingStarts=inSelectedRange?EVENTS.filter(e=>!isArchived(e)&&e.marketingStartDate===dateKey&&e.marketingStartDate!==e.start&&wkMatchesCalFilters(e)):[];
 
     h+=`<div class="cal-day wk${isToday?' td':''}${!inSelectedRange?' cal-day-out':''}">
       <div class="cal-num">${d.toLocaleDateString('en-AU',{day:'numeric',month:'short'})}</div>
       ${dayKeyDates.map(k=>`<div style="font-size:9.5px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:2px 5px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:5px;display:inline-block" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
+      ${dayBriefsDue.map(ev=>`<div class="cal-ev" style="color:#7c3aed;background:#ede9fe" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✏️ Brief: ${ev.title}</div>`).join('')}
+      ${dayMarketingStarts.map(ev=>`<div class="cal-ev" style="color:#9a6b0a;background:#fdf3d8" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
       ${dayEvts.length?dayEvts.map(ev=>{
         const style=calEvtStyle(ev);
         const icon=ev.loadedRewards?'⭐':ev.businessStream==='Functions'?'🥂':ev.ticketed||ev.eventFormat==='Live Music / Entertainment'?'🎫':ev.supplierInvolved?'🤝':ev.eventFormat==='Sporting Screening'?'🏆':'';
