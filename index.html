@@ -9228,6 +9228,11 @@ const MONTHLY_FEATURE_VENUES=['The Ravenswood','The Left Bank','Whitfords Brewin
 const MONTHLY_FEATURE_VENUE_LABELS={'The Left Bank':'Left Bank','The Ravenswood':'Ravenswood','Whitfords Brewing Co':'Whitfords','Hotel Darwin':'Hotel Darwin','Mustang Bar':'Mustang Bar','Beerland Brewing':'Beerland'};
 const MONTHLY_FEATURE_NOUN_ORDER=['Beer','Wine','Cocktail','Spirit'];
 const MONTHLY_FEATURE_LOADED_COLOR='#f3c892';
+// Dark navy header bars with a bright accent-orange title, borrowed from the Loaded Rewards app's
+// own screens — Kim asked for this box to read more like a Loaded screen (compacted) than a plain
+// card with underlined section labels.
+const MONTHLY_DEALS_NAVY='#1b2a4a';
+const MONTHLY_DEALS_ACCENT='#f5a623';
 function monthlyFeatureNoun(subtype){
   const m=/^(.*?)\s+of the month$/i.exec(String(subtype||'').trim());
   return m?m[1]:String(subtype||'').replace(/^feature\s+/i,'');
@@ -9250,7 +9255,7 @@ function renderCalMonthlyFeatures(){
   // content width, so it visually reads as "this one covers every venue" rather than looking like
   // just another single-venue cell that happens to be under the first column.
   const loadedHtml=loadedRows.length?`<div style="margin-bottom:14px">
-    <div style="font-size:12.5px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">Loaded Rewards</div>
+    <div style="margin:0 -16px 8px;padding:6px 16px;background:${MONTHLY_DEALS_NAVY};color:${MONTHLY_DEALS_ACCENT};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Loaded Rewards</div>
     <div style="display:grid;grid-template-columns:${colTemplate};gap:8px 10px;align-items:center">
       ${loadedRows.map(r=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Feature ${escapeAttr(r.noun)}</div>
         <div onclick="showPop(${r.ev.id})" style="grid-column:2 / -1;cursor:pointer;text-align:center;padding:5px 16px;border-radius:999px;background:${MONTHLY_FEATURE_LOADED_COLOR};color:#1a1a18;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(activityDetailLabel(r.ev)||r.ev.title)} — covers all venues">${escapeAttr(activityDetailLabel(r.ev)||r.ev.title)}</div>`).join('')}
@@ -9260,7 +9265,7 @@ function renderCalMonthlyFeatures(){
   // this month shows an explicit "Not set" pill rather than an empty gap, so the template reads the
   // same whether a cell is filled or not.
   const gridHtml=`<div>
-    <div style="font-size:12.5px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">Venue</div>
+    <div style="margin:0 -16px 8px;padding:6px 16px;background:${MONTHLY_DEALS_NAVY};color:${MONTHLY_DEALS_ACCENT};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Venue</div>
     <div style="display:grid;grid-template-columns:${colTemplate};gap:8px 10px;align-items:center">
       <div></div>
       ${MONTHLY_FEATURE_VENUES.map(v=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;text-align:center">${escapeAttr(MONTHLY_FEATURE_VENUE_LABELS[v]||v)}</div>`).join('')}
@@ -9273,8 +9278,8 @@ function renderCalMonthlyFeatures(){
         }).join('')}`).join('')}
     </div>
   </div>`;
-  return`<div class="card" style="margin-bottom:12px;padding:14px 16px">
-    <div style="font-size:15px;font-weight:800;letter-spacing:.01em;margin-bottom:12px">Monthly Deals</div>
+  return`<div class="card" style="margin-bottom:12px;padding:14px 16px;overflow:hidden">
+    <div style="margin:-14px -16px 12px;padding:9px 16px;background:${MONTHLY_DEALS_NAVY};color:${MONTHLY_DEALS_ACCENT};font-size:14px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Monthly Deals</div>
     ${loadedHtml}${gridHtml}
   </div>`;
 }
