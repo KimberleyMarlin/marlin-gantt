@@ -7,6 +7,17 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>
 (function(){
+  // Apply any saved Appearance colour overrides (see the Appearance settings page) as early as
+  // possible — directly on <html>, before the rest of the page even starts loading — so there's no
+  // flash of the default colour before the saved one takes over. Generic by design: whatever CSS
+  // custom-property names are saved here get applied, with no need to duplicate the token list.
+  try{
+    var themeRaw=localStorage.getItem('marlin_theme_overrides');
+    if(themeRaw){
+      var themeOverrides=JSON.parse(themeRaw);
+      Object.keys(themeOverrides).forEach(function(k){document.documentElement.style.setProperty('--'+k,themeOverrides[k]);});
+    }
+  }catch(e){}
   function load(src,cb,fb){var s=document.createElement('script');s.src=src;s.onload=function(){if(cb)cb();};s.onerror=function(){if(fb)load(fb,cb,null);};document.head.appendChild(s);}
   window._msalReady=false;
   window._xlsxReady=false;
@@ -51,6 +62,10 @@ body .entry-content>*:not(#mkt-hub-app),body .entry-content h1,body .entry-conte
   --rw-accent:#2d6b45;
   --mb-primary:#c05c1a;    /* Mustang Bar — orange */
   --mb-accent:#e07830;
+
+  /* APPEARANCE-EDITABLE (see the Appearance settings page) — overridden per-browser via
+     localStorage, inline on :root, by applyThemeOverrides() on load. */
+  --theme-monthlydeals:#1a4fa0;--theme-loadedrewards:#e8935c;
 
   --sidebar:248px;--sidebar-sm:220px;
   --topbar:50px;
@@ -730,6 +745,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <button class="sb-item" data-p="budget" onclick="nav(this)"><span class="ico">◈</span>Finance</button>
     <button class="sb-item" data-p="operations" onclick="nav(this)"><span class="ico">⌘</span>Oversight</button>
     <button class="sb-item" data-p="schema" onclick="nav(this)"><span class="ico">🛠</span>Admin &amp; Schema</button>
+    <button class="sb-item" data-p="appearance" onclick="nav(this)"><span class="ico">🎨</span>Appearance</button>
   </div>
   <div class="sb-submit-wrap">
     <button class="sb-cta" onclick="navTo('submit')">＋ Submit something</button>
@@ -1684,6 +1700,16 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
           <button class="btn btn-p" style="margin-top:10px" id="schemaItemSaveBtn" onclick="createSchemaItem()" disabled>Create item</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- APPEARANCE -->
+  <div class="panel" id="p-appearance">
+    <div class="ph">
+      <div><div class="ph-eye">Kimberley Only</div><div class="ph-title"><em>Appearance</em></div><div class="ph-sub">Pick colours for parts of the Hub's look. Saved to this browser and applied immediately — reset any one back to its default any time.</div></div>
+    </div>
+    <div class="ca">
+      <div id="appearanceTokens"></div>
     </div>
   </div>
 
@@ -6200,7 +6226,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',appearance:'<em>Appearance</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -6224,7 +6250,7 @@ function canAccessPrivatePersonalTasks(){
 }
 function canAccessPanel(id){
   if(id==='personaltasks')return canAccessPrivatePersonalTasks();
-  if(id==='schema')return isPreviewMode||currentRole==='admin';
+  if(id==='schema'||id==='appearance')return isPreviewMode||currentRole==='admin';
   if(id==='crm')return canAccessMailing();
   return !rolePermissions().hidePanels.includes(id);
 }
@@ -6256,7 +6282,7 @@ function showPanel(id){
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
   // Activities consolidation: Pipeline is a sub-view of 'campaigns' now — hide it when navigating elsewhere.
   if(id!=='campaigns'){const pipePanel=document.getElementById('p-pipeline');if(pipePanel)pipePanel.style.display='none';}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging};
+  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,appearance:renderAppearanceSettings,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
   // Skip this for 'campaigns' while its Pipeline sub-view is showing — that block just hid the
@@ -9254,7 +9280,7 @@ function renderCalMonthlyFeatures(){
   // The exact same card as the real Loaded Rewards page (renderLoadedRewardsCard) — not a
   // compacted/invented variant — per Kim's reference screenshot of that page.
   const loadedHtml=loadedRows.length?`<div style="margin-bottom:14px">
-    <div style="margin:0 -16px 8px;padding:6px 16px;background:${MONTHLY_DEALS_NAVY};color:${MONTHLY_DEALS_ACCENT};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Loaded Rewards</div>
+    <div style="font-size:12.5px;font-weight:800;color:var(--theme-loadedrewards);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Loaded Rewards</div>
     ${loadedRows.map(r=>renderLoadedRewardsCard(r.ev)).join('')}
   </div>`:'';
   // Every venue is always a column and every feature a row — a venue with nothing set for a feature
@@ -9275,7 +9301,7 @@ function renderCalMonthlyFeatures(){
     </div>
   </div>`;
   return`<div class="card" style="margin-bottom:12px;padding:14px 16px;overflow:hidden">
-    <div style="margin:-14px -16px 12px;padding:9px 16px;background:${MONTHLY_DEALS_NAVY};color:${MONTHLY_DEALS_ACCENT};font-size:14px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Monthly Deals</div>
+    <div style="font-size:15px;font-weight:800;letter-spacing:.01em;margin-bottom:12px;color:var(--theme-monthlydeals)">Monthly Deals</div>
     ${loadedHtml}${gridHtml}
   </div>`;
 }
@@ -11836,6 +11862,66 @@ function toggleSchemaChoiceInput(){
   const group=document.getElementById('schemaChoiceGroup');
   if(group)group.style.display=type==='choice'?'':'none';
 }
+
+// ═══════════════════════════════════════
+// APPEARANCE — live colour overrides for CSS custom properties, picked with <input type="color">
+// and saved to this browser's localStorage (applied on every load by the bootstrap script at the
+// very top of <head>, so there's no flash of the default colour first). Add a token here any time a
+// part of the Hub's look should be colour-pickable, and it shows up in the Appearance page with no
+// further wiring — nothing else in the codebase needs to change except using var(--<key>) instead of
+// a hardcoded colour wherever that part is rendered.
+// ═══════════════════════════════════════
+const THEME_TOKENS=[
+  {key:'theme-monthlydeals',label:'Monthly Deals heading',group:'Calendar — Monthly Deals',default:'#1a4fa0'},
+  {key:'theme-loadedrewards',label:'Loaded Rewards heading',group:'Calendar — Monthly Deals',default:'#e8935c'},
+];
+function getThemeOverrides(){
+  try{return JSON.parse(localStorage.getItem('marlin_theme_overrides')||'{}')||{};}catch(e){return{};}
+}
+function saveThemeOverrides(overrides){
+  try{localStorage.setItem('marlin_theme_overrides',JSON.stringify(overrides));}catch(e){}
+}
+function setThemeToken(key,value){
+  document.documentElement.style.setProperty('--'+key,value);
+  const overrides=getThemeOverrides();
+  overrides[key]=value;
+  saveThemeOverrides(overrides);
+}
+function resetThemeToken(key,defaultValue){
+  document.documentElement.style.removeProperty('--'+key);
+  const overrides=getThemeOverrides();
+  delete overrides[key];
+  saveThemeOverrides(overrides);
+  renderAppearanceSettings();
+}
+function resetAllThemeTokens(){
+  THEME_TOKENS.forEach(t=>document.documentElement.style.removeProperty('--'+t.key));
+  saveThemeOverrides({});
+  renderAppearanceSettings();
+}
+function renderAppearanceSettings(){
+  const el=document.getElementById('appearanceTokens');if(!el)return;
+  const overrides=getThemeOverrides();
+  const groups=[...new Set(THEME_TOKENS.map(t=>t.group))];
+  el.innerHTML=groups.map(group=>`<div class="card" style="margin-bottom:16px">
+    <div class="card-h"><span class="card-title">${escapeAttr(group)}</span></div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+      ${THEME_TOKENS.filter(t=>t.group===group).map(t=>{
+        const current=overrides[t.key]||t.default;
+        const isCustom=overrides[t.key]&&overrides[t.key]!==t.default;
+        return`<div style="display:flex;align-items:center;gap:12px">
+          <input type="color" value="${escapeAttr(current)}" onchange="setThemeToken('${t.key}',this.value);renderAppearanceSettings()" style="width:44px;height:34px;padding:0;border:1px solid var(--border);border-radius:6px;cursor:pointer;flex-shrink:0">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600">${escapeAttr(t.label)}</div>
+            <div style="font-size:10.5px;color:var(--text3);font-family:'DM Mono',monospace">${escapeAttr(current)}${isCustom?' · custom':' · default'}</div>
+          </div>
+          ${isCustom?`<button class="tb-btn" onclick="resetThemeToken('${t.key}','${t.default}')">Reset</button>`:''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`).join('')+`<button class="tb-btn" onclick="resetAllThemeTokens()">Reset all to defaults</button>`;
+}
+
 async function renderSchemaTools(forceRefresh){
   if(!canAccessPanel('schema'))return;
   const gapsEl=document.getElementById('schemaKnownGaps');
