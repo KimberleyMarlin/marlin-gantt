@@ -379,6 +379,17 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .lr-offer-card-value{font-size:12px;font-weight:650;color:var(--text);line-height:1.35;word-break:break-word}
 .lr-offer-card-meta{font-size:9.5px;color:var(--text3);line-height:1.35;margin-top:3px}
 .lr-offer-empty{color:var(--text3);font-weight:500}
+/* Compact variant (~half size) for the Offer Mechanics grid on the Monthly Deals Loaded card —
+   the full-size version stays as-is on the real Loaded Rewards page. */
+.lr-offer-wrap-sm{padding:8px 10px}
+.lr-offer-wrap-sm .lr-offer-head{margin-bottom:6px}
+.lr-offer-grid-sm{grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:4px}
+.lr-offer-card-sm{padding:5px 6px;border-radius:6px}
+.lr-offer-card-sm .lr-offer-card-top{gap:3px;margin-bottom:3px}
+.lr-offer-card-sm .lr-offer-card-icon{font-size:10px;width:13px}
+.lr-offer-card-sm .lr-offer-card-label{font-size:7.5px}
+.lr-offer-card-sm .lr-offer-card-value{font-size:9.5px}
+.lr-offer-card-sm .lr-offer-card-meta{font-size:8px;margin-top:2px}
 .lr-schema-card{border:1px solid var(--border);border-radius:9px;background:var(--surface);margin-bottom:12px;overflow:hidden}
 .lr-schema-card summary{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;list-style:none;font-size:11px;font-weight:700;color:var(--text2)}
 .lr-schema-card summary::-webkit-details-marker{display:none}
@@ -9270,16 +9281,21 @@ function renderMonthlyDealsLoadedCard(ev){
   const variants=loadedVariantsForEvent(ev);
   const running=fmtShort(ev.start)+(ev.end&&ev.end!==ev.start?' - '+fmtShort(ev.end):'');
   const product=ev.product||activityDetailLabel(ev)||'';
-  const venues=ev.venue&&ev.venue!=='All Venues'?shortVenue(ev.venue):'';
-  const fields=[['Supplier',ev.supplierLookup||''],['Product',product],['Running',running],['Venues',venues]];
+  // Venue — straight from the Activity's own Venue field on the submit form (including "All
+  // Venues" as a real, worth-showing value), not blanked out or re-derived.
+  const fields=[['Supplier',ev.supplierLookup||''],['Product',product],['Running',running],['Venue',ev.venue||'']];
+  const artworkUrl=ev.eventImageUrl||ev.artworkFile||'';
   return`<div style="display:flex;border-radius:10px;overflow:hidden;margin-bottom:10px;border:1px solid var(--border)">
-    <div style="flex:0 0 240px;background:linear-gradient(135deg,#0a1628 0%,#1a3a6e 100%);padding:14px;display:flex;gap:10px;align-items:flex-start;cursor:pointer" onclick="showPop(${ev.id})">
-      ${venueLogoBox(ev,true)}
+    <div style="flex:0 0 260px;background:linear-gradient(135deg,#0a1628 0%,#1a3a6e 100%);padding:14px;display:flex;gap:10px;align-items:flex-start;cursor:pointer" onclick="showPop(${ev.id})">
+      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+        ${venueLogoBox(ev,true)}
+        ${artworkUrl?`<img src="${escapeAttr(artworkUrl)}" style="width:52px;height:52px;object-fit:cover;border-radius:9px;border:1px solid rgba(255,255,255,.24)" onerror="this.remove()">`:''}
+      </div>
       <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
         ${fields.map(([label,value])=>`<div><div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--theme-loadedrewards)">${escapeAttr(label)}</div><div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(value)||'&nbsp;'}</div></div>`).join('')}
       </div>
     </div>
-    <div style="flex:1;min-width:0">${loadedOfferGridHtml(ev,variants)}</div>
+    <div style="flex:1;min-width:0">${loadedOfferGridHtml(ev,variants,true)}</div>
   </div>`;
 }
 function renderCalMonthlyFeatures(){
@@ -10003,7 +10019,7 @@ function loadedVariantDisplayValue(variant){
   return mechanic||String(variant.offerDescription||'').trim();
 }
 
-function loadedOfferGridHtml(ev,variants){
+function loadedOfferGridHtml(ev,variants,compact=false){
   const findTier=tier=>variants.find(variant=>normaliseImportText(variant.audienceTier)===normaliseImportText(tier));
   const cards=LOADED_OFFER_DISPLAY.map(key=>{
     const def=LOADED_COMPONENTS[key];
@@ -10026,15 +10042,15 @@ function loadedOfferGridHtml(ev,variants){
       meta=meta?`${meta} · ${performance}`:performance;
     }
     const icon=TIER_ICONS[def.tier]||'🎯';
-    return`<div class="lr-offer-card ${value?'set':''}">
+    return`<div class="lr-offer-card${compact?' lr-offer-card-sm':''} ${value?'set':''}">
       <div class="lr-offer-card-top"><span class="lr-offer-card-icon">${icon}</span><span class="lr-offer-card-label">${escapeAttr(def.label)}</span></div>
       <div class="lr-offer-card-value ${value?'':'lr-offer-empty'}">${escapeAttr(value||'Not set')}</div>
       ${meta?`<div class="lr-offer-card-meta">${escapeAttr(meta)}</div>`:''}
     </div>`;
   }).join('');
-  return`<div class="lr-offer-wrap">
+  return`<div class="lr-offer-wrap${compact?' lr-offer-wrap-sm':''}">
     <div class="lr-offer-head"><strong>Offer mechanics</strong>${canEditCampaigns()?`<button class="tb-btn" style="font-size:10px;padding:4px 8px" onclick="event.stopPropagation();openLoadedOfferEditor(${ev.id})">${variants.length?'Edit':'Set up'} offers</button>`:''}</div>
-    <div class="lr-offer-grid">${cards}</div>
+    <div class="lr-offer-grid${compact?' lr-offer-grid-sm':''}">${cards}</div>
   </div>`;
 }
 function loadedMechanicChoices(component,current=''){
