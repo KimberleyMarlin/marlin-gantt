@@ -14994,8 +14994,14 @@ async function savePopEdit(evId,mode){
       return;
     }
     if(f.endsWith('LookupId')){
-      fields[f]=v?parseInt(v,10):null;
       const kind=el.dataset.lookupKind;
+      // A Lookup column that allows multiple values (e.g. Product, for some SharePoint setups)
+      // rejects a plain integer with a generic 500 — Graph API needs an array even to set just one
+      // value. The Submit form's own Product field already knew this (see CAMPAIGN_LOOKUPS.Product
+      // .allowMultiple there); this editor's single-select didn't carry that over, so every edit to
+      // an existing Activity's Product always failed regardless of which product was picked.
+      const allowMultiple=!!(kind&&CAMPAIGN_LOOKUPS[kind]?.allowMultiple);
+      fields[f]=v?(allowMultiple?[parseInt(v,10)]:parseInt(v,10)):(allowMultiple?[]:null);
       if(kind){
         const selected=LOOKUP_OPTIONS[kind]?.find(option=>option.id===v);
         if(kind==='Supplier'){ev.supplierId=v;ev.supplierLookup=selected?.label||'';}
