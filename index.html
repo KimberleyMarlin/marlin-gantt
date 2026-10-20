@@ -6784,7 +6784,13 @@ async function pickEvPhoto(evId,url,driveId,itemId){
     const urlFailed=result.failed.find(f=>f.field==='EventImageURL');
     if(urlFailed){
       const m=(urlFailed.error||'').match(/Field '([^']+)' is not recognized/);
-      throw new Error(m?`The ${m[1]} column doesn't exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.`:urlFailed.error||'Could not save the photo.');
+      // SharePoint's Graph API gives this same opaque "generalException" for several unrelated
+      // write-shape problems (see the RecurringDay and ProductLookupId bugs). A too-long value is
+      // the most common cause for a URL field specifically — a "Single line of text" column caps at
+      // 255 characters, and a Graph thumbnail/sharing link can exceed that — so call it out by name
+      // when the length makes that plausible, instead of just surfacing the raw error.
+      const lenNote=url.length>255?` This link is ${url.length} characters — if Event Image URL is a "Single line of text" column (255-char limit) in SharePoint, that's almost certainly why. Ask your SharePoint admin to change it to "Multiple lines of text".`:` (link length: ${url.length} chars)`;
+      throw new Error(m?`The ${m[1]} column doesn't exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.`:`${urlFailed.error||'Could not save the photo.'}${lenNote}`);
     }
     ev.eventImageUrl=url;
     // The reference only counts as linked if it actually persisted. If EventImageURL saved but
@@ -9295,8 +9301,8 @@ function renderMonthlyDealsLoadedCard(ev){
       <div style="display:flex;flex-direction:column;gap:5px;min-width:0;flex:1">
         ${fields.map(([label,value])=>`<div><div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--theme-loadedrewards)">${escapeAttr(label)}</div><div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(value)||'&nbsp;'}</div></div>`).join('')}
       </div>
-      ${artworkUrl?`<div style="width:52px;height:74px;background:#fff;border-radius:3px;box-shadow:0 2px 6px rgba(0,0,0,.35);flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden" title="Artwork">
-        <img src="${escapeAttr(artworkUrl)}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.remove()">
+      ${artworkUrl?`<div style="background:#fff;border-radius:3px;box-shadow:0 2px 6px rgba(0,0,0,.35);flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden" title="Artwork">
+        <img src="${escapeAttr(artworkUrl)}" style="max-height:104px;max-width:90px;width:auto;height:auto;display:block;object-fit:contain" onerror="this.parentElement.remove()">
       </div>`:''}
     </div>
     <div style="flex:1;min-width:0">${loadedOfferGridHtml(ev,variants,true)}</div>
