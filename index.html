@@ -11747,7 +11747,8 @@ const SCHEMA_TOOL_LISTS={
   suppliers:{label:'Suppliers',listIdKey:'suppliers'},
   offerVariants:{label:'Offer Variants',listIdKey:'offerVariants'},
   offerMechanics:{label:'Offer Mechanics',listIdKey:'offerMechanics'},
-  calendarRef:{label:'Calendar Reference',listIdKey:'calendarRef'}
+  calendarRef:{label:'Calendar Reference',listIdKey:'calendarRef'},
+  comments:{label:'Activity Comments',listIdKey:'comments'}
 };
 // Columns the app already knows it wants but can't confirm exist everywhere — same idea as
 // UNCONFIRMED_COLUMNS for campaigns, extended to other lists (e.g. ParentTaskId for subtasks).
@@ -11760,6 +11761,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'EventImageURL',displayName:'Event Image URL',type:'text',purpose:'Featured photo link, set from the Activity\'s own folder, a linked artwork folder, or the Digital Media library — shown on the Calendar hover card and Artwork feed.'},
   {listKey:'campaigns',name:'EventImageRef',displayName:'Event Image Reference',type:'text',purpose:'Stable {driveId,itemId} JSON reference for the featured image, so a fresh thumbnail can be resolved later instead of relying only on EventImageURL, which can expire.'},
   {listKey:'campaigns',name:'LinkedArtworkFolderURL',displayName:'Linked Artwork Folder URL',type:'text',purpose:'A second, independently-linkable SharePoint folder for completed artwork, separate from the Power Automate–created JobFolderURL.'},
+  {listKey:'comments',name:'ReadBy',displayName:'Read By',type:'text',purpose:'Comma-separated list of names who have read this comment — written by markCommentRead() so unread badges clear once the recipient opens it. Missing on the live list today, which is why read receipts silently fail.'},
   {listKey:'campaigns',name:'RecurringEvent',displayName:'Recurring Event',type:'choice',choices:'Yes',purpose:'Independent Yes/No toggle for whether the activity repeats — separate from Event Format so a ticketed event can also be recurring.'},
   // Text, not Choice — Microsoft Graph's column-creation API has no multi-select facet for Choice
   // columns (only Lookup columns can be created with allowMultipleValues), so a genuine SharePoint
