@@ -6780,17 +6780,17 @@ async function pickEvPhoto(evId,url,driveId,itemId){
   try{
     const token=await getToken(true);
     const ref=driveId&&itemId?JSON.stringify({driveId,itemId}):'';
-    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,token,{EventImageURL:url,EventImageRef:ref});
+    // Event Image URL is a Hyperlink column in SharePoint (confirmed — not the "Single line of
+    // text" that the old length-limit theory assumed). Graph's Hyperlink/Picture column type needs
+    // a {Url, Description} object on write, never a bare string — sending a plain string is exactly
+    // what produced the opaque "generalException" 500, same opaque-error pattern as the RecurringDay
+    // and ProductLookupId bugs, just a type-shape mismatch instead of a length or multi-value one.
+    // Clearing the photo (url='') sends null, which is how a Hyperlink column gets blanked.
+    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,token,{EventImageURL:url?{Url:url,Description:''}:null,EventImageRef:ref});
     const urlFailed=result.failed.find(f=>f.field==='EventImageURL');
     if(urlFailed){
       const m=(urlFailed.error||'').match(/Field '([^']+)' is not recognized/);
-      // SharePoint's Graph API gives this same opaque "generalException" for several unrelated
-      // write-shape problems (see the RecurringDay and ProductLookupId bugs). A too-long value is
-      // the most common cause for a URL field specifically — a "Single line of text" column caps at
-      // 255 characters, and a Graph thumbnail/sharing link can exceed that — so call it out by name
-      // when the length makes that plausible, instead of just surfacing the raw error.
-      const lenNote=url.length>255?` This link is ${url.length} characters — if Event Image URL is a "Single line of text" column (255-char limit) in SharePoint, that's almost certainly why. Ask your SharePoint admin to change it to "Multiple lines of text".`:` (link length: ${url.length} chars)`;
-      throw new Error(m?`The ${m[1]} column doesn't exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.`:`${urlFailed.error||'Could not save the photo.'}${lenNote}`);
+      throw new Error(m?`The ${m[1]} column doesn't exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.`:urlFailed.error||'Could not save the photo.');
     }
     ev.eventImageUrl=url;
     // The reference only counts as linked if it actually persisted. If EventImageURL saved but
