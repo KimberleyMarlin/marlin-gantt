@@ -9321,7 +9321,7 @@ function renderCalMonthlyFeatures(){
   const colTemplate=`100px repeat(${MONTHLY_FEATURE_VENUES.length},1fr)`;
   const loadedHtml=loadedEvents.length?`<div style="margin-bottom:14px">
     <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:linear-gradient(135deg,#0a1628 0%,#1a3a6e 100%);border-radius:8px;margin-bottom:8px">
-      <img src="${LR_LOGO}" style="height:22px;width:auto;object-fit:contain" onerror="this.style.display='none'">
+      <img src="${LR_LOGO}" class="loaded-logo-white" style="height:22px;width:auto;object-fit:contain" onerror="this.style.display='none'">
       <span style="font-size:12.5px;font-weight:800;color:var(--theme-loadedrewards);text-transform:uppercase;letter-spacing:.04em">Loaded Rewards</span>
     </div>
     ${loadedEvents.map(renderMonthlyDealsLoadedCard).join('')}
@@ -9333,16 +9333,17 @@ function renderCalMonthlyFeatures(){
     <div style="margin:0 -16px 8px;padding:6px 16px;background:${MONTHLY_DEALS_NAVY};color:${MONTHLY_DEALS_ACCENT};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Venue</div>
     <div style="display:grid;grid-template-columns:${colTemplate};gap:4px;align-items:center">
       <div></div>
-      ${MONTHLY_FEATURE_VENUES.map(v=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;text-align:center">${escapeAttr(MONTHLY_FEATURE_VENUE_LABELS[v]||v)}</div>`).join('')}
+      ${MONTHLY_FEATURE_VENUES.map(v=>`<div style="font-size:10px;font-weight:700;color:${vColor(v).c};text-transform:uppercase;letter-spacing:.04em;text-align:center">${escapeAttr(MONTHLY_FEATURE_VENUE_LABELS[v]||v)}</div>`).join('')}
       ${nouns.map(noun=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">${MONTHLY_FEATURE_WHOLE_LABEL.has(noun)?escapeAttr(noun):`Feature ${escapeAttr(noun)}`}</div>
         ${MONTHLY_FEATURE_VENUES.map(v=>{
           const ev=latestMatch(noun,v);
           const label=ev?(activityDetailLabel(ev)||ev.title):'';
-          // Same small tile look as the Loaded Rewards Offer Mechanics grid (.lr-offer-card-sm) —
-          // one consistent "pill" language across the whole Monthly Deals box, not a separate
-          // full-colour-fill style just for this grid. Venue is already clear from the column
-          // header, so no per-cell colour fill is needed here.
-          return`<div class="lr-offer-card lr-offer-card-sm${ev?' set':''}" ${ev?`onclick="showPop(${ev.id})" style="cursor:pointer"`:''} title="${escapeAttr(label)}">
+          const vc=vColor(v);
+          // Same small tile shape as the Loaded Rewards Offer Mechanics grid (.lr-offer-card-sm),
+          // but tinted per-venue (not the generic green "set" look) so a filled cell reads as
+          // belonging to its venue at a glance, same language as the rest of the Calendar.
+          const styleExtra=ev?`cursor:pointer;border-color:${vc.c}66;background:${vc.c}14`:'';
+          return`<div class="lr-offer-card lr-offer-card-sm" ${ev?`onclick="showPop(${ev.id})" style="${styleExtra}"`:''} title="${escapeAttr(label)}">
             <div class="lr-offer-card-value${ev?'':' lr-offer-empty'}" style="text-align:center">${escapeAttr(label||'Not set')}</div>
           </div>`;
         }).join('')}`).join('')}
