@@ -162,7 +162,7 @@ Standard Marketing API access is enough for reading your own accounts, so no Met
 - **Dashboard widget library:** "Live Meta Campaigns", a compact card with active count, spend MTD and the top 5 by spend, plus a "Full view →" link, the same pattern as the Loaded Rewards Campaigns widget
 - **Activity detail:** a "Meta performance" block when `MetaCampaignID` is set
 - **Post-Campaign Report:** pre-fills *Actual Spend* from Meta's lifetime spend for linked campaigns (still editable)
-- **Role gating:** spend, CPC, CPM, cost per result and ROAS use the existing financials gate (`report-financial` / `canSeeFinancials`). Non-financial roles still see reach, clicks, CTR and results.
+- **Role gating:** spend, budget, cost per lead or sale and ROAS are visible to finance roles (`canViewBudget`) and to **venue managers for their own venue** (confirmed 21 Oct 2026; their data only ever holds their venue). Other roles see reach, clicks, CTR, leads and sales only.
 
 ## 7. Phasing
 

@@ -7947,6 +7947,10 @@ function pmTotals(campaigns,win){
 }
 function pmLinkedEvent(c){return EVENTS.find(e=>e.metaCampaignId&&String(e.metaCampaignId)===String(c.id));}
 
+// Spend follows the Hub's finance gate, except venue managers also see spend for their own venue —
+// their snapshot only ever holds that venue's campaigns, so this never exposes another venue.
+function pmCanSeeSpend(){return !!rolePermissions().canViewBudget||!!currentVenueAccess;}
+
 function sortPaidMedia(key){
   if(pmSortKey===key)pmSortDir=pmSortDir==='asc'?'desc':'asc';
   else{pmSortKey=key;pmSortDir=['name','venue','status','end'].includes(key)?'asc':'desc';}
@@ -7956,7 +7960,7 @@ function sortPaidMedia(key){
 async function renderPaidMedia(){
   if(!isAuthed)return;
   const snap=await loadMetaSnapshot();
-  const canSeeFinancials=!!rolePermissions().canViewBudget;
+  const canSeeFinancials=pmCanSeeSpend();
   if(!pmSortKey)pmSortKey=canSeeFinancials?'spend':'clicks';
   const sub=document.getElementById('pmSub'),notice=document.getElementById('pmNotice');
   if(!snap){sub.textContent='Not connected';notice.innerHTML='';document.getElementById('pmBody').innerHTML='<tr><td style="padding:20px;text-align:center;color:var(--text3)">Meta data isn\'t connected yet.</td></tr>';return;}
@@ -8089,7 +8093,7 @@ async function renderDashPaidMedia(){
   if(!widgetAllowed('paidmedia')){el.innerHTML='';return;}
   const snap=await loadMetaSnapshot();
   if(!snap){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Meta data isn\'t connected yet</div>';return;}
-  const canSeeFinancials=!!rolePermissions().canViewBudget;
+  const canSeeFinancials=pmCanSeeSpend();
   const venue=document.getElementById('ovVenue')?.value||'';
   const active=snap.campaigns.filter(c=>c.status==='ACTIVE'&&(!venue||c.venue===venue));
   const mtd=pmTotals(active,'mtd');
