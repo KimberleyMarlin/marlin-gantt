@@ -6780,7 +6780,13 @@ async function pickEvPhoto(evId,url,driveId,itemId){
   try{
     const token=await getToken(true);
     const ref=driveId&&itemId?JSON.stringify({driveId,itemId}):'';
-    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,token,{EventImageURL:url,EventImageRef:ref});
+    // Event Image URL is a Hyperlink column in SharePoint (confirmed — not the "Single line of
+    // text" that the old length-limit theory assumed). Graph's Hyperlink/Picture column type needs
+    // a {Url, Description} object on write, never a bare string — sending a plain string is exactly
+    // what produced the opaque "generalException" 500, same opaque-error pattern as the RecurringDay
+    // and ProductLookupId bugs, just a type-shape mismatch instead of a length or multi-value one.
+    // Clearing the photo (url='') sends null, which is how a Hyperlink column gets blanked.
+    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,token,{EventImageURL:url?{Url:url,Description:''}:null,EventImageRef:ref});
     const urlFailed=result.failed.find(f=>f.field==='EventImageURL');
     if(urlFailed){
       const m=(urlFailed.error||'').match(/Field '([^']+)' is not recognized/);
@@ -9295,7 +9301,9 @@ function renderMonthlyDealsLoadedCard(ev){
       <div style="display:flex;flex-direction:column;gap:5px;min-width:0;flex:1">
         ${fields.map(([label,value])=>`<div><div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--theme-loadedrewards)">${escapeAttr(label)}</div><div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeAttr(value)||'&nbsp;'}</div></div>`).join('')}
       </div>
-      ${artworkUrl?`<img src="${escapeAttr(artworkUrl)}" style="width:60px;height:60px;object-fit:cover;border-radius:9px;border:1px solid rgba(255,255,255,.24);flex-shrink:0" onerror="this.remove()">`:''}
+      ${artworkUrl?`<div style="background:#fff;border-radius:3px;box-shadow:0 2px 6px rgba(0,0,0,.35);flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden" title="Artwork">
+        <img src="${escapeAttr(artworkUrl)}" style="max-height:104px;max-width:90px;width:auto;height:auto;display:block;object-fit:contain" onerror="this.parentElement.remove()">
+      </div>`:''}
     </div>
     <div style="flex:1;min-width:0">${loadedOfferGridHtml(ev,variants,true)}</div>
   </div>`;
@@ -11739,7 +11747,8 @@ const SCHEMA_TOOL_LISTS={
   suppliers:{label:'Suppliers',listIdKey:'suppliers'},
   offerVariants:{label:'Offer Variants',listIdKey:'offerVariants'},
   offerMechanics:{label:'Offer Mechanics',listIdKey:'offerMechanics'},
-  calendarRef:{label:'Calendar Reference',listIdKey:'calendarRef'}
+  calendarRef:{label:'Calendar Reference',listIdKey:'calendarRef'},
+  comments:{label:'Activity Comments',listIdKey:'comments'}
 };
 // Columns the app already knows it wants but can't confirm exist everywhere — same idea as
 // UNCONFIRMED_COLUMNS for campaigns, extended to other lists (e.g. ParentTaskId for subtasks).
@@ -11752,6 +11761,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'EventImageURL',displayName:'Event Image URL',type:'text',purpose:'Featured photo link, set from the Activity\'s own folder, a linked artwork folder, or the Digital Media library — shown on the Calendar hover card and Artwork feed.'},
   {listKey:'campaigns',name:'EventImageRef',displayName:'Event Image Reference',type:'text',purpose:'Stable {driveId,itemId} JSON reference for the featured image, so a fresh thumbnail can be resolved later instead of relying only on EventImageURL, which can expire.'},
   {listKey:'campaigns',name:'LinkedArtworkFolderURL',displayName:'Linked Artwork Folder URL',type:'text',purpose:'A second, independently-linkable SharePoint folder for completed artwork, separate from the Power Automate–created JobFolderURL.'},
+  {listKey:'comments',name:'ReadBy',displayName:'Read By',type:'text',purpose:'Comma-separated list of names who have read this comment — written by markCommentRead() so unread badges clear once the recipient opens it. Missing on the live list today, which is why read receipts silently fail.'},
   {listKey:'campaigns',name:'RecurringEvent',displayName:'Recurring Event',type:'choice',choices:'Yes',purpose:'Independent Yes/No toggle for whether the activity repeats — separate from Event Format so a ticketed event can also be recurring.'},
   // Text, not Choice — Microsoft Graph's column-creation API has no multi-select facet for Choice
   // columns (only Lookup columns can be created with allowMultipleValues), so a genuine SharePoint
