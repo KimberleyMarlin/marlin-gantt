@@ -197,6 +197,9 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .tbl th.sortable{cursor:pointer;user-select:none;transition:color .15s,background .15s}
 .tbl th.sortable:hover,.tbl th.sortable:focus{color:var(--accent);background:var(--accent-bg);outline:none}
 .sort-mark{display:inline-block;min-width:10px;margin-left:4px;color:var(--accent);font-size:10px}
+.pm-charts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:900px){.pm-charts{grid-template-columns:1fr}}
+.pm-num{text-align:right;font-family:'DM Mono',monospace;font-size:12px;white-space:nowrap}
 .tbl td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:12.5px;vertical-align:middle}
 .tbl tr:last-child td{border-bottom:none}
 .tbl tr:hover td{background:var(--surface2);cursor:pointer}
@@ -743,6 +746,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <button class="sb-item" data-p="ticketing" onclick="nav(this)"><span class="ico">🎟</span>Ticketing</button>
     <button class="sb-item" data-p="specials" onclick="nav(this)"><span class="ico">✧</span>Specials</button>
     <button class="sb-item" data-p="social" onclick="nav(this)"><span class="ico">◇</span>Social</button>
+    <button class="sb-item" data-p="paidmedia" onclick="nav(this)"><span class="ico">📈</span>Paid Media</button>
     <div class="sb-sec">Business</div>
     <button class="sb-item" data-p="crm" onclick="nav(this)"><span class="ico">◉</span>Contacts &amp; Mailing</button>
     <button class="sb-item" data-p="venues" onclick="nav(this)"><span class="ico">◎</span>Venues</button>
@@ -974,6 +978,16 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <details class="dash-card">
           <summary class="card-h"><span class="card-title">⭐ Loaded Rewards Campaigns</span><span class="card-act" onclick="event.preventDefault();navTo('loaded')">Full view →</span></summary>
           <div id="ovLoadedCampaigns"><div class="loading"><div class="spinner"></div></div></div>
+        </details>
+      </div>
+
+      <!-- WIDGET LIBRARY: LIVE META CAMPAIGNS — compact read of the same snapshot the Paid Media
+           page uses. Permission-gated to roles that can open Paid Media. -->
+      <div class="dash-widget" data-widget="paidmedia" style="margin-bottom:12px">
+        <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
+        <details class="dash-card">
+          <summary class="card-h"><span class="card-title">📈 Live Meta Campaigns</span><span class="card-act" onclick="event.preventDefault();navTo('paidmedia')">Full view →</span></summary>
+          <div id="ovPaidMedia"><div class="loading"><div class="spinner"></div></div></div>
         </details>
       </div>
 
@@ -1397,6 +1411,45 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <div class="panel" id="p-social">
     <div class="ph"><div><div class="ph-eye">Social Media</div><div class="ph-title">Social <em>Calendar</em></div></div><div class="ph-right"><button class="tb-btn p">+ Post</button></div></div>
     <div class="ca" id="socialCal"></div>
+  </div>
+
+  <!-- PAID MEDIA — Meta (Facebook / Instagram) campaign reporting. Reads a snapshot written by a
+       scheduled sync (see docs/META_CAMPAIGNS_PLAN.md); until that sync exists it renders
+       buildSampleMetaSnapshot(), which produces the exact same shape. -->
+  <div class="panel" id="p-paidmedia">
+    <div class="ph">
+      <div><div class="ph-eye">Meta Ads</div><div class="ph-title">Paid <em>Media</em></div><div class="ph-sub" id="pmSub">Loading…</div></div>
+      <div class="ph-right">
+        <div class="chips" id="pmWindowChips">
+          <div class="chip" data-v="last7" onclick="pickChip(this,'pmWindowChips',renderPaidMedia)">7 days</div>
+          <div class="chip on" data-v="last30" onclick="pickChip(this,'pmWindowChips',renderPaidMedia)">30 days</div>
+          <div class="chip" data-v="mtd" onclick="pickChip(this,'pmWindowChips',renderPaidMedia)">Month to date</div>
+          <div class="chip" data-v="lifetime" onclick="pickChip(this,'pmWindowChips',renderPaidMedia)">Lifetime</div>
+        </div>
+      </div>
+    </div>
+    <div class="ca">
+      <div id="pmNotice"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px">
+        <div class="chips" id="pmVenueChips"></div>
+        <div class="chips" id="pmStatusChips">
+          <div class="chip on" data-v="ACTIVE" onclick="pickChip(this,'pmStatusChips',renderPaidMedia)">Active</div>
+          <div class="chip" data-v="PAUSED" onclick="pickChip(this,'pmStatusChips',renderPaidMedia)">Paused</div>
+          <div class="chip" data-v="COMPLETED" onclick="pickChip(this,'pmStatusChips',renderPaidMedia)">Ended</div>
+          <div class="chip" data-v="" onclick="pickChip(this,'pmStatusChips',renderPaidMedia)">All</div>
+        </div>
+      </div>
+      <div class="stats" id="pmStats"></div>
+      <div class="card" style="margin-bottom:12px"><div class="tbl-wrap"><table class="tbl" id="pmTable">
+        <thead><tr id="pmHead"></tr></thead>
+        <tbody id="pmBody"><tr><td><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+      </table></div></div>
+      <div class="pm-charts">
+        <div class="card"><div class="card-h"><span class="card-title" id="pmVenueChartTitle">Spend by venue</span></div><div style="height:220px;padding:10px"><canvas id="pmVenueChart"></canvas></div></div>
+        <div class="card"><div class="card-h"><span class="card-title" id="pmTrendChartTitle">Daily trend · last 30 days</span></div><div style="height:220px;padding:10px"><canvas id="pmTrendChart"></canvas></div></div>
+      </div>
+      <div id="pmUnlinked" style="margin-top:12px"></div>
+    </div>
   </div>
 
   <!-- VENUES -->
@@ -2935,7 +2988,7 @@ const ROLE_CONFIG={
   },
   general:{
     canEdit:false, canApprove:false, canViewBudget:false, canViewAll:false,
-    hidePanels:['crossvenue','pipeline','loaded','ticketing','workload','social','budget','venues','sponsorships','specials','projects','approvals','crm'], defaultPanel:'overview'
+    hidePanels:['crossvenue','pipeline','loaded','ticketing','workload','social','budget','venues','sponsorships','specials','projects','approvals','crm','paidmedia'], defaultPanel:'overview'
   }
 };
 
@@ -6231,7 +6284,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',appearance:'<em>Appearance</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',appearance:'<em>Appearance</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>',paidmedia:'Paid <em>Media</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -6287,7 +6340,7 @@ function showPanel(id){
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
   // Activities consolidation: Pipeline is a sub-view of 'campaigns' now — hide it when navigating elsewhere.
   if(id!=='campaigns'){const pipePanel=document.getElementById('p-pipeline');if(pipePanel)pipePanel.style.display='none';}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,appearance:renderAppearanceSettings,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging};
+  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,appearance:renderAppearanceSettings,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging,paidmedia:renderPaidMedia};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
   // Skip this for 'campaigns' while its Pipeline sub-view is showing — that block just hid the
@@ -7411,17 +7464,17 @@ function renderCrossVenue(){
 
 // ── Dashboard widget order (localStorage persisted, per signed-in user) ──
 // Recommended layout for a brand-new user with no saved preferences yet.
-const DEFAULT_WIDGET_ORDER=['needsaction','mypriorities','next14days','thismonth','newsubmissions','mytasks','upcominglaunches','overdueblocked','reportrequired','keydates','teamworkload','projectprogress','projectsmonth','loadedcampaigns','venuesnap','charts'];
+const DEFAULT_WIDGET_ORDER=['needsaction','mypriorities','next14days','thismonth','newsubmissions','mytasks','upcominglaunches','overdueblocked','reportrequired','keydates','teamworkload','projectprogress','projectsmonth','loadedcampaigns','paidmedia','venuesnap','charts'];
 // Widgets added in this round that start hidden even in the recommended layout — available any
 // time from the Widget Library, but don't crowd the default view uninvited.
-const DEFAULT_HIDDEN_WIDGETS=['upcominglaunches','overdueblocked','teamworkload','projectprogress','loadedcampaigns'];
+const DEFAULT_HIDDEN_WIDGETS=['upcominglaunches','overdueblocked','teamworkload','projectprogress','loadedcampaigns','paidmedia'];
 const ALL_WIDGET_IDS=[...new Set([...DEFAULT_WIDGET_ORDER,...DEFAULT_HIDDEN_WIDGETS])];
 // Human-readable names for the Widget Library "add section" picker in Customize mode.
-const WIDGET_TITLES={needsaction:'🔴 Needs Action',mypriorities:'⚡ My Priorities',next14days:'⏱ Next 14 Days',thismonth:"📅 This Month's Overview",newsubmissions:'📥 New Submissions',mytasks:'☐ My Tasks',overdueblocked:'🚫 Overdue / Blocked Work',upcominglaunches:'🚀 Upcoming Launches',reportrequired:'📊 Reporting & Performance',keydates:'🗓 Key Dates Ahead',teamworkload:'👥 Team Workload',projectprogress:'◧ Project Progress',projectsmonth:'🗓 Projects This Month',loadedcampaigns:'⭐ Loaded Rewards Campaigns',venuesnap:'◉ Venue Activity Snapshot',charts:'Existing Charts & Graphs'};
+const WIDGET_TITLES={needsaction:'🔴 Needs Action',mypriorities:'⚡ My Priorities',next14days:'⏱ Next 14 Days',thismonth:"📅 This Month's Overview",newsubmissions:'📥 New Submissions',mytasks:'☐ My Tasks',overdueblocked:'🚫 Overdue / Blocked Work',upcominglaunches:'🚀 Upcoming Launches',reportrequired:'📊 Reporting & Performance',keydates:'🗓 Key Dates Ahead',teamworkload:'👥 Team Workload',projectprogress:'◧ Project Progress',projectsmonth:'🗓 Projects This Month',loadedcampaigns:'⭐ Loaded Rewards Campaigns',paidmedia:'📈 Live Meta Campaigns',venuesnap:'◉ Venue Activity Snapshot',charts:'Existing Charts & Graphs'};
 // Widgets that surface data gated behind a specific panel permission — stays hidden for any role
 // that couldn't open that panel directly, even if the id is sitting in a saved order/hidden list
 // (e.g. from before a role change). This is the real security boundary, not just UI tidiness.
-const WIDGET_PERMISSIONS={teamworkload:'workload',projectprogress:'projects',projectsmonth:'projects',loadedcampaigns:'loaded'};
+const WIDGET_PERMISSIONS={teamworkload:'workload',projectprogress:'projects',projectsmonth:'projects',loadedcampaigns:'loaded',paidmedia:'paidmedia'};
 function widgetAllowed(id){const panel=WIDGET_PERMISSIONS[id];return !panel||canAccessPanel(panel);}
 function dashStorageKey(){return 'marlin_dash_layout_'+(currentUserEmail||'anon');}
 function getWidgetOrder(){
@@ -7771,6 +7824,289 @@ function renderDashLoadedCampaigns(){
   </div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No active Loaded Rewards campaigns</div>';
 }
 
+// ═══════════════════════════════════════
+// PAID MEDIA (Meta Ads reporting)
+// The Hub never talks to Meta directly — Meta's token can't live in a public static page. A
+// scheduled sync (planned: GitHub Action, see docs/META_CAMPAIGNS_PLAN.md) writes a snapshot into
+// SharePoint, one file per venue plus an all-venues file, and this page reads it. Until that
+// exists META_SNAPSHOT_SOURCE stays null and buildSampleMetaSnapshot() stands in with the same
+// shape, so swapping to live data is a loader change only.
+// ═══════════════════════════════════════
+const META_SNAPSHOT_SOURCE=null;
+let META_SNAPSHOT=null,pmSortKey='',pmSortDir='desc';
+const PM_OBJECTIVES={OUTCOME_SALES:'Sales',OUTCOME_LEADS:'Leads',OUTCOME_TRAFFIC:'Traffic',OUTCOME_AWARENESS:'Awareness',OUTCOME_ENGAGEMENT:'Engagement'};
+const PM_STATUS={ACTIVE:{t:'Active',cls:'t-g'},PAUSED:{t:'Paused',cls:'t-a'},COMPLETED:{t:'Ended',cls:'t-gr'},IN_REVIEW:{t:'In review',cls:'t-b'}};
+const PM_WINDOW_LABELS={last7:'last 7 days',last30:'last 30 days',mtd:'month to date',lifetime:'lifetime'};
+
+function buildSampleMetaSnapshot(){
+  // Seeded so the sample reads the same on every load instead of reshuffling.
+  let seed=20261021;
+  const rnd=()=>{seed=(seed+0x6D2B79F5)|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+  const today=new Date();today.setHours(0,0,0,0);
+  const day=offset=>{const d=new Date(today);d.setDate(d.getDate()+offset);return d;};
+  const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const accounts=[
+    ['act_100000000000001','The Left Bank'],['act_100000000000002','The Ravenswood'],['act_100000000000003','Whitfords Brewing Co'],
+    ['act_100000000000004','Hotel Darwin'],['act_100000000000005','Mustang Bar'],['act_100000000000006','Beerland Brewing']
+  ].map(([id,venue])=>({id,venue,name:venue+' Ads'}));
+  // [account index, name, objective, status, start offset, end offset (null = ongoing), budget type, budget amount, avg daily spend, stopped offset for paused]
+  const defs=[
+    [0,'LEFTBANK – Melbourne Cup Long Lunch – Sales','OUTCOME_SALES','ACTIVE',-20,14,'lifetime',1800,48],
+    [0,'LEFTBANK – Sunday Sessions – Traffic','OUTCOME_TRAFFIC','ACTIVE',-90,null,'daily',20,19],
+    [0,'LEFTBANK – Christmas Functions – Leads','OUTCOME_LEADS','ACTIVE',-10,45,'daily',30,28],
+    [1,'RAVENSWOOD – Trivia Tuesdays – Awareness','OUTCOME_AWARENESS','ACTIVE',-75,null,'daily',12,11],
+    [1,'RAVENSWOOD – Spring Menu Launch – Traffic','OUTCOME_TRAFFIC','COMPLETED',-50,-20,'lifetime',600,20],
+    [2,'WBC – Oktoberfest – Sales','OUTCOME_SALES','ACTIVE',-25,3,'lifetime',2200,76],
+    [2,'WBC – Brewery Tours – Leads','OUTCOME_LEADS','PAUSED',-40,null,'daily',18,17,-8],
+    [2,'WBC – Always-On Bookings – Traffic','OUTCOME_TRAFFIC','ACTIVE',-120,null,'daily',25,24],
+    [3,'DARWIN – Cup Day Marquee – Sales','OUTCOME_SALES','ACTIVE',-14,14,'lifetime',1200,42],
+    [3,'DARWIN – Wet Season Specials – Engagement','OUTCOME_ENGAGEMENT','ACTIVE',-30,null,'daily',10,9],
+    [4,'MUSTANG – Halloween Party – Sales','OUTCOME_SALES','ACTIVE',-12,11,'lifetime',900,37],
+    [4,'MUSTANG – Live Music Fridays – Traffic','OUTCOME_TRAFFIC','PAUSED',-60,null,'daily',15,14,-15],
+    [5,'BEERLAND – Brewery Launch – Awareness','OUTCOME_AWARENESS','COMPLETED',-58,-30,'lifetime',700,25]
+  ];
+  // Rough hospitality benchmarks per objective: CPM ($), CTR (%), lead rate, purchase rate per click.
+  const profile={OUTCOME_AWARENESS:[4,.6,0,.002],OUTCOME_ENGAGEMENT:[6,1.2,0,.004],OUTCOME_TRAFFIC:[9,1.8,.004,.012],OUTCOME_LEADS:[12,1.3,.09,0],OUTCOME_SALES:[14,1.5,0,.055]};
+  const sumWindow=(rows,days)=>{
+    const t=rows.reduce((a,r)=>({spend:a.spend+r.spend,impressions:a.impressions+r.impressions,clicks:a.clicks+r.clicks,leads:a.leads+r.leads,purchases:a.purchases+r.purchases,purchaseValue:a.purchaseValue+r.purchaseValue}),{spend:0,impressions:0,clicks:0,leads:0,purchases:0,purchaseValue:0});
+    t.reach=Math.round(t.impressions/(1.25+Math.min(days,90)*.02));
+    t.spend=Math.round(t.spend*100)/100;t.purchaseValue=Math.round(t.purchaseValue*100)/100;
+    t.ctr=t.impressions?Math.round(t.clicks/t.impressions*10000)/100:0;
+    t.cpc=t.clicks?Math.round(t.spend/t.clicks*100)/100:0;
+    t.cpm=t.impressions?Math.round(t.spend/t.impressions*100000)/100:0;
+    return t;
+  };
+  const yesterday=day(-1),monthStart=new Date(today.getFullYear(),today.getMonth(),1);
+  const campaigns=defs.map((d,i)=>{
+    const [ai,name,objective,status,startOff,endOff,budgetType,budgetAmt,avgSpend,stopOff]=d;
+    const [cpm,ctr,leadRate,buyRate]=profile[objective];
+    const lastOff=Math.min(-1,endOff??-1,stopOff??-1);
+    const rows=[];
+    for(let o=startOff;o<=lastOff;o++){
+      const spend=avgSpend*(.7+rnd()*.6);
+      const impressions=Math.round(spend/cpm*1000*(.85+rnd()*.3));
+      const clicks=Math.round(impressions*ctr/100*(.8+rnd()*.4));
+      const leads=Math.round(clicks*leadRate*(.5+rnd()));
+      const purchases=Math.round(clicks*buyRate*(.5+rnd()));
+      rows.push({date:iso(day(o)),spend:Math.round(spend*100)/100,impressions,clicks,leads,purchases,purchaseValue:purchases*(55+Math.round(rnd()*70))});
+    }
+    const since=from=>rows.filter(r=>r.date>=iso(from));
+    const lifeDays=rows.length||1;
+    return{
+      id:String(120210000000000+i*7919),
+      accountId:accounts[ai].id,venue:accounts[ai].venue,name,objective,status,
+      start:iso(day(startOff)),end:endOff==null?'':iso(day(endOff)),
+      budget:{type:budgetType,amount:budgetAmt},
+      metrics:{last7:sumWindow(since(day(-7)),7),last30:sumWindow(since(day(-30)),30),mtd:monthStart<=yesterday?sumWindow(since(monthStart),today.getDate()-1):sumWindow([],0),lifetime:sumWindow(rows,lifeDays)},
+      daily:rows.filter(r=>r.date>=iso(day(-60))).map(({date,spend,clicks,leads,purchases})=>({date,spend,clicks,leads,purchases}))
+    };
+  });
+  return{generatedAt:new Date(Date.now()-95*60000).toISOString(),currency:'AUD',sample:true,accounts,campaigns};
+}
+
+async function loadMetaSnapshot(){
+  // Live loader goes here once the sync writes to SharePoint: try the all-venues file, fall back
+  // to the signed-in venue's own file (SharePoint permissions decide which one opens).
+  if(!META_SNAPSHOT)META_SNAPSHOT=META_SNAPSHOT_SOURCE?null:buildSampleMetaSnapshot();
+  const snap=META_SNAPSHOT;
+  if(!snap)return null;
+  // Venue scoping is applied on every read, not baked into the cache — the dashboard widget can
+  // render before the signed-in role has resolved. With live data SharePoint does the real
+  // restricting; this mirrors it so the sample behaves the same way.
+  const venueOk=v=>currentVenueAccess?v===currentVenueAccess:!!rolePermissions().canViewAll;
+  return{...snap,accounts:snap.accounts.filter(a=>venueOk(a.venue)),campaigns:snap.campaigns.filter(c=>venueOk(c.venue))};
+}
+
+function pmMoney(n,cents){if(n==null||!isFinite(n))return'—';return'$'+Number(n).toLocaleString('en-AU',{minimumFractionDigits:cents?2:0,maximumFractionDigits:cents?2:0});}
+function pmInt(n){return n==null||!isFinite(n)?'—':Math.round(n).toLocaleString('en-AU');}
+function pmAgo(isoStr){
+  const mins=Math.max(0,Math.round((Date.now()-new Date(isoStr).getTime())/60000));
+  if(mins<60)return`${mins} min ago`;
+  const h=Math.round(mins/60);return h<48?`${h}h ago`:`${Math.round(h/24)} days ago`;
+}
+// Cost-per figures are derived here rather than stored, so the snapshot only carries raw counts.
+function pmDerive(m){
+  m=m||{};
+  return{...m,cpl:m.leads?m.spend/m.leads:null,cps:m.purchases?m.spend/m.purchases:null,roas:m.spend&&m.purchaseValue?m.purchaseValue/m.spend:null};
+}
+// Totals' cost per lead / sale / ROAS only count spend from campaigns that actually produced
+// leads or sales — otherwise awareness and traffic spend makes every lead look far dearer.
+function pmTotals(campaigns,win){
+  const t=campaigns.reduce((a,c)=>{
+    const m=c.metrics?.[win]||{};
+    ['spend','impressions','clicks','leads','purchases','purchaseValue'].forEach(k=>a[k]+=m[k]||0);
+    if(m.leads)a.leadSpend+=m.spend||0;
+    if(m.purchases)a.saleSpend+=m.spend||0;
+    return a;
+  },{spend:0,impressions:0,clicks:0,leads:0,purchases:0,purchaseValue:0,leadSpend:0,saleSpend:0});
+  t.ctr=t.impressions?t.clicks/t.impressions*100:0;
+  t.cpl=t.leads?t.leadSpend/t.leads:null;
+  t.cps=t.purchases?t.saleSpend/t.purchases:null;
+  t.roas=t.saleSpend&&t.purchaseValue?t.purchaseValue/t.saleSpend:null;
+  return t;
+}
+function pmLinkedEvent(c){return EVENTS.find(e=>e.metaCampaignId&&String(e.metaCampaignId)===String(c.id));}
+
+function sortPaidMedia(key){
+  if(pmSortKey===key)pmSortDir=pmSortDir==='asc'?'desc':'asc';
+  else{pmSortKey=key;pmSortDir=['name','venue','status','end'].includes(key)?'asc':'desc';}
+  renderPaidMedia();
+}
+
+async function renderPaidMedia(){
+  if(!isAuthed)return;
+  const snap=await loadMetaSnapshot();
+  const canSeeFinancials=!!rolePermissions().canViewBudget;
+  if(!pmSortKey)pmSortKey=canSeeFinancials?'spend':'clicks';
+  const sub=document.getElementById('pmSub'),notice=document.getElementById('pmNotice');
+  if(!snap){sub.textContent='Not connected';notice.innerHTML='';document.getElementById('pmBody').innerHTML='<tr><td style="padding:20px;text-align:center;color:var(--text3)">Meta data isn\'t connected yet.</td></tr>';return;}
+  const stale=Date.now()-new Date(snap.generatedAt).getTime()>24*3600000;
+  sub.textContent=`${snap.sample?'Sample data':'From Meta'} · updated ${pmAgo(snap.generatedAt)}${currentVenueAccess?' · '+shortVenue(currentVenueAccess):''}`;
+  notice.innerHTML=(snap.sample?`<div style="background:var(--gold-bg);border:1px solid rgba(184,134,11,.2);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--gold);line-height:1.6"><strong>Sample data.</strong> These aren't your real campaigns. Once the Meta sync is connected, live figures refresh here three times a day.</div>`:'')
+    +(stale?`<div style="background:var(--red-bg);border:1px solid rgba(192,57,43,.2);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--red);line-height:1.6"><strong>These numbers are out of date.</strong> The last sync from Meta was ${pmAgo(snap.generatedAt)}. Check the Meta sync before relying on them.</div>`:'');
+
+  // Venue chips are built once so the selected chip survives re-renders. Venue managers only ever
+  // receive their own venue, so there's nothing to choose between.
+  const venueChips=document.getElementById('pmVenueChips');
+  if(currentVenueAccess||snap.accounts.length<2)venueChips.innerHTML='';
+  else if(!venueChips.children.length){
+    venueChips.innerHTML=`<div class="chip on" data-v="" onclick="pickChip(this,'pmVenueChips',renderPaidMedia)">All venues</div>`+snap.accounts.map(a=>`<div class="chip" data-v="${escapeAttr(a.venue)}" onclick="pickChip(this,'pmVenueChips',renderPaidMedia)"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${vColor(a.venue).c};margin-right:5px"></span>${escapeAttr(shortVenue(a.venue))}</div>`).join('');
+  }
+  const venue=document.querySelector('#pmVenueChips .chip.on')?.dataset.v||'';
+  const status=document.querySelector('#pmStatusChips .chip.on')?.dataset.v??'ACTIVE';
+  const win=document.querySelector('#pmWindowChips .chip.on')?.dataset.v||'last30';
+  const venueSet=snap.campaigns.filter(c=>!venue||c.venue===venue);
+  const rows=venueSet.filter(c=>!status||c.status===status);
+  const t=pmTotals(rows,win);
+  const activeCount=venueSet.filter(c=>c.status==='ACTIVE').length;
+
+  const stat=(n,l,title)=>`<div class="stat" style="cursor:default"${title?` title="${escapeAttr(title)}"`:''}><div class="stat-n">${n}</div><div class="stat-l">${l}</div></div>`;
+  document.getElementById('pmStats').innerHTML=[
+    stat(activeCount,'Active campaigns'),
+    canSeeFinancials?stat(pmMoney(t.spend),'Spend'):'',
+    stat(pmInt(t.clicks),'Link clicks'),
+    stat(t.ctr.toFixed(2)+'%','CTR','Link clicks ÷ impressions'),
+    stat(pmInt(t.leads),'Leads','Facebook lead forms + website Lead events'),
+    canSeeFinancials?stat(pmMoney(t.cpl,true),'Cost / lead','Spend on campaigns that produced leads ÷ leads'):'',
+    stat(pmInt(t.purchases),'Sales','Purchase events from the Meta Pixel'),
+    canSeeFinancials?stat(pmMoney(t.cps,true),'Cost / sale','Spend on campaigns that produced sales ÷ sales'):'',
+    canSeeFinancials?stat(t.roas?t.roas.toFixed(1)+'×':'—','ROAS','Purchase value ÷ spend on campaigns that produced sales. Needs purchase values from the Pixel.'):''
+  ].join('');
+
+  const cols=[
+    {k:'name',l:'Campaign',w:'240px'},{k:'venue',l:'Venue'},{k:'status',l:'Status'},
+    {k:'budget',l:'Budget',fin:true,num:true},{k:'spend',l:'Spend',fin:true,num:true},
+    {k:'clicks',l:'Clicks',num:true},{k:'ctr',l:'CTR',num:true},
+    {k:'leads',l:'Leads',num:true},{k:'cpl',l:'Cost / lead',fin:true,num:true},
+    {k:'purchases',l:'Sales',num:true},{k:'cps',l:'Cost / sale',fin:true,num:true},{k:'roas',l:'ROAS',fin:true,num:true},
+    {k:'end',l:'Ends'},{k:'activity',l:'Hub Activity',nosort:true}
+  ].filter(c=>canSeeFinancials||!c.fin);
+  document.getElementById('pmHead').innerHTML=cols.map(c=>c.nosort?`<th>${c.l}</th>`:`<th class="sortable" tabindex="0" data-pm-sort="${c.k}" onclick="sortPaidMedia('${c.k}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortPaidMedia('${c.k}')}" aria-sort="${pmSortKey===c.k?(pmSortDir==='asc'?'ascending':'descending'):'none'}" style="${c.num?'text-align:right;':''}${c.w?'min-width:'+c.w:''}">${c.l}<span class="sort-mark">${pmSortKey===c.k?(pmSortDir==='asc'?'▲':'▼'):''}</span></th>`).join('');
+
+  const enriched=rows.map(c=>({c,m:pmDerive(c.metrics?.[win]),ev:pmLinkedEvent(c)}));
+  const sortVal=({c,m},k)=>({name:c.name,venue:c.venue,status:c.status,end:c.end||'9999',budget:c.budget?.amount})[k]??m[k];
+  enriched.sort((a,b)=>{
+    const va=sortVal(a,pmSortKey),vb=sortVal(b,pmSortKey);
+    if(va==null&&vb==null)return 0;if(va==null)return 1;if(vb==null)return -1;
+    const r=typeof va==='string'?va.localeCompare(vb):va-vb;
+    return pmSortDir==='asc'?r:-r;
+  });
+  const cell=(c,m,ev,k)=>{
+    switch(k){
+      case'name':return`<td><div class="tbl-name">${escapeAttr(c.name)}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">${PM_OBJECTIVES[c.objective]||escapeAttr(c.objective)}</div></td>`;
+      case'venue':return`<td><span style="display:flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:${vColor(c.venue).c};display:inline-block"></span>${escapeAttr(shortVenue(c.venue))}</span></td>`;
+      case'status':{const s=PM_STATUS[c.status]||{t:c.status,cls:'t-gr'};return`<td><span class="tag ${s.cls}">${escapeAttr(s.t)}</span></td>`;}
+      case'budget':return`<td class="pm-num">${c.budget?pmMoney(c.budget.amount)+`<span style="color:var(--text3);font-size:10px">${c.budget.type==='daily'?'/day':' total'}</span>`:'—'}</td>`;
+      case'spend':return`<td class="pm-num">${pmMoney(m.spend)}</td>`;
+      case'clicks':return`<td class="pm-num">${pmInt(m.clicks)}</td>`;
+      case'ctr':return`<td class="pm-num">${m.impressions?m.ctr.toFixed(2)+'%':'—'}</td>`;
+      case'leads':return`<td class="pm-num">${m.leads?pmInt(m.leads):'<span style="color:var(--text3)">—</span>'}</td>`;
+      case'cpl':return`<td class="pm-num">${m.cpl!=null?pmMoney(m.cpl,true):'<span style="color:var(--text3)">—</span>'}</td>`;
+      case'purchases':return`<td class="pm-num">${m.purchases?pmInt(m.purchases):'<span style="color:var(--text3)">—</span>'}</td>`;
+      case'cps':return`<td class="pm-num">${m.cps!=null?pmMoney(m.cps,true):'<span style="color:var(--text3)">—</span>'}</td>`;
+      case'roas':return`<td class="pm-num">${m.roas!=null?m.roas.toFixed(1)+'×':'<span style="color:var(--text3)">—</span>'}</td>`;
+      case'end':return`<td style="font-size:12px;color:var(--text2);white-space:nowrap">${c.end?fmtShort(c.end):'Ongoing'}</td>`;
+      case'activity':return`<td>${ev?`<a href="#" onclick="event.preventDefault();showPop(${ev.id})" style="font-size:12px;color:var(--accent)">↗ ${escapeAttr(ev.title)}</a>`:'<span style="font-size:11px;color:var(--text3)">Not linked</span>'}</td>`;
+    }
+  };
+  document.getElementById('pmBody').innerHTML=enriched.length
+    ?enriched.map(({c,m,ev})=>`<tr>${cols.map(col=>cell(c,m,ev,col.k)).join('')}</tr>`).join('')
+    :`<tr><td colspan="${cols.length}" style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No ${status?(PM_STATUS[status]?.t||'').toLowerCase()+' ':''}campaigns${venue?' for '+escapeAttr(shortVenue(venue)):''}</td></tr>`;
+
+  const unlinked=venueSet.filter(c=>c.status!=='COMPLETED'&&!pmLinkedEvent(c));
+  document.getElementById('pmUnlinked').innerHTML=unlinked.length?`<details class="card"><summary class="card-h" style="cursor:pointer"><span class="card-title">🔗 ${unlinked.length} campaign${unlinked.length===1?'':'s'} not linked to a Hub Activity</span></summary>
+    <div style="padding:10px 14px;font-size:12px;color:var(--text2);line-height:1.6">Linking a Meta campaign to its Activity shows its results on the Activity and fills in Actual Spend on the Post-Campaign Report. The link is stored in the Activity's <code>MetaCampaignID</code> field. One-click linking arrives once live Meta data is connected.</div>
+    ${unlinked.map(c=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-top:0.5px solid var(--border);font-size:12px"><span style="width:6px;height:6px;border-radius:50%;background:${vColor(c.venue).c};display:inline-block"></span><span style="flex:1">${escapeAttr(c.name)}</span><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${escapeAttr(c.id)}</span></div>`).join('')}
+  </details>`:'';
+
+  renderPaidMediaCharts(rows,win,canSeeFinancials);
+}
+
+function renderPaidMediaCharts(rows,win,canSeeFinancials){
+  if(typeof Chart==='undefined')return;
+  const isDark=window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const textColor=isDark?'#b4b2a9':'#88887e';
+  const gridColor=isDark?'rgba(255,255,255,.08)':'rgba(0,0,0,.06)';
+  const metricKey=canSeeFinancials?'spend':'clicks';
+  const metricLabel=canSeeFinancials?'Spend':'Link clicks';
+  document.getElementById('pmVenueChartTitle').textContent=`${metricLabel} by venue · ${PM_WINDOW_LABELS[win]}`;
+  document.getElementById('pmTrendChartTitle').textContent=`Daily ${metricLabel.toLowerCase()} vs leads + sales · last 30 days`;
+
+  const byVenue={};
+  rows.forEach(c=>{byVenue[c.venue]=(byVenue[c.venue]||0)+(c.metrics?.[win]?.[metricKey]||0);});
+  const venues=Object.keys(byVenue).sort((a,b)=>byVenue[b]-byVenue[a]);
+  destroyChart('pmVenueChart');
+  const ctx1=document.getElementById('pmVenueChart');
+  if(ctx1)_charts['pmVenueChart']=new Chart(ctx1,{
+    type:'bar',
+    data:{labels:venues.map(shortVenue),datasets:[{label:metricLabel,data:venues.map(v=>Math.round(byVenue[v])),backgroundColor:venues.map(v=>vColor(v).c+'cc'),borderColor:venues.map(v=>vColor(v).c),borderWidth:1,borderRadius:3,maxBarThickness:28}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>canSeeFinancials?pmMoney(ctx.parsed.x):pmInt(ctx.parsed.x)+' clicks'}}},
+      scales:{x:{beginAtZero:true,ticks:{color:textColor,font:{size:10},callback:v=>canSeeFinancials?'$'+v.toLocaleString('en-AU'):v.toLocaleString('en-AU')},grid:{color:gridColor}},y:{ticks:{color:textColor,font:{size:11}},grid:{display:false}}}}
+  });
+
+  const today=new Date();today.setHours(0,0,0,0);
+  const dates=[];
+  for(let o=30;o>=1;o--){const d=new Date(today);d.setDate(d.getDate()-o);dates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);}
+  const metric=Object.fromEntries(dates.map(d=>[d,0])),results=Object.fromEntries(dates.map(d=>[d,0]));
+  rows.forEach(c=>(c.daily||[]).forEach(r=>{if(r.date in metric){metric[r.date]+=r[metricKey]||0;results[r.date]+=(r.leads||0)+(r.purchases||0);}}));
+  destroyChart('pmTrendChart');
+  const ctx2=document.getElementById('pmTrendChart');
+  if(ctx2)_charts['pmTrendChart']=new Chart(ctx2,{
+    data:{labels:dates.map(fmtShort),datasets:[
+      {type:'line',label:metricLabel,data:dates.map(d=>Math.round(metric[d])),borderColor:'#0a6640',backgroundColor:'#0a664022',fill:true,tension:.3,pointRadius:0,borderWidth:2,yAxisID:'y'},
+      {type:'bar',label:'Leads + sales',data:dates.map(d=>results[d]),backgroundColor:'#b8860b88',borderRadius:2,yAxisID:'y1'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'bottom',labels:{color:textColor,font:{size:10},boxWidth:10}}},
+      scales:{x:{ticks:{color:textColor,font:{size:9},maxTicksLimit:8},grid:{display:false}},
+        y:{beginAtZero:true,position:'left',ticks:{color:textColor,font:{size:10},callback:v=>canSeeFinancials?'$'+v:v},grid:{color:gridColor}},
+        y1:{beginAtZero:true,position:'right',ticks:{color:textColor,font:{size:10},precision:0},grid:{display:false}}}}
+  });
+}
+
+async function renderDashPaidMedia(){
+  const el=document.getElementById('ovPaidMedia');if(!el)return;
+  if(!widgetAllowed('paidmedia')){el.innerHTML='';return;}
+  const snap=await loadMetaSnapshot();
+  if(!snap){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Meta data isn\'t connected yet</div>';return;}
+  const canSeeFinancials=!!rolePermissions().canViewBudget;
+  const venue=document.getElementById('ovVenue')?.value||'';
+  const active=snap.campaigns.filter(c=>c.status==='ACTIVE'&&(!venue||c.venue===venue));
+  const mtd=pmTotals(active,'mtd');
+  const key=canSeeFinancials?'spend':'clicks';
+  const top=active.slice().sort((a,b)=>(b.metrics?.last7?.[key]||0)-(a.metrics?.last7?.[key]||0)).slice(0,5);
+  const tile=(n,l)=>`<div style="padding:10px;background:var(--surface2);border-radius:6px"><div style="font-size:18px;font-weight:700;color:var(--text)">${n}</div><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em">${l}</div></div>`;
+  el.innerHTML=`${snap.sample?'<div style="padding:6px 12px;font-size:10.5px;color:var(--gold);background:var(--gold-bg)">Sample data until the Meta sync is connected</div>':''}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;padding:10px">
+      ${tile(active.length,'Active')}${canSeeFinancials?tile(pmMoney(mtd.spend),'Spend MTD'):tile(pmInt(mtd.clicks),'Clicks MTD')}${tile(pmInt(mtd.leads),'Leads MTD')}${tile(pmInt(mtd.purchases),'Sales MTD')}
+    </div>
+    ${top.length?top.map(c=>{const m=c.metrics?.last7||{};return`<div onclick="navTo('paidmedia')" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-top:0.5px solid var(--border);cursor:pointer">
+      <span style="width:7px;height:7px;border-radius:50%;background:${vColor(c.venue).c};flex-shrink:0"></span>
+      <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(c.name)}</div><div style="font-size:10px;color:var(--text3)">${escapeAttr(shortVenue(c.venue))} · ${PM_OBJECTIVES[c.objective]||''}</div></div>
+      <div style="font-size:11px;color:var(--text2);text-align:right;white-space:nowrap">${canSeeFinancials?pmMoney(m.spend):pmInt(m.clicks)+' clicks'}<div style="font-size:10px;color:var(--text3)">7 days</div></div>
+    </div>`;}).join(''):'<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No active Meta campaigns</div>'}`;
+}
+
 function renderOverview(){
   if(!isAuthed)return;
   const ovSel=document.getElementById('ovVenue');
@@ -7944,6 +8280,7 @@ function renderOverview(){
   renderDashProjectProgress();
   renderDashProjectsMonthStrip();
   renderDashLoadedCampaigns();
+  renderDashPaidMedia();
 
   setTimeout(()=>renderDashboardCharts(allEvts),50);
   applyDashboardLayout();

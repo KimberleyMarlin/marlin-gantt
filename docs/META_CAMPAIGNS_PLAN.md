@@ -168,7 +168,7 @@ Standard Marketing API access is enough for reading your own accounts, so no Met
 
 | Phase | What | Depends on |
 |---|---|---|
-| **1** | Paid Media panel + Dashboard widget built against a **sample snapshot** with the exact schema above | Nothing, so this can start now |
+| **1** ✅ | Paid Media panel + Dashboard widget built against a **sample snapshot** with the exact schema above (`buildSampleMetaSnapshot()` in `index.html`; set `META_SNAPSHOT_SOURCE` to switch to live) | Done 21 Oct 2026 |
 | **2** | Meta App + System User (§5A) | You, about 45 min |
 | **3** | Entra app + SharePoint permission (§5B) | M365 Global Admin |
 | **4** | GitHub Action sync script; swap sample data for the real SharePoint file | Phases 2 and 3 |
