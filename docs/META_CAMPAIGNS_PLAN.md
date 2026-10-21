@@ -1,9 +1,22 @@
 # Meta Campaigns Integration — Plan
 
 **Status:** Draft for review. Nothing is built yet.
-**Drafted:** 20 October 2026
+**Drafted:** 20 October 2026 · **Updated:** 21 October 2026 with Kimberley's answers (see §0)
 
 Goal: a **Paid Media** section in the Hub that shows active Meta (Facebook / Instagram) campaigns, their performance and reporting, by venue, and links them back to Hub Activities.
+
+---
+
+## 0. Decisions confirmed (21 Oct 2026)
+
+| Question | Answer | Effect on the plan |
+|---|---|---|
+| Ad accounts | One per venue, all under one Business Manager | Venue comes from the ad account, so no naming convention is needed to know the venue. One System User covers everything. |
+| Refresh | 2–3 times a day | Sync runs at about **7am, 12pm and 5pm AWST**. Cron is in UTC: `52 22,3,8 * * *`, which lands just before each hour. There's also a manual "Run now" button. |
+| Venue managers | See their own venue only | The sync writes **one file per venue** plus an all-venues file. SharePoint permissions restrict each file, so a VM can't read other venues' numbers even outside the Hub. Hiding things in the UI alone wouldn't be enough. See §4. |
+| Scope | Paid only for v1 | Organic Page and IG insights move to "Later". `pages_read_engagement` isn't requested. |
+| Results | Clicks, leads, sales | Shown as **three separate columns** (link clicks, leads, purchases) with cost per each, rather than a single "result" figure. ROAS only appears where purchase values come through. |
+| Pixels | Needs an audit first | Added as §9. Sales and leads numbers are only as good as the pixel setup. |
 
 ---
 
@@ -105,7 +118,11 @@ If all venues share **one** ad account, venue comes from the campaign naming con
 }
 ```
 
-One file per run, overwritten each time. Optionally, a dated copy is kept monthly (`meta-campaigns-2026-10.json`) so past months stay reportable after Meta's own windows roll over.
+Leads and sales are stored separately rather than as one `results` figure: `linkClicks`, `leads` (on-Facebook lead forms plus pixel `Lead` events), `purchases` and `purchaseValue`, each with its own cost-per figure.
+
+**Per-venue files:** `Integrations/Meta/<venue-slug>.json` for each venue, plus `Integrations/Meta/_all.json` for head office. Each venue file is shared with that venue's managers, and `_all.json` with head office only. The Hub loads `_all.json` when the user can open it and falls back to their own venue's file.
+
+Each file is overwritten on every run. Optionally, a dated copy is kept monthly (`meta-campaigns-2026-10.json`) so past months stay reportable after Meta's own windows roll over.
 
 ## 5. Setup steps (you click, I guide)
 
@@ -113,7 +130,7 @@ One file per run, overwritten each time. Optionally, a dated copy is kept monthl
 1. **Business Settings → Accounts → Ad accounts:** confirm every venue's ad account is owned by, or shared with, Marlin's Business Manager. If an agency owns an account, they need to share it with you as a partner.
 2. **developers.facebook.com → Create App →** type *Business*, link it to Marlin's Business Manager, then add the **Marketing API** product.
 3. **Business Settings → Users → System users →** create one (e.g. `marlin-hub-reporting`), assign it the ad accounts with **View performance** access and the Pages you report on.
-4. **Generate token** for that system user with `ads_read` and `read_insights` (plus `pages_read_engagement` if organic is wanted later). A system user token doesn't expire, so the dashboard won't stop working after 60 days.
+4. **Generate token** for that system user with `ads_read` (plus `business_management` so the sync can read pixel health, see §9). A system user token doesn't expire, so the dashboard won't stop working after 60 days.
 5. Paste the token and the ad account IDs into **GitHub → Settings → Secrets and variables → Actions**. Don't put them anywhere else.
 
 Standard Marketing API access is enough for reading your own accounts, so no Meta App Review is needed.
@@ -156,14 +173,49 @@ Standard Marketing API access is enough for reading your own accounts, so no Met
 | **3** | Entra app + SharePoint permission (§5B) | M365 Global Admin |
 | **4** | GitHub Action sync script; swap sample data for the real SharePoint file | Phases 2 and 3 |
 | **5** | Activity linking, Activity detail block, Post-Campaign pre-fill | Phase 4 |
+| **1b** | Pixel audit (§9). Can run in parallel with phase 1 | You + me, about 1 hour |
 | Later | Organic FB/IG insights, Google Ads (same pattern), creative-level breakdown | — |
 
-## 8. Open questions (need answers before the build)
+## 8. Open questions
 
-1. **Ad accounts:** one per venue, or one shared account for the group? Are any owned by an agency?
-2. **Naming convention:** do campaigns follow a consistent naming pattern today (venue / activity / objective)? If not, do you want to adopt one?
-3. **M365 admin:** who is the Global Admin who can do the one-time consent in §5B?
-4. **Refresh cadence:** daily at around 6am, or every 3–4 hours during business hours?
-5. **Visibility:** should venue managers see Paid Media for their own venue only, or is it head office only?
-6. **Scope of v1:** paid campaigns only, or include organic Page and Instagram post performance from day one?
-7. **Primary result:** which conversion matters most per venue (ticket purchases, bookings, leads, link clicks)? Is the Meta Pixel installed on the booking and ticketing sites?
+Answered on 21 Oct, see §0. Still open:
+
+1. **M365 admin:** who is the Global Admin who can do the one-time consent in §5B?
+2. **Activity linking:** happy to link Meta campaigns to Activities by setting `MetaCampaignID`? This would happen from the Unlinked callout, not by retyping IDs.
+3. **Ticketing platform:** which one handles ticket sales (needed for the pixel audit)?
+
+## 9. Meta Pixel audit
+
+Why it matters: **link clicks** are counted by Meta regardless. **Leads and sales** only show up if the pixel (or Conversions API) fires on the page where the lead or sale *completes*. For hospitality that page is usually inside a booking or ticketing widget, not the venue website, which is where most setups quietly break.
+
+### Sites to check
+
+| Venue | Website | Bookings | Tickets |
+|---|---|---|---|
+| The Left Bank | leftbank.com.au | NowBookIt | ? |
+| The Ravenswood | ravenswoodhotel.com.au | NowBookIt? | ? |
+| Whitfords Brewing Co | whitfordsbrewingco.com.au | NowBookIt | ? |
+| Hotel Darwin | thehoteldarwin.com.au | ? | ? |
+| Mustang Bar | mustangbar.com.au | ? | ? |
+| Beerland Brewing | (no URL in the Hub yet) | ? | ? |
+
+### Checklist per venue
+
+**In Events Manager** (business.facebook.com → Events Manager → Data sources):
+1. How many pixels/datasets exist? Ideally there's **one per venue**, owned by the Business Manager, not by an agency or a personal account.
+2. Is each pixel **assigned to the matching venue's ad account**? If not, Meta can't attribute that venue's sales.
+3. **Last received** date. Anything older than a few days means the pixel is installed nowhere live.
+4. **Events received:** expect `PageView`, then `ViewContent` / `InitiateCheckout`, then `Lead` and/or `Purchase`. A pixel that only shows `PageView` can't report sales.
+5. `Purchase` events carry **value + currency (AUD)**. Without those, ROAS is blank.
+6. **Event Match Quality** score on Purchase and Lead. Low scores mean sales are under-counted.
+7. **Domain verification** (Business Settings → Brand safety → Domains) for every venue domain.
+8. **Duplicates:** the same event firing twice, e.g. both a hard-coded pixel and a plugin. This shows as inflated counts.
+
+**On the websites** (Chrome + the *Meta Pixel Helper* extension, or Events Manager → Test events):
+1. Open the home page and check the right pixel ID fires `PageView`.
+2. Start a booking in the NowBookIt widget and complete a test booking. Does a `Lead` or `Purchase` (or a custom event) fire, and from which pixel?
+3. Repeat for a ticket purchase on the ticketing platform.
+4. Check NowBookIt's venue settings for a **Meta / Facebook Pixel ID** field, and the ticketing platform's event or organiser settings for the same. These are where the completed-booking and completed-sale events normally come from.
+
+### Automating it afterwards
+Once the System User token exists (§5A), the sync can also read each pixel's last-fired time and event counts from the Marketing API. The Paid Media panel could then show a small **Pixel health** row per venue, e.g. "🟢 Purchase events received today" or "🔴 No Lead events in 7 days", so breakages are noticed without someone re-auditing by hand.
