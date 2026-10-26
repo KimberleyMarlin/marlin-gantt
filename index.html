@@ -9316,13 +9316,21 @@ function renderCalMonthlyFeatures(){
   const monthStart=new Date(calYear,calMonth,1),monthEnd=new Date(calYear,calMonth+1,0);
   const inMonth=e=>new Date(e.start+'T00:00:00')<=monthEnd&&new Date((e.end||e.start)+'T00:00:00')>=monthStart;
   const candidates=EVENTS.filter(e=>!isArchived(e)&&(/of the month$/i.test(e.activitySubtype||'')||e.activitySubtype==="Chef's Special")&&inMonth(e));
+  // Food Special is day-specific (Taco Tuesday, Steak Night Wednesday, etc.) rather than one value
+  // per venue per month — the day comes from the Activity's own Recurring Schedule, same mechanism
+  // Weekly Specials already uses, not a separate "Monday Food Special" subtype per day. Each day that
+  // actually has one running this month becomes its own row below, so a venue can show up under
+  // several days but a cell still only ever holds one special, never several stacked together.
+  const foodSpecialCandidates=EVENTS.filter(e=>!isArchived(e)&&e.activitySubtype==='Food Special'&&e.recurringDay&&e.recurringDay.length&&inMonth(e));
+  const foodSpecialDays=[...new Set(foodSpecialCandidates.flatMap(e=>e.recurringDay.filter(d=>WEEKLY_SPECIALS_DAYS.includes(d))))]
+    .sort((a,b)=>WEEKLY_SPECIALS_DAYS.indexOf(a)-WEEKLY_SPECIALS_DAYS.indexOf(b));
   // Loaded's own group-wide supplier specials (this month: Hahn 3.5, Jameson) — identified by
   // Primary Brand = "Loaded Rewards", NOT by the loadedRewards flag. Every venue's own "Beer of the
   // Month" etc. is also flagged loadedRewards (it goes through the Loaded app too), but that's a
   // venue-specific deal, not one of Loaded's own group specials — those still only show in the
   // Venue grid below, never duplicated up here.
   const loadedEvents=EVENTS.filter(e=>!isArchived(e)&&e.brand==='Loaded Rewards'&&inMonth(e));
-  if(!candidates.length&&!loadedEvents.length)return'';
+  if(!candidates.length&&!foodSpecialCandidates.length&&!loadedEvents.length)return'';
   const latestMatch=(noun,venue)=>candidates.filter(e=>monthlyFeatureNoun(e.activitySubtype)===noun&&e.venue===venue)
     .sort((a,b)=>b.start.localeCompare(a.start))[0]||null;
   const nouns=[...new Set(candidates.map(e=>monthlyFeatureNoun(e.activitySubtype)))].sort((a,b)=>{
@@ -9330,6 +9338,13 @@ function renderCalMonthlyFeatures(){
     if(ai!==-1||bi!==-1)return(ai===-1?99:ai)-(bi===-1?99:bi);
     return a.localeCompare(b);
   });
+  // One row per noun ("Feature Beer", "Chef's Special", …), plus one row per Food Special day —
+  // same {label, match(venue)} shape either way, so the grid below doesn't need to care which kind
+  // of row it's drawing.
+  const rows=[
+    ...nouns.map(noun=>({label:MONTHLY_FEATURE_WHOLE_LABEL.has(noun)?noun:`Feature ${noun}`,match:v=>latestMatch(noun,v)})),
+    ...foodSpecialDays.map(day=>({label:`${day} Food Special`,match:v=>foodSpecialCandidates.filter(e=>e.venue===v&&e.recurringDay.includes(day)).sort((a,b)=>b.start.localeCompare(a.start))[0]||null}))
+  ];
   const colTemplate=`100px repeat(${MONTHLY_FEATURE_VENUES.length},1fr)`;
   const loadedHtml=loadedEvents.length?`<div style="margin-bottom:14px">
     <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:linear-gradient(135deg,#0a1628 0%,#1a3a6e 100%);border-radius:8px;margin-bottom:8px">
@@ -9341,14 +9356,14 @@ function renderCalMonthlyFeatures(){
   // Every venue is always a column and every feature a row — a venue with nothing set for a feature
   // this month shows an explicit "Not set" pill rather than an empty gap, so the template reads the
   // same whether a cell is filled or not.
-  const gridHtml=nouns.length?`<div>
+  const gridHtml=rows.length?`<div>
     <div style="margin:0 -16px 8px;padding:6px 16px;background:${MONTHLY_DEALS_NAVY};color:${MONTHLY_DEALS_ACCENT};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Venue</div>
     <div style="display:grid;grid-template-columns:${colTemplate};gap:4px;align-items:center">
       <div></div>
       ${MONTHLY_FEATURE_VENUES.map(v=>`<div style="font-size:10px;font-weight:700;color:${vColor(v).c};text-transform:uppercase;letter-spacing:.04em;text-align:center">${escapeAttr(MONTHLY_FEATURE_VENUE_LABELS[v]||v)}</div>`).join('')}
-      ${nouns.map(noun=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">${MONTHLY_FEATURE_WHOLE_LABEL.has(noun)?escapeAttr(noun):`Feature ${escapeAttr(noun)}`}</div>
+      ${rows.map(row=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">${escapeAttr(row.label)}</div>
         ${MONTHLY_FEATURE_VENUES.map(v=>{
-          const ev=latestMatch(noun,v);
+          const ev=row.match(v);
           const label=ev?(activityDetailLabel(ev)||ev.title):'';
           const vc=vColor(v);
           // Same small tile shape as the Loaded Rewards Offer Mechanics grid (.lr-offer-card-sm),
