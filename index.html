@@ -13116,6 +13116,16 @@ function monthYearFromDateInput(dateStr){
   const d=new Date(dateStr+'T00:00:00');
   return isNaN(d)?'':d.toLocaleString('en-AU',{month:'long',year:'numeric'});
 }
+// SharePoint/Windows forbid " * : < > ? / \ | in a file or folder name, and a name can't end in a
+// period or space. These can arrive via the free-text Specific Name field (e.g. a title typed with
+// a trailing full stop broke folder creation for "Wirra Wirra Wines..." — see the Oct 2026 Power
+// Automate failure emails, and a title with " | " separators broke it for another activity the
+// same week) — sanitise every piece before it ever reaches the Title, not just the join character.
+// Forbidden characters are dropped outright (not swapped for a dash), then any whitespace left
+// behind by that collapses to a single space.
+function sanitizeForFolderName(str){
+  return String(str||'').replace(/["*:<>?/\\|]/g,'').replace(/\s+/g,' ').trim().replace(/[.\s]+$/,'');
+}
 function composeAutoActivityTitle(){
   if(fTitleTouched)return;
   const venueOrBrand=document.getElementById('fBrand')?.value||document.getElementById('fVenue')?.value||'';
@@ -13123,14 +13133,12 @@ function composeAutoActivityTitle(){
   const typeLabel=document.getElementById('fTitleBase')?.value||document.getElementById('fActSubtype')?.value||document.getElementById('fActType')?.value||'';
   const specificName=document.getElementById('fDesc')?.value.trim()||'';
   const period=monthYearFromDateInput(document.getElementById('fStart')?.value||'');
-  const parts=[venueLabel,typeLabel,specificName,period].filter(Boolean);
+  const parts=[venueLabel,typeLabel,specificName,period].map(sanitizeForFolderName).filter(Boolean);
   const titleEl=document.getElementById('fTitle');
-  // "_" not " | " — the Activity Title feeds the Power Automate folder-creation flow directly,
-  // and "|" is one of the characters SharePoint/Windows forbid in a file or folder name, which was
-  // silently breaking folder creation for every new activity. No surrounding spaces, since the flow
-  // also turns spaces into underscores when building the folder name — " _ " would come out as
-  // doubled/tripled underscores there.
-  if(titleEl&&parts.length)titleEl.value=parts.join('_');
+  // Joined with plain spaces — readable as a Title, and the Power Automate flow already turns
+  // spaces into underscores itself when it builds the actual folder name, so this still comes out
+  // the same on the SharePoint side without the Title itself looking machine-generated.
+  if(titleEl&&parts.length)titleEl.value=sanitizeForFolderName(parts.join(' '));
 }
 
 function applyActivityTemplate(key){
