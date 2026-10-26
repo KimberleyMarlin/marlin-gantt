@@ -10681,10 +10681,14 @@ function renderMyWork(){
   Object.keys(prefs.order).forEach(bid=>{prefs.order[bid]=(prefs.order[bid]||[]).filter(k=>byKey[k]);});
   prefs.today=(prefs.today||[null,null,null]).map(k=>k&&byKey[k]?k:null);
   const customBuckets=prefs.buckets||[];
-  const allBuckets=[...MW_DEFAULT_BUCKETS,...customBuckets];
+  // On the Today tab, only these default buckets (plus any custom one) are shown — "This week" and
+  // "Later" are deliberately out of view there, so they must also not be offered as a drop target:
+  // a task dropped into a hidden bucket would vanish with no feedback that the move worked.
+  const todayTabBucketIds=new Set(['_blocked','_overdue','_today',...customBuckets.map(c=>c.id)]);
+  const allBuckets=_mwTab==='today'?[...MW_DEFAULT_BUCKETS.filter(b=>todayTabBucketIds.has(b.id)),...customBuckets]:[...MW_DEFAULT_BUCKETS,...customBuckets];
   const bucketOf=t=>prefs.placement[t.key]||mwAutoBucket(t,today);
   const scoped=_mwTab==='today'
-    ?searched.filter(t=>{const b=bucketOf(t);return b==='_overdue'||b==='_blocked'||b==='_today'||customBuckets.some(c=>c.id===b);})
+    ?searched.filter(t=>todayTabBucketIds.has(bucketOf(t)))
     :searched.filter(t=>bucketOf(t)!==null);
 
   if(todayWidgetEl){
