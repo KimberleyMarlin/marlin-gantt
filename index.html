@@ -9478,7 +9478,7 @@ function renderCalendar(){
     h+=`<div class="cal-day${isOther?' om':''}${isToday?' td':''}${isPublicHoliday?' cd-hol':''}${!inSelectedRange?' cal-day-out':''}" style="min-height:116px">
       <div class="cal-num">${day}</div>
       <div class="cal-month-details">
-      ${dayKeyDates.map(k=>`<div style="font-size:9px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:1px 4px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
+      ${dayKeyDates.map(k=>`<div class="cal-ev" style="color:${k.isPublicHoliday?'#dc2626':'#6366f1'};background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};cursor:default" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
       ${dayBriefsDue.map(ev=>`<div class="cal-ev" style="color:#7c3aed;background:#ede9fe" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✏️ Brief: ${ev.title}</div>`).join('')}
       ${dayMarketingStarts.map(ev=>`<div class="cal-ev" style="color:#9a6b0a;background:#fdf3d8" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
       ${shown.map(ev=>{
@@ -9645,7 +9645,7 @@ function renderCalendarWeek(){
 
     h+=`<div class="cal-day wk${isToday?' td':''}${!inSelectedRange?' cal-day-out':''}">
       <div class="cal-num">${d.toLocaleDateString('en-AU',{day:'numeric',month:'short'})}</div>
-      ${dayKeyDates.map(k=>`<div style="font-size:9.5px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:2px 5px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:5px;display:inline-block" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
+      ${dayKeyDates.map(k=>`<div class="cal-ev" style="color:${k.isPublicHoliday?'#dc2626':'#6366f1'};background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};cursor:default" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
       ${dayBriefsDue.map(ev=>`<div class="cal-ev" style="color:#7c3aed;background:#ede9fe" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✏️ Brief: ${ev.title}</div>`).join('')}
       ${dayMarketingStarts.map(ev=>`<div class="cal-ev" style="color:#9a6b0a;background:#fdf3d8" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
       ${dayEvts.length?dayEvts.map(ev=>{
