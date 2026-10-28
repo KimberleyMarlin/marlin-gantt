@@ -383,13 +383,16 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
    the full-size version stays as-is on the real Loaded Rewards page. */
 .lr-offer-wrap-sm{padding:6px 8px}
 .lr-offer-wrap-sm .lr-offer-head{margin-bottom:4px}
-.lr-offer-grid-sm{grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:3px}
-.lr-offer-card-sm{padding:3px 4px;border-radius:5px}
-.lr-offer-card-sm .lr-offer-card-top{gap:2px;margin-bottom:2px}
-.lr-offer-card-sm .lr-offer-card-icon{font-size:9px;width:11px}
-.lr-offer-card-sm .lr-offer-card-label{font-size:6.5px}
-.lr-offer-card-sm .lr-offer-card-value{font-size:8px}
-.lr-offer-card-sm .lr-offer-card-meta{font-size:7px;margin-top:1px}
+/* Fixed 5 columns, not auto-fit — LOADED_OFFER_DISPLAY is always exactly 9 tiles, so this wraps
+   to two rows (5 + 4) instead of squeezing all 9 into one, and each tile gets roughly double the
+   width to grow into. */
+.lr-offer-grid-sm{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.lr-offer-card-sm{padding:5px 6px;border-radius:5px}
+.lr-offer-card-sm .lr-offer-card-top{gap:3px;margin-bottom:3px}
+.lr-offer-card-sm .lr-offer-card-icon{font-size:11px;width:14px}
+.lr-offer-card-sm .lr-offer-card-label{font-size:8px}
+.lr-offer-card-sm .lr-offer-card-value{font-size:10px}
+.lr-offer-card-sm .lr-offer-card-meta{font-size:8.5px;margin-top:2px}
 .lr-schema-card{border:1px solid var(--border);border-radius:9px;background:var(--surface);margin-bottom:12px;overflow:hidden}
 .lr-schema-card summary{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;list-style:none;font-size:11px;font-weight:700;color:var(--text2)}
 .lr-schema-card summary::-webkit-details-marker{display:none}
