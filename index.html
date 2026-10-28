@@ -6947,6 +6947,72 @@ async function unlinkEvArtworkFolder(evId){
   }catch(e){alert('Could not unlink: '+e.message);}
 }
 
+// Job Folder — normally created by the Power Automate flow on approval, but that flow has failed
+// on a known-bad Activity Title (see sanitizeForFolderName) and presumably can fail for other
+// reasons too, leaving an activity with nothing in JobFolderURL. These two give a manual way out:
+// link an existing folder (same pattern as the Linked Artwork Folder tab above), or have the Hub
+// create one itself, directly under 00. Marketing Activities, with a name you can review and edit
+// first — never silently, and never overwriting a same-named folder (conflictBehavior 'fail').
+const MARKETING_ACTIVITIES_FOLDER_PATH='00. Marketing OS Files/00. Marketing Activities';
+function suggestedJobFolderName(ev){
+  const venueCode=VENUE_SHORT_CODES[ev.venue]||shortVenue(ev.venue)||'MISC';
+  const d=ev.start?new Date(ev.start+'T00:00:00'):null;
+  const monthYear=d&&!isNaN(d)?d.toLocaleString('en-AU',{month:'short'}).toUpperCase()+String(d.getFullYear()).slice(-2):'';
+  const titlePart=sanitizeForFolderName(ev.title||'').toUpperCase().replace(/\s+/g,'_');
+  return[venueCode,monthYear,titlePart].filter(Boolean).join('_');
+}
+async function linkEvJobFolder(evId){
+  const ev=EVENTS.find(x=>String(x.id)===String(evId));if(!ev)return;
+  const input=document.getElementById('evJobFolderInput-'+evId);
+  const url=(input?.value||'').trim();
+  const msgEl=document.getElementById('evJobFolderMsg-'+evId);
+  if(!url){if(msgEl){msgEl.textContent='Paste a SharePoint folder link first.';msgEl.className='form-msg err';}return;}
+  if(msgEl){msgEl.textContent='Checking folder…';msgEl.className='form-msg';}
+  try{
+    const token=await getToken();
+    const shareId=encodeSharingUrlForGraph(url);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$select=id,name,folder`,{headers:{Authorization:'Bearer '+token}});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    if(!data.folder)throw new Error('That link isn\'t a folder.');
+    const saveToken=await getToken(true);
+    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,saveToken,{JobFolderURL:{Url:url,Description:''}});
+    if(result.failed.length)throw new Error(result.failed[0].error||'Could not save the folder link.');
+    ev.jobFolderUrl=url;
+    showPop(evId);
+  }catch(e){
+    if(msgEl){msgEl.textContent='Could not link that folder: '+e.message;msgEl.className='form-msg err';}
+  }
+}
+async function createEvJobFolder(evId){
+  const ev=EVENTS.find(x=>String(x.id)===String(evId));if(!ev)return;
+  const name=prompt('Folder name (inside 00. Marketing Activities):',suggestedJobFolderName(ev));
+  if(!name||!name.trim())return;
+  const msgEl=document.getElementById('evJobFolderMsg-'+evId);
+  if(msgEl){msgEl.textContent='Creating folder…';msgEl.className='form-msg';}
+  try{
+    const token=await getToken(true);
+    const createRes=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/drive/root:/${encodeURIComponent(MARKETING_ACTIVITIES_FOLDER_PATH)}:/children`,{
+      method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({name:name.trim(),folder:{},'@microsoft.graph.conflictBehavior':'fail'})
+    });
+    const createText=await createRes.text();
+    if(!createRes.ok){
+      const parsed=(()=>{try{return JSON.parse(createText);}catch{return null;}})();
+      if(parsed?.error?.code==='nameAlreadyExists')throw new Error(`A folder named "${name.trim()}" already exists in 00. Marketing Activities — check there for the real one before creating another.`);
+      throw new Error(parsed?.error?.message||`HTTP ${createRes.status}`);
+    }
+    const created=JSON.parse(createText);
+    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,token,{JobFolderURL:{Url:created.webUrl,Description:''}});
+    if(result.failed.length)throw new Error(result.failed[0].error||'Folder was created, but saving the link back to this Activity failed — open '+created.webUrl+' and link it manually.');
+    ev.jobFolderUrl=created.webUrl;
+    showPop(evId);
+  }catch(e){
+    if(msgEl){msgEl.textContent='Could not create the folder: '+e.message;msgEl.className='form-msg err';}
+    else alert('Could not create the folder: '+e.message);
+  }
+}
+
 // Dynamic thumbnail resolution — a picked photo's cached EventImageURL is a signed Graph thumbnail
 // link that can expire; eventImageRef (driveId+itemId) is the stable identity that survives that.
 // Renders show the cached URL immediately (no blank flash while this resolves), then
@@ -14839,9 +14905,18 @@ function renderActivityDetail(id,mode){
   h+=`<div class="pop-field" style="margin-top:6px"><div class="pop-lbl">Job / Artwork Folder</div>`;
   if(ev.jobFolderUrl){
     h+=`<a href="${ev.jobFolderUrl}" target="_blank" style="font-size:12px;color:var(--accent);font-weight:600;text-decoration:none">📁 Open artwork folder →</a>`;
+  } else if(canEdit){
+    // The Power Automate flow normally creates this on approval, but it can fail (bad characters in
+    // the Title, a name collision, etc. — see sanitizeForFolderName). These give a manual way out
+    // instead of leaving the activity with no folder until someone remembers to chase it up.
+    h+=`<div style="font-size:11.5px;color:var(--text3);margin-bottom:6px">No folder yet — normally added by the Power Automate flow after approval. Link an existing one, or create it here.</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <input type="text" id="evJobFolderInput-${ev.id}" placeholder="Paste a SharePoint folder link…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text)">
+        <button class="btn btn-s" style="font-size:11px" onclick="linkEvJobFolder(${ev.id})">Link folder</button>
+      </div>
+      <button class="tb-btn" style="font-size:11px" onclick="createEvJobFolder(${ev.id})">📁+ Create folder here</button>
+      <div id="evJobFolderMsg-${ev.id}" class="form-msg" style="margin-top:6px"></div>`;
   } else {
-    // The existing Power Automate flow owns folder creation and writes JobFolderURL back later.
-    // The Hub must not claim it creates or rolls back folders itself.
     h+=`<div style="font-size:11.5px;color:var(--text3)">Folder pending — the Power Automate flow will place the link here after approval.</div>`;
   }
   if(ev.linkedArtworkFolderUrl)h+=`<div style="margin-top:4px"><a href="${ev.linkedArtworkFolderUrl}" target="_blank" style="font-size:11px;color:var(--accent)">🔗 Linked artwork folder →</a></div>`;
