@@ -1618,8 +1618,10 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <div id="personalTaskFormMsg" class="form-msg"></div>
         <div class="form-grid">
           <div class="form-group full"><label class="form-label">Task Title <span class="req">*</span></label><input class="form-input" id="ptTitle" type="text" placeholder="What do I need to remember or complete?"></div>
-          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="ptPriority"><option value="">No priority</option><option>Critical</option><option>Medium</option><option>High</option><option>Low</option></select></div>
+          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="ptPriority"><option value="">No priority</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></div>
           <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="ptDue" type="date"></div>
+          <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="ptStatus" onchange="togglePtBlockerField()"><option>Not Started</option><option>In Progress</option><option>Blocked</option><option>Done</option></select></div>
+          <div class="form-group full" id="ptBlockerWrap" style="display:none"><label class="form-label">What's it waiting on?</label><input class="form-input" id="ptBlocker" type="text" placeholder="e.g. Waiting on artwork from Perrin"></div>
           <div class="form-group full"><label class="form-label">Parent task</label><select class="form-select" id="ptParent"><option value="">None — top-level task</option></select><div class="field-help">Only tasks that aren't themselves a subtask can be picked as a parent.</div></div>
           <div class="form-group full"><label class="form-label">Linked activity</label><select class="form-select" id="ptLinkedActivity"><option value="">Not linked to an activity</option></select></div>
           <div class="form-group full"><label class="form-label">Project</label><select class="form-select" id="ptProject"><option value="">Not part of a project</option></select></div>
@@ -1663,6 +1665,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     </div>
     <div class="ca">
       <div id="schemaKnownGaps"></div>
+      <div id="schemaChoiceChecks" style="margin-top:16px"></div>
       <div class="card" style="margin-top:16px">
         <div class="card-h"><span class="card-title">Add a column to any list</span></div>
         <div class="card-body">
@@ -2570,6 +2573,11 @@ const LIST_IDS={
   calendarRef:'f0900598-ec20-4c79-a183-75dccb4658bb',
   sponsorships:null,
   comments:'4d41274c-6a2e-459c-8658-b5d4593aa175',
+  // My Work Plan 1.5 — one row per user (Title=lower-case email), syncing the My Work board layout
+  // (buckets/placement/order/Today's 3) across devices instead of leaving it in localStorage only.
+  // null until Kimberley creates "Hub User Prefs" via Schema Tools; everything using it falls back
+  // to localStorage-only (today's behaviour) while it's unset.
+  hubUserPrefs:null,
 };
 
 // Canonical taxonomy lists — single source of truth for the Submit form, the Activity detail
@@ -4867,6 +4875,7 @@ async function loadAll(){
   await loadKeyDates();
   await loadM365Users();
   await loadAllComments();
+  await loadHubUserPrefs();
   SPONSORSHIPS=[...STATIC_SPONSORSHIPS];
   updateAdminImportVisibility();
   generateNotifications();
@@ -10691,7 +10700,64 @@ function loadMyWorkPrefs(){
     return {buckets:raw.buckets||[],placement:raw.placement||{},order:raw.order||{},today:raw.today||[null,null,null],collapsed:raw.collapsed||{}};
   }catch(e){return{buckets:[],placement:{},order:{},today:[null,null,null],collapsed:{}};}
 }
-function saveMyWorkPrefs(p){try{localStorage.setItem(myWorkPrefsKey(),JSON.stringify(p));}catch(e){console.warn('Could not save My Work layout preference:',e);}}
+// My Work Plan 1.5 — localStorage is still the instant, always-available read/write path (every
+// render calls loadMyWorkPrefs() synchronously), but it's also mirrored to one row per user in the
+// Hub User Prefs list so the same layout shows up on another device. The save is debounced (not
+// one PATCH per drag/drop) and the load, on sign-in, only overwrites the local cache if the
+// server's copy is actually newer — so two tabs/devices converge on whichever was touched last,
+// not whichever happened to load first.
+let _hubPrefsItemId=null,_hubPrefsSyncTimer=null,_hubPrefsLoaded=false;
+function saveMyWorkPrefs(p){
+  const payload={...p,_updatedAt:new Date().toISOString()};
+  try{localStorage.setItem(myWorkPrefsKey(),JSON.stringify(payload));}catch(e){console.warn('Could not save My Work layout preference:',e);}
+  if(!LIST_IDS.hubUserPrefs||isPreviewMode||!currentUserEmail)return;
+  clearTimeout(_hubPrefsSyncTimer);
+  _hubPrefsSyncTimer=setTimeout(()=>syncHubUserPrefsNow(payload),1500);
+}
+async function syncHubUserPrefsNow(payload){
+  const email=(currentUserEmail||'').toLowerCase();if(!email)return;
+  const{_updatedAt,...prefsOnly}=payload;
+  const fields={PrefsJson:JSON.stringify(prefsOnly),UpdatedAt:_updatedAt};
+  try{
+    const token=await getToken(true);
+    if(_hubPrefsItemId){
+      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.hubUserPrefs}/items/${_hubPrefsItemId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+      if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+    }else{
+      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.hubUserPrefs}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{...fields,Title:email}})});
+      if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+      _hubPrefsItemId=String((await res.json()).id);
+    }
+  }catch(e){
+    // Fails silently from the user's point of view — localStorage already has this exact layout,
+    // so nothing is lost locally, it just won't have followed them to another device yet. Logged,
+    // not alerted, since this runs on every drag/drop and a popup for each would be unusable.
+    console.warn('Could not sync My Work layout to SharePoint (kept locally):',e);
+  }
+}
+// Called once at sign-in (loadAll()) — pulls this user's row, if any, and only overwrites the
+// localStorage cache when the server copy is strictly newer, so a layout change made offline or on
+// another device never gets silently clobbered by an older one.
+async function loadHubUserPrefs(){
+  if(_hubPrefsLoaded)return;
+  _hubPrefsLoaded=true;
+  if(!LIST_IDS.hubUserPrefs||isPreviewMode||!currentUserEmail)return;
+  const email=(currentUserEmail||'').toLowerCase();
+  try{
+    const token=await getToken();
+    const items=await fetchGraphItems(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.hubUserPrefs}/items?expand=fields&$top=200`,token);
+    const row=items.find(it=>String(it.fields?.Title||'').toLowerCase()===email);
+    if(!row)return; // no row yet — this user's first save (see syncHubUserPrefsNow) creates one
+    _hubPrefsItemId=row.id;
+    const serverUpdatedAt=row.fields?.UpdatedAt?new Date(row.fields.UpdatedAt).getTime():0;
+    let localUpdatedAt=0;
+    try{localUpdatedAt=new Date(JSON.parse(localStorage.getItem(myWorkPrefsKey())||'{}')._updatedAt||0).getTime()||0;}catch(e){}
+    if(serverUpdatedAt>localUpdatedAt){
+      const serverPrefs=JSON.parse(row.fields.PrefsJson||'{}');
+      localStorage.setItem(myWorkPrefsKey(),JSON.stringify({...serverPrefs,_updatedAt:row.fields.UpdatedAt}));
+    }
+  }catch(e){console.warn('Could not load Hub User Prefs:',e);}
+}
 function mwAutoBucket(t,today){
   if(['Done','Complete','Completed'].includes(t.status))return null;
   if(t.status==='Blocked')return '_blocked';
@@ -10755,6 +10821,7 @@ function renderMyWork(){
   const configNotes=[];
   if(!LIST_IDS.myTasks&&!isPreviewMode)configNotes.push('<strong>Shared Work Items are not connected yet.</strong> Your private tasks still work normally. Shared assignments will appear here once their own SharePoint list is approved and connected.');
   if(canSeePersonal&&PERSONAL_TASKS_ERROR)configNotes.push('<strong>Personal Tasks could not be loaded.</strong> '+escapeAttr(PERSONAL_TASKS_ERROR));
+  if(!LIST_IDS.hubUserPrefs&&!isPreviewMode)configNotes.push('This board\'s layout (buckets, order, Today\'s 3) is saved in this browser only for now — it won\'t follow you to another device until Hub User Prefs is set up.');
   if(configEl)configEl.innerHTML=configNotes.length?`<div style="background:var(--gold-bg);border:1px solid #ead9a3;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:11.5px;color:var(--text2);line-height:1.5">${configNotes.join('<br>')}</div>`:'';
 
   const tabToday=document.getElementById('myWorkTabToday'),tabAll=document.getElementById('myWorkTabAll');
@@ -10820,6 +10887,7 @@ function renderMyWork(){
             ${t.project?`<span style="font-size:10px;color:var(--text3)">${escapeAttr(t.project)}</span>`:''}
           </div>
           ${t.reasons&&t.reasons.length?`<div style="font-size:10px;color:var(--red);margin-top:3px" title="${escapeAttr(t.reasons.join(' · '))}">⚠ ${escapeAttr(t.reasons[0])}${t.reasons.length>1?` (+${t.reasons.length-1} more)`:''}</div>`:''}
+          ${t.status==='Blocked'&&t.blocker?`<div style="font-size:10px;color:#c0392b;margin-top:3px">🚧 Waiting on: ${escapeAttr(t.blocker)}</div>`:''}
         </div>
         ${t.priority?`<span class="tag ${priTag[t.priority]||'t-gr'}" style="flex-shrink:0">${escapeAttr(t.priority)}</span>`:''}
         <span style="font-family:'DM Mono',monospace;font-size:10px;color:${late?'var(--red)':'var(--text3)'};font-weight:${late?'700':'400'};flex-shrink:0;min-width:44px;text-align:right">${t.due?escapeAttr(fmtShort(t.due)):'—'}</span>
@@ -11503,10 +11571,16 @@ function populatePersonalTaskProjectSelect(preselect){
   sel.innerHTML='<option value="">Not part of a project</option>'+sorted.map(p=>`<option value="${p.id}">${escapeAttr(p.title)}</option>`).join('');
   sel.value=preselect||'';
 }
+function togglePtBlockerField(){
+  const wrap=document.getElementById('ptBlockerWrap');if(!wrap)return;
+  wrap.style.display=document.getElementById('ptStatus')?.value==='Blocked'?'':'none';
+}
 function openAddPersonalTask(parentId,linkedActivityId,projectId){
   if(!canAccessPanel('personaltasks'))return;
-  ['ptTitle','ptDue','ptNotes','ptEditId'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ptTitle','ptDue','ptNotes','ptEditId','ptBlocker'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('ptPriority').value='Medium';
+  document.getElementById('ptStatus').value='Not Started';
+  togglePtBlockerField();
   populatePersonalTaskParentSelect('',parentId||'');
   populatePersonalTaskActivitySelect(linkedActivityId||'');
   populatePersonalTaskProjectSelect(projectId||'');
@@ -11520,6 +11594,12 @@ function openAddPersonalTask(parentId,linkedActivityId,projectId){
 function openEditPersonalTask(id){
   const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task)return;
   document.getElementById('ptTitle').value=task.title||'';document.getElementById('ptDue').value=task.due||'';document.getElementById('ptNotes').value=task.notes||'';document.getElementById('ptPriority').value=['Critical','High','Medium','Low'].includes(task.priority)?task.priority:'';document.getElementById('ptEditId').value=task.id;
+  // 'Converted' isn't one of this dropdown's options (it's set only by convertPersonalTaskToShared,
+  // never picked by hand) — show it as Done here; savePersonalTask() preserves the real Converted
+  // status on save regardless of what the dropdown shows, so this never gets silently overwritten.
+  document.getElementById('ptStatus').value=['Not Started','In Progress','Blocked','Done'].includes(task.status)?task.status:'Done';
+  document.getElementById('ptBlocker').value=task.blocker||'';
+  togglePtBlockerField();
   populatePersonalTaskParentSelect(task.id,task.parentId||'');
   populatePersonalTaskActivitySelect(task.linkedActivityId||'');
   populatePersonalTaskProjectSelect(task.projectId||'');
@@ -11541,8 +11621,12 @@ async function savePersonalTask(){
   const due=document.getElementById('ptDue').value,notes=document.getElementById('ptNotes').value,priority=document.getElementById('ptPriority').value,parentId=document.getElementById('ptParent').value,linkedActivityId=document.getElementById('ptLinkedActivity').value,projectId=document.getElementById('ptProject').value;
   const existing=PERSONAL_TASKS.find(item=>String(item.id)===String(editId));
   if(parentId&&String(parentId)===String(editId)){msg.textContent='A task cannot be its own parent.';msg.className='form-msg err';return;}
+  // 'Converted' is set only by convertPersonalTaskToShared() and isn't one of this form's options —
+  // preserve it regardless of what the Status dropdown shows (see openEditPersonalTask).
+  const status=existing?.status==='Converted'?'Converted':(document.getElementById('ptStatus').value||'Not Started');
+  const blocker=status==='Blocked'?document.getElementById('ptBlocker').value.trim():'';
   const fields={
-    Status:existing?.status||'Not Started',Priority:priority,
+    Status:status,Priority:priority,Blocker:blocker||null,
     DueDate:due?due+'T12:00:00Z':null,Notes:notes||null,
     ParentTaskId:parentId?parseInt(parentId,10):null,
     LinkedActivityId:linkedActivityId?parseInt(linkedActivityId,10):null,
@@ -11595,7 +11679,7 @@ async function savePersonalTask(){
       }else closeAddPersonalTask();
       return;
     }
-    if(existing){Object.assign(existing,{title,due,notes,priority,parentId,linkedActivityId,projectId});}else PERSONAL_TASKS.push({id:'PT-'+Date.now(),title,status:'Not Started',priority,due,notes,parentId,linkedActivityId,projectId,sequence:newSequence||0});
+    if(existing){Object.assign(existing,{title,due,notes,priority,status,blocker,parentId,linkedActivityId,projectId});}else PERSONAL_TASKS.push({id:'PT-'+Date.now(),title,status,blocker,priority,due,notes,parentId,linkedActivityId,projectId,sequence:newSequence||0});
     renderPersonalTasks();
     closeAddPersonalTask();
   }catch(e){msg.textContent='Could not save: '+e.message;msg.className='form-msg err';}
@@ -11921,6 +12005,12 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'LoadedStatus',displayName:'Loaded Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Amelia’s Loaded Rewards build status.'},
   {listKey:'campaigns',name:'SocialStatus',displayName:'Social Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Marketing’s social build status.'}
 ];
+// Existing Choice columns that need specific values present, as opposed to SCHEMA_KNOWN_GAPS above
+// (which only ever creates a column that doesn't exist yet). Additive only — never removes a
+// choice a column already has, only adds what's missing from requiredChoices.
+const SCHEMA_CHOICE_ENSURE=[
+  {listKey:'personalTasks',name:'Status',displayName:'Status',requiredChoices:['Not Started','In Progress','Blocked','Done','Converted'],purpose:'My Work Plan 1.4 — personal tasks need In Progress/Blocked so they can land in the "Needs a decision" bucket, same as shared tasks.'}
+];
 let SCHEMA_TOOL_COLUMNS={};
 let _schemaShowReadyColumns=false; // ready (already-created) rows stay collapsed by default — only "Missing" needs attention
 function toggleSchemaShowReadyColumns(){_schemaShowReadyColumns=!_schemaShowReadyColumns;renderSchemaTools();}
@@ -12117,6 +12207,7 @@ async function renderSchemaTools(forceRefresh){
     const readyCount=rows.length-missing.length;
     const displayRows=_schemaShowReadyColumns?rows:missing;
     gapsEl.innerHTML=`<div class="card"><div class="card-h"><span class="card-title">Proposed SharePoint columns</span>${readyCount?`<span class="card-act" onclick="toggleSchemaShowReadyColumns()">${_schemaShowReadyColumns?'Hide ready columns':`Show ${readyCount} ready column${readyCount===1?'':'s'}`} →</span>`:''}</div><div class="card-body" style="overflow:auto"><div style="min-width:760px">${displayRows.length?`<div style="display:grid;grid-template-columns:1.35fr 1fr 1fr .65fr 1.7fr .55fr;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text3)"><span>List</span><span>Field</span><span>Internal name</span><span>Type</span><span>Purpose</span><span>Status</span></div>${displayRows.map(r=>`<div style="display:grid;grid-template-columns:1.35fr 1fr 1fr .65fr 1.7fr .55fr;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);font-size:10.5px;align-items:start"><strong>${escapeAttr(r.listLabel)}</strong><span>${escapeAttr(r.displayName)}</span><code>${escapeAttr(r.name)}</code><span>${escapeAttr(r.type)}</span><span style="color:var(--text2)">${escapeAttr(r.purpose)}</span><strong style="color:${r.exists?'#15803d':'var(--gold)'}">${r.exists?'Ready':'Missing'}</strong></div>`).join('')}`:`<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">All proposed columns already exist — nothing missing.</div>`}</div>${missing.length?`<div style="padding:12px"><button class="btn btn-p" onclick="createKnownSchemaGaps()">Review &amp; create ${missing.length} missing column${missing.length===1?'':'s'}</button></div>`:''}</div></div>`;
+    await renderSchemaChoiceChecks(token);
   }catch(e){
     gapsEl.innerHTML=`<div class="card"><div class="card-body" style="padding:20px;color:var(--red)">Could not check columns: ${escapeAttr(e.message)}</div></div>`;
   }
@@ -12139,6 +12230,49 @@ async function createKnownSchemaGaps(){
   alert(`Created ${created} column(s)${failures.length?`, ${failures.length} failed. First error: ${failures[0].slice(0,500)} — see console for all errors.`:'.'}`);
   failures.forEach(f=>console.error('Schema Tools:',f));
   await renderSchemaTools(true);
+}
+// Separate from the gaps list above — these are EXISTING Choice columns that need specific values
+// present (SCHEMA_CHOICE_ENSURE), not columns that need creating. Needs the full column definition
+// (choice.choices), not the lightweight name-only list fetchListColumnsRaw already cached.
+async function renderSchemaChoiceChecks(token){
+  const el=document.getElementById('schemaChoiceChecks');if(!el)return;
+  const rows=[];
+  for(const check of SCHEMA_CHOICE_ENSURE){
+    const listMeta=SCHEMA_TOOL_LISTS[check.listKey];
+    const listId=LIST_IDS[listMeta.listIdKey];
+    if(!listId){rows.push({...check,listLabel:listMeta.label,error:'List not connected yet'});continue;}
+    try{
+      const cols=await fetchListColumnsFull(listId,token);
+      const col=cols.find(c=>c.name===check.name||c.displayName===check.displayName);
+      if(!col){rows.push({...check,listLabel:listMeta.label,error:`Column "${check.displayName}" not found`});continue;}
+      const current=col.choice?.choices||[];
+      const missing=check.requiredChoices.filter(c=>!current.includes(c));
+      rows.push({...check,listLabel:listMeta.label,missing,columnId:col.id});
+    }catch(e){rows.push({...check,listLabel:listMeta.label,error:e.message});}
+  }
+  if(!rows.length){el.innerHTML='';return;}
+  el.innerHTML=`<div class="card"><div class="card-h"><span class="card-title">Choice values on existing columns</span></div><div class="card-body" style="display:flex;flex-direction:column;gap:8px">${rows.map(r=>{
+    if(r.error)return`<div style="font-size:11.5px;color:var(--red)">${escapeAttr(r.listLabel)}.${escapeAttr(r.name)}: ${escapeAttr(r.error)}</div>`;
+    if(!r.missing.length)return`<div style="font-size:11.5px;color:var(--text2)">${escapeAttr(r.listLabel)}.${escapeAttr(r.name)}: <strong style="color:#15803d">all required choices present</strong></div>`;
+    return`<div style="font-size:11.5px;color:var(--text2);display:flex;justify-content:space-between;align-items:center;gap:10px"><span>${escapeAttr(r.listLabel)}.${escapeAttr(r.name)} is missing: <strong style="color:var(--gold)">${escapeAttr(r.missing.join(', '))}</strong></span><button class="tb-btn" style="font-size:10.5px;padding:4px 9px;flex-shrink:0" onclick="addMissingSchemaChoices('${r.listKey}','${escapeAttr(r.name)}')">Add missing</button></div>`;
+  }).join('')}</div></div>`;
+}
+async function addMissingSchemaChoices(listKey,name){
+  const check=SCHEMA_CHOICE_ENSURE.find(c=>c.listKey===listKey&&c.name===name);if(!check)return;
+  const listMeta=SCHEMA_TOOL_LISTS[listKey];
+  const listId=LIST_IDS[listMeta.listIdKey];
+  if(!confirm(`Add the missing choice values to ${listMeta.label}.${name}?\n\nRequired: ${check.requiredChoices.join(', ')}\n\nExisting choices are kept — nothing is removed.`))return;
+  try{
+    const token=await getToken(true);
+    const cols=await fetchListColumnsFull(listId,token);
+    const col=cols.find(c=>c.name===name||c.displayName===check.displayName);
+    if(!col)throw new Error(`Column "${name}" not found — it may have been renamed or removed since this page loaded.`);
+    const merged=[...new Set([...(col.choice?.choices||[]),...check.requiredChoices])];
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/columns/${col.id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({choice:{choices:merged}})});
+    if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+    alert(`${name} now includes: ${merged.join(', ')}`);
+    await renderSchemaChoiceChecks(token);
+  }catch(e){alert('Could not update choices: '+e.message);}
 }
 async function createSchemaColumn(){
   const msg=document.getElementById('schemaAddMsg');
