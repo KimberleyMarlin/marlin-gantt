@@ -386,13 +386,16 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
    the full-size version stays as-is on the real Loaded Rewards page. */
 .lr-offer-wrap-sm{padding:6px 8px}
 .lr-offer-wrap-sm .lr-offer-head{margin-bottom:4px}
-.lr-offer-grid-sm{grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:3px}
-.lr-offer-card-sm{padding:3px 4px;border-radius:5px}
-.lr-offer-card-sm .lr-offer-card-top{gap:2px;margin-bottom:2px}
-.lr-offer-card-sm .lr-offer-card-icon{font-size:9px;width:11px}
-.lr-offer-card-sm .lr-offer-card-label{font-size:6.5px}
-.lr-offer-card-sm .lr-offer-card-value{font-size:8px}
-.lr-offer-card-sm .lr-offer-card-meta{font-size:7px;margin-top:1px}
+/* Fixed 5 columns, not auto-fit — LOADED_OFFER_DISPLAY is always exactly 9 tiles, so this wraps
+   to two rows (5 + 4) instead of squeezing all 9 into one, and each tile gets roughly double the
+   width to grow into. */
+.lr-offer-grid-sm{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.lr-offer-card-sm{padding:5px 6px;border-radius:5px}
+.lr-offer-card-sm .lr-offer-card-top{gap:3px;margin-bottom:3px}
+.lr-offer-card-sm .lr-offer-card-icon{font-size:11px;width:14px}
+.lr-offer-card-sm .lr-offer-card-label{font-size:8px}
+.lr-offer-card-sm .lr-offer-card-value{font-size:10px}
+.lr-offer-card-sm .lr-offer-card-meta{font-size:8.5px;margin-top:2px}
 .lr-schema-card{border:1px solid var(--border);border-radius:9px;background:var(--surface);margin-bottom:12px;overflow:hidden}
 .lr-schema-card summary{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;list-style:none;font-size:11px;font-weight:700;color:var(--text2)}
 .lr-schema-card summary::-webkit-details-marker{display:none}
@@ -724,10 +727,10 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   </div>
   <div class="sb-nav">
     <div class="sb-sec">Today</div>
-    <button class="sb-item" data-p="overview" onclick="nav(this)"><span class="ico">⊞</span>Dashboard<span class="sb-badge" id="nBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="mywork" onclick="nav(this)"><span class="ico">☐</span>My Work<span class="sb-badge a" id="myWorkBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="overview" onclick="nav(this)"><span class="ico">⊞</span>Dashboard<span class="sb-badge" id="nBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="inbox" onclick="nav(this)"><span class="ico">📨</span>Inbox<span class="sb-badge" id="inboxBadge" style="display:none">0</span></button>
-    <button class="sb-item" data-p="personaltasks" onclick="nav(this)"><span class="ico">🔒</span>Personal Tasks<span class="sb-badge" id="personalTaskBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="personaltasks" onclick="nav(this)" style="display:none"><span class="ico">🔒</span>Personal Tasks<span class="sb-badge" id="personalTaskBadge" style="display:none">0</span></button>
     <div class="sb-sec">Plan</div>
     <button class="sb-item active" data-p="calendar" onclick="nav(this)"><span class="ico">◻</span>Calendar</button>
     <button class="sb-item" data-p="campaigns" onclick="nav(this)"><span class="ico">◎</span>Activities<span class="sb-badge" id="aBadge" style="display:none">0</span></button>
@@ -738,7 +741,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="sb-sec">Deliver</div>
     <button class="sb-item" data-p="approvals" onclick="nav(this)"><span class="ico">✓</span>Submissions</button>
     <button class="sb-item" data-p="projects" onclick="nav(this)"><span class="ico">▣</span>Projects</button>
-    <button class="sb-item" data-p="mytasks" onclick="nav(this)"><span class="ico">☷</span>Shared Work Setup<span class="sb-badge a" id="tBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="mytasks" onclick="nav(this)"><span class="ico">☷</span>Team Work Register<span class="sb-badge a" id="tBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="design" onclick="nav(this)"><span class="ico">✦</span>Design Jobs</button>
     <button class="sb-item" data-p="workload" onclick="nav(this)"><span class="ico">👥</span>Workload</button>
     <div class="sb-sec">Programs</div>
@@ -1530,7 +1533,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <!-- MY WORK — bucket board over shared assignments and Kimberley's private list -->
   <div class="panel" id="p-mywork">
     <div class="ph">
-      <div><div class="ph-eye">Today and upcoming</div><div class="ph-title">My <em>Work</em></div><div class="ph-sub">Shared assignments and private tasks stay separate in SharePoint. Dragging a Shared item only saves your own view of it — never anyone else's priority, due date or stage.</div></div>
+      <div><div class="ph-eye">Today and upcoming</div><div class="ph-title">My <em>Work</em></div><div class="ph-sub">Shared assignments and private tasks stay separate in SharePoint. Dragging a Shared item only saves your own view of it — never anyone else's priority, due date or stage. <a href="#" id="myWorkManagePersonalLink" onclick="event.preventDefault();navTo('personaltasks')" style="display:none">Manage personal tasks →</a></div></div>
       <div class="ph-right"><button class="tb-btn p" id="myWorkAddPersonal" onclick="openAddPersonalTask()">+ Personal task</button><button class="tb-btn" onclick="refreshMyWork()">↻</button></div>
     </div>
     <div class="ca">
@@ -1612,8 +1615,8 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <select class="form-select" id="tPriority">
               <option value="">No priority</option>
               <option value="Critical">Critical</option>
-              <option value="Medium">Medium</option>
               <option value="High">High</option>
+              <option value="Medium">Medium</option>
               <option value="Low">Low</option>
             </select>
           </div>
@@ -1638,7 +1641,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <!-- PERSONAL TASKS — separate private SharePoint list, Kimberley only -->
   <div class="panel" id="p-personaltasks">
     <div class="ph">
-      <div><div class="ph-eye">Kimberley Only</div><div class="ph-title">Personal <em>Tasks</em></div><div class="ph-sub">Private work and reminders. A Task is one thing to do; link it to a Project when it's part of a larger body of work — Projects are the containers, Tasks are what's inside them.</div></div>
+      <div><div class="ph-eye">Manage</div><div class="ph-title">Personal <em>Tasks</em></div><div class="ph-sub">Private work and reminders. A Task is one thing to do; link it to a Project when it's part of a larger body of work — Projects are the containers, Tasks are what's inside them.</div></div>
       <div class="ph-right"><button class="tb-btn p" onclick="openAddPersonalTask()">+ New Personal Task</button><button class="tb-btn" onclick="loadPersonalTasks()">↻</button></div>
     </div>
     <div class="ca">
@@ -1668,8 +1671,10 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <div id="personalTaskFormMsg" class="form-msg"></div>
         <div class="form-grid">
           <div class="form-group full"><label class="form-label">Task Title <span class="req">*</span></label><input class="form-input" id="ptTitle" type="text" placeholder="What do I need to remember or complete?"></div>
-          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="ptPriority"><option value="">No priority</option><option>Critical</option><option>Medium</option><option>High</option><option>Low</option></select></div>
+          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="ptPriority"><option value="">No priority</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></div>
           <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="ptDue" type="date"></div>
+          <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="ptStatus" onchange="togglePtBlockerField()"><option>Not Started</option><option>In Progress</option><option>Blocked</option><option>Done</option></select></div>
+          <div class="form-group full" id="ptBlockerWrap" style="display:none"><label class="form-label">What's it waiting on?</label><input class="form-input" id="ptBlocker" type="text" placeholder="e.g. Waiting on artwork from Perrin"></div>
           <div class="form-group full"><label class="form-label">Parent task</label><select class="form-select" id="ptParent"><option value="">None — top-level task</option></select><div class="field-help">Only tasks that aren't themselves a subtask can be picked as a parent.</div></div>
           <div class="form-group full"><label class="form-label">Linked activity</label><select class="form-select" id="ptLinkedActivity"><option value="">Not linked to an activity</option></select></div>
           <div class="form-group full"><label class="form-label">Project</label><select class="form-select" id="ptProject"><option value="">Not part of a project</option></select></div>
@@ -1713,6 +1718,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     </div>
     <div class="ca">
       <div id="schemaKnownGaps"></div>
+      <div id="schemaChoiceChecks" style="margin-top:16px"></div>
       <div class="card" style="margin-top:16px">
         <div class="card-h"><span class="card-title">Add a column to any list</span></div>
         <div class="card-body">
@@ -2007,24 +2013,6 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 
   <!-- NOTIFICATIONS -->
   <!-- MY DAY -->
-  <div class="panel" id="p-myday">
-    <div class="ph">
-      <div><div class="ph-eye">Personal</div><div class="ph-title">My <em>Day</em></div><div class="ph-sub" id="mydaySub">Everything that needs your attention</div></div>
-      <div class="ph-right">
-        <div class="chips" id="mydayTabChips">
-          <div class="chip on" data-v="feed" onclick="pickMydayTab(this)">☀ Feed</div>
-          <div class="chip" data-v="tasks" onclick="pickMydayTab(this)">☐ Tasks<span id="mydayTaskBadge" class="sb-badge a" style="display:none;margin-left:4px">0</span></div>
-          <div class="chip" data-v="approvals" onclick="pickMydayTab(this)">✓ Approvals<span id="mydayApprovalBadge" class="sb-badge" style="display:none;margin-left:4px">0</span></div>
-        </div>
-        <button class="tb-btn" onclick="markAllRead();renderMyDay()">✓ Clear</button>
-        <button class="tb-btn" onclick="generateNotifications();renderMyDay()">↻</button>
-      </div>
-    </div>
-    <div id="mydayFeedTab" class="ca"><div class="loading"><div class="spinner"></div></div></div>
-    <div id="mydayTasksTab" class="ca" style="display:none"></div>
-    <div id="mydayApprovalsTab" class="ca" style="display:none"></div>
-  </div>
-
   <!-- SUBMIT -->
   <div class="panel" id="p-submit">
     <div class="ph"><div><div class="ph-eye">Submit</div><div class="ph-title">What are you <em>submitting?</em></div></div></div>
@@ -2356,7 +2344,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
                 <option value="Admin">Admin</option>
               </select>
             </div>
-            <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="fJobPriority"><option value="">No priority</option><option value="Critical">Critical</option><option value="Medium">Medium</option><option value="High">High</option><option value="Low">Low</option></select></div>
+            <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="fJobPriority"><option value="">No priority</option><option value="Critical">Critical</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select></div>
             <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="fJobDue" type="date"></div>
             <div class="form-group"><label class="form-label">Assign To</label><select class="form-select" id="fJobAssign"><option value="">Unassigned</option></select></div>
             <div class="form-group full"><label class="form-label">Notes / Requirements</label><textarea class="form-textarea" id="fJobNotes" placeholder="Any context, specs, or links…" style="min-height:70px"></textarea></div>
@@ -2620,6 +2608,11 @@ const LIST_IDS={
   calendarRef:'f0900598-ec20-4c79-a183-75dccb4658bb',
   sponsorships:null,
   comments:'4d41274c-6a2e-459c-8658-b5d4593aa175',
+  // My Work Plan 1.5 — one row per user (Title=lower-case email), syncing the My Work board layout
+  // (buckets/placement/order/Today's 3) across devices instead of leaving it in localStorage only.
+  // null until Kimberley creates "Hub User Prefs" via Schema Tools; everything using it falls back
+  // to localStorage-only (today's behaviour) while it's unset.
+  hubUserPrefs:null,
 };
 
 // Canonical taxonomy lists — single source of truth for the Submit form, the Activity detail
@@ -3112,11 +3105,10 @@ function applyRoleUI(){
     const scheduleChip=document.querySelector(`#calViewChips .chip[data-v="${p}"]`);
       if(scheduleChip)scheduleChip.style.display='none';
   });
-  // Personal Tasks is a separate Kimberley-only list and panel.
-  if(!canAccessPanel('personaltasks')){
-    const personalBtn=document.querySelector('.sb-item[data-p="personaltasks"]');
-    if(personalBtn)personalBtn.style.display='none';
-  }
+  // Personal Tasks is a separate Kimberley-only list and panel. It's no longer a sidebar
+  // destination for anyone — Kimberley reaches it via the "Manage personal tasks →" link in
+  // My Work, and it stays privacy-gated by canAccessPanel('personaltasks') either way.
+  document.querySelector('.sb-item[data-p="personaltasks"]')?.style.setProperty('display','none');
   // Schema Tools writes SharePoint columns directly — Kimberley only.
   if(!canAccessPanel('schema')){
     const schemaBtn=document.querySelector('.sb-item[data-p="schema"]');
@@ -4588,7 +4580,7 @@ async function initMSAL(){
       const newest=newSubmissions[0];
       showToast(newSubmissions.length>1?`${newSubmissions.length} new submissions`:'New submission',`${newest.title}${newest.venue?' — '+newest.venue:''}`,()=>navTo('approvals'));
     }
-    renderApprovalsInline();
+    updateActivitiesApprovalBadge();
     if(document.getElementById('p-approvals')?.classList.contains('active'))renderApprovals();
     if(document.getElementById('p-overview')?.classList.contains('active'))renderCrossVenue&&renderCrossVenue();
     const knownIds=new Set(ALL_COMMENTS.map(comment=>String(comment.id)));
@@ -4648,9 +4640,13 @@ function previewMode(){
   resolveRole(currentUserEmail);
   const who=document.getElementById('myTasksWho');
   if(who)who.textContent='Showing tasks for UI Preview';
-  showPanel('calendar');
+  // Same per-user landing-page logic as onAuthed() (My Work Plan 2.2), so Preview Mode exercises
+  // the real default instead of always opening on Calendar.
+  const landingOverride=loadMyWorkPrefs().landingPanel;
+  const defaultPanel=(landingOverride&&PANEL_TITLES[landingOverride])?landingOverride:(canAccessPanel('personaltasks')?'mywork':'calendar');
+  showPanel(defaultPanel);
   document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
-  document.querySelector('.sb-item[data-p="calendar"]')?.classList.add('active');
+  document.querySelector(`.sb-item[data-p="${defaultPanel}"]`)?.classList.add('active');
   // Populate whatever doesn't require a network call, so panels aren't blank
   SPONSORSHIPS=[...STATIC_SPONSORSHIPS];
   seedTaskPreview();
@@ -4680,8 +4676,11 @@ async function onAuthed(acc){
   // Update My Tasks subtitle
   const who=document.getElementById('myTasksWho');
   if(who)who.textContent=`Showing tasks for ${acc.name||acc.username}`;
-  // Default panel based on role
-  const defaultPanel='calendar'; // Calendar is the group operating view and default landing page.
+  // Default panel: a per-user override from Hub User Prefs wins if set (My Work Plan 1.5/2.2);
+  // otherwise Kimberley lands on My Work and everyone else keeps the Calendar group operating view.
+  // loadMyWorkPrefs() reads localStorage only, so this is safe to call before loadAll() has run.
+  const landingOverride=loadMyWorkPrefs().landingPanel;
+  const defaultPanel=(landingOverride&&PANEL_TITLES[landingOverride])?landingOverride:(canAccessPanel('personaltasks')?'mywork':'calendar');
   if(Object.keys(SCHEDULE_SUBPANELS).includes(defaultPanel)){
     // Sub-views (gantt/venuemonth/crossvenue) now live inside the consolidated Schedule page.
     // IMPORTANT: don't render yet — EVENTS isn't populated until loadAll() runs right after this.
@@ -4917,6 +4916,7 @@ async function loadAll(){
   await loadKeyDates();
   await loadM365Users();
   await loadAllComments();
+  await loadHubUserPrefs();
   SPONSORSHIPS=[...STATIC_SPONSORSHIPS];
   updateAdminImportVisibility();
   generateNotifications();
@@ -6284,7 +6284,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',appearance:'<em>Appearance</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>',paidmedia:'Paid <em>Media</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',appearance:'<em>Appearance</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>',paidmedia:'Paid <em>Media</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -6340,7 +6340,7 @@ function showPanel(id){
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
   // Activities consolidation: Pipeline is a sub-view of 'campaigns' now — hide it when navigating elsewhere.
   if(id!=='campaigns'){const pipePanel=document.getElementById('p-pipeline');if(pipePanel)pipePanel.style.display='none';}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,appearance:renderAppearanceSettings,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging,paidmedia:renderPaidMedia};
+  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,appearance:renderAppearanceSettings,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging,paidmedia:renderPaidMedia};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
   // Skip this for 'campaigns' while its Pipeline sub-view is showing — that block just hid the
@@ -6833,17 +6833,21 @@ async function pickEvPhoto(evId,url,driveId,itemId){
   try{
     const token=await getToken(true);
     const ref=driveId&&itemId?JSON.stringify({driveId,itemId}):'';
-    // Event Image URL is a Hyperlink column in SharePoint (confirmed — not the "Single line of
-    // text" that the old length-limit theory assumed). Graph's Hyperlink/Picture column type needs
-    // a {Url, Description} object on write, never a bare string — sending a plain string is exactly
-    // what produced the opaque "generalException" 500, same opaque-error pattern as the RecurringDay
-    // and ProductLookupId bugs, just a type-shape mismatch instead of a length or multi-value one.
-    // Clearing the photo (url='') sends null, which is how a Hyperlink column gets blanked.
-    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,token,{EventImageURL:url?{Url:url,Description:''}:null,EventImageRef:ref});
+    // Event Image URL is a Hyperlink column in SharePoint. Graph's Hyperlink/Picture column type
+    // needs a {Url, Description} object on write, never a bare string. Clearing the photo (url='')
+    // now sends an empty {Url:'',Description:''} object rather than a literal null — a bare null
+    // produced a new "invalidRequest" 400 (progress from the earlier "generalException" 500, but
+    // still wrong), which points at Graph rejecting null for this complex-typed field specifically.
+    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,token,{EventImageURL:{Url:url||'',Description:''},EventImageRef:ref});
     const urlFailed=result.failed.find(f=>f.field==='EventImageURL');
     if(urlFailed){
       const m=(urlFailed.error||'').match(/Field '([^']+)' is not recognized/);
-      throw new Error(m?`The ${m[1]} column doesn't exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.`:urlFailed.error||'Could not save the photo.');
+      // If this is still failing after the {Url,Description} shape fix, the most likely remaining
+      // cause is the URL value itself (not well-formed, or Graph's own Hyperlink validation rejects
+      // it) — surface its length and a safe preview so the next failure is actually diagnosable
+      // instead of just "Invalid request" with no context.
+      const urlNote=` [url: ${url.length} chars — "${url.slice(0,120)}${url.length>120?'…':''}"]`;
+      throw new Error(m?`The ${m[1]} column doesn't exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.`:`${urlFailed.error||'Could not save the photo.'}${urlNote}`);
     }
     ev.eventImageUrl=url;
     // The reference only counts as linked if it actually persisted. If EventImageURL saved but
@@ -6991,6 +6995,72 @@ async function unlinkEvArtworkFolder(evId){
     delete _evFolderStack[`${evId}:artwork`];
     renderEvPhotoSource(evId);
   }catch(e){alert('Could not unlink: '+e.message);}
+}
+
+// Job Folder — normally created by the Power Automate flow on approval, but that flow has failed
+// on a known-bad Activity Title (see sanitizeForFolderName) and presumably can fail for other
+// reasons too, leaving an activity with nothing in JobFolderURL. These two give a manual way out:
+// link an existing folder (same pattern as the Linked Artwork Folder tab above), or have the Hub
+// create one itself, directly under 00. Marketing Activities, with a name you can review and edit
+// first — never silently, and never overwriting a same-named folder (conflictBehavior 'fail').
+const MARKETING_ACTIVITIES_FOLDER_PATH='00. Marketing OS Files/00. Marketing Activities';
+function suggestedJobFolderName(ev){
+  const venueCode=VENUE_SHORT_CODES[ev.venue]||shortVenue(ev.venue)||'MISC';
+  const d=ev.start?new Date(ev.start+'T00:00:00'):null;
+  const monthYear=d&&!isNaN(d)?d.toLocaleString('en-AU',{month:'short'}).toUpperCase()+String(d.getFullYear()).slice(-2):'';
+  const titlePart=sanitizeForFolderName(ev.title||'').toUpperCase().replace(/\s+/g,'_');
+  return[venueCode,monthYear,titlePart].filter(Boolean).join('_');
+}
+async function linkEvJobFolder(evId){
+  const ev=EVENTS.find(x=>String(x.id)===String(evId));if(!ev)return;
+  const input=document.getElementById('evJobFolderInput-'+evId);
+  const url=(input?.value||'').trim();
+  const msgEl=document.getElementById('evJobFolderMsg-'+evId);
+  if(!url){if(msgEl){msgEl.textContent='Paste a SharePoint folder link first.';msgEl.className='form-msg err';}return;}
+  if(msgEl){msgEl.textContent='Checking folder…';msgEl.className='form-msg';}
+  try{
+    const token=await getToken();
+    const shareId=encodeSharingUrlForGraph(url);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$select=id,name,folder`,{headers:{Authorization:'Bearer '+token}});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    if(!data.folder)throw new Error('That link isn\'t a folder.');
+    const saveToken=await getToken(true);
+    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,saveToken,{JobFolderURL:{Url:url,Description:''}});
+    if(result.failed.length)throw new Error(result.failed[0].error||'Could not save the folder link.');
+    ev.jobFolderUrl=url;
+    showPop(evId);
+  }catch(e){
+    if(msgEl){msgEl.textContent='Could not link that folder: '+e.message;msgEl.className='form-msg err';}
+  }
+}
+async function createEvJobFolder(evId){
+  const ev=EVENTS.find(x=>String(x.id)===String(evId));if(!ev)return;
+  const name=prompt('Folder name (inside 00. Marketing Activities):',suggestedJobFolderName(ev));
+  if(!name||!name.trim())return;
+  const msgEl=document.getElementById('evJobFolderMsg-'+evId);
+  if(msgEl){msgEl.textContent='Creating folder…';msgEl.className='form-msg';}
+  try{
+    const token=await getToken(true);
+    const createRes=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/drive/root:/${encodeURIComponent(MARKETING_ACTIVITIES_FOLDER_PATH)}:/children`,{
+      method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({name:name.trim(),folder:{},'@microsoft.graph.conflictBehavior':'fail'})
+    });
+    const createText=await createRes.text();
+    if(!createRes.ok){
+      const parsed=(()=>{try{return JSON.parse(createText);}catch{return null;}})();
+      if(parsed?.error?.code==='nameAlreadyExists')throw new Error(`A folder named "${name.trim()}" already exists in 00. Marketing Activities — check there for the real one before creating another.`);
+      throw new Error(parsed?.error?.message||`HTTP ${createRes.status}`);
+    }
+    const created=JSON.parse(createText);
+    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,token,{JobFolderURL:{Url:created.webUrl,Description:''}});
+    if(result.failed.length)throw new Error(result.failed[0].error||'Folder was created, but saving the link back to this Activity failed — open '+created.webUrl+' and link it manually.');
+    ev.jobFolderUrl=created.webUrl;
+    showPop(evId);
+  }catch(e){
+    if(msgEl){msgEl.textContent='Could not create the folder: '+e.message;msgEl.className='form-msg err';}
+    else alert('Could not create the folder: '+e.message);
+  }
 }
 
 // Dynamic thumbnail resolution — a picked photo's cached EventImageURL is a signed Graph thumbnail
@@ -8401,221 +8471,14 @@ function renderLrVenueOffers(){
   }).join('');
 }
 // ═══════════════════════════════════════
-function pickMydayTab(el){
-  document.querySelectorAll('#mydayTabChips .chip').forEach(c=>c.classList.remove('on'));
-  el.classList.add('on');
-  const tab=el.dataset.v;
-  document.getElementById('mydayFeedTab').style.display=tab==='feed'?'':'none';
-  document.getElementById('mydayTasksTab').style.display=tab==='tasks'?'':'none';
-  document.getElementById('mydayApprovalsTab').style.display=tab==='approvals'?'':'none';
-  if(tab==='tasks')renderMyTasksInline();
-  if(tab==='approvals')renderApprovalsInline();
+// My Day (#p-myday) retired — My Work is the one home for to-dos now. This just keeps the
+// "Activities" sidebar badge (aBadge) current; it used to also drive My Day's own Approvals tab,
+// which duplicated the real Submissions page and didn't survive the retirement.
+function updateActivitiesApprovalBadge(){
+  const total=EVENTS.filter(e=>!isArchived(e)&&(e.stage==='Intake'||e.stage==='Review')).length;
+  const ab=document.getElementById('aBadge');
+  if(ab){ab.textContent=total;ab.style.display=total?'':'none';}
 }
-
-function renderMyTasksInline(){
-  // Render My Tasks content into the myday tasks tab
-  const el=document.getElementById('mydayTasksTab');
-  if(!el)return;
-  const today=new Date();today.setHours(0,0,0,0);
-  const myEmail=(currentUserEmail||'').toLowerCase();
-  const myName=(currentUser?.name||'').toLowerCase();
-  const emailPart=myEmail.split('@')[0];
-  const firstName=(myName.split(' ')[0]||'').toLowerCase();
-  function isMyTask(t){
-    if(!t.assignedTo||!t.assignedTo.trim())return true;
-    const a=t.assignedTo.toLowerCase();
-    return a.includes(emailPart)||(firstName.length>2&&a.includes(firstName));
-  }
-  const tasks=MY_TASKS.filter(t=>t.title&&t.title.trim()&&isMyTask(t));
-  const pending=tasks.filter(t=>t.status!=='Done'&&t.status!=='Complete');
-  const done=tasks.filter(t=>t.status==='Done'||t.status==='Complete');
-  const priTag={Critical:'t-r',High:'t-o',Medium:'t-a',Normal:'t-g',Low:'t-gr'};
-
-  // Update badge
-  ['tBadge','mydayTaskBadge'].forEach(id=>{const tb=document.getElementById(id);if(tb){tb.textContent=pending.length;tb.style.display=pending.length?'':'none';}});
-
-  el.innerHTML=`
-    <div class="stats" style="margin-bottom:12px">
-      <div class="stat ${tasks.filter(t=>t.status==='Blocked').length?'hi':''}"><div class="stat-n">${tasks.filter(t=>t.status==='Blocked').length}</div><div class="stat-l">Blocked</div></div>
-      <div class="stat"><div class="stat-n">${tasks.filter(t=>t.due===toLocalISODate(today)&&t.status!=='Done').length}</div><div class="stat-l">Due Today</div></div>
-      <div class="stat"><div class="stat-n">${pending.length}</div><div class="stat-l">Open</div></div>
-      <div class="stat"><div class="stat-n">${done.length}</div><div class="stat-l">Done</div></div>
-    </div>
-    <button class="btn btn-p" style="margin-bottom:12px;padding:7px 14px;font-size:12px" onclick="openAddTask()">＋ New Task</button>
-    ${pending.length?pending.map(t=>{
-      const isBlocked=t.status==='Blocked';
-      const isOverdue=t.due&&new Date(t.due+'T00:00:00')<today;
-      return`<div class="task-item ${isBlocked?'blocked':''}">
-        <div class="task-cb" onclick="toggleMyDayTask('${t.id}')">${t.status==='Done'?'✓':''}</div>
-        <div class="task-info">
-          <div class="task-name">${t.title}</div>
-          <div class="task-meta">
-            ${t.venue?`<span>${t.venue}</span>`:''}
-            ${t.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'};font-weight:${isOverdue?'600':'400'}">${isOverdue?'Overdue: ':''}${fmtDate(t.due)}</span>`:''}
-            ${t.category?`<span>${t.category}</span>`:''}
-          </div>
-        </div>
-        <div class="task-right">
-          ${t.priority?`<span class="tag ${priTag[t.priority]||'t-gr'}">${t.priority}</span>`:''}
-          ${isBlocked?`<span class="tag t-r">Blocked</span>`:''}
-        </div>
-      </div>`;
-    }).join(''):'<div style="padding:20px;text-align:center;color:var(--text3)">No open tasks ✓</div>'}
-    ${done.length?`<div style="margin-top:12px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Completed · ${done.length}</div>
-    ${done.slice(0,5).map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;opacity:.5;cursor:pointer" onclick="toggleMyDayTask('${t.id}')">
-      <div class="task-cb done">✓</div>
-      <div style="font-size:12px;text-decoration:line-through;color:var(--text3)">${t.title}</div>
-    </div>`).join('')}`:''}
-  `;
-}
-
-function renderApprovalsInline(){
-  const el=document.getElementById('mydayApprovalsTab');
-  if(!el)return;
-  const intake=EVENTS.filter(e=>e.stage==='Intake'&&!isArchived(e));
-  const review=EVENTS.filter(e=>e.stage==='Review'&&!isArchived(e));
-  const total=intake.length+review.length;
-  ['aBadge','mydayApprovalBadge'].forEach(id=>{const ab=document.getElementById(id);if(ab){ab.textContent=total;ab.style.display=total?'':'none';}});
-  const card=(ev)=>{
-    const vc=vColor(ev.venue);
-    return`<div class="appr-card">
-      <div class="appr-h">
-        <div>
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px">${ev.title}</div>
-          <div style="font-size:11.5px;color:var(--text3);display:flex;align-items:center;gap:6px">
-            <span style="width:7px;height:7px;border-radius:50%;background:${vc.c};display:inline-block"></span>
-            ${ev.venue} · ${ev.activityType||ev.eventFormat} · ${fmtShort(ev.start)}
-          </div>
-        </div>
-        <div class="appr-actions">
-          ${canApproveCampaigns()?`<button class="btn btn-p" style="padding:6px 12px;font-size:12px" onclick="approveCampaign(${ev.id},this)">✓ Approve</button>
-          <button class="btn btn-s" style="padding:6px 12px;font-size:12px;color:var(--red);border-color:#fca5a5" onclick="denyCampaign(${ev.id},this)">✕ Deny</button>`:''}
-          <button class="btn btn-s" style="padding:6px 12px;font-size:12px" onclick="showPop(${ev.id})">View</button>
-        </div>
-      </div>
-      ${ev.description?`<div class="appr-body">${ev.description}</div>`:''}
-    </div>`;
-  };
-  if(!total){el.innerHTML='<div style="padding:36px;text-align:center;color:var(--text3)">✓ No campaigns awaiting approval</div>';return;}
-  el.innerHTML=`
-    ${intake.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px">📥 Submissions · ${intake.length}</div>${intake.map(card).join('')}`:''}
-    ${review.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:${intake.length?'20px':'0'} 0 8px">⏳ In Review · ${review.length}</div>${review.map(card).join('')}`:''}
-  `;
-}
-
-function renderMyDay(){
-  const today=new Date();today.setHours(0,0,0,0);
-  const week=new Date(Date.now()+7*864e5);
-  const sub=document.getElementById('mydaySub');
-  if(sub)sub.textContent=today.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'})+' · '+(currentUser?.name||currentUserEmail);
-
-  const myEmail=(currentUserEmail||'').toLowerCase();
-  const myName=(currentUser?.name||'').toLowerCase();
-  const emailPart=myEmail.split('@')[0];
-  const firstName=(myName.split(' ')[0]||'').toLowerCase();
-  function isMyTask(t){
-    if(!t.assignedTo||t.assignedTo.trim()==='')return true; // unassigned = everyone's
-    const a=(t.assignedTo||'').toLowerCase();
-    return a.includes(emailPart)||(firstName.length>2&&a.includes(firstName));
-  }
-  // Filter: has title, assigned to me or unassigned
-  const validTasks=MY_TASKS.filter(t=>t.title&&t.title.trim()&&isMyTask(t));
-  const feed=[];
-
-  validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00')<today).forEach(t=>{
-    feed.push({urgency:0,icon:'🔴',label:'OVERDUE',color:'var(--red-bg)',text:t.title,sub:t.venue||t.category||'Task',due:t.due,type:'task',id:t.id});
-  });
-  validTasks.filter(t=>t.status==='Blocked').forEach(t=>{
-    if(feed.some(f=>f.id===t.id))return;
-    feed.push({urgency:1,icon:'🚫',label:'BLOCKED',color:'var(--red-bg)',text:t.title,sub:t.blocker||'Blocked',due:t.due,type:'task',id:t.id});
-  });
-  NOTIFS.filter(n=>n.category==='action'&&n.unread).forEach(n=>{
-    feed.push({urgency:2,icon:n.icon,label:'ACTION',color:n.color,text:n.text,sub:n.time,type:'notif',key:n.key,eventId:n.eventId});
-  });
-  NOTIFS.filter(n=>n.category==='readiness'&&n.unread&&n.color==='var(--red-bg)').forEach(n=>{
-    feed.push({urgency:3,icon:'⚠️',label:'URGENT',color:'var(--red-bg)',text:n.text,sub:n.time,type:'notif',key:n.key,eventId:n.eventId});
-  });
-  validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00').getTime()===today.getTime()).forEach(t=>{
-    if(feed.some(f=>f.id===t.id))return;
-    feed.push({urgency:4,icon:'📌',label:'DUE TODAY',color:'var(--gold-bg)',text:t.title,sub:t.venue||t.category||'Task',due:t.due,type:'task',id:t.id});
-  });
-  validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00')>today&&new Date(t.due+'T00:00:00')<=week).forEach(t=>{
-    if(feed.some(f=>f.id===t.id))return;
-    feed.push({urgency:5,icon:'☐',label:'THIS WEEK',color:'var(--surface2)',text:t.title,sub:fmtDate(t.due),due:t.due,type:'task',id:t.id});
-  });
-  NOTIFS.filter(n=>n.category==='readiness'&&n.unread&&n.color==='var(--gold-bg)').forEach(n=>{
-    feed.push({urgency:6,icon:'🟡',label:'HEADS UP',color:'var(--gold-bg)',text:n.text,sub:n.time,type:'notif',key:n.key,eventId:n.eventId});
-  });
-  NOTIFS.filter(n=>n.category==='campaign'&&n.unread).forEach(n=>{
-    feed.push({urgency:7,icon:n.icon,label:'CAMPAIGN',color:n.color||'var(--accent-bg)',text:n.text,sub:n.time,type:'notif',key:n.key,eventId:n.eventId});
-  });
-  validTasks.filter(t=>t.status!=='Done'&&!t.due).forEach(t=>{
-    if(feed.some(f=>f.id===t.id))return;
-    feed.push({urgency:8,icon:'○',label:'OPEN',color:'var(--surface2)',text:t.title,sub:t.category||'Task',due:null,type:'task',id:t.id});
-  });
-
-  const recentDone=validTasks.filter(t=>t.status==='Done').slice(0,5);
-  feed.sort((a,b)=>a.urgency-b.urgency);
-
-  const body=document.getElementById('mydayFeedTab');
-  if(!body)return;
-
-  const counts={
-    overdue:validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00')<today).length,
-    blocked:validTasks.filter(t=>t.status==='Blocked').length,
-    dueToday:validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00').getTime()===today.getTime()).length,
-    open:validTasks.filter(t=>t.status!=='Done').length,
-    done:validTasks.filter(t=>t.status==='Done').length
-  };
-
-  let html='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
-  if(counts.overdue)html+='<div style="background:var(--red-bg);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 14px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:var(--red)">'+counts.overdue+'</div><div style="font-size:10px;color:var(--red);font-weight:600;text-transform:uppercase">Overdue</div></div>';
-  if(counts.blocked)html+='<div style="background:var(--red-bg);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 14px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:var(--red)">'+counts.blocked+'</div><div style="font-size:10px;color:var(--red);font-weight:600;text-transform:uppercase">Blocked</div></div>';
-  if(counts.dueToday)html+='<div style="background:var(--gold-bg);border:1px solid rgba(184,134,11,.2);border-radius:8px;padding:8px 14px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:var(--gold)">'+counts.dueToday+'</div><div style="font-size:10px;color:var(--gold);font-weight:600;text-transform:uppercase">Due today</div></div>';
-  html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:var(--text)">'+counts.open+'</div><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase">Open</div></div>';
-  html+='<div style="background:var(--accent-bg);border:1px solid rgba(10,102,64,.2);border-radius:8px;padding:8px 14px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:var(--accent)">'+counts.done+'</div><div style="font-size:10px;color:var(--accent);font-weight:600;text-transform:uppercase">Done</div></div>';
-  html+='</div>';
-
-  if(!feed.length&&!recentDone.length){
-    html+='<div style="text-align:center;padding:40px 20px"><div style="font-size:48px;margin-bottom:16px">✅</div><div style="font-size:18px;font-weight:600;margin-bottom:8px">All clear</div><div style="font-size:13px;color:var(--text3)">No tasks due, no alerts</div></div>';
-  } else {
-    const groups={};
-    feed.forEach(item=>{if(!groups[item.label])groups[item.label]=[];groups[item.label].push(item);});
-    Object.entries(groups).forEach(([label,items])=>{
-      html+='<div style="margin-bottom:14px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:6px">'+label+' · '+items.length+'</div>';
-      items.forEach(item=>{
-        const click=item.type==='task'
-          ?`toggleMyDayTask(${JSON.stringify(item.id)})`
-          :`readNotif(${JSON.stringify(item.key||'')},${item.eventId||'null'})`;
-        html+='<div onclick="'+click+'" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:'+item.color+';border-radius:8px;margin-bottom:5px;cursor:pointer;border:0.5px solid rgba(0,0,0,.04)">';
-        if(item.type==='task'){html+='<div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;background:var(--surface)">○</div>';}
-        else{html+='<div style="font-size:16px;flex-shrink:0;margin-top:1px">'+item.icon+'</div>';}
-        html+='<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;color:var(--text);line-height:1.3;margin-bottom:2px">'+item.text+'</div>';
-        if(item.sub)html+='<div style="font-size:11px;color:var(--text3)">'+item.sub+'</div>';
-        html+='</div>';
-        if(item.due)html+='<div style="font-size:10px;font-weight:600;color:var(--text3);flex-shrink:0;padding-top:2px">'+fmtShort(item.due)+'</div>';
-        html+='</div>';
-      });
-      html+='</div>';
-    });
-    if(recentDone.length){
-      html+='<div style="margin-top:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:6px">COMPLETED · '+recentDone.length+'</div>';
-      recentDone.forEach(t=>{html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:4px;opacity:.6"><div style="width:18px;height:18px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;color:#fff;font-weight:700">✓</div><div style="font-size:13px;text-decoration:line-through;color:var(--text3);flex:1">'+t.title+'</div></div>';});
-      html+='</div>';
-    }
-  }
-  body.innerHTML=html;
-}
-
-function toggleMyDayTask(id){
-  // Compare as string since task IDs from SharePoint are strings
-  const t=MY_TASKS.find(t=>String(t.id)===String(id));
-  if(!t)return;
-  t.status=t.status==='Done'?'Not Started':'Done';
-  toggleTask(t.id); // write to SharePoint async
-  renderMyDay();
-}
-
 
 // ═══════════════════════════════════════
 // ═══════════════════════════════════════
@@ -9653,13 +9516,21 @@ function renderCalMonthlyFeatures(){
   const monthStart=new Date(calYear,calMonth,1),monthEnd=new Date(calYear,calMonth+1,0);
   const inMonth=e=>new Date(e.start+'T00:00:00')<=monthEnd&&new Date((e.end||e.start)+'T00:00:00')>=monthStart;
   const candidates=EVENTS.filter(e=>!isArchived(e)&&(/of the month$/i.test(e.activitySubtype||'')||e.activitySubtype==="Chef's Special")&&inMonth(e));
+  // Food Special is day-specific (Taco Tuesday, Steak Night Wednesday, etc.) rather than one value
+  // per venue per month — the day comes from the Activity's own Recurring Schedule, same mechanism
+  // Weekly Specials already uses, not a separate "Monday Food Special" subtype per day. Each day that
+  // actually has one running this month becomes its own row below, so a venue can show up under
+  // several days but a cell still only ever holds one special, never several stacked together.
+  const foodSpecialCandidates=EVENTS.filter(e=>!isArchived(e)&&e.activitySubtype==='Food Special'&&e.recurringDay&&e.recurringDay.length&&inMonth(e));
+  const foodSpecialDays=[...new Set(foodSpecialCandidates.flatMap(e=>e.recurringDay.filter(d=>WEEKLY_SPECIALS_DAYS.includes(d))))]
+    .sort((a,b)=>WEEKLY_SPECIALS_DAYS.indexOf(a)-WEEKLY_SPECIALS_DAYS.indexOf(b));
   // Loaded's own group-wide supplier specials (this month: Hahn 3.5, Jameson) — identified by
   // Primary Brand = "Loaded Rewards", NOT by the loadedRewards flag. Every venue's own "Beer of the
   // Month" etc. is also flagged loadedRewards (it goes through the Loaded app too), but that's a
   // venue-specific deal, not one of Loaded's own group specials — those still only show in the
   // Venue grid below, never duplicated up here.
   const loadedEvents=EVENTS.filter(e=>!isArchived(e)&&e.brand==='Loaded Rewards'&&inMonth(e));
-  if(!candidates.length&&!loadedEvents.length)return'';
+  if(!candidates.length&&!foodSpecialCandidates.length&&!loadedEvents.length)return'';
   const latestMatch=(noun,venue)=>candidates.filter(e=>monthlyFeatureNoun(e.activitySubtype)===noun&&e.venue===venue)
     .sort((a,b)=>b.start.localeCompare(a.start))[0]||null;
   const nouns=[...new Set(candidates.map(e=>monthlyFeatureNoun(e.activitySubtype)))].sort((a,b)=>{
@@ -9667,6 +9538,13 @@ function renderCalMonthlyFeatures(){
     if(ai!==-1||bi!==-1)return(ai===-1?99:ai)-(bi===-1?99:bi);
     return a.localeCompare(b);
   });
+  // One row per noun ("Feature Beer", "Chef's Special", …), plus one row per Food Special day —
+  // same {label, match(venue)} shape either way, so the grid below doesn't need to care which kind
+  // of row it's drawing.
+  const rows=[
+    ...nouns.map(noun=>({label:MONTHLY_FEATURE_WHOLE_LABEL.has(noun)?noun:`Feature ${noun}`,match:v=>latestMatch(noun,v)})),
+    ...foodSpecialDays.map(day=>({label:`${day} Food Special`,match:v=>foodSpecialCandidates.filter(e=>e.venue===v&&e.recurringDay.includes(day)).sort((a,b)=>b.start.localeCompare(a.start))[0]||null}))
+  ];
   const colTemplate=`100px repeat(${MONTHLY_FEATURE_VENUES.length},1fr)`;
   const loadedHtml=loadedEvents.length?`<div style="margin-bottom:14px">
     <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:linear-gradient(135deg,#0a1628 0%,#1a3a6e 100%);border-radius:8px;margin-bottom:8px">
@@ -9678,14 +9556,14 @@ function renderCalMonthlyFeatures(){
   // Every venue is always a column and every feature a row — a venue with nothing set for a feature
   // this month shows an explicit "Not set" pill rather than an empty gap, so the template reads the
   // same whether a cell is filled or not.
-  const gridHtml=nouns.length?`<div>
+  const gridHtml=rows.length?`<div>
     <div style="margin:0 -16px 8px;padding:6px 16px;background:${MONTHLY_DEALS_NAVY};color:${MONTHLY_DEALS_ACCENT};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Venue</div>
     <div style="display:grid;grid-template-columns:${colTemplate};gap:4px;align-items:center">
       <div></div>
       ${MONTHLY_FEATURE_VENUES.map(v=>`<div style="font-size:10px;font-weight:700;color:${vColor(v).c};text-transform:uppercase;letter-spacing:.04em;text-align:center">${escapeAttr(MONTHLY_FEATURE_VENUE_LABELS[v]||v)}</div>`).join('')}
-      ${nouns.map(noun=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">${MONTHLY_FEATURE_WHOLE_LABEL.has(noun)?escapeAttr(noun):`Feature ${escapeAttr(noun)}`}</div>
+      ${rows.map(row=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">${escapeAttr(row.label)}</div>
         ${MONTHLY_FEATURE_VENUES.map(v=>{
-          const ev=latestMatch(noun,v);
+          const ev=row.match(v);
           const label=ev?(activityDetailLabel(ev)||ev.title):'';
           const vc=vColor(v);
           // Same small tile shape as the Loaded Rewards Offer Mechanics grid (.lr-offer-card-sm),
@@ -9819,7 +9697,7 @@ function renderCalendar(){
     h+=`<div class="cal-day${isOther?' om':''}${isToday?' td':''}${isPublicHoliday?' cd-hol':''}${!inSelectedRange?' cal-day-out':''}" style="min-height:116px">
       <div class="cal-num">${day}</div>
       <div class="cal-month-details">
-      ${dayKeyDates.map(k=>`<div style="font-size:9px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:1px 4px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
+      ${dayKeyDates.map(k=>`<div class="cal-ev" style="color:${k.isPublicHoliday?'#dc2626':'#6366f1'};background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};cursor:default" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
       ${dayBriefsDue.map(ev=>`<div class="cal-ev" style="color:#7c3aed;background:#ede9fe" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✏️ Brief: ${ev.title}</div>`).join('')}
       ${dayMarketingStarts.map(ev=>`<div class="cal-ev" style="color:#9a6b0a;background:#fdf3d8" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
       ${shown.map(ev=>{
@@ -9986,7 +9864,7 @@ function renderCalendarWeek(){
 
     h+=`<div class="cal-day wk${isToday?' td':''}${!inSelectedRange?' cal-day-out':''}">
       <div class="cal-num">${d.toLocaleDateString('en-AU',{day:'numeric',month:'short'})}</div>
-      ${dayKeyDates.map(k=>`<div style="font-size:9.5px;font-weight:600;color:${k.isPublicHoliday?'#dc2626':'#6366f1'};padding:2px 5px;border-radius:3px;background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};margin-bottom:5px;display:inline-block" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
+      ${dayKeyDates.map(k=>`<div class="cal-ev" style="color:${k.isPublicHoliday?'#dc2626':'#6366f1'};background:${k.isPublicHoliday?'#fee2e2':'#ede9fe'};cursor:default" title="${k.title}">${k.isPublicHoliday?'🏖 ':'📅 '}${k.title}</div>`).join('')}
       ${dayBriefsDue.map(ev=>`<div class="cal-ev" style="color:#7c3aed;background:#ede9fe" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✏️ Brief: ${ev.title}</div>`).join('')}
       ${dayMarketingStarts.map(ev=>`<div class="cal-ev" style="color:#9a6b0a;background:#fdf3d8" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">📣 Marketing: ${ev.title}</div>`).join('')}
       ${dayEvts.length?dayEvts.map(ev=>{
@@ -10935,18 +10813,80 @@ const MW_DEFAULT_BUCKETS=[
   {id:'_overdue',name:'Overdue',why:'Past their due date and not done.',mark:'●',color:'#c0392b'},
   {id:'_today',name:'Due today',why:'Due today — needs finishing before it slips.',mark:'●',color:'#b8860b'},
   {id:'_week',name:'This week',why:'Due in the next 7 days.',mark:'●',color:'#0a6640'},
-  {id:'_later',name:'Later / no date',why:'Everything else, and anything without a due date.',mark:'○',color:'#88887e'}
+  {id:'_later',name:'Later / no date',why:'Everything else, and anything without a due date.',mark:'○',color:'#88887e'},
+  // My Work Plan 2.4 — only ever populated for admin/management (see renderMyWork's canSeeUnassigned
+  // filter on allBuckets below); myWorkItems() doesn't even include these items for anyone else, so
+  // the bucket would always be empty for a regular team member — simplest to just not show it.
+  {id:'_unassigned',name:'Unassigned team tasks',why:"Nobody's claimed these yet.",mark:'?',color:'#6b7280'}
 ];
 function myWorkPrefsKey(){return 'marlin_mywork_'+(currentUserEmail||'anon').toLowerCase();}
 function loadMyWorkPrefs(){
   try{
     const raw=JSON.parse(localStorage.getItem(myWorkPrefsKey())||'{}');
-    return {buckets:raw.buckets||[],placement:raw.placement||{},order:raw.order||{},today:raw.today||[null,null,null],collapsed:raw.collapsed||{}};
-  }catch(e){return{buckets:[],placement:{},order:{},today:[null,null,null],collapsed:{}};}
+    return {buckets:raw.buckets||[],placement:raw.placement||{},order:raw.order||{},today:raw.today||[null,null,null],collapsed:raw.collapsed||{},landingPanel:raw.landingPanel||null};
+  }catch(e){return{buckets:[],placement:{},order:{},today:[null,null,null],collapsed:{},landingPanel:null};}
 }
-function saveMyWorkPrefs(p){try{localStorage.setItem(myWorkPrefsKey(),JSON.stringify(p));}catch(e){console.warn('Could not save My Work layout preference:',e);}}
+// My Work Plan 1.5 — localStorage is still the instant, always-available read/write path (every
+// render calls loadMyWorkPrefs() synchronously), but it's also mirrored to one row per user in the
+// Hub User Prefs list so the same layout shows up on another device. The save is debounced (not
+// one PATCH per drag/drop) and the load, on sign-in, only overwrites the local cache if the
+// server's copy is actually newer — so two tabs/devices converge on whichever was touched last,
+// not whichever happened to load first.
+let _hubPrefsItemId=null,_hubPrefsSyncTimer=null,_hubPrefsLoaded=false;
+function saveMyWorkPrefs(p){
+  const payload={...p,_updatedAt:new Date().toISOString()};
+  try{localStorage.setItem(myWorkPrefsKey(),JSON.stringify(payload));}catch(e){console.warn('Could not save My Work layout preference:',e);}
+  if(!LIST_IDS.hubUserPrefs||isPreviewMode||!currentUserEmail)return;
+  clearTimeout(_hubPrefsSyncTimer);
+  _hubPrefsSyncTimer=setTimeout(()=>syncHubUserPrefsNow(payload),1500);
+}
+async function syncHubUserPrefsNow(payload){
+  const email=(currentUserEmail||'').toLowerCase();if(!email)return;
+  const{_updatedAt,...prefsOnly}=payload;
+  const fields={PrefsJson:JSON.stringify(prefsOnly),UpdatedAt:_updatedAt};
+  try{
+    const token=await getToken(true);
+    if(_hubPrefsItemId){
+      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.hubUserPrefs}/items/${_hubPrefsItemId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+      if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+    }else{
+      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.hubUserPrefs}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{...fields,Title:email}})});
+      if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+      _hubPrefsItemId=String((await res.json()).id);
+    }
+  }catch(e){
+    // Fails silently from the user's point of view — localStorage already has this exact layout,
+    // so nothing is lost locally, it just won't have followed them to another device yet. Logged,
+    // not alerted, since this runs on every drag/drop and a popup for each would be unusable.
+    console.warn('Could not sync My Work layout to SharePoint (kept locally):',e);
+  }
+}
+// Called once at sign-in (loadAll()) — pulls this user's row, if any, and only overwrites the
+// localStorage cache when the server copy is strictly newer, so a layout change made offline or on
+// another device never gets silently clobbered by an older one.
+async function loadHubUserPrefs(){
+  if(_hubPrefsLoaded)return;
+  _hubPrefsLoaded=true;
+  if(!LIST_IDS.hubUserPrefs||isPreviewMode||!currentUserEmail)return;
+  const email=(currentUserEmail||'').toLowerCase();
+  try{
+    const token=await getToken();
+    const items=await fetchGraphItems(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.hubUserPrefs}/items?expand=fields&$top=200`,token);
+    const row=items.find(it=>String(it.fields?.Title||'').toLowerCase()===email);
+    if(!row)return; // no row yet — this user's first save (see syncHubUserPrefsNow) creates one
+    _hubPrefsItemId=row.id;
+    const serverUpdatedAt=row.fields?.UpdatedAt?new Date(row.fields.UpdatedAt).getTime():0;
+    let localUpdatedAt=0;
+    try{localUpdatedAt=new Date(JSON.parse(localStorage.getItem(myWorkPrefsKey())||'{}')._updatedAt||0).getTime()||0;}catch(e){}
+    if(serverUpdatedAt>localUpdatedAt){
+      const serverPrefs=JSON.parse(row.fields.PrefsJson||'{}');
+      localStorage.setItem(myWorkPrefsKey(),JSON.stringify({...serverPrefs,_updatedAt:row.fields.UpdatedAt}));
+    }
+  }catch(e){console.warn('Could not load Hub User Prefs:',e);}
+}
 function mwAutoBucket(t,today){
   if(['Done','Complete','Completed'].includes(t.status))return null;
+  if(t.kind==='shared'&&!(t.assignedTo&&String(t.assignedTo).trim()))return '_unassigned';
   if(t.status==='Blocked')return '_blocked';
   if(t.due&&t.due<today)return '_overdue';
   if(t.due===today)return '_today';
@@ -10958,23 +10898,29 @@ function pickMyWorkTab(tab){_mwTab=tab;renderMyWork();}
 // Shared by My Work (the full bucket board) and the Dashboard's "My Tasks" widget — one combined,
 // de-duplicated list of Personal Tasks, Shared Work Items assigned to the signed-in user, and
 // owned/flagged Activities (with any live readiness/action alert attached as a reason).
-function myWorkItems(){
+// includeUnassigned (My Work Plan 2.4) — shared tasks nobody has claimed, shown in their own
+// "Unassigned team tasks" bucket for admin/management only (see canEditTeamTask), never mixed into
+// a person's own counts. Defaults to false so every other caller (Dashboard widget included) keeps
+// exactly its current behaviour.
+function myWorkItems(includeUnassigned){
   const canSeePersonal=canAccessPanel('personaltasks');
   const projectById=id=>PROJECTS.find(p=>String(p.id)===String(id));
   const eventById=id=>EVENTS.find(e=>String(e.id)===String(id)||String(e.spId)===String(id));
   // Title match is a fallback only, for older records saved before campaignLookupId existed — the
   // real link is the Campaign Lookup column's id, which survives the activity being renamed.
   const eventByTitle=title=>EVENTS.find(e=>(e.title||'').toLowerCase()===(title||'').toLowerCase());
+  const mapShared=t=>{
+    const ev=t.campaignLookupId?eventById(t.campaignLookupId):eventByTitle(t.campaignLookup);
+    const project=projectById(ev?.projectId);
+    return{...t,kind:'shared',key:'shared:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:ev?.venue||''};
+  };
   const personal=canSeePersonal?PERSONAL_TASKS.map(t=>{
     const ev=t.linkedActivityId?eventById(t.linkedActivityId):null;
     const project=projectById(t.projectId||ev?.projectId);
     return{...t,kind:'personal',key:'personal:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.linkedCampaign||'',venue:ev?.venue||''};
   }):[];
-  const shared=MY_TASKS.filter(t=>t.assignedTo&&isCurrentUserAssignment(t.assignedTo)).map(t=>{
-    const ev=t.campaignLookupId?eventById(t.campaignLookupId):eventByTitle(t.campaignLookup);
-    const project=projectById(ev?.projectId);
-    return{...t,kind:'shared',key:'shared:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:ev?.venue||''};
-  });
+  const shared=MY_TASKS.filter(t=>t.assignedTo&&isCurrentUserAssignment(t.assignedTo)).map(mapShared);
+  const unassigned=includeUnassigned?MY_TASKS.filter(t=>t.title&&t.title.trim()&&!(t.assignedTo&&t.assignedTo.trim())).map(mapShared):[];
   // Tagged Activities + automated to-dos — Activities from the main list where the signed-in
   // user is Owner/Designer, merged with any live readiness/action alert (generateNotifications'
   // NOTIFS) that already points at that same Activity, so the same campaign doesn't show up
@@ -10987,7 +10933,7 @@ function myWorkItems(){
     const project=projectById(e.projectId);
     return{id:'activity:'+e.id,key:'activity:'+e.id,kind:'activity',title:e.title,status:e.stage==='Review'?'Blocked':'Active',due:e.stage==='Done'?null:e.start,priority:'',projectId:String(project?.id||''),project:project?.title||'',activityId:e.id,activity:'',venue:e.venue||'',reasons:notifReasonsByEvent[e.id]||[]};
   });
-  return[...personal,...shared,...tagged];
+  return[...personal,...shared,...unassigned,...tagged];
 }
 
 function renderMyWork(){
@@ -10996,18 +10942,25 @@ function renderMyWork(){
   if(!stats||!bucketsEl)return;
   const canSeePersonal=canAccessPanel('personaltasks');
   const addPersonal=document.getElementById('myWorkAddPersonal');if(addPersonal)addPersonal.style.display=canSeePersonal?'':'none';
+  const managePersonalLink=document.getElementById('myWorkManagePersonalLink');if(managePersonalLink)managePersonalLink.style.display=canSeePersonal?'':'none';
   const today=toLocalISODate(new Date());
-  const all=myWorkItems();
+  // "Unassigned team tasks" is its own bucket, visible only to admin/management (canEditTeamTask on
+  // an unassigned task resolves to exactly that) — never mixed into a person's own stats below.
+  const canSeeUnassigned=canEditTeamTask({assignedTo:''});
+  const all=myWorkItems(canSeeUnassigned);
   const byKey={};all.forEach(t=>byKey[t.key]=t);
+  const isUnassignedShared=t=>t.kind==='shared'&&!(t.assignedTo&&String(t.assignedTo).trim());
 
-  const open=all.filter(t=>!['Done','Complete','Completed'].includes(t.status));
-  const overdue=open.filter(t=>t.due&&t.due<today),dueToday=open.filter(t=>t.due===today),completed=all.length-open.length,blocked=open.filter(t=>t.status==='Blocked');
+  const statsBase=all.filter(t=>!isUnassignedShared(t));
+  const open=statsBase.filter(t=>!['Done','Complete','Completed'].includes(t.status));
+  const overdue=open.filter(t=>t.due&&t.due<today),dueToday=open.filter(t=>t.due===today),completed=statsBase.length-open.length,blocked=open.filter(t=>t.status==='Blocked');
   stats.innerHTML=`<div class="stat"><div class="stat-n">${open.length}</div><div class="stat-l">Open</div></div><div class="stat ${blocked.length?'hi':''}"><div class="stat-n">${blocked.length}</div><div class="stat-l">Blocked</div></div><div class="stat ${overdue.length?'hi':''}"><div class="stat-n">${overdue.length}</div><div class="stat-l">Overdue</div></div><div class="stat"><div class="stat-n">${completed}</div><div class="stat-l">Completed</div></div>`;
   const badge=document.getElementById('myWorkBadge');if(badge){badge.textContent=open.length;badge.style.display=open.length?'':'none';}
 
   const configNotes=[];
   if(!LIST_IDS.myTasks&&!isPreviewMode)configNotes.push('<strong>Shared Work Items are not connected yet.</strong> Your private tasks still work normally. Shared assignments will appear here once their own SharePoint list is approved and connected.');
   if(canSeePersonal&&PERSONAL_TASKS_ERROR)configNotes.push('<strong>Personal Tasks could not be loaded.</strong> '+escapeAttr(PERSONAL_TASKS_ERROR));
+  if(!LIST_IDS.hubUserPrefs&&!isPreviewMode)configNotes.push('This board\'s layout (buckets, order, Today\'s 3) is saved in this browser only for now — it won\'t follow you to another device until Hub User Prefs is set up.');
   if(configEl)configEl.innerHTML=configNotes.length?`<div style="background:var(--gold-bg);border:1px solid #ead9a3;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:11.5px;color:var(--text2);line-height:1.5">${configNotes.join('<br>')}</div>`:'';
 
   const tabToday=document.getElementById('myWorkTabToday'),tabAll=document.getElementById('myWorkTabAll');
@@ -11022,10 +10975,17 @@ function renderMyWork(){
   Object.keys(prefs.order).forEach(bid=>{prefs.order[bid]=(prefs.order[bid]||[]).filter(k=>byKey[k]);});
   prefs.today=(prefs.today||[null,null,null]).map(k=>k&&byKey[k]?k:null);
   const customBuckets=prefs.buckets||[];
-  const allBuckets=[...MW_DEFAULT_BUCKETS,...customBuckets];
+  // On the Today tab, only these default buckets (plus any custom one) are shown — "This week",
+  // "Later" and "Unassigned team tasks" are deliberately out of view there, so they must also not be
+  // offered as a drop target: a task dropped into a hidden bucket would vanish with no feedback that
+  // the move worked (confirmed bug — see PR #116, folded in here rather than left as a competing fix
+  // since this touches the same lines).
+  const todayTabBucketIds=new Set(['_blocked','_overdue','_today',...customBuckets.map(c=>c.id)]);
+  const eligibleDefaultBuckets=MW_DEFAULT_BUCKETS.filter(b=>b.id!=='_unassigned'||canSeeUnassigned);
+  const allBuckets=_mwTab==='today'?[...eligibleDefaultBuckets.filter(b=>todayTabBucketIds.has(b.id)),...customBuckets]:[...eligibleDefaultBuckets,...customBuckets];
   const bucketOf=t=>prefs.placement[t.key]||mwAutoBucket(t,today);
   const scoped=_mwTab==='today'
-    ?searched.filter(t=>{const b=bucketOf(t);return b==='_overdue'||b==='_blocked'||b==='_today'||customBuckets.some(c=>c.id===b);})
+    ?searched.filter(t=>todayTabBucketIds.has(bucketOf(t)))
     :searched.filter(t=>bucketOf(t)!==null);
 
   if(todayWidgetEl){
@@ -11073,6 +11033,7 @@ function renderMyWork(){
             ${t.project?`<span style="font-size:10px;color:var(--text3)">${escapeAttr(t.project)}</span>`:''}
           </div>
           ${t.reasons&&t.reasons.length?`<div style="font-size:10px;color:var(--red);margin-top:3px" title="${escapeAttr(t.reasons.join(' · '))}">⚠ ${escapeAttr(t.reasons[0])}${t.reasons.length>1?` (+${t.reasons.length-1} more)`:''}</div>`:''}
+          ${t.status==='Blocked'&&t.blocker?`<div style="font-size:10px;color:#c0392b;margin-top:3px">🚧 Waiting on: ${escapeAttr(t.blocker)}</div>`:''}
         </div>
         ${t.priority?`<span class="tag ${priTag[t.priority]||'t-gr'}" style="flex-shrink:0">${escapeAttr(t.priority)}</span>`:''}
         <span style="font-family:'DM Mono',monospace;font-size:10px;color:${late?'var(--red)':'var(--text3)'};font-weight:${late?'700':'400'};flex-shrink:0;min-width:44px;text-align:right">${t.due?escapeAttr(fmtShort(t.due)):'—'}</span>
@@ -11232,27 +11193,20 @@ function renderMyTasks(){
     const who=document.getElementById('myTasksWho');if(who)who.textContent='Shared register waiting for its own SharePoint list';
     const stats=document.getElementById('myTaskStats');if(stats)stats.innerHTML='';
     const list=document.getElementById('tasksList');if(list)list.innerHTML=`<div class="card"><div class="card-body" style="padding:22px"><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:7px">Work Register list not connected</div><div style="font-size:12px;color:var(--text2);line-height:1.55">This is meant to be open to everyone — a shared job board for the whole team, separate from Kimberley's private Personal Tasks list. It needs its own SharePoint list created and its GUID connected here before any task can appear.</div></div></div>`;
-    ['tBadge','mydayTaskBadge'].forEach(id=>{const badge=document.getElementById(id);if(badge)badge.style.display='none';});
+    ['tBadge'].forEach(id=>{const badge=document.getElementById(id);if(badge)badge.style.display='none';});
     return;
   }
   const today=new Date();today.setHours(0,0,0,0);
   const todayStr=toLocalISODate(today);
   const weekStr=toLocalISODate(new Date(today.getTime()+7*864e5));
-  const myEmail=(currentUserEmail||'').toLowerCase();
-  const myName=(currentUser?.name||'').toLowerCase();
-  const emailPart=myEmail.split('@')[0];
-  const firstName=(myName.split(' ')[0]||'').toLowerCase();
-
-  function isMyTask(t){
-    if(!t.assignedTo||!t.assignedTo.trim())return true;
-    const a=t.assignedTo.toLowerCase();
-    return a.includes(emailPart)||(firstName.length>2&&a.includes(firstName));
-  }
 
   const queue=_taskQueue||'mine';
   let tasks=MY_TASKS.filter(t=>t.title&&t.title.trim());
 
-  if(queue==='mine') tasks=tasks.filter(t=>isMyTask(t)&&t.status!=='Done');
+  // isCurrentUserAssignment() (not a one-off local isMyTask()) — the last of three duplicate
+  // definitions that used to disagree on whether an unassigned task counts as "mine" (this one did;
+  // My Work doesn't). Unassigned shared tasks still show under "All", just not under "My Open".
+  if(queue==='mine') tasks=tasks.filter(t=>isCurrentUserAssignment(t.assignedTo)&&t.status!=='Done');
   else if(queue==='design') tasks=tasks.filter(t=>t.category==='Design Asset'&&t.status!=='Done');
   else if(queue==='web') tasks=tasks.filter(t=>t.category==='Web Update'&&t.status!=='Done');
   else if(queue==='overdue') tasks=tasks.filter(t=>t.status!=='Done'&&t.due&&t.due<todayStr);
@@ -11273,12 +11227,12 @@ function renderMyTasks(){
   const critical=MY_TASKS.filter(t=>t.priority==='Critical'&&t.status!=='Done').length;
   const dueToday=MY_TASKS.filter(t=>t.due===todayStr&&t.status!=='Done').length;
   const overdue=MY_TASKS.filter(t=>t.status!=='Done'&&t.due&&t.due<todayStr).length;
-  const pending=MY_TASKS.filter(t=>t.status!=='Done'&&isMyTask(t)).length;
+  const pending=MY_TASKS.filter(t=>t.status!=='Done'&&isCurrentUserAssignment(t.assignedTo)).length;
 
   const who=document.getElementById('myTasksWho');
   if(who)who.textContent=`${currentUser?.name||currentUserEmail} · ${pending} open tasks`;
 
-  ['tBadge','mydayTaskBadge'].forEach(id=>{const tb=document.getElementById(id);if(tb){tb.textContent=pending;tb.style.display=pending?'':'none';}});
+  ['tBadge'].forEach(id=>{const tb=document.getElementById(id);if(tb){tb.textContent=pending;tb.style.display=pending?'':'none';}});
 
   document.getElementById('myTaskStats').innerHTML=`
     <div class="stat ${blocked>0?'hi':''}" onclick="pickTaskQueue(document.querySelector('[data-q=blocked]'))" style="cursor:pointer"><div class="stat-n">${blocked}</div><div class="stat-l">Blocked</div></div>
@@ -11567,7 +11521,6 @@ async function saveTask(){
   if(btn){btn.disabled=false;btn.textContent='Save Task';}
   renderMyTasks();
   renderMyWorkIfVisible();
-  renderMyDay();
 }
 
 async function toggleTask(id){
@@ -11576,6 +11529,11 @@ async function toggleTask(id){
   if(!canEditTeamTask(t)){alert('You can view this task, but you cannot change it.');return;}
   const oldStatus=t.status;
   t.status=t.status==='Done'?'Not Started':'Done';
+  // Optimistic: reflect the flip immediately, don't wait on the round-trip to SharePoint — only
+  // re-render again below if the save actually fails, to roll the UI back.
+  renderMyTasks();
+  renderMyWorkIfVisible();
+  if(t.status==='Done')showUndoToast('Done',()=>toggleTask(id));
   if(LIST_IDS.myTasks&&!isPreviewMode&&!String(id).startsWith('T-')){
     try{
       const token=await getToken(true);
@@ -11585,10 +11543,10 @@ async function toggleTask(id){
       t.status=oldStatus;
       console.error('Toggle task error:',e);
       alert('Could not update the task. Nothing was changed.');
+      renderMyTasks();
+      renderMyWorkIfVisible();
     }
   }
-  renderMyTasks();
-  renderMyWorkIfVisible();
 }
 
 async function deleteTaskPermanently(id){
@@ -11624,7 +11582,7 @@ async function loadPersonalTasks(){
     // Source/Email* — populated by the planned Outlook email-to-task Power Automate flow (not yet
     // built; this is the Hub-side half, ready for when it is). A Hub-created task simply has no
     // Source value, read as 'Hub' so existing rows aren't affected.
-    PERSONAL_TASKS=items.map(item=>{const f=item.fields||{};return{id:String(item.id),title:f.Title||'',status:f.Status||f.Progress||'Not Started',priority:f.Priority||'Medium',workstream:f.Workstream||f.Category||f.TaskType||'',venue:f.Venue||'',due:f.DueDate?String(f.DueDate).split('T')[0]:'',notes:f.Notes||'',blocker:f.Blocker||f.BlockedReason||'',linkedCampaign:(typeof f.LinkedCampaign==='string'?f.LinkedCampaign:(f.LinkedCampaign?.LookupValue||f.LinkedCampaign?.Title))||f.LinkedCampaignID||'',parentId:f.ParentTaskId!=null&&f.ParentTaskId!==''?String(f.ParentTaskId):'',linkedActivityId:f.LinkedActivityId!=null&&f.LinkedActivityId!==''?String(f.LinkedActivityId):'',projectId:f.ProjectId!=null&&f.ProjectId!==''?String(f.ProjectId):'',sequence:f.Sequence!=null&&f.Sequence!==''?Number(f.Sequence):0,source:f.Source||'Hub',emailSender:f.EmailSender||'',emailLink:f.EmailLink||'',emailMessageId:f.EmailMessageId||''};});
+    PERSONAL_TASKS=items.map(item=>{const f=item.fields||{};return{id:String(item.id),title:f.Title||'',status:f.Status||f.Progress||'Not Started',priority:f.Priority||'',workstream:f.Workstream||f.Category||f.TaskType||'',venue:f.Venue||'',due:f.DueDate?String(f.DueDate).split('T')[0]:'',notes:f.Notes||'',blocker:f.Blocker||f.BlockedReason||'',linkedCampaign:(typeof f.LinkedCampaign==='string'?f.LinkedCampaign:(f.LinkedCampaign?.LookupValue||f.LinkedCampaign?.Title))||f.LinkedCampaignID||'',parentId:f.ParentTaskId!=null&&f.ParentTaskId!==''?String(f.ParentTaskId):'',linkedActivityId:f.LinkedActivityId!=null&&f.LinkedActivityId!==''?String(f.LinkedActivityId):'',projectId:f.ProjectId!=null&&f.ProjectId!==''?String(f.ProjectId):'',sequence:f.Sequence!=null&&f.Sequence!==''?Number(f.Sequence):0,source:f.Source||'Hub',emailSender:f.EmailSender||'',emailLink:f.EmailLink||'',emailMessageId:f.EmailMessageId||''};});
     PERSONAL_TASKS_ERROR='';
   }catch(e){console.error('Personal tasks load error:',e);PERSONAL_TASKS_ERROR=e.message||'Unknown error';}
   renderPersonalTasks();
@@ -11756,10 +11714,16 @@ function populatePersonalTaskProjectSelect(preselect){
   sel.innerHTML='<option value="">Not part of a project</option>'+sorted.map(p=>`<option value="${p.id}">${escapeAttr(p.title)}</option>`).join('');
   sel.value=preselect||'';
 }
+function togglePtBlockerField(){
+  const wrap=document.getElementById('ptBlockerWrap');if(!wrap)return;
+  wrap.style.display=document.getElementById('ptStatus')?.value==='Blocked'?'':'none';
+}
 function openAddPersonalTask(parentId,linkedActivityId,projectId){
   if(!canAccessPanel('personaltasks'))return;
-  ['ptTitle','ptDue','ptNotes','ptEditId'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ptTitle','ptDue','ptNotes','ptEditId','ptBlocker'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('ptPriority').value='Medium';
+  document.getElementById('ptStatus').value='Not Started';
+  togglePtBlockerField();
   populatePersonalTaskParentSelect('',parentId||'');
   populatePersonalTaskActivitySelect(linkedActivityId||'');
   populatePersonalTaskProjectSelect(projectId||'');
@@ -11773,6 +11737,12 @@ function openAddPersonalTask(parentId,linkedActivityId,projectId){
 function openEditPersonalTask(id){
   const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task)return;
   document.getElementById('ptTitle').value=task.title||'';document.getElementById('ptDue').value=task.due||'';document.getElementById('ptNotes').value=task.notes||'';document.getElementById('ptPriority').value=['Critical','High','Medium','Low'].includes(task.priority)?task.priority:'';document.getElementById('ptEditId').value=task.id;
+  // 'Converted' isn't one of this dropdown's options (it's set only by convertPersonalTaskToShared,
+  // never picked by hand) — show it as Done here; savePersonalTask() preserves the real Converted
+  // status on save regardless of what the dropdown shows, so this never gets silently overwritten.
+  document.getElementById('ptStatus').value=['Not Started','In Progress','Blocked','Done'].includes(task.status)?task.status:'Done';
+  document.getElementById('ptBlocker').value=task.blocker||'';
+  togglePtBlockerField();
   populatePersonalTaskParentSelect(task.id,task.parentId||'');
   populatePersonalTaskActivitySelect(task.linkedActivityId||'');
   populatePersonalTaskProjectSelect(task.projectId||'');
@@ -11794,8 +11764,12 @@ async function savePersonalTask(){
   const due=document.getElementById('ptDue').value,notes=document.getElementById('ptNotes').value,priority=document.getElementById('ptPriority').value,parentId=document.getElementById('ptParent').value,linkedActivityId=document.getElementById('ptLinkedActivity').value,projectId=document.getElementById('ptProject').value;
   const existing=PERSONAL_TASKS.find(item=>String(item.id)===String(editId));
   if(parentId&&String(parentId)===String(editId)){msg.textContent='A task cannot be its own parent.';msg.className='form-msg err';return;}
+  // 'Converted' is set only by convertPersonalTaskToShared() and isn't one of this form's options —
+  // preserve it regardless of what the Status dropdown shows (see openEditPersonalTask).
+  const status=existing?.status==='Converted'?'Converted':(document.getElementById('ptStatus').value||'Not Started');
+  const blocker=status==='Blocked'?document.getElementById('ptBlocker').value.trim():'';
   const fields={
-    Status:existing?.status||'Not Started',Priority:priority,
+    Status:status,Priority:priority,Blocker:blocker||null,
     DueDate:due?due+'T12:00:00Z':null,Notes:notes||null,
     ParentTaskId:parentId?parseInt(parentId,10):null,
     LinkedActivityId:linkedActivityId?parseInt(linkedActivityId,10):null,
@@ -11848,7 +11822,7 @@ async function savePersonalTask(){
       }else closeAddPersonalTask();
       return;
     }
-    if(existing){Object.assign(existing,{title,due,notes,priority,parentId,linkedActivityId,projectId});}else PERSONAL_TASKS.push({id:'PT-'+Date.now(),title,status:'Not Started',priority,due,notes,parentId,linkedActivityId,projectId,sequence:newSequence||0});
+    if(existing){Object.assign(existing,{title,due,notes,priority,status,blocker,parentId,linkedActivityId,projectId});}else PERSONAL_TASKS.push({id:'PT-'+Date.now(),title,status,blocker,priority,due,notes,parentId,linkedActivityId,projectId,sequence:newSequence||0});
     renderPersonalTasks();
     closeAddPersonalTask();
   }catch(e){msg.textContent='Could not save: '+e.message;msg.className='form-msg err';}
@@ -11928,8 +11902,23 @@ async function finishPersonalTaskConversion(task,sharedTask,token){
 }
 
 async function togglePersonalTask(id){
-  const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task)return;const old=task.status;task.status=old==='Done'?'Not Started':'Done';
-  try{if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(id).startsWith('PT-')){const token=await getToken(true);const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:task.status}})});if(!res.ok)throw new Error('HTTP '+res.status);}}catch(e){task.status=old;alert('Could not update the personal task.');}renderPersonalTasks();
+  const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task)return;
+  const old=task.status;task.status=old==='Done'?'Not Started':'Done';
+  // Optimistic, same as toggleTask() — render the flip now, only render again below to roll back
+  // if the save fails.
+  renderPersonalTasks();renderMyWorkIfVisible();
+  if(task.status==='Done')showUndoToast('Done',()=>togglePersonalTask(id));
+  try{
+    if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(id).startsWith('PT-')){
+      const token=await getToken(true);
+      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:task.status}})});
+      if(!res.ok)throw new Error('HTTP '+res.status);
+    }
+  }catch(e){
+    task.status=old;
+    alert('Could not update the personal task.');
+    renderPersonalTasks();renderMyWorkIfVisible();
+  }
 }
 
 async function deletePersonalTask(id){
@@ -12174,6 +12163,12 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'LoadedStatus',displayName:'Loaded Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Amelia’s Loaded Rewards build status.'},
   {listKey:'campaigns',name:'SocialStatus',displayName:'Social Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Marketing’s social build status.'}
 ];
+// Existing Choice columns that need specific values present, as opposed to SCHEMA_KNOWN_GAPS above
+// (which only ever creates a column that doesn't exist yet). Additive only — never removes a
+// choice a column already has, only adds what's missing from requiredChoices.
+const SCHEMA_CHOICE_ENSURE=[
+  {listKey:'personalTasks',name:'Status',displayName:'Status',requiredChoices:['Not Started','In Progress','Blocked','Done','Converted'],purpose:'My Work Plan 1.4 — personal tasks need In Progress/Blocked so they can land in the "Needs a decision" bucket, same as shared tasks.'}
+];
 let SCHEMA_TOOL_COLUMNS={};
 let _schemaShowReadyColumns=false; // ready (already-created) rows stay collapsed by default — only "Missing" needs attention
 function toggleSchemaShowReadyColumns(){_schemaShowReadyColumns=!_schemaShowReadyColumns;renderSchemaTools();}
@@ -12370,6 +12365,7 @@ async function renderSchemaTools(forceRefresh){
     const readyCount=rows.length-missing.length;
     const displayRows=_schemaShowReadyColumns?rows:missing;
     gapsEl.innerHTML=`<div class="card"><div class="card-h"><span class="card-title">Proposed SharePoint columns</span>${readyCount?`<span class="card-act" onclick="toggleSchemaShowReadyColumns()">${_schemaShowReadyColumns?'Hide ready columns':`Show ${readyCount} ready column${readyCount===1?'':'s'}`} →</span>`:''}</div><div class="card-body" style="overflow:auto"><div style="min-width:760px">${displayRows.length?`<div style="display:grid;grid-template-columns:1.35fr 1fr 1fr .65fr 1.7fr .55fr;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text3)"><span>List</span><span>Field</span><span>Internal name</span><span>Type</span><span>Purpose</span><span>Status</span></div>${displayRows.map(r=>`<div style="display:grid;grid-template-columns:1.35fr 1fr 1fr .65fr 1.7fr .55fr;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);font-size:10.5px;align-items:start"><strong>${escapeAttr(r.listLabel)}</strong><span>${escapeAttr(r.displayName)}</span><code>${escapeAttr(r.name)}</code><span>${escapeAttr(r.type)}</span><span style="color:var(--text2)">${escapeAttr(r.purpose)}</span><strong style="color:${r.exists?'#15803d':'var(--gold)'}">${r.exists?'Ready':'Missing'}</strong></div>`).join('')}`:`<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">All proposed columns already exist — nothing missing.</div>`}</div>${missing.length?`<div style="padding:12px"><button class="btn btn-p" onclick="createKnownSchemaGaps()">Review &amp; create ${missing.length} missing column${missing.length===1?'':'s'}</button></div>`:''}</div></div>`;
+    await renderSchemaChoiceChecks(token);
   }catch(e){
     gapsEl.innerHTML=`<div class="card"><div class="card-body" style="padding:20px;color:var(--red)">Could not check columns: ${escapeAttr(e.message)}</div></div>`;
   }
@@ -12392,6 +12388,49 @@ async function createKnownSchemaGaps(){
   alert(`Created ${created} column(s)${failures.length?`, ${failures.length} failed. First error: ${failures[0].slice(0,500)} — see console for all errors.`:'.'}`);
   failures.forEach(f=>console.error('Schema Tools:',f));
   await renderSchemaTools(true);
+}
+// Separate from the gaps list above — these are EXISTING Choice columns that need specific values
+// present (SCHEMA_CHOICE_ENSURE), not columns that need creating. Needs the full column definition
+// (choice.choices), not the lightweight name-only list fetchListColumnsRaw already cached.
+async function renderSchemaChoiceChecks(token){
+  const el=document.getElementById('schemaChoiceChecks');if(!el)return;
+  const rows=[];
+  for(const check of SCHEMA_CHOICE_ENSURE){
+    const listMeta=SCHEMA_TOOL_LISTS[check.listKey];
+    const listId=LIST_IDS[listMeta.listIdKey];
+    if(!listId){rows.push({...check,listLabel:listMeta.label,error:'List not connected yet'});continue;}
+    try{
+      const cols=await fetchListColumnsFull(listId,token);
+      const col=cols.find(c=>c.name===check.name||c.displayName===check.displayName);
+      if(!col){rows.push({...check,listLabel:listMeta.label,error:`Column "${check.displayName}" not found`});continue;}
+      const current=col.choice?.choices||[];
+      const missing=check.requiredChoices.filter(c=>!current.includes(c));
+      rows.push({...check,listLabel:listMeta.label,missing,columnId:col.id});
+    }catch(e){rows.push({...check,listLabel:listMeta.label,error:e.message});}
+  }
+  if(!rows.length){el.innerHTML='';return;}
+  el.innerHTML=`<div class="card"><div class="card-h"><span class="card-title">Choice values on existing columns</span></div><div class="card-body" style="display:flex;flex-direction:column;gap:8px">${rows.map(r=>{
+    if(r.error)return`<div style="font-size:11.5px;color:var(--red)">${escapeAttr(r.listLabel)}.${escapeAttr(r.name)}: ${escapeAttr(r.error)}</div>`;
+    if(!r.missing.length)return`<div style="font-size:11.5px;color:var(--text2)">${escapeAttr(r.listLabel)}.${escapeAttr(r.name)}: <strong style="color:#15803d">all required choices present</strong></div>`;
+    return`<div style="font-size:11.5px;color:var(--text2);display:flex;justify-content:space-between;align-items:center;gap:10px"><span>${escapeAttr(r.listLabel)}.${escapeAttr(r.name)} is missing: <strong style="color:var(--gold)">${escapeAttr(r.missing.join(', '))}</strong></span><button class="tb-btn" style="font-size:10.5px;padding:4px 9px;flex-shrink:0" onclick="addMissingSchemaChoices('${r.listKey}','${escapeAttr(r.name)}')">Add missing</button></div>`;
+  }).join('')}</div></div>`;
+}
+async function addMissingSchemaChoices(listKey,name){
+  const check=SCHEMA_CHOICE_ENSURE.find(c=>c.listKey===listKey&&c.name===name);if(!check)return;
+  const listMeta=SCHEMA_TOOL_LISTS[listKey];
+  const listId=LIST_IDS[listMeta.listIdKey];
+  if(!confirm(`Add the missing choice values to ${listMeta.label}.${name}?\n\nRequired: ${check.requiredChoices.join(', ')}\n\nExisting choices are kept — nothing is removed.`))return;
+  try{
+    const token=await getToken(true);
+    const cols=await fetchListColumnsFull(listId,token);
+    const col=cols.find(c=>c.name===name||c.displayName===check.displayName);
+    if(!col)throw new Error(`Column "${name}" not found — it may have been renamed or removed since this page loaded.`);
+    const merged=[...new Set([...(col.choice?.choices||[]),...check.requiredChoices])];
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/columns/${col.id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({choice:{choices:merged}})});
+    if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+    alert(`${name} now includes: ${merged.join(', ')}`);
+    await renderSchemaChoiceChecks(token);
+  }catch(e){alert('Could not update choices: '+e.message);}
 }
 async function createSchemaColumn(){
   const msg=document.getElementById('schemaAddMsg');
@@ -13213,12 +13252,6 @@ function readNotif(key,eventId){
   if(eventId&&eventId!=='null')showPop(parseInt(eventId));
 }
 
-function markAllRead(){
-  NOTIFS.forEach(n=>{saveReadNotif(n.key);n.unread=false;});
-  const nb=document.getElementById('nBadge');if(nb){nb.textContent=0;nb.style.display='none';}
-  renderMyDay();
-}
-
 // ═══════════════════════════════════════
 // SUBMIT
 // ═══════════════════════════════════════
@@ -13457,6 +13490,16 @@ function monthYearFromDateInput(dateStr){
   const d=new Date(dateStr+'T00:00:00');
   return isNaN(d)?'':d.toLocaleString('en-AU',{month:'long',year:'numeric'});
 }
+// SharePoint/Windows forbid " * : < > ? / \ | in a file or folder name, and a name can't end in a
+// period or space. These can arrive via the free-text Specific Name field (e.g. a title typed with
+// a trailing full stop broke folder creation for "Wirra Wirra Wines..." — see the Oct 2026 Power
+// Automate failure emails, and a title with " | " separators broke it for another activity the
+// same week) — sanitise every piece before it ever reaches the Title, not just the join character.
+// Forbidden characters are dropped outright (not swapped for a dash), then any whitespace left
+// behind by that collapses to a single space.
+function sanitizeForFolderName(str){
+  return String(str||'').replace(/["*:<>?/\\|]/g,'').replace(/\s+/g,' ').trim().replace(/[.\s]+$/,'');
+}
 function composeAutoActivityTitle(){
   if(fTitleTouched)return;
   const venueOrBrand=document.getElementById('fBrand')?.value||document.getElementById('fVenue')?.value||'';
@@ -13464,14 +13507,12 @@ function composeAutoActivityTitle(){
   const typeLabel=document.getElementById('fTitleBase')?.value||document.getElementById('fActSubtype')?.value||document.getElementById('fActType')?.value||'';
   const specificName=document.getElementById('fDesc')?.value.trim()||'';
   const period=monthYearFromDateInput(document.getElementById('fStart')?.value||'');
-  const parts=[venueLabel,typeLabel,specificName,period].filter(Boolean);
+  const parts=[venueLabel,typeLabel,specificName,period].map(sanitizeForFolderName).filter(Boolean);
   const titleEl=document.getElementById('fTitle');
-  // "_" not " | " — the Activity Title feeds the Power Automate folder-creation flow directly,
-  // and "|" is one of the characters SharePoint/Windows forbid in a file or folder name, which was
-  // silently breaking folder creation for every new activity. No surrounding spaces, since the flow
-  // also turns spaces into underscores when building the folder name — " _ " would come out as
-  // doubled/tripled underscores there.
-  if(titleEl&&parts.length)titleEl.value=parts.join('_');
+  // Joined with plain spaces — readable as a Title, and the Power Automate flow already turns
+  // spaces into underscores itself when it builds the actual folder name, so this still comes out
+  // the same on the SharePoint side without the Title itself looking machine-generated.
+  if(titleEl&&parts.length)titleEl.value=sanitizeForFolderName(parts.join(' '));
 }
 
 function applyActivityTemplate(key){
@@ -15150,9 +15191,18 @@ function renderActivityDetail(id,mode){
   h+=`<div class="pop-field" style="margin-top:6px"><div class="pop-lbl">Job / Artwork Folder</div>`;
   if(ev.jobFolderUrl){
     h+=`<a href="${ev.jobFolderUrl}" target="_blank" style="font-size:12px;color:var(--accent);font-weight:600;text-decoration:none">📁 Open artwork folder →</a>`;
+  } else if(canEdit){
+    // The Power Automate flow normally creates this on approval, but it can fail (bad characters in
+    // the Title, a name collision, etc. — see sanitizeForFolderName). These give a manual way out
+    // instead of leaving the activity with no folder until someone remembers to chase it up.
+    h+=`<div style="font-size:11.5px;color:var(--text3);margin-bottom:6px">No folder yet — normally added by the Power Automate flow after approval. Link an existing one, or create it here.</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <input type="text" id="evJobFolderInput-${ev.id}" placeholder="Paste a SharePoint folder link…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text)">
+        <button class="btn btn-s" style="font-size:11px" onclick="linkEvJobFolder(${ev.id})">Link folder</button>
+      </div>
+      <button class="tb-btn" style="font-size:11px" onclick="createEvJobFolder(${ev.id})">📁+ Create folder here</button>
+      <div id="evJobFolderMsg-${ev.id}" class="form-msg" style="margin-top:6px"></div>`;
   } else {
-    // The existing Power Automate flow owns folder creation and writes JobFolderURL back later.
-    // The Hub must not claim it creates or rolls back folders itself.
     h+=`<div style="font-size:11.5px;color:var(--text3)">Folder pending — the Power Automate flow will place the link here after approval.</div>`;
   }
   if(ev.linkedArtworkFolderUrl)h+=`<div style="margin-top:4px"><a href="${ev.linkedArtworkFolderUrl}" target="_blank" style="font-size:11px;color:var(--accent)">🔗 Linked artwork folder →</a></div>`;
@@ -15659,6 +15709,17 @@ function showToast(title,message,onOpen){
   toast.querySelector('.toast-close').onclick=()=>toast.remove();
   if(onOpen){toast.querySelector('.toast-copy').style.cursor='pointer';toast.querySelector('.toast-copy').onclick=()=>{onOpen();toast.remove();};}
   stack.prepend(toast);while(stack.children.length>3)stack.lastElementChild.remove();setTimeout(()=>toast.remove(),10000);
+}
+// Compact "Done · Undo" toast for optimistic tick-off (toggleTask/togglePersonalTask) — shares the
+// same stack/positioning as showToast but is action-first, not a passive notification, and
+// auto-dismisses sooner (6s) since there's nothing to read, just a brief window to change your mind.
+function showUndoToast(label,undoFn){
+  const stack=document.getElementById('toastStack');if(!stack)return;
+  const toast=document.createElement('div');toast.className='toast';
+  toast.innerHTML=`<div class="toast-copy" style="flex:1">${escapeAttr(label)}</div><button class="tb-btn" style="font-size:11px;padding:3px 9px;flex-shrink:0">Undo</button><button class="toast-close" aria-label="Dismiss">✕</button>`;
+  toast.querySelector('.toast-close').onclick=()=>toast.remove();
+  toast.querySelector('.tb-btn').onclick=()=>{toast.remove();undoFn();};
+  stack.prepend(toast);while(stack.children.length>3)stack.lastElementChild.remove();setTimeout(()=>toast.remove(),6000);
 }
 
 // ═══════════════════════════════════════
