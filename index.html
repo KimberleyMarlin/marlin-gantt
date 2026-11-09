@@ -724,10 +724,10 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   </div>
   <div class="sb-nav">
     <div class="sb-sec">Today</div>
-    <button class="sb-item" data-p="overview" onclick="nav(this)"><span class="ico">⊞</span>Dashboard<span class="sb-badge" id="nBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="mywork" onclick="nav(this)"><span class="ico">☐</span>My Work<span class="sb-badge a" id="myWorkBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="overview" onclick="nav(this)"><span class="ico">⊞</span>Dashboard<span class="sb-badge" id="nBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="inbox" onclick="nav(this)"><span class="ico">📨</span>Inbox<span class="sb-badge" id="inboxBadge" style="display:none">0</span></button>
-    <button class="sb-item" data-p="personaltasks" onclick="nav(this)"><span class="ico">🔒</span>Personal Tasks<span class="sb-badge" id="personalTaskBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="personaltasks" onclick="nav(this)" style="display:none"><span class="ico">🔒</span>Personal Tasks<span class="sb-badge" id="personalTaskBadge" style="display:none">0</span></button>
     <div class="sb-sec">Plan</div>
     <button class="sb-item active" data-p="calendar" onclick="nav(this)"><span class="ico">◻</span>Calendar</button>
     <button class="sb-item" data-p="campaigns" onclick="nav(this)"><span class="ico">◎</span>Activities<span class="sb-badge" id="aBadge" style="display:none">0</span></button>
@@ -738,7 +738,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
     <div class="sb-sec">Deliver</div>
     <button class="sb-item" data-p="approvals" onclick="nav(this)"><span class="ico">✓</span>Submissions</button>
     <button class="sb-item" data-p="projects" onclick="nav(this)"><span class="ico">▣</span>Projects</button>
-    <button class="sb-item" data-p="mytasks" onclick="nav(this)"><span class="ico">☷</span>Shared Work Setup<span class="sb-badge a" id="tBadge" style="display:none">0</span></button>
+    <button class="sb-item" data-p="mytasks" onclick="nav(this)"><span class="ico">☷</span>Team Work Register<span class="sb-badge a" id="tBadge" style="display:none">0</span></button>
     <button class="sb-item" data-p="design" onclick="nav(this)"><span class="ico">✦</span>Design Jobs</button>
     <button class="sb-item" data-p="workload" onclick="nav(this)"><span class="ico">👥</span>Workload</button>
     <div class="sb-sec">Programs</div>
@@ -1480,7 +1480,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <!-- MY WORK — bucket board over shared assignments and Kimberley's private list -->
   <div class="panel" id="p-mywork">
     <div class="ph">
-      <div><div class="ph-eye">Today and upcoming</div><div class="ph-title">My <em>Work</em></div><div class="ph-sub">Shared assignments and private tasks stay separate in SharePoint. Dragging a Shared item only saves your own view of it — never anyone else's priority, due date or stage.</div></div>
+      <div><div class="ph-eye">Today and upcoming</div><div class="ph-title">My <em>Work</em></div><div class="ph-sub">Shared assignments and private tasks stay separate in SharePoint. Dragging a Shared item only saves your own view of it — never anyone else's priority, due date or stage. <a href="#" id="myWorkManagePersonalLink" onclick="event.preventDefault();navTo('personaltasks')" style="display:none">Manage personal tasks →</a></div></div>
       <div class="ph-right"><button class="tb-btn p" id="myWorkAddPersonal" onclick="openAddPersonalTask()">+ Personal task</button><button class="tb-btn" onclick="refreshMyWork()">↻</button></div>
     </div>
     <div class="ca">
@@ -1588,7 +1588,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <!-- PERSONAL TASKS — separate private SharePoint list, Kimberley only -->
   <div class="panel" id="p-personaltasks">
     <div class="ph">
-      <div><div class="ph-eye">Kimberley Only</div><div class="ph-title">Personal <em>Tasks</em></div><div class="ph-sub">Private work and reminders. A Task is one thing to do; link it to a Project when it's part of a larger body of work — Projects are the containers, Tasks are what's inside them.</div></div>
+      <div><div class="ph-eye">Manage</div><div class="ph-title">Personal <em>Tasks</em></div><div class="ph-sub">Private work and reminders. A Task is one thing to do; link it to a Project when it's part of a larger body of work — Projects are the containers, Tasks are what's inside them.</div></div>
       <div class="ph-right"><button class="tb-btn p" onclick="openAddPersonalTask()">+ New Personal Task</button><button class="tb-btn" onclick="loadPersonalTasks()">↻</button></div>
     </div>
     <div class="ca">
@@ -1960,24 +1960,6 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 
   <!-- NOTIFICATIONS -->
   <!-- MY DAY -->
-  <div class="panel" id="p-myday">
-    <div class="ph">
-      <div><div class="ph-eye">Personal</div><div class="ph-title">My <em>Day</em></div><div class="ph-sub" id="mydaySub">Everything that needs your attention</div></div>
-      <div class="ph-right">
-        <div class="chips" id="mydayTabChips">
-          <div class="chip on" data-v="feed" onclick="pickMydayTab(this)">☀ Feed</div>
-          <div class="chip" data-v="tasks" onclick="pickMydayTab(this)">☐ Tasks<span id="mydayTaskBadge" class="sb-badge a" style="display:none;margin-left:4px">0</span></div>
-          <div class="chip" data-v="approvals" onclick="pickMydayTab(this)">✓ Approvals<span id="mydayApprovalBadge" class="sb-badge" style="display:none;margin-left:4px">0</span></div>
-        </div>
-        <button class="tb-btn" onclick="markAllRead();renderMyDay()">✓ Clear</button>
-        <button class="tb-btn" onclick="generateNotifications();renderMyDay()">↻</button>
-      </div>
-    </div>
-    <div id="mydayFeedTab" class="ca"><div class="loading"><div class="spinner"></div></div></div>
-    <div id="mydayTasksTab" class="ca" style="display:none"></div>
-    <div id="mydayApprovalsTab" class="ca" style="display:none"></div>
-  </div>
-
   <!-- SUBMIT -->
   <div class="panel" id="p-submit">
     <div class="ph"><div><div class="ph-eye">Submit</div><div class="ph-title">What are you <em>submitting?</em></div></div></div>
@@ -3070,11 +3052,10 @@ function applyRoleUI(){
     const scheduleChip=document.querySelector(`#calViewChips .chip[data-v="${p}"]`);
       if(scheduleChip)scheduleChip.style.display='none';
   });
-  // Personal Tasks is a separate Kimberley-only list and panel.
-  if(!canAccessPanel('personaltasks')){
-    const personalBtn=document.querySelector('.sb-item[data-p="personaltasks"]');
-    if(personalBtn)personalBtn.style.display='none';
-  }
+  // Personal Tasks is a separate Kimberley-only list and panel. It's no longer a sidebar
+  // destination for anyone — Kimberley reaches it via the "Manage personal tasks →" link in
+  // My Work, and it stays privacy-gated by canAccessPanel('personaltasks') either way.
+  document.querySelector('.sb-item[data-p="personaltasks"]')?.style.setProperty('display','none');
   // Schema Tools writes SharePoint columns directly — Kimberley only.
   if(!canAccessPanel('schema')){
     const schemaBtn=document.querySelector('.sb-item[data-p="schema"]');
@@ -4546,7 +4527,7 @@ async function initMSAL(){
       const newest=newSubmissions[0];
       showToast(newSubmissions.length>1?`${newSubmissions.length} new submissions`:'New submission',`${newest.title}${newest.venue?' — '+newest.venue:''}`,()=>navTo('approvals'));
     }
-    renderApprovalsInline();
+    updateActivitiesApprovalBadge();
     if(document.getElementById('p-approvals')?.classList.contains('active'))renderApprovals();
     if(document.getElementById('p-overview')?.classList.contains('active'))renderCrossVenue&&renderCrossVenue();
     const knownIds=new Set(ALL_COMMENTS.map(comment=>String(comment.id)));
@@ -4606,9 +4587,13 @@ function previewMode(){
   resolveRole(currentUserEmail);
   const who=document.getElementById('myTasksWho');
   if(who)who.textContent='Showing tasks for UI Preview';
-  showPanel('calendar');
+  // Same per-user landing-page logic as onAuthed() (My Work Plan 2.2), so Preview Mode exercises
+  // the real default instead of always opening on Calendar.
+  const landingOverride=loadMyWorkPrefs().landingPanel;
+  const defaultPanel=(landingOverride&&PANEL_TITLES[landingOverride])?landingOverride:(canAccessPanel('personaltasks')?'mywork':'calendar');
+  showPanel(defaultPanel);
   document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
-  document.querySelector('.sb-item[data-p="calendar"]')?.classList.add('active');
+  document.querySelector(`.sb-item[data-p="${defaultPanel}"]`)?.classList.add('active');
   // Populate whatever doesn't require a network call, so panels aren't blank
   SPONSORSHIPS=[...STATIC_SPONSORSHIPS];
   seedTaskPreview();
@@ -4638,8 +4623,11 @@ async function onAuthed(acc){
   // Update My Tasks subtitle
   const who=document.getElementById('myTasksWho');
   if(who)who.textContent=`Showing tasks for ${acc.name||acc.username}`;
-  // Default panel based on role
-  const defaultPanel='calendar'; // Calendar is the group operating view and default landing page.
+  // Default panel: a per-user override from Hub User Prefs wins if set (My Work Plan 1.5/2.2);
+  // otherwise Kimberley lands on My Work and everyone else keeps the Calendar group operating view.
+  // loadMyWorkPrefs() reads localStorage only, so this is safe to call before loadAll() has run.
+  const landingOverride=loadMyWorkPrefs().landingPanel;
+  const defaultPanel=(landingOverride&&PANEL_TITLES[landingOverride])?landingOverride:(canAccessPanel('personaltasks')?'mywork':'calendar');
   if(Object.keys(SCHEDULE_SUBPANELS).includes(defaultPanel)){
     // Sub-views (gantt/venuemonth/crossvenue) now live inside the consolidated Schedule page.
     // IMPORTANT: don't render yet — EVENTS isn't populated until loadAll() runs right after this.
@@ -6243,7 +6231,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',appearance:'<em>Appearance</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',myday:'My <em>Work</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',appearance:'<em>Appearance</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -6299,7 +6287,7 @@ function showPanel(id){
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
   // Activities consolidation: Pipeline is a sub-view of 'campaigns' now — hide it when navigating elsewhere.
   if(id!=='campaigns'){const pipePanel=document.getElementById('p-pipeline');if(pipePanel)pipePanel.style.display='none';}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,appearance:renderAppearanceSettings,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,myday:renderMyWork,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging};
+  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,appearance:renderAppearanceSettings,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
   // Skip this for 'campaigns' while its Pipeline sub-view is showing — that block just hid the
@@ -8142,222 +8130,14 @@ function renderLrVenueOffers(){
   }).join('');
 }
 // ═══════════════════════════════════════
-function pickMydayTab(el){
-  document.querySelectorAll('#mydayTabChips .chip').forEach(c=>c.classList.remove('on'));
-  el.classList.add('on');
-  const tab=el.dataset.v;
-  document.getElementById('mydayFeedTab').style.display=tab==='feed'?'':'none';
-  document.getElementById('mydayTasksTab').style.display=tab==='tasks'?'':'none';
-  document.getElementById('mydayApprovalsTab').style.display=tab==='approvals'?'':'none';
-  if(tab==='tasks')renderMyTasksInline();
-  if(tab==='approvals')renderApprovalsInline();
+// My Day (#p-myday) retired — My Work is the one home for to-dos now. This just keeps the
+// "Activities" sidebar badge (aBadge) current; it used to also drive My Day's own Approvals tab,
+// which duplicated the real Submissions page and didn't survive the retirement.
+function updateActivitiesApprovalBadge(){
+  const total=EVENTS.filter(e=>!isArchived(e)&&(e.stage==='Intake'||e.stage==='Review')).length;
+  const ab=document.getElementById('aBadge');
+  if(ab){ab.textContent=total;ab.style.display=total?'':'none';}
 }
-
-function renderMyTasksInline(){
-  // Render My Tasks content into the myday tasks tab
-  const el=document.getElementById('mydayTasksTab');
-  if(!el)return;
-  const today=new Date();today.setHours(0,0,0,0);
-  const myEmail=(currentUserEmail||'').toLowerCase();
-  const myName=(currentUser?.name||'').toLowerCase();
-  const emailPart=myEmail.split('@')[0];
-  const firstName=(myName.split(' ')[0]||'').toLowerCase();
-  function isMyTask(t){
-    if(!t.assignedTo||!t.assignedTo.trim())return true;
-    const a=t.assignedTo.toLowerCase();
-    return a.includes(emailPart)||(firstName.length>2&&a.includes(firstName));
-  }
-  const tasks=MY_TASKS.filter(t=>t.title&&t.title.trim()&&isMyTask(t));
-  const pending=tasks.filter(t=>t.status!=='Done'&&t.status!=='Complete');
-  const done=tasks.filter(t=>t.status==='Done'||t.status==='Complete');
-  const priTag={Critical:'t-r',High:'t-o',Medium:'t-a',Normal:'t-g',Low:'t-gr'};
-
-  // Update badge
-  ['tBadge','mydayTaskBadge'].forEach(id=>{const tb=document.getElementById(id);if(tb){tb.textContent=pending.length;tb.style.display=pending.length?'':'none';}});
-
-  el.innerHTML=`
-    <div class="stats" style="margin-bottom:12px">
-      <div class="stat ${tasks.filter(t=>t.status==='Blocked').length?'hi':''}"><div class="stat-n">${tasks.filter(t=>t.status==='Blocked').length}</div><div class="stat-l">Blocked</div></div>
-      <div class="stat"><div class="stat-n">${tasks.filter(t=>t.due===toLocalISODate(today)&&t.status!=='Done').length}</div><div class="stat-l">Due Today</div></div>
-      <div class="stat"><div class="stat-n">${pending.length}</div><div class="stat-l">Open</div></div>
-      <div class="stat"><div class="stat-n">${done.length}</div><div class="stat-l">Done</div></div>
-    </div>
-    <button class="btn btn-p" style="margin-bottom:12px;padding:7px 14px;font-size:12px" onclick="openAddTask()">＋ New Task</button>
-    ${pending.length?pending.map(t=>{
-      const isBlocked=t.status==='Blocked';
-      const isOverdue=t.due&&new Date(t.due+'T00:00:00')<today;
-      return`<div class="task-item ${isBlocked?'blocked':''}">
-        <div class="task-cb" onclick="toggleMyDayTask('${t.id}')">${t.status==='Done'?'✓':''}</div>
-        <div class="task-info">
-          <div class="task-name">${t.title}</div>
-          <div class="task-meta">
-            ${t.venue?`<span>${t.venue}</span>`:''}
-            ${t.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'};font-weight:${isOverdue?'600':'400'}">${isOverdue?'Overdue: ':''}${fmtDate(t.due)}</span>`:''}
-            ${t.category?`<span>${t.category}</span>`:''}
-          </div>
-        </div>
-        <div class="task-right">
-          ${t.priority?`<span class="tag ${priTag[t.priority]||'t-gr'}">${t.priority}</span>`:''}
-          ${isBlocked?`<span class="tag t-r">Blocked</span>`:''}
-        </div>
-      </div>`;
-    }).join(''):'<div style="padding:20px;text-align:center;color:var(--text3)">No open tasks ✓</div>'}
-    ${done.length?`<div style="margin-top:12px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Completed · ${done.length}</div>
-    ${done.slice(0,5).map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;opacity:.5;cursor:pointer" onclick="toggleMyDayTask('${t.id}')">
-      <div class="task-cb done">✓</div>
-      <div style="font-size:12px;text-decoration:line-through;color:var(--text3)">${t.title}</div>
-    </div>`).join('')}`:''}
-  `;
-}
-
-function renderApprovalsInline(){
-  const el=document.getElementById('mydayApprovalsTab');
-  if(!el)return;
-  const intake=EVENTS.filter(e=>e.stage==='Intake'&&!isArchived(e));
-  const review=EVENTS.filter(e=>e.stage==='Review'&&!isArchived(e));
-  const total=intake.length+review.length;
-  ['aBadge','mydayApprovalBadge'].forEach(id=>{const ab=document.getElementById(id);if(ab){ab.textContent=total;ab.style.display=total?'':'none';}});
-  const card=(ev)=>{
-    const vc=vColor(ev.venue);
-    return`<div class="appr-card">
-      <div class="appr-h">
-        <div>
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px">${ev.title}</div>
-          <div style="font-size:11.5px;color:var(--text3);display:flex;align-items:center;gap:6px">
-            <span style="width:7px;height:7px;border-radius:50%;background:${vc.c};display:inline-block"></span>
-            ${ev.venue} · ${ev.activityType||ev.eventFormat} · ${fmtShort(ev.start)}
-          </div>
-        </div>
-        <div class="appr-actions">
-          ${canApproveCampaigns()?`<button class="btn btn-p" style="padding:6px 12px;font-size:12px" onclick="approveCampaign(${ev.id},this)">✓ Approve</button>
-          <button class="btn btn-s" style="padding:6px 12px;font-size:12px;color:var(--red);border-color:#fca5a5" onclick="denyCampaign(${ev.id},this)">✕ Deny</button>`:''}
-          <button class="btn btn-s" style="padding:6px 12px;font-size:12px" onclick="showPop(${ev.id})">View</button>
-        </div>
-      </div>
-      ${ev.description?`<div class="appr-body">${ev.description}</div>`:''}
-    </div>`;
-  };
-  if(!total){el.innerHTML='<div style="padding:36px;text-align:center;color:var(--text3)">✓ No campaigns awaiting approval</div>';return;}
-  el.innerHTML=`
-    ${intake.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px">📥 Submissions · ${intake.length}</div>${intake.map(card).join('')}`:''}
-    ${review.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:${intake.length?'20px':'0'} 0 8px">⏳ In Review · ${review.length}</div>${review.map(card).join('')}`:''}
-  `;
-}
-
-function renderMyDay(){
-  const today=new Date();today.setHours(0,0,0,0);
-  const week=new Date(Date.now()+7*864e5);
-  const sub=document.getElementById('mydaySub');
-  if(sub)sub.textContent=today.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'})+' · '+(currentUser?.name||currentUserEmail);
-
-  const myEmail=(currentUserEmail||'').toLowerCase();
-  const myName=(currentUser?.name||'').toLowerCase();
-  const emailPart=myEmail.split('@')[0];
-  const firstName=(myName.split(' ')[0]||'').toLowerCase();
-  function isMyTask(t){
-    if(!t.assignedTo||t.assignedTo.trim()==='')return true; // unassigned = everyone's
-    const a=(t.assignedTo||'').toLowerCase();
-    return a.includes(emailPart)||(firstName.length>2&&a.includes(firstName));
-  }
-  // Filter: has title, assigned to me or unassigned
-  const validTasks=MY_TASKS.filter(t=>t.title&&t.title.trim()&&isMyTask(t));
-  const feed=[];
-
-  validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00')<today).forEach(t=>{
-    feed.push({urgency:0,icon:'🔴',label:'OVERDUE',color:'var(--red-bg)',text:t.title,sub:t.venue||t.category||'Task',due:t.due,type:'task',id:t.id});
-  });
-  validTasks.filter(t=>t.status==='Blocked').forEach(t=>{
-    if(feed.some(f=>f.id===t.id))return;
-    feed.push({urgency:1,icon:'🚫',label:'BLOCKED',color:'var(--red-bg)',text:t.title,sub:t.blocker||'Blocked',due:t.due,type:'task',id:t.id});
-  });
-  NOTIFS.filter(n=>n.category==='action'&&n.unread).forEach(n=>{
-    feed.push({urgency:2,icon:n.icon,label:'ACTION',color:n.color,text:n.text,sub:n.time,type:'notif',key:n.key,eventId:n.eventId});
-  });
-  NOTIFS.filter(n=>n.category==='readiness'&&n.unread&&n.color==='var(--red-bg)').forEach(n=>{
-    feed.push({urgency:3,icon:'⚠️',label:'URGENT',color:'var(--red-bg)',text:n.text,sub:n.time,type:'notif',key:n.key,eventId:n.eventId});
-  });
-  validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00').getTime()===today.getTime()).forEach(t=>{
-    if(feed.some(f=>f.id===t.id))return;
-    feed.push({urgency:4,icon:'📌',label:'DUE TODAY',color:'var(--gold-bg)',text:t.title,sub:t.venue||t.category||'Task',due:t.due,type:'task',id:t.id});
-  });
-  validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00')>today&&new Date(t.due+'T00:00:00')<=week).forEach(t=>{
-    if(feed.some(f=>f.id===t.id))return;
-    feed.push({urgency:5,icon:'☐',label:'THIS WEEK',color:'var(--surface2)',text:t.title,sub:fmtDate(t.due),due:t.due,type:'task',id:t.id});
-  });
-  NOTIFS.filter(n=>n.category==='readiness'&&n.unread&&n.color==='var(--gold-bg)').forEach(n=>{
-    feed.push({urgency:6,icon:'🟡',label:'HEADS UP',color:'var(--gold-bg)',text:n.text,sub:n.time,type:'notif',key:n.key,eventId:n.eventId});
-  });
-  NOTIFS.filter(n=>n.category==='campaign'&&n.unread).forEach(n=>{
-    feed.push({urgency:7,icon:n.icon,label:'CAMPAIGN',color:n.color||'var(--accent-bg)',text:n.text,sub:n.time,type:'notif',key:n.key,eventId:n.eventId});
-  });
-  validTasks.filter(t=>t.status!=='Done'&&!t.due).forEach(t=>{
-    if(feed.some(f=>f.id===t.id))return;
-    feed.push({urgency:8,icon:'○',label:'OPEN',color:'var(--surface2)',text:t.title,sub:t.category||'Task',due:null,type:'task',id:t.id});
-  });
-
-  const recentDone=validTasks.filter(t=>t.status==='Done').slice(0,5);
-  feed.sort((a,b)=>a.urgency-b.urgency);
-
-  const body=document.getElementById('mydayFeedTab');
-  if(!body)return;
-
-  const counts={
-    overdue:validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00')<today).length,
-    blocked:validTasks.filter(t=>t.status==='Blocked').length,
-    dueToday:validTasks.filter(t=>t.status!=='Done'&&t.due&&new Date(t.due+'T00:00:00').getTime()===today.getTime()).length,
-    open:validTasks.filter(t=>t.status!=='Done').length,
-    done:validTasks.filter(t=>t.status==='Done').length
-  };
-
-  let html='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
-  if(counts.overdue)html+='<div style="background:var(--red-bg);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 14px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:var(--red)">'+counts.overdue+'</div><div style="font-size:10px;color:var(--red);font-weight:600;text-transform:uppercase">Overdue</div></div>';
-  if(counts.blocked)html+='<div style="background:var(--red-bg);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 14px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:var(--red)">'+counts.blocked+'</div><div style="font-size:10px;color:var(--red);font-weight:600;text-transform:uppercase">Blocked</div></div>';
-  if(counts.dueToday)html+='<div style="background:var(--gold-bg);border:1px solid rgba(184,134,11,.2);border-radius:8px;padding:8px 14px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:var(--gold)">'+counts.dueToday+'</div><div style="font-size:10px;color:var(--gold);font-weight:600;text-transform:uppercase">Due today</div></div>';
-  html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:var(--text)">'+counts.open+'</div><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase">Open</div></div>';
-  html+='<div style="background:var(--accent-bg);border:1px solid rgba(10,102,64,.2);border-radius:8px;padding:8px 14px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:var(--accent)">'+counts.done+'</div><div style="font-size:10px;color:var(--accent);font-weight:600;text-transform:uppercase">Done</div></div>';
-  html+='</div>';
-
-  if(!feed.length&&!recentDone.length){
-    html+='<div style="text-align:center;padding:40px 20px"><div style="font-size:48px;margin-bottom:16px">✅</div><div style="font-size:18px;font-weight:600;margin-bottom:8px">All clear</div><div style="font-size:13px;color:var(--text3)">No tasks due, no alerts</div></div>';
-  } else {
-    const groups={};
-    feed.forEach(item=>{if(!groups[item.label])groups[item.label]=[];groups[item.label].push(item);});
-    Object.entries(groups).forEach(([label,items])=>{
-      html+='<div style="margin-bottom:14px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:6px">'+label+' · '+items.length+'</div>';
-      items.forEach(item=>{
-        const click=item.type==='task'
-          ?`toggleMyDayTask(${JSON.stringify(item.id)})`
-          :`readNotif(${JSON.stringify(item.key||'')},${item.eventId||'null'})`;
-        html+='<div onclick="'+click+'" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:'+item.color+';border-radius:8px;margin-bottom:5px;cursor:pointer;border:0.5px solid rgba(0,0,0,.04)">';
-        if(item.type==='task'){html+='<div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;background:var(--surface)">○</div>';}
-        else{html+='<div style="font-size:16px;flex-shrink:0;margin-top:1px">'+item.icon+'</div>';}
-        html+='<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;color:var(--text);line-height:1.3;margin-bottom:2px">'+item.text+'</div>';
-        if(item.sub)html+='<div style="font-size:11px;color:var(--text3)">'+item.sub+'</div>';
-        html+='</div>';
-        if(item.due)html+='<div style="font-size:10px;font-weight:600;color:var(--text3);flex-shrink:0;padding-top:2px">'+fmtShort(item.due)+'</div>';
-        html+='</div>';
-      });
-      html+='</div>';
-    });
-    if(recentDone.length){
-      html+='<div style="margin-top:8px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:6px">COMPLETED · '+recentDone.length+'</div>';
-      recentDone.forEach(t=>{html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:4px;opacity:.6"><div style="width:18px;height:18px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;color:#fff;font-weight:700">✓</div><div style="font-size:13px;text-decoration:line-through;color:var(--text3);flex:1">'+t.title+'</div></div>';});
-      html+='</div>';
-    }
-  }
-  body.innerHTML=html;
-}
-
-function toggleMyDayTask(id){
-  // Compare as string since task IDs from SharePoint are strings. toggleTask() itself flips
-  // t.status — flipping it here too was a double-toggle that wrote the ORIGINAL status back to
-  // SharePoint, so ticking a task in My Day silently did nothing.
-  const t=MY_TASKS.find(t=>String(t.id)===String(id));
-  if(!t)return;
-  toggleTask(t.id); // write to SharePoint async
-  renderMyDay();
-}
-
 
 // ═══════════════════════════════════════
 // ═══════════════════════════════════════
@@ -10692,14 +10472,18 @@ const MW_DEFAULT_BUCKETS=[
   {id:'_overdue',name:'Overdue',why:'Past their due date and not done.',mark:'●',color:'#c0392b'},
   {id:'_today',name:'Due today',why:'Due today — needs finishing before it slips.',mark:'●',color:'#b8860b'},
   {id:'_week',name:'This week',why:'Due in the next 7 days.',mark:'●',color:'#0a6640'},
-  {id:'_later',name:'Later / no date',why:'Everything else, and anything without a due date.',mark:'○',color:'#88887e'}
+  {id:'_later',name:'Later / no date',why:'Everything else, and anything without a due date.',mark:'○',color:'#88887e'},
+  // My Work Plan 2.4 — only ever populated for admin/management (see renderMyWork's canSeeUnassigned
+  // filter on allBuckets below); myWorkItems() doesn't even include these items for anyone else, so
+  // the bucket would always be empty for a regular team member — simplest to just not show it.
+  {id:'_unassigned',name:'Unassigned team tasks',why:"Nobody's claimed these yet.",mark:'?',color:'#6b7280'}
 ];
 function myWorkPrefsKey(){return 'marlin_mywork_'+(currentUserEmail||'anon').toLowerCase();}
 function loadMyWorkPrefs(){
   try{
     const raw=JSON.parse(localStorage.getItem(myWorkPrefsKey())||'{}');
-    return {buckets:raw.buckets||[],placement:raw.placement||{},order:raw.order||{},today:raw.today||[null,null,null],collapsed:raw.collapsed||{}};
-  }catch(e){return{buckets:[],placement:{},order:{},today:[null,null,null],collapsed:{}};}
+    return {buckets:raw.buckets||[],placement:raw.placement||{},order:raw.order||{},today:raw.today||[null,null,null],collapsed:raw.collapsed||{},landingPanel:raw.landingPanel||null};
+  }catch(e){return{buckets:[],placement:{},order:{},today:[null,null,null],collapsed:{},landingPanel:null};}
 }
 // My Work Plan 1.5 — localStorage is still the instant, always-available read/write path (every
 // render calls loadMyWorkPrefs() synchronously), but it's also mirrored to one row per user in the
@@ -10761,6 +10545,7 @@ async function loadHubUserPrefs(){
 }
 function mwAutoBucket(t,today){
   if(['Done','Complete','Completed'].includes(t.status))return null;
+  if(t.kind==='shared'&&!(t.assignedTo&&String(t.assignedTo).trim()))return '_unassigned';
   if(t.status==='Blocked')return '_blocked';
   if(t.due&&t.due<today)return '_overdue';
   if(t.due===today)return '_today';
@@ -10772,23 +10557,29 @@ function pickMyWorkTab(tab){_mwTab=tab;renderMyWork();}
 // Shared by My Work (the full bucket board) and the Dashboard's "My Tasks" widget — one combined,
 // de-duplicated list of Personal Tasks, Shared Work Items assigned to the signed-in user, and
 // owned/flagged Activities (with any live readiness/action alert attached as a reason).
-function myWorkItems(){
+// includeUnassigned (My Work Plan 2.4) — shared tasks nobody has claimed, shown in their own
+// "Unassigned team tasks" bucket for admin/management only (see canEditTeamTask), never mixed into
+// a person's own counts. Defaults to false so every other caller (Dashboard widget included) keeps
+// exactly its current behaviour.
+function myWorkItems(includeUnassigned){
   const canSeePersonal=canAccessPanel('personaltasks');
   const projectById=id=>PROJECTS.find(p=>String(p.id)===String(id));
   const eventById=id=>EVENTS.find(e=>String(e.id)===String(id)||String(e.spId)===String(id));
   // Title match is a fallback only, for older records saved before campaignLookupId existed — the
   // real link is the Campaign Lookup column's id, which survives the activity being renamed.
   const eventByTitle=title=>EVENTS.find(e=>(e.title||'').toLowerCase()===(title||'').toLowerCase());
+  const mapShared=t=>{
+    const ev=t.campaignLookupId?eventById(t.campaignLookupId):eventByTitle(t.campaignLookup);
+    const project=projectById(ev?.projectId);
+    return{...t,kind:'shared',key:'shared:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:ev?.venue||''};
+  };
   const personal=canSeePersonal?PERSONAL_TASKS.map(t=>{
     const ev=t.linkedActivityId?eventById(t.linkedActivityId):null;
     const project=projectById(t.projectId||ev?.projectId);
     return{...t,kind:'personal',key:'personal:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.linkedCampaign||'',venue:ev?.venue||''};
   }):[];
-  const shared=MY_TASKS.filter(t=>t.assignedTo&&isCurrentUserAssignment(t.assignedTo)).map(t=>{
-    const ev=t.campaignLookupId?eventById(t.campaignLookupId):eventByTitle(t.campaignLookup);
-    const project=projectById(ev?.projectId);
-    return{...t,kind:'shared',key:'shared:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:ev?.venue||''};
-  });
+  const shared=MY_TASKS.filter(t=>t.assignedTo&&isCurrentUserAssignment(t.assignedTo)).map(mapShared);
+  const unassigned=includeUnassigned?MY_TASKS.filter(t=>t.title&&t.title.trim()&&!(t.assignedTo&&t.assignedTo.trim())).map(mapShared):[];
   // Tagged Activities + automated to-dos — Activities from the main list where the signed-in
   // user is Owner/Designer, merged with any live readiness/action alert (generateNotifications'
   // NOTIFS) that already points at that same Activity, so the same campaign doesn't show up
@@ -10801,7 +10592,7 @@ function myWorkItems(){
     const project=projectById(e.projectId);
     return{id:'activity:'+e.id,key:'activity:'+e.id,kind:'activity',title:e.title,status:e.stage==='Review'?'Blocked':'Active',due:e.stage==='Done'?null:e.start,priority:'',projectId:String(project?.id||''),project:project?.title||'',activityId:e.id,activity:'',venue:e.venue||'',reasons:notifReasonsByEvent[e.id]||[]};
   });
-  return[...personal,...shared,...tagged];
+  return[...personal,...shared,...unassigned,...tagged];
 }
 
 function renderMyWork(){
@@ -10810,12 +10601,18 @@ function renderMyWork(){
   if(!stats||!bucketsEl)return;
   const canSeePersonal=canAccessPanel('personaltasks');
   const addPersonal=document.getElementById('myWorkAddPersonal');if(addPersonal)addPersonal.style.display=canSeePersonal?'':'none';
+  const managePersonalLink=document.getElementById('myWorkManagePersonalLink');if(managePersonalLink)managePersonalLink.style.display=canSeePersonal?'':'none';
   const today=toLocalISODate(new Date());
-  const all=myWorkItems();
+  // "Unassigned team tasks" is its own bucket, visible only to admin/management (canEditTeamTask on
+  // an unassigned task resolves to exactly that) — never mixed into a person's own stats below.
+  const canSeeUnassigned=canEditTeamTask({assignedTo:''});
+  const all=myWorkItems(canSeeUnassigned);
   const byKey={};all.forEach(t=>byKey[t.key]=t);
+  const isUnassignedShared=t=>t.kind==='shared'&&!(t.assignedTo&&String(t.assignedTo).trim());
 
-  const open=all.filter(t=>!['Done','Complete','Completed'].includes(t.status));
-  const overdue=open.filter(t=>t.due&&t.due<today),dueToday=open.filter(t=>t.due===today),completed=all.length-open.length,blocked=open.filter(t=>t.status==='Blocked');
+  const statsBase=all.filter(t=>!isUnassignedShared(t));
+  const open=statsBase.filter(t=>!['Done','Complete','Completed'].includes(t.status));
+  const overdue=open.filter(t=>t.due&&t.due<today),dueToday=open.filter(t=>t.due===today),completed=statsBase.length-open.length,blocked=open.filter(t=>t.status==='Blocked');
   stats.innerHTML=`<div class="stat"><div class="stat-n">${open.length}</div><div class="stat-l">Open</div></div><div class="stat ${blocked.length?'hi':''}"><div class="stat-n">${blocked.length}</div><div class="stat-l">Blocked</div></div><div class="stat ${overdue.length?'hi':''}"><div class="stat-n">${overdue.length}</div><div class="stat-l">Overdue</div></div><div class="stat"><div class="stat-n">${completed}</div><div class="stat-l">Completed</div></div>`;
   const badge=document.getElementById('myWorkBadge');if(badge){badge.textContent=open.length;badge.style.display=open.length?'':'none';}
 
@@ -10837,10 +10634,17 @@ function renderMyWork(){
   Object.keys(prefs.order).forEach(bid=>{prefs.order[bid]=(prefs.order[bid]||[]).filter(k=>byKey[k]);});
   prefs.today=(prefs.today||[null,null,null]).map(k=>k&&byKey[k]?k:null);
   const customBuckets=prefs.buckets||[];
-  const allBuckets=[...MW_DEFAULT_BUCKETS,...customBuckets];
+  // On the Today tab, only these default buckets (plus any custom one) are shown — "This week",
+  // "Later" and "Unassigned team tasks" are deliberately out of view there, so they must also not be
+  // offered as a drop target: a task dropped into a hidden bucket would vanish with no feedback that
+  // the move worked (confirmed bug — see PR #116, folded in here rather than left as a competing fix
+  // since this touches the same lines).
+  const todayTabBucketIds=new Set(['_blocked','_overdue','_today',...customBuckets.map(c=>c.id)]);
+  const eligibleDefaultBuckets=MW_DEFAULT_BUCKETS.filter(b=>b.id!=='_unassigned'||canSeeUnassigned);
+  const allBuckets=_mwTab==='today'?[...eligibleDefaultBuckets.filter(b=>todayTabBucketIds.has(b.id)),...customBuckets]:[...eligibleDefaultBuckets,...customBuckets];
   const bucketOf=t=>prefs.placement[t.key]||mwAutoBucket(t,today);
   const scoped=_mwTab==='today'
-    ?searched.filter(t=>{const b=bucketOf(t);return b==='_overdue'||b==='_blocked'||b==='_today'||customBuckets.some(c=>c.id===b);})
+    ?searched.filter(t=>todayTabBucketIds.has(bucketOf(t)))
     :searched.filter(t=>bucketOf(t)!==null);
 
   if(todayWidgetEl){
@@ -11048,27 +10852,20 @@ function renderMyTasks(){
     const who=document.getElementById('myTasksWho');if(who)who.textContent='Shared register waiting for its own SharePoint list';
     const stats=document.getElementById('myTaskStats');if(stats)stats.innerHTML='';
     const list=document.getElementById('tasksList');if(list)list.innerHTML=`<div class="card"><div class="card-body" style="padding:22px"><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:7px">Work Register list not connected</div><div style="font-size:12px;color:var(--text2);line-height:1.55">This is meant to be open to everyone — a shared job board for the whole team, separate from Kimberley's private Personal Tasks list. It needs its own SharePoint list created and its GUID connected here before any task can appear.</div></div></div>`;
-    ['tBadge','mydayTaskBadge'].forEach(id=>{const badge=document.getElementById(id);if(badge)badge.style.display='none';});
+    ['tBadge'].forEach(id=>{const badge=document.getElementById(id);if(badge)badge.style.display='none';});
     return;
   }
   const today=new Date();today.setHours(0,0,0,0);
   const todayStr=toLocalISODate(today);
   const weekStr=toLocalISODate(new Date(today.getTime()+7*864e5));
-  const myEmail=(currentUserEmail||'').toLowerCase();
-  const myName=(currentUser?.name||'').toLowerCase();
-  const emailPart=myEmail.split('@')[0];
-  const firstName=(myName.split(' ')[0]||'').toLowerCase();
-
-  function isMyTask(t){
-    if(!t.assignedTo||!t.assignedTo.trim())return true;
-    const a=t.assignedTo.toLowerCase();
-    return a.includes(emailPart)||(firstName.length>2&&a.includes(firstName));
-  }
 
   const queue=_taskQueue||'mine';
   let tasks=MY_TASKS.filter(t=>t.title&&t.title.trim());
 
-  if(queue==='mine') tasks=tasks.filter(t=>isMyTask(t)&&t.status!=='Done');
+  // isCurrentUserAssignment() (not a one-off local isMyTask()) — the last of three duplicate
+  // definitions that used to disagree on whether an unassigned task counts as "mine" (this one did;
+  // My Work doesn't). Unassigned shared tasks still show under "All", just not under "My Open".
+  if(queue==='mine') tasks=tasks.filter(t=>isCurrentUserAssignment(t.assignedTo)&&t.status!=='Done');
   else if(queue==='design') tasks=tasks.filter(t=>t.category==='Design Asset'&&t.status!=='Done');
   else if(queue==='web') tasks=tasks.filter(t=>t.category==='Web Update'&&t.status!=='Done');
   else if(queue==='overdue') tasks=tasks.filter(t=>t.status!=='Done'&&t.due&&t.due<todayStr);
@@ -11089,12 +10886,12 @@ function renderMyTasks(){
   const critical=MY_TASKS.filter(t=>t.priority==='Critical'&&t.status!=='Done').length;
   const dueToday=MY_TASKS.filter(t=>t.due===todayStr&&t.status!=='Done').length;
   const overdue=MY_TASKS.filter(t=>t.status!=='Done'&&t.due&&t.due<todayStr).length;
-  const pending=MY_TASKS.filter(t=>t.status!=='Done'&&isMyTask(t)).length;
+  const pending=MY_TASKS.filter(t=>t.status!=='Done'&&isCurrentUserAssignment(t.assignedTo)).length;
 
   const who=document.getElementById('myTasksWho');
   if(who)who.textContent=`${currentUser?.name||currentUserEmail} · ${pending} open tasks`;
 
-  ['tBadge','mydayTaskBadge'].forEach(id=>{const tb=document.getElementById(id);if(tb){tb.textContent=pending;tb.style.display=pending?'':'none';}});
+  ['tBadge'].forEach(id=>{const tb=document.getElementById(id);if(tb){tb.textContent=pending;tb.style.display=pending?'':'none';}});
 
   document.getElementById('myTaskStats').innerHTML=`
     <div class="stat ${blocked>0?'hi':''}" onclick="pickTaskQueue(document.querySelector('[data-q=blocked]'))" style="cursor:pointer"><div class="stat-n">${blocked}</div><div class="stat-l">Blocked</div></div>
@@ -11383,7 +11180,6 @@ async function saveTask(){
   if(btn){btn.disabled=false;btn.textContent='Save Task';}
   renderMyTasks();
   renderMyWorkIfVisible();
-  renderMyDay();
 }
 
 async function toggleTask(id){
@@ -13113,12 +12909,6 @@ function readNotif(key,eventId){
   // Mark as read in memory
   const n=NOTIFS.find(n=>n.key===key);if(n)n.unread=false;
   if(eventId&&eventId!=='null')showPop(parseInt(eventId));
-}
-
-function markAllRead(){
-  NOTIFS.forEach(n=>{saveReadNotif(n.key);n.unread=false;});
-  const nb=document.getElementById('nBadge');if(nb){nb.textContent=0;nb.style.display='none';}
-  renderMyDay();
 }
 
 // ═══════════════════════════════════════
