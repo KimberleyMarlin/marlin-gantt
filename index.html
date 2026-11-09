@@ -6724,7 +6724,11 @@ function renderEvPhotoPickerBox(evId){
   if(!box)return;
   const source=_evPhotoSource[evId]||'library';
   const labels={activity:"This Activity's Files",artwork:'Linked Artwork Folder',library:'Digital Media Library'};
-  box.innerHTML=`<div class="chips" style="margin-bottom:8px;flex-wrap:wrap">${['activity','artwork','library'].map(s=>`<div class="chip ${s===source?'on':''}" onclick="setEvPhotoSource(${evId},'${s}')">${labels[s]}</div>`).join('')}</div><div id="evPhotoSourceBody-${evId}"></div>`;
+  const ev=EVENTS.find(x=>String(x.id)===String(evId));
+  const upload=ev?.jobFolderUrl
+    ?`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:8px;background:var(--surface2);border-radius:6px"><label for="evFeaturedUpload-${evId}" class="btn btn-s" style="font-size:11px;cursor:pointer">⬆ Upload image</label><input id="evFeaturedUpload-${evId}" type="file" accept="image/*" style="display:none" onchange="uploadEvFeaturedPhoto(${evId},this.files?.[0]);this.value=''"><span style="font-size:10.5px;color:var(--text3)">Uploads to this Activity's SharePoint artwork folder.</span></div>`
+    :`<div style="font-size:10.5px;color:var(--text3);margin-bottom:8px">To upload a photo, first link or create this Activity's artwork folder above.</div>`;
+  box.innerHTML=`${upload}<div class="chips" style="margin-bottom:8px;flex-wrap:wrap">${['activity','artwork','library'].map(s=>`<div class="chip ${s===source?'on':''}" onclick="setEvPhotoSource(${evId},'${s}')">${labels[s]}</div>`).join('')}</div><div id="evPhotoSourceBody-${evId}"></div>`;
   renderEvPhotoSource(evId);
 }
 function setEvPhotoSource(evId,source){_evPhotoSource[evId]=source;renderEvPhotoPickerBox(evId);}
@@ -6780,29 +6784,17 @@ async function pickEvPhoto(evId,url,driveId,itemId){
   try{
     const token=await getToken(true);
     const ref=driveId&&itemId?JSON.stringify({driveId,itemId}):'';
-    // Event Image URL is a Hyperlink column in SharePoint. Graph's Hyperlink/Picture column type
-    // needs a {Url, Description} object on write, never a bare string. Clearing the photo (url='')
-    // now sends an empty {Url:'',Description:''} object rather than a literal null — a bare null
-    // produced a new "invalidRequest" 400 (progress from the earlier "generalException" 500, but
-    // still wrong), which points at Graph rejecting null for this complex-typed field specifically.
-    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,token,{EventImageURL:{Url:url||'',Description:''},EventImageRef:ref});
-    const urlFailed=result.failed.find(f=>f.field==='EventImageURL');
-    if(urlFailed){
-      const m=(urlFailed.error||'').match(/Field '([^']+)' is not recognized/);
-      // If this is still failing after the {Url,Description} shape fix, the most likely remaining
-      // cause is the URL value itself (not well-formed, or Graph's own Hyperlink validation rejects
-      // it) — surface its length and a safe preview so the next failure is actually diagnosable
-      // instead of just "Invalid request" with no context.
-      const urlNote=` [url: ${url.length} chars — "${url.slice(0,120)}${url.length>120?'…':''}"]`;
-      throw new Error(m?`The ${m[1]} column doesn't exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.`:`${urlFailed.error||'Could not save the photo.'}${urlNote}`);
-    }
+    const itemUrl=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`;
+    const urlResult=await saveSharePointUrlField(itemUrl,token,'EventImageURL',url||'');
+    if(urlResult.failed.length)throw new Error(urlResult.failed[0].error||'Could not save the photo link. Check that the EventImageURL column exists on the Activities list.');
     ev.eventImageUrl=url;
     // The reference only counts as linked if it actually persisted. If EventImageURL saved but
     // EventImageRef didn't (e.g. the column doesn't exist yet), do not claim the photo is
     // permanently linked via a stable reference — resolveFeaturedImageUrl() would otherwise try to
     // use a reference that was never written, and the next reload from SharePoint would silently
     // lose it anyway since nothing was actually saved.
-    const refFailed=ref&&result.failed.find(f=>f.field==='EventImageRef');
+    const refResult=await patchImportOptionalFields(itemUrl,token,{EventImageRef:ref});
+    const refFailed=ref&&refResult.failed.find(f=>f.field==='EventImageRef');
     if(refFailed){
       ev.eventImageRef=null;
       showPop(evId);
@@ -6823,6 +6815,69 @@ async function pickEvPhoto(evId,url,driveId,itemId){
 function encodeSharingUrlForGraph(url){
   const base64=btoa(unescape(encodeURIComponent(url))).replace(/=+$/,'').replace(/\//g,'_').replace(/\+/g,'-');
   return'u!'+base64;
+}
+
+function graphErrorMessage(text,status){
+  try{
+    const data=JSON.parse(text);
+    return data.error?.message||data.error?.code||`HTTP ${status}`;
+  }catch{return text||`HTTP ${status}`;}
+}
+async function resolveSharePointFolder(url,token){
+  let parsed;
+  try{parsed=new URL(url);}catch{throw new Error('Enter a complete SharePoint folder link, starting with https://');}
+  if(parsed.protocol!=='https:'||!/(^|\.)sharepoint\.com$/i.test(parsed.hostname))throw new Error('That does not look like a SharePoint link. Paste the folder link from SharePoint.');
+  const shareId=encodeSharingUrlForGraph(url);
+  const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$select=id,name,folder,parentReference,webUrl`,{headers:{Authorization:'Bearer '+token}});
+  const text=await res.text();
+  if(!res.ok)throw new Error(graphErrorMessage(text,res.status));
+  const data=JSON.parse(text);
+  if(!data.folder)throw new Error('That link opens a file, not a folder.');
+  const driveId=data.parentReference?.driveId;
+  if(!driveId)throw new Error('SharePoint opened the folder but did not return its document library. Check that you have access, then try the folder link again.');
+  return{...data,driveId};
+}
+async function saveSharePointUrlField(url,token,field,value){
+  // Graph represents a SharePoint Hyperlink column as {Url,Description}, while a text column
+  // expects a string. Try the common text schema first, then the Hyperlink schema if rejected.
+  let result=await patchImportOptionalFields(url,token,{[field]:value});
+  if(!result.failed.length)return result;
+  const firstError=result.failed[0];
+  result=await patchImportOptionalFields(url,token,{[field]:{Url:value,Description:''}});
+  if(!result.failed.length)return result;
+  return{saved:[],failed:[{...result.failed[0],error:`${firstError.error||''} ${result.failed[0].error||''}`.trim()}]};
+}
+
+async function uploadEvFeaturedPhoto(evId,file){
+  const ev=EVENTS.find(x=>String(x.id)===String(evId));if(!ev||!file)return;
+  if(!ev.jobFolderUrl){alert('Link or create this Activity’s artwork folder before uploading a featured photo.');return;}
+  if(!file.type?.startsWith('image/')){alert('Choose an image file.');return;}
+  if(file.size>10*1024*1024){alert('This image is over 10 MB. Resize it before uploading.');return;}
+  const box=document.getElementById('evPhotoPickerBox-'+evId);
+  if(box)box.insertAdjacentHTML('afterbegin',`<div id="evPhotoUploadStatus-${evId}" class="form-msg" style="margin-bottom:7px">Uploading ${escapeAttr(file.name)}…</div>`);
+  const setStatus=(message,isError=false)=>{
+    const el=document.getElementById('evPhotoUploadStatus-'+evId);
+    if(el){el.textContent=message;el.className='form-msg'+(isError?' err':' ok');}
+  };
+  try{
+    const token=await getToken(true);
+    const folder=await resolveSharePointFolder(ev.jobFolderUrl,token);
+    const safeName=String(file.name||'featured-image').replace(/[\\/:*?"<>|#%{}~&]/g,'_').slice(-160)||'featured-image';
+    const putUrl=`https://graph.microsoft.com/v1.0/drives/${folder.driveId}/items/${folder.id}:/${encodeURIComponent(safeName)}:/content`;
+    const upload=await fetch(putUrl,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':file.type},body:file});
+    const uploadText=await upload.text();
+    if(!upload.ok)throw new Error(graphErrorMessage(uploadText,upload.status));
+    const item=JSON.parse(uploadText);
+    const detail=await fetch(`https://graph.microsoft.com/v1.0/drives/${folder.driveId}/items/${item.id}?$select=id,webUrl&$expand=thumbnails`,{headers:{Authorization:'Bearer '+token}});
+    const detailText=await detail.text();
+    if(!detail.ok)throw new Error(graphErrorMessage(detailText,detail.status));
+    const saved=JSON.parse(detailText);
+    const thumb=saved.thumbnails?.[0]?.large?.url||saved.thumbnails?.[0]?.medium?.url||saved.thumbnails?.[0]?.small?.url||saved['@microsoft.graph.downloadUrl']||'';
+    if(!thumb)throw new Error('The image uploaded, but SharePoint did not return a preview. Refresh the Activity and choose it from This Activity’s Files.');
+    await pickEvPhoto(evId,thumb,folder.driveId,item.id);
+    if(ev.eventImageUrl!==thumb)throw new Error('The file uploaded, but SharePoint did not save it as the featured photo. The image is still in the Activity folder.');
+    setStatus('Uploaded and set as the featured photo.');
+  }catch(e){setStatus('Upload failed: '+e.message,true);}
 }
 
 // Generalised folder browser shared by the "This Activity's Files" and "Linked Artwork Folder"
@@ -6916,14 +6971,10 @@ async function linkEvArtworkFolder(evId){
   if(msgEl){msgEl.textContent='Checking folder…';msgEl.className='form-msg';}
   try{
     const token=await getToken();
-    const shareId=encodeSharingUrlForGraph(url);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$select=id,name,folder`,{headers:{Authorization:'Bearer '+token}});
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const data=await res.json();
-    if(!data.folder)throw new Error('That link isn\'t a folder.');
+    await resolveSharePointFolder(url,token);
     const saveToken=await getToken(true);
-    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,saveToken,{LinkedArtworkFolderURL:url});
-    if(result.failed.length)throw new Error('The LinkedArtworkFolderURL column doesn\'t exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.');
+    const result=await saveSharePointUrlField(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,saveToken,'LinkedArtworkFolderURL',url);
+    if(result.failed.length)throw new Error(result.failed[0].error||'Could not save the folder link. Check that the LinkedArtworkFolderURL column exists on the Activities list.');
     ev.linkedArtworkFolderUrl=url;
     delete _evFolderStack[`${evId}:artwork`];
     renderEvPhotoSource(evId);
@@ -6967,14 +7018,10 @@ async function linkEvJobFolder(evId){
   if(msgEl){msgEl.textContent='Checking folder…';msgEl.className='form-msg';}
   try{
     const token=await getToken();
-    const shareId=encodeSharingUrlForGraph(url);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$select=id,name,folder`,{headers:{Authorization:'Bearer '+token}});
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const data=await res.json();
-    if(!data.folder)throw new Error('That link isn\'t a folder.');
+    await resolveSharePointFolder(url,token);
     const saveToken=await getToken(true);
-    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,saveToken,{JobFolderURL:{Url:url,Description:''}});
-    if(result.failed.length)throw new Error(result.failed[0].error||'Could not save the folder link.');
+    const result=await saveSharePointUrlField(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,saveToken,'JobFolderURL',url);
+    if(result.failed.length)throw new Error(result.failed[0].error||'Could not save the folder link. Check that the JobFolderURL column exists on the Activities list.');
     ev.jobFolderUrl=url;
     showPop(evId);
   }catch(e){
