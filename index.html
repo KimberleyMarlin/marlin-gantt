@@ -1562,8 +1562,8 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
             <select class="form-select" id="tPriority">
               <option value="">No priority</option>
               <option value="Critical">Critical</option>
-              <option value="Medium">Medium</option>
               <option value="High">High</option>
+              <option value="Medium">Medium</option>
               <option value="Low">Low</option>
             </select>
           </div>
@@ -1618,7 +1618,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
         <div id="personalTaskFormMsg" class="form-msg"></div>
         <div class="form-grid">
           <div class="form-group full"><label class="form-label">Task Title <span class="req">*</span></label><input class="form-input" id="ptTitle" type="text" placeholder="What do I need to remember or complete?"></div>
-          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="ptPriority"><option value="">No priority</option><option>Critical</option><option>Medium</option><option>High</option><option>Low</option></select></div>
+          <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="ptPriority"><option value="">No priority</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></div>
           <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="ptDue" type="date"></div>
           <div class="form-group full"><label class="form-label">Parent task</label><select class="form-select" id="ptParent"><option value="">None — top-level task</option></select><div class="field-help">Only tasks that aren't themselves a subtask can be picked as a parent.</div></div>
           <div class="form-group full"><label class="form-label">Linked activity</label><select class="form-select" id="ptLinkedActivity"><option value="">Not linked to an activity</option></select></div>
@@ -2306,7 +2306,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
                 <option value="Admin">Admin</option>
               </select>
             </div>
-            <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="fJobPriority"><option value="">No priority</option><option value="Critical">Critical</option><option value="Medium">Medium</option><option value="High">High</option><option value="Low">Low</option></select></div>
+            <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="fJobPriority"><option value="">No priority</option><option value="Critical">Critical</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select></div>
             <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="fJobDue" type="date"></div>
             <div class="form-group"><label class="form-label">Assign To</label><select class="form-select" id="fJobAssign"><option value="">Unassigned</option></select></div>
             <div class="form-group full"><label class="form-label">Notes / Requirements</label><textarea class="form-textarea" id="fJobNotes" placeholder="Any context, specs, or links…" style="min-height:70px"></textarea></div>
@@ -8340,10 +8340,11 @@ function renderMyDay(){
 }
 
 function toggleMyDayTask(id){
-  // Compare as string since task IDs from SharePoint are strings
+  // Compare as string since task IDs from SharePoint are strings. toggleTask() itself flips
+  // t.status — flipping it here too was a double-toggle that wrote the ORIGINAL status back to
+  // SharePoint, so ticking a task in My Day silently did nothing.
   const t=MY_TASKS.find(t=>String(t.id)===String(id));
   if(!t)return;
-  t.status=t.status==='Done'?'Not Started':'Done';
   toggleTask(t.id); // write to SharePoint async
   renderMyDay();
 }
@@ -11323,6 +11324,11 @@ async function toggleTask(id){
   if(!canEditTeamTask(t)){alert('You can view this task, but you cannot change it.');return;}
   const oldStatus=t.status;
   t.status=t.status==='Done'?'Not Started':'Done';
+  // Optimistic: reflect the flip immediately, don't wait on the round-trip to SharePoint — only
+  // re-render again below if the save actually fails, to roll the UI back.
+  renderMyTasks();
+  renderMyWorkIfVisible();
+  if(t.status==='Done')showUndoToast('Done',()=>toggleTask(id));
   if(LIST_IDS.myTasks&&!isPreviewMode&&!String(id).startsWith('T-')){
     try{
       const token=await getToken(true);
@@ -11332,10 +11338,10 @@ async function toggleTask(id){
       t.status=oldStatus;
       console.error('Toggle task error:',e);
       alert('Could not update the task. Nothing was changed.');
+      renderMyTasks();
+      renderMyWorkIfVisible();
     }
   }
-  renderMyTasks();
-  renderMyWorkIfVisible();
 }
 
 async function deleteTaskPermanently(id){
@@ -11371,7 +11377,7 @@ async function loadPersonalTasks(){
     // Source/Email* — populated by the planned Outlook email-to-task Power Automate flow (not yet
     // built; this is the Hub-side half, ready for when it is). A Hub-created task simply has no
     // Source value, read as 'Hub' so existing rows aren't affected.
-    PERSONAL_TASKS=items.map(item=>{const f=item.fields||{};return{id:String(item.id),title:f.Title||'',status:f.Status||f.Progress||'Not Started',priority:f.Priority||'Medium',workstream:f.Workstream||f.Category||f.TaskType||'',venue:f.Venue||'',due:f.DueDate?String(f.DueDate).split('T')[0]:'',notes:f.Notes||'',blocker:f.Blocker||f.BlockedReason||'',linkedCampaign:(typeof f.LinkedCampaign==='string'?f.LinkedCampaign:(f.LinkedCampaign?.LookupValue||f.LinkedCampaign?.Title))||f.LinkedCampaignID||'',parentId:f.ParentTaskId!=null&&f.ParentTaskId!==''?String(f.ParentTaskId):'',linkedActivityId:f.LinkedActivityId!=null&&f.LinkedActivityId!==''?String(f.LinkedActivityId):'',projectId:f.ProjectId!=null&&f.ProjectId!==''?String(f.ProjectId):'',sequence:f.Sequence!=null&&f.Sequence!==''?Number(f.Sequence):0,source:f.Source||'Hub',emailSender:f.EmailSender||'',emailLink:f.EmailLink||'',emailMessageId:f.EmailMessageId||''};});
+    PERSONAL_TASKS=items.map(item=>{const f=item.fields||{};return{id:String(item.id),title:f.Title||'',status:f.Status||f.Progress||'Not Started',priority:f.Priority||'',workstream:f.Workstream||f.Category||f.TaskType||'',venue:f.Venue||'',due:f.DueDate?String(f.DueDate).split('T')[0]:'',notes:f.Notes||'',blocker:f.Blocker||f.BlockedReason||'',linkedCampaign:(typeof f.LinkedCampaign==='string'?f.LinkedCampaign:(f.LinkedCampaign?.LookupValue||f.LinkedCampaign?.Title))||f.LinkedCampaignID||'',parentId:f.ParentTaskId!=null&&f.ParentTaskId!==''?String(f.ParentTaskId):'',linkedActivityId:f.LinkedActivityId!=null&&f.LinkedActivityId!==''?String(f.LinkedActivityId):'',projectId:f.ProjectId!=null&&f.ProjectId!==''?String(f.ProjectId):'',sequence:f.Sequence!=null&&f.Sequence!==''?Number(f.Sequence):0,source:f.Source||'Hub',emailSender:f.EmailSender||'',emailLink:f.EmailLink||'',emailMessageId:f.EmailMessageId||''};});
     PERSONAL_TASKS_ERROR='';
   }catch(e){console.error('Personal tasks load error:',e);PERSONAL_TASKS_ERROR=e.message||'Unknown error';}
   renderPersonalTasks();
@@ -11675,8 +11681,23 @@ async function finishPersonalTaskConversion(task,sharedTask,token){
 }
 
 async function togglePersonalTask(id){
-  const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task)return;const old=task.status;task.status=old==='Done'?'Not Started':'Done';
-  try{if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(id).startsWith('PT-')){const token=await getToken(true);const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:task.status}})});if(!res.ok)throw new Error('HTTP '+res.status);}}catch(e){task.status=old;alert('Could not update the personal task.');}renderPersonalTasks();
+  const task=PERSONAL_TASKS.find(item=>String(item.id)===String(id));if(!task)return;
+  const old=task.status;task.status=old==='Done'?'Not Started':'Done';
+  // Optimistic, same as toggleTask() — render the flip now, only render again below to roll back
+  // if the save fails.
+  renderPersonalTasks();renderMyWorkIfVisible();
+  if(task.status==='Done')showUndoToast('Done',()=>togglePersonalTask(id));
+  try{
+    if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(id).startsWith('PT-')){
+      const token=await getToken(true);
+      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:task.status}})});
+      if(!res.ok)throw new Error('HTTP '+res.status);
+    }
+  }catch(e){
+    task.status=old;
+    alert('Could not update the personal task.');
+    renderPersonalTasks();renderMyWorkIfVisible();
+  }
 }
 
 async function deletePersonalTask(id){
@@ -15423,6 +15444,17 @@ function showToast(title,message,onOpen){
   toast.querySelector('.toast-close').onclick=()=>toast.remove();
   if(onOpen){toast.querySelector('.toast-copy').style.cursor='pointer';toast.querySelector('.toast-copy').onclick=()=>{onOpen();toast.remove();};}
   stack.prepend(toast);while(stack.children.length>3)stack.lastElementChild.remove();setTimeout(()=>toast.remove(),10000);
+}
+// Compact "Done · Undo" toast for optimistic tick-off (toggleTask/togglePersonalTask) — shares the
+// same stack/positioning as showToast but is action-first, not a passive notification, and
+// auto-dismisses sooner (6s) since there's nothing to read, just a brief window to change your mind.
+function showUndoToast(label,undoFn){
+  const stack=document.getElementById('toastStack');if(!stack)return;
+  const toast=document.createElement('div');toast.className='toast';
+  toast.innerHTML=`<div class="toast-copy" style="flex:1">${escapeAttr(label)}</div><button class="tb-btn" style="font-size:11px;padding:3px 9px;flex-shrink:0">Undo</button><button class="toast-close" aria-label="Dismiss">✕</button>`;
+  toast.querySelector('.toast-close').onclick=()=>toast.remove();
+  toast.querySelector('.tb-btn').onclick=()=>{toast.remove();undoFn();};
+  stack.prepend(toast);while(stack.children.length>3)stack.lastElementChild.remove();setTimeout(()=>toast.remove(),6000);
 }
 
 // ═══════════════════════════════════════
