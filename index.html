@@ -720,7 +720,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
          class="sb-logo" alt="Marlin Hospitality"
          onerror="this.style.display='none';document.getElementById('sbFb').style.display='block'">
     <div id="sbFb" style="display:none"><div class="sb-logo-text">Marlin Hospitality</div><div class="sb-logo-sub">Marketing OS</div></div>
-    <div class="sb-live"><span class="sb-live-dot"></span>Live · SharePoint</div>
+    <div class="sb-live" id="sbLivePill"><span class="sb-live-dot" id="sbLiveDot"></span><span id="sbLiveLabel">Live · SharePoint</span></div>
   </div>
   <div class="sb-nav">
     <div class="sb-sec">Today</div>
@@ -3614,15 +3614,21 @@ async function duplicateAsNextMonth(evId,btn){
     }
     const created=await res.json();
     // Give the original its own series anchor too, if it didn't have one, so it and this new
-    // instance are recognised as the same series from now on.
+    // instance are recognised as the same series from now on. Awaited (not fire-and-forget) so a
+    // failure here is reported instead of silently leaving the two activities unlinked.
+    let seriesLinkError=null;
     if(!ev.seriesId&&!seriesColumnMissing){
-      fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{SeriesId:seriesId}})}).catch(()=>{});
+      try{
+        const linkRes=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{SeriesId:seriesId}})});
+        if(!linkRes.ok)seriesLinkError='HTTP '+linkRes.status+': '+await linkRes.text();
+      }catch(e){seriesLinkError=e.message;}
     }
     await loadCampaigns();
     const newEv=EVENTS.find(e=>String(e.spId)===String(created.id));
     closePop();
     if(newEv)showActivityPage(newEv.id);
     if(seriesColumnMissing)alert('Created next month\'s activity, but "SeriesId" isn\'t a column yet so it isn\'t linked as a series. Add a Number column named SeriesId via Schema Tools, then it\'ll link up on the next duplicate.');
+    else if(seriesLinkError)alert(`Created next month's activity, but couldn't link the original into the series (${seriesLinkError}).`);
     else if(typeof showToast==='function')showToast(`Created "${ev.title}" for next month — update the details, no approval needed.`);
   }catch(e){
     alert("Could not create next month's instance: "+e.message);
@@ -4584,6 +4590,8 @@ function previewMode(){
   document.getElementById('authLabel').textContent='Exit preview';
   document.getElementById('userLabel').textContent='👁 UI preview — no live SharePoint data';
   document.getElementById('gate').style.display='none';
+  const liveLabel=document.getElementById('sbLiveLabel');if(liveLabel)liveLabel.textContent='Preview · not saving';
+  const liveDot=document.getElementById('sbLiveDot');if(liveDot)liveDot.style.background='#f59e0b';
   resolveRole(currentUserEmail);
   const who=document.getElementById('myTasksWho');
   if(who)who.textContent='Showing tasks for UI Preview';
@@ -12403,10 +12411,11 @@ async function setActivityProjectId(activityId,projectId){
   try{
     const token=await getToken(true);
     const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{ProjectId:projectId?parseInt(projectId,10):null}})});
-    if(!res.ok)throw new Error('HTTP '+res.status);
+    if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
   }catch(e){
     ev.projectId=old;
-    alert('Could not update that activity\'s project link — the ProjectId column may not exist in SharePoint yet. Create it from Schema Tools, then try again.');
+    const missingColumn=/ProjectId/i.test(e.message)&&/(does not exist|invalid column|not a valid)/i.test(e.message);
+    alert('Could not update that activity\'s project link'+(missingColumn?' — the ProjectId column may not exist in SharePoint yet. Create it from Schema Tools, then try again.':': '+e.message));
   }
 }
 
@@ -12444,12 +12453,13 @@ async function setPersonalTaskProjectId(taskId,projectId){
     if(LIST_IDS.personalTasks&&!isPreviewMode&&!String(taskId).startsWith('PT-')){
       const token=await getToken(true);
       const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${taskId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{ProjectId:projectId?parseInt(projectId,10):null}})});
-      if(!res.ok)throw new Error('HTTP '+res.status);
+      if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
     }
     renderPersonalTasks();
   }catch(e){
     task.projectId=old;
-    alert('Could not update that task\'s project link — the ProjectId column may not exist in SharePoint yet. Create it from Schema Tools, then try again.');
+    const missingColumn=/ProjectId/i.test(e.message)&&/(does not exist|invalid column|not a valid)/i.test(e.message);
+    alert('Could not update that task\'s project link'+(missingColumn?' — the ProjectId column may not exist in SharePoint yet. Create it from Schema Tools, then try again.':': '+e.message));
   }
 }
 
