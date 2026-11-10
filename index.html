@@ -1854,9 +1854,9 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 
   <!-- PHOTO TAGGING -->
   <div class="panel" id="p-phototagging">
-    <div class="ph"><div><div class="ph-eye">Digital Media library</div><div class="ph-title">Photo <em>Tagging</em></div><div class="ph-sub">Browse the digital media library and search existing tags. Generating tags will be enabled after a protected Vision backend is connected.</div></div></div>
+    <div class="ph"><div><div class="ph-eye">Digital Media library</div><div class="ph-title">Photo <em>Tagging</em></div><div class="ph-sub">Browse the Digital Media library, search every tag, and AI-tag photos with Claude through Marlin's protected Azure photo tagger.</div></div></div>
     <div class="ca">
-      <div id="ptNotConfigured" style="display:none;background:var(--gold-bg);border:1px solid #dccea5;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.5"><strong>Photo Tagging is paused.</strong> A protected server-side Vision connection is required. Do not paste a Google Cloud key or secret into this public app.</div>
+      <div id="ptNotConfigured" style="display:none;background:var(--gold-bg);border:1px solid #dccea5;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.5"><strong>AI tagging is off.</strong> Browsing, search and manual tag edits still work. AI tagging switches on once the Azure photo tagger's address is set in PHOTO_TAGGING_BACKEND_URL (see azure/photo-tagger/README.md). Never paste an API key into this public app.</div>
       <div id="ptWrap" style="display:none">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
           <input class="form-input" id="ptSearchInput" type="search" placeholder="Search every tagged photo (e.g. “beer”)…" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')ptSearch()">
@@ -1867,7 +1867,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
         <div id="ptBreadcrumb" style="font-size:12px;color:var(--text3);margin-bottom:10px"></div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
           <button class="btn btn-s" id="ptTagAllBtn" onclick="ptTagAllUntaggedInFolder()" style="display:none">Tag all untagged in this folder</button>
-          <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);cursor:pointer"><input type="checkbox" onchange="ptToggleRename(this)" style="margin:0">Also rename files using AI labels</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);cursor:pointer"><input type="checkbox" onchange="ptToggleRename(this)" style="margin:0">Also rename files using AI names (e.g. WBC_drink_beer-…)</label>
           <div id="ptStatus" class="form-msg"></div>
         </div>
         <div id="ptFolders" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px"></div>
@@ -2580,10 +2580,10 @@ const CFG={clientId:'b7e650cb-f871-4884-b5ba-3f55c1d8d20b',authority:'https://lo
 const GOOGLE_CLIENT_ID='805946744245-e41ge33vlbr91t94olfqchk67o498ght.apps.googleusercontent.com';
 const GOOGLE_DRIVE_SCOPE='https://www.googleapis.com/auth/drive.readonly';
 
-// Photo Tagging — reads photos from SharePoint via Graph. Tag generation is paused until a
-// protected server-side Vision backend validates signed-in staff and writes tags back safely.
-// Photo Tagging must call a protected server-side Vision backend. Never put credentials in this
-// public GitHub Pages file. Configure the backend only after it validates signed-in staff.
+// Photo Tagging — AI tags come from the Azure Function in azure/photo-tagger, which holds the
+// Anthropic API key, checks the caller's Microsoft sign-in, and tags the photo with Claude. Set this
+// to the function's full address, e.g. 'https://<default domain>/api/tag-photo'. The address is not
+// a secret; never put an API key or other credential in this public file. Blank = AI tagging off.
 const PHOTO_TAGGING_BACKEND_URL='';
 const DIGITAL_MEDIA_DRIVE_ID='b!nNEymQHH-USapvbmTivj6MUjOnOvRKdGt3tKLEHQKgW6fFNcyMOoR51GxWrNifrc';
 const SP_SITE='marlingroupaus.sharepoint.com,9932d19c-c701-44f9-9aa6-f6e64e2be3e8';
@@ -6466,10 +6466,10 @@ async function searchGoogleDrive(){
 }
 
 // ═══════════════════════════════════════
-// PHOTO TAGGING — Google Vision called straight from the browser against the Digital Media
-// library. No Power Automate: fetch the image via Graph, send it to Vision with the API key,
-// write the labels back to the AITags column via Graph. Same shape as every other Graph call
-// in this app, just with one extra fetch() to Google in the middle.
+// PHOTO TAGGING — browse/search the Digital Media library via Graph. AI tags come from the
+// protected Azure photo tagger (PHOTO_TAGGING_BACKEND_URL): the OS sends the photo's id plus the
+// signed-in user's Graph token, the function fetches a thumbnail and asks Claude for tags, and the
+// OS writes the returned tags to the AITags column via Graph as before.
 // ═══════════════════════════════════════
 const PT_DRIVE_BASE=()=>`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/drives/${DIGITAL_MEDIA_DRIVE_ID}`;
 let ptFolderStack=[{id:'root',name:'Digital Media library'}];
@@ -6483,8 +6483,9 @@ function renderPhotoTagging(){
   const notConfigured=document.getElementById('ptNotConfigured');
   const wrap=document.getElementById('ptWrap');
   if(!notConfigured||!wrap)return;
-  if(!PHOTO_TAGGING_BACKEND_URL||!DIGITAL_MEDIA_DRIVE_ID){notConfigured.style.display='';wrap.style.display='none';return;}
-  notConfigured.style.display='none';wrap.style.display='';
+  if(!DIGITAL_MEDIA_DRIVE_ID){notConfigured.style.display='';wrap.style.display='none';return;}
+  // Browse, search and manual edits work without the tagger; only AI tagging needs it.
+  notConfigured.style.display=PHOTO_TAGGING_BACKEND_URL?'none':'';wrap.style.display='';
   if(!ptCurrentItems.length&&ptMode==='browse')ptLoadFolder();
 }
 
@@ -6600,46 +6601,48 @@ async function ptSaveTagsManually(itemId,tagsString){
 let ptRenameEnabled=false;
 function ptToggleRename(checkbox){ptRenameEnabled=checkbox.checked;}
 function ptSanitizeNamePart(text){return(text||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
-// Keeps a short id suffix so two photos that get the same top labels (ten different beer shots,
-// say) don't collide on the same filename within a folder.
-function ptGenerateFileName(originalName,labels,itemId){
+// Uses the tagger's suggested name (e.g. "WBC_drink_beer-tasting-paddle") and keeps a short id
+// suffix so ten different beer shots don't collide on the same filename within a folder.
+function ptGenerateFileName(originalName,suggestedName,itemId){
   const ext=(originalName.match(/\.[^.]+$/)||[''])[0].toLowerCase();
-  const base=labels.slice(0,3).map(l=>ptSanitizeNamePart(l.description)).filter(Boolean).join('-')||'photo';
+  const base=String(suggestedName||'').replace(/[^A-Za-z0-9_-]+/g,'-').replace(/-{2,}/g,'-').replace(/^[-_]+|[-_]+$/g,'').slice(0,80)||'photo';
   return`${base}-${String(itemId).slice(-5)}${ext}`;
 }
 
-function ptArrayBufferToBase64(buffer){
-  let binary='';const bytes=new Uint8Array(buffer);
-  for(let i=0;i<bytes.byteLength;i++)binary+=String.fromCharCode(bytes[i]);
-  return btoa(binary);
+// Folder path of the photo when browsing, sent to the tagger as a venue hint.
+function ptCurrentFolderPath(){
+  return ptMode==='browse'?ptFolderStack.map(f=>f.name).join('/'):'';
 }
 
 async function ptTagOne(itemId){
   const tile=document.getElementById('pt-item-'+itemId);
   const btn=tile?.querySelector('button');
+  const statusEl=document.getElementById('ptStatus');
+  if(!PHOTO_TAGGING_BACKEND_URL){
+    if(statusEl){statusEl.textContent='AI tagging is off until the Azure photo tagger is connected. You can still edit tags by hand.';statusEl.className='form-msg err';}
+    return false;
+  }
   if(btn){btn.disabled=true;btn.textContent='Tagging…';}
   try{
     const token=await getToken(true);
-    const imgRes=await fetch(`${PT_DRIVE_BASE()}/items/${itemId}/content`,{headers:{Authorization:'Bearer '+token}});
-    if(!imgRes.ok)throw new Error('Could not fetch image (HTTP '+imgRes.status+')');
-    const buffer=await imgRes.arrayBuffer();
-    const base64=ptArrayBufferToBase64(buffer);
-    throw new Error('Photo tagging is paused until a protected Vision backend is connected. Do not place an API key in this public app.');
-    if(!visionRes.ok)throw new Error('Vision API error (HTTP '+visionRes.status+')');
-    const visionData=await visionRes.json();
-    const labels=visionData.responses?.[0]?.labelAnnotations||[];
-    if(visionData.responses?.[0]?.error)throw new Error(visionData.responses[0].error.message||'Vision API returned an error');
-    const tagsString=labels.map(l=>l.description).join(', ');
+    const item=ptCurrentItems.find(it=>it.id===itemId);
+    const res=await fetch(PHOTO_TAGGING_BACKEND_URL,{
+      method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({driveId:DIGITAL_MEDIA_DRIVE_ID,itemId,name:item?.name||'',folderPath:ptCurrentFolderPath()})
+    });
+    const result=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(result.error||`Photo tagger error (HTTP ${res.status})`);
+    const tagsString=String(result.tags||'');
     const patchRes=await fetch(`${PT_DRIVE_BASE()}/items/${itemId}/listItem/fields`,{
       method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
       body:JSON.stringify({AITags:tagsString})
     });
     if(!patchRes.ok)throw new Error('Could not save tags back to SharePoint (HTTP '+patchRes.status+')');
     const inMemory=ptApplyTagsUpdate(itemId,tagsString,tile);
-    if(ptRenameEnabled&&labels.length&&inMemory?.name){
+    if(ptRenameEnabled&&result.suggestedName&&inMemory?.name){
       try{
-        const newName=ptGenerateFileName(inMemory.name,labels,itemId);
-        const renameRes=await fetch(`${PT_DRIVE_BASE()}/items/${itemId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name:newName})});
+        const newName=ptGenerateFileName(inMemory.name,result.suggestedName,itemId);
+        const renameRes=await fetch(`${PT_DRIVE_BASE()}/items/${itemId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name:newName,'@microsoft.graph.conflictBehavior':'fail'})});
         if(renameRes.ok){
           const renamed=await renameRes.json();
           inMemory.name=renamed.name;
@@ -6647,28 +6650,42 @@ async function ptTagOne(itemId){
           if(inFullIndex){inFullIndex.name=renamed.name;ptSaveIndexCache(ptFullIndex);}
           const nameEl=tile?.querySelector('.pt-name');
           if(nameEl){nameEl.textContent=renamed.name;nameEl.title=renamed.name;}
-        }
+        }else console.warn('Rename failed for',itemId,renameRes.status);
       }catch(renameError){console.warn('Rename failed for',itemId,renameError);}
     }
     if(btn){btn.disabled=false;btn.textContent='Re-tag';}
+    return true;
   }catch(e){
     if(btn){btn.disabled=false;btn.textContent='Retry';}
-    const statusEl=document.getElementById('ptStatus');
     if(statusEl){statusEl.textContent='Tagging failed for one image: '+e.message;statusEl.className='form-msg err';}
+    return false;
   }
 }
 
+// Tags up to PT_TAG_CONCURRENCY photos at once — each one is a separate AI call, so running a few
+// in parallel cuts a folder's wait several-fold without tripping rate limits.
+const PT_TAG_CONCURRENCY=3;
 async function ptTagAllUntaggedInFolder(){
   const statusEl=document.getElementById('ptStatus');
   const untagged=ptCurrentItems.filter(it=>!it.folder&&ptIsImage(it.name)&&!ptTagsOf(it));
   if(!untagged.length)return;
+  if(!PHOTO_TAGGING_BACKEND_URL){ptTagOne(untagged[0].id);return;}
   const btn=document.getElementById('ptTagAllBtn');if(btn)btn.disabled=true;
-  for(let i=0;i<untagged.length;i++){
-    if(statusEl){statusEl.textContent=`Tagging ${i+1} of ${untagged.length}…`;statusEl.className='form-msg';}
-    await ptTagOne(untagged[i].id);
+  let next=0,done=0,failed=0;
+  const worker=async()=>{
+    while(next<untagged.length){
+      const item=untagged[next++];
+      const ok=await ptTagOne(item.id);
+      done++;if(!ok)failed++;
+      if(statusEl){statusEl.textContent=`Tagged ${done} of ${untagged.length}…${failed?` (${failed} failed)`:''}`;statusEl.className='form-msg';}
+    }
+  };
+  await Promise.all(Array.from({length:Math.min(PT_TAG_CONCURRENCY,untagged.length)},worker));
+  if(statusEl){
+    statusEl.textContent=failed?`Done, but ${failed} of ${untagged.length} failed. Click Retry on those photos.`:`Done — tagged ${untagged.length} image${untagged.length!==1?'s':''}.`;
+    statusEl.className=failed?'form-msg err':'form-msg ok';
   }
-  if(statusEl){statusEl.textContent=`Done — tagged ${untagged.length} image${untagged.length!==1?'s':''}.`;statusEl.className='form-msg ok';}
-  if(btn){btn.disabled=false;btn.style.display='none';}
+  if(btn){btn.disabled=false;btn.style.display=failed?'':'none';}
 }
 
 // Walks the library one DEPTH LEVEL at a time, fetching every folder at that level in parallel
