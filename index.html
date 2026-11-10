@@ -8137,7 +8137,10 @@ function renderOverview(){
   // Results snapshot
   const completed=allEvts.filter(e=>(e.stage==='Done'&&!e.autoCompleted)||e.status==='Complete'||e.status==='Archive'||e.status==='Archived');
   const totalSpend=completed.reduce((a,e)=>a+(e.actualSpend||0),0);
-  const totalRevenue=completed.reduce((a,e)=>a+(e.ticketsSold||0)*(e.ticketPrice||0),0);
+  // The saved TicketRevenue (what the Post-Campaign Report records and Finance sums) wins;
+  // tickets × price is only the fallback for activities reported before that field was saved.
+  // Finance and this card still define "completed" differently: see docs/P03_REVIEWS_MARKETING_INTEL.md.
+  const totalRevenue=completed.reduce((a,e)=>a+(e.ticketRevenue||(e.ticketsSold||0)*(e.ticketPrice||0)),0);
   const supplierFunds=completed.reduce((a,e)=>a+(e.supplierContrib||0),0);
   const canSeeFinancials=!!rolePermissions().canViewBudget;
   document.getElementById('ovResults').innerHTML=canSeeFinancials?`
@@ -8479,17 +8482,19 @@ function openPostCampaign(evId){
   document.querySelectorAll('#postCampaignOv .report-financial').forEach(el=>el.style.display=canSeeFinancials?'':'none');
   const title=document.getElementById('reportCampaignTitle');
   if(title)title.textContent=ev.title+' · '+ev.venue;
-  // Pre-fill existing actuals
-  const fields=['rActualSpend','rSupplierContrib','rTicketsSold','rRedemptions'];
-  fields.forEach(f=>{ const el=document.getElementById(f);if(el)el.value=''; });
-  if(ev.actualSpend)document.getElementById('rActualSpend').value=ev.actualSpend;
-  if(ev.supplierContrib)document.getElementById('rSupplierContrib').value=ev.supplierContrib;
-  if(ev.ticketsSold)document.getElementById('rTicketsSold').value=ev.ticketsSold;
+  // Reset every input, then pre-fill this activity's saved actuals. Previously only four inputs
+  // were cleared, so Ticket Revenue, Covers and the two notes carried over from the last report
+  // opened, and saving would write them onto this activity (the notes into its Description).
+  const prefill={rActualSpend:ev.actualSpend,rSupplierContrib:ev.supplierContrib,rTicketsSold:ev.ticketsSold,rTicketRevenue:ev.ticketRevenue,rRedemptions:ev.redemptions,rCovers:ev.covers,rWorked:'',rImprove:''};
+  Object.entries(prefill).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v||'';});
+  const msg=document.getElementById('reportFormMsg');if(msg){msg.textContent='';msg.className='form-msg';}
+  const roiDiv=document.getElementById('roiCalc');if(roiDiv)roiDiv.style.display='none';
   document.getElementById('postCampaignOv').classList.add('show');
-  // Live ROI calc
+  // Live ROI calc. Bound once: the old code added another listener every time the form opened.
   ['rActualSpend','rSupplierContrib','rTicketsSold','rTicketRevenue','rRedemptions','rCovers'].forEach(id=>{
-    const el=document.getElementById(id);if(el)el.addEventListener('input',calcROI);
+    const el=document.getElementById(id);if(el&&!el.dataset.roiBound){el.addEventListener('input',calcROI);el.dataset.roiBound='1';}
   });
+  calcROI();
 }
 
 function closePostCampaign(){document.getElementById('postCampaignOv').classList.remove('show');_reportingEventId=null;}

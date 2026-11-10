@@ -124,8 +124,8 @@ Do this as hide/regroup only: no rebuilds, no new panels.
 | 12 | **PROJ-01** Project with expandable linked Activities/Tasks | P01·02 | SAFE-03 | `[ ]` Partial |
 | 13 | **TASK-01** Personal Tasks inside Projects, private view preserved | P01·02 | PROJ-01 | `[ ]` Partial (#41) |
 | 14 | **CAL-03** Overview: real deadlines, risk reasons, coverage gaps, no invented metrics | P01·01 | CAL-02 | `[ ]` |
-| 15 | **REV-01** Review source map (nothing built) | P03·00 | — | `[ ]` Can run in parallel: research only |
-| 16 | **MKT-01** Minimal KPI list | P03·00 | — | `[ ]` Can run in parallel: decision only |
+| 15 | **REV-01** Review source map (nothing built) | P03·00 | — | `[ ]` IN PROGRESS: source map drafted in `docs/P03_REVIEWS_MARKETING_INTEL.md` §3; awaiting Kim (P3-D4, P3-D5) |
+| 16 | **MKT-01** Minimal KPI list | P03·00 | — | `[ ]` IN PROGRESS: KPI list proposed in `docs/P03_REVIEWS_MARKETING_INTEL.md` §5; awaiting Kim (P3-D1 to P3-D3) |
 | 17 | **REV-02**, **MKT-02** | P03·01 / P03·02 | REV-01, MKT-01, SAFE-04 | `[ ]` |
 | 18 | **UX-01 (full)** Six-area regroup | P01·03 | CAL-03, PROJ-01 | `[ ]` |
 | 19 | **QA-01** End-to-end journey | P01·04 + P02·04 | all above | `[ ]` |
@@ -203,3 +203,4 @@ Do this as hide/regroup only: no rebuilds, no new panels.
 
 - 2026-11-09: Register created by chat 00. Code inventory from `a973f06`. Nothing marked complete.
 - 2026-11-09: Committed to `marlin-gantt` at `docs/OS_RESET_MASTER.md` by the My Work implementation session (push access confirmed). My Work Plan Phase 2 (PR #131) merged same day, ahead of this register's snapshot at `a973f06` — see that PR's description for what changed. PR-1 picked up immediately after by the same session since it depends only on push access, which this session already has.
+- 2026-11-10: P03 opened (`docs/P03_REVIEWS_MARKETING_INTEL.md`). REV-01 and MKT-01 drafted for decision. Two reporting fixes in `index.html`: the Post-Campaign Report no longer carries values from one activity to the next, and the dashboard Ticket Revenue uses the saved figure. Both need a live re-test.
