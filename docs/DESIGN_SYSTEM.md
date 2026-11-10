@@ -1,6 +1,6 @@
 # Design system: Marlin Hospitality in the Marketing OS
 
-The OS is group-level internal tooling, so it uses the **Marlin Hospitality** design system. The source of truth is the Marlin Hospitality design system artifact (tokens, README, components, logos), which is built from *MH Branding 2026 v1.7* and the TLB weekly report pack. This document covers how the OS applies that system. Where the two disagree, the design system wins. Fix this file and the `:root` token block in `index.html` to match it.
+The OS is group-level internal tooling, so it uses the **Marlin Hospitality** design system. A copy of the system lives in [`design-system/`](../design-system/README.md): the brand book, `tokens.json`, a generated `tokens.css`, the eight report components and the 12 logo files. The master copy is the Marlin Hospitality design system artifact on claude.ai, built from *MH Branding 2026 v1.7* and the TLB weekly report pack. When the artifact changes, copy the changed files into `design-system/` again and regenerate `tokens.css`. This document covers how the OS applies the system. Where the two disagree, the design system wins. Fix this file and the `:root` token block in `index.html` to match it. (`index.html` keeps its tokens inline, rather than loading `design-system/tokens.css`, so it still works when it is pasted into WordPress on its own.)
 
 Venues keep their own identities. The venue colours (`--lb-*`, `--wbc-*`, `--hd-*`, `--rw-*`, `--mb-*`) are left alone and are only used to mark which venue something belongs to.
 
@@ -78,6 +78,7 @@ Use `--series-ty` (navy) for this year, `--series-ly` (coral-500) for last year 
 - Global `:focus-visible` ring.
 - Hardcoded reds swapped for rust and coral. Hardcoded success greens, old accent green, old gold and old greys swapped for the brand equivalents, hex for hex, so JavaScript colour maps and Chart.js datasets keep working.
 - The calendar venue-trade scale rebuilt on the green tones, with readable text colours.
+- The sidebar logo is the system's `marlin-hospitality-stacked-white.svg`. If that file isn't deployed next to `index.html`, it falls back to the old PNG, then to text.
 
 **Still to do:**
 1. **Remaining hardcoded colours** (about 80 unique hex values in the JavaScript renderers): indigo and violet (`#7c3aed`, `#6366f1`, `#ede9fe`), Tailwind blues and teals (`#2563eb`, `#0d9488`, `#0891b2`), ambers (`#b45309`, `#f59e0b`, `#ca8a04`), and pipeline and stage colour maps. Map each to a system token by meaning.
@@ -86,5 +87,4 @@ Use `--series-ty` (navy) for this year, `--series-ly` (coral-500) for last year 
 4. **Hardcoded radii** (`border-radius: 6px / 8px / 10px / 12px / 20px` in inline styles): use `--radius-sm`, or `--radius-none` for data.
 5. **Emoji icons:** replace with plain text labels, or a small, consistent line-icon set if the brand adopts one.
 6. **Navy theme:** add a `[data-theme="navy"]` block mapping the semantic tokens to the Navy theme values (surface navy-900, ink white, ink-brand cream-500, accent gold-300) if a reversed view is wanted.
-7. **Logo:** the sidebar uses `MARLIN_LOGO_-_White.png`. Swap it for the system's `marlin-hospitality-stacked-white.svg` (or `-cream`), unchanged.
-8. **The Appearance page** (`THEME_TOKENS`) still offers free colour pickers. Limit the choices to brand tokens.
+7. **The Appearance page** (`THEME_TOKENS`) still offers free colour pickers. Limit the choices to brand tokens.

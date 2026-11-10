@@ -747,9 +747,9 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 <!-- ═══ SIDEBAR ═══ -->
 <nav class="sb" id="sb">
   <div class="sb-head">
-    <img src="MARLIN_LOGO_-_White.png"
+    <img src="design-system/assets/logos/marlin-hospitality-stacked-white.svg"
          class="sb-logo" alt="Marlin Hospitality"
-         onerror="this.style.display='none';document.getElementById('sbFb').style.display='block'">
+         onerror="if(!this.dataset.fb){this.dataset.fb=1;this.src='MARLIN_LOGO_-_White.png';}else{this.style.display='none';document.getElementById('sbFb').style.display='block'}">
     <div id="sbFb" style="display:none"><div class="sb-logo-text">Marlin Hospitality</div><div class="sb-logo-sub">Marketing OS</div></div>
     <div class="sb-live" id="sbLivePill"><span class="sb-live-dot" id="sbLiveDot"></span><span id="sbLiveLabel">Live · SharePoint</span></div>
   </div>
