@@ -1534,7 +1534,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
   <div class="panel" id="p-mywork">
     <div class="ph">
       <div><div class="ph-eye">Today and upcoming</div><div class="ph-title">My <em>Work</em></div><div class="ph-sub">Shared assignments and private tasks stay separate in SharePoint. Dragging a Shared item only saves your own view of it — never anyone else's priority, due date or stage. <a href="#" id="myWorkManagePersonalLink" onclick="event.preventDefault();navTo('personaltasks')" style="display:none">Manage personal tasks →</a></div></div>
-      <div class="ph-right"><button class="tb-btn p" id="myWorkAddPersonal" onclick="openAddPersonalTask()">+ Personal task</button><button class="tb-btn" onclick="refreshMyWork()">↻</button></div>
+      <div class="ph-right"><span id="myWorkSyncStatus" style="font-size:11px;color:var(--text3);white-space:nowrap"></span><button class="tb-btn p" id="myWorkAddPersonal" onclick="openAddPersonalTask()">+ Personal task</button><button class="tb-btn" onclick="refreshMyWork()">↻</button></div>
     </div>
     <div class="ca">
       <div class="stats" id="myWorkStats" style="margin-bottom:12px"></div>
@@ -2610,8 +2610,10 @@ const LIST_IDS={
   comments:'4d41274c-6a2e-459c-8658-b5d4593aa175',
   // My Work Plan 1.5 — one row per user (Title=lower-case email), syncing the My Work board layout
   // (buckets/placement/order/Today's 3) across devices instead of leaving it in localStorage only.
-  // null until Kimberley creates "Hub User Prefs" via Schema Tools; everything using it falls back
-  // to localStorage-only (today's behaviour) while it's unset.
+  // The list is created by hand in SharePoint (Schema Tools doesn't create lists), with columns
+  // Title (lower-case email), PrefsJson (multiple lines of plain text) and UpdatedAt (date/time).
+  // null until its GUID is pasted here; everything using it falls back to localStorage-only while
+  // it's unset, and My Work's header says so.
   hubUserPrefs:null,
 };
 
@@ -10832,20 +10834,70 @@ function loadMyWorkPrefs(){
 // one PATCH per drag/drop) and the load, on sign-in, only overwrites the local cache if the
 // server's copy is actually newer — so two tabs/devices converge on whichever was touched last,
 // not whichever happened to load first.
-let _hubPrefsItemId=null,_hubPrefsSyncTimer=null,_hubPrefsLoaded=false;
+let _hubPrefsItemId=null,_hubPrefsSyncTimer=null,_hubPrefsLoaded=false,_hubPrefsSyncChain=Promise.resolve();
+// Quiet sync indicator in the My Work header. Failures used to go to console.warn only, so a
+// layout that never left this browser looked exactly like one that had synced.
+let _hubPrefsSyncState='',_hubPrefsSyncError='';
+function setHubPrefsSyncState(state,error){
+  _hubPrefsSyncState=state;_hubPrefsSyncError=error?String(error.message||error):'';
+  renderHubPrefsSyncStatus();
+}
+function renderHubPrefsSyncStatus(){
+  const el=document.getElementById('myWorkSyncStatus');if(!el)return;
+  el.onclick=null;el.style.cursor='';el.title='';
+  if(isPreviewMode){el.textContent='';return;}
+  if(!LIST_IDS.hubUserPrefs){
+    el.textContent='Saved on this device only';el.style.color='var(--text3)';
+    el.title='Hub User Prefs isn\'t connected yet, so this layout stays in this browser.';
+    return;
+  }
+  if(_hubPrefsSyncState==='syncing'){el.textContent='Syncing layout…';el.style.color='var(--text3)';}
+  else if(_hubPrefsSyncState==='synced'){el.textContent='Layout synced ✓';el.style.color='var(--text3)';el.title='Your My Work layout is saved to SharePoint and follows you to other devices.';}
+  else if(_hubPrefsSyncState==='failed'){
+    el.textContent='Not synced — saved on this device only';el.style.color='var(--gold)';el.style.cursor='pointer';
+    el.title=`Couldn't save your layout to SharePoint, so it's only in this browser for now. Click to try again.${_hubPrefsSyncError?'\n\n'+_hubPrefsSyncError:''}`;
+    el.onclick=retryHubUserPrefsSync;
+  }else el.textContent='';
+}
+function retryHubUserPrefsSync(){
+  let payload={};
+  try{payload=JSON.parse(localStorage.getItem(myWorkPrefsKey())||'{}');}catch(e){}
+  if(!payload._updatedAt)payload._updatedAt=new Date().toISOString();
+  queueHubUserPrefsSync(payload);
+}
 function saveMyWorkPrefs(p){
   const payload={...p,_updatedAt:new Date().toISOString()};
   try{localStorage.setItem(myWorkPrefsKey(),JSON.stringify(payload));}catch(e){console.warn('Could not save My Work layout preference:',e);}
   if(!LIST_IDS.hubUserPrefs||isPreviewMode||!currentUserEmail)return;
   clearTimeout(_hubPrefsSyncTimer);
-  _hubPrefsSyncTimer=setTimeout(()=>syncHubUserPrefsNow(payload),1500);
+  _hubPrefsSyncTimer=setTimeout(()=>queueHubUserPrefsSync(payload),1500);
+}
+// Syncs run one at a time — a save landing while a first-ever POST is still in flight would
+// otherwise find no row yet and create a second one.
+function queueHubUserPrefsSync(payload){
+  _hubPrefsSyncChain=_hubPrefsSyncChain.then(()=>syncHubUserPrefsNow(payload));
+  return _hubPrefsSyncChain;
+}
+// This user's row, or null if there genuinely isn't one. Throws on any failure, so callers can
+// tell "no row" apart from "couldn't look".
+async function findHubUserPrefsRow(token){
+  const email=(currentUserEmail||'').toLowerCase();
+  const items=await fetchGraphItems(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.hubUserPrefs}/items?expand=fields&$top=200`,token);
+  return items.find(it=>String(it.fields?.Title||'').toLowerCase()===email)||null;
 }
 async function syncHubUserPrefsNow(payload){
   const email=(currentUserEmail||'').toLowerCase();if(!email)return;
   const{_updatedAt,...prefsOnly}=payload;
   const fields={PrefsJson:JSON.stringify(prefsOnly),UpdatedAt:_updatedAt};
+  setHubPrefsSyncState('syncing');
   try{
     const token=await getToken(true);
+    // No known row id — the sign-in load failed, or this is a first save. Look again before
+    // creating anything: a POST after a failed load would duplicate a row that already exists.
+    if(!_hubPrefsItemId){
+      const row=await findHubUserPrefsRow(token);
+      if(row)_hubPrefsItemId=String(row.id);
+    }
     if(_hubPrefsItemId){
       const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.hubUserPrefs}/items/${_hubPrefsItemId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
       if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
@@ -10854,11 +10906,13 @@ async function syncHubUserPrefsNow(payload){
       if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
       _hubPrefsItemId=String((await res.json()).id);
     }
+    setHubPrefsSyncState('synced');
   }catch(e){
-    // Fails silently from the user's point of view — localStorage already has this exact layout,
-    // so nothing is lost locally, it just won't have followed them to another device yet. Logged,
-    // not alerted, since this runs on every drag/drop and a popup for each would be unusable.
+    // localStorage already has this exact layout, so nothing is lost locally — it just hasn't
+    // followed them to another device. Shown in the My Work header rather than alerted, since
+    // this runs on every drag/drop.
     console.warn('Could not sync My Work layout to SharePoint (kept locally):',e);
+    setHubPrefsSyncState('failed',e);
   }
 }
 // Called once at sign-in (loadAll()) — pulls this user's row, if any, and only overwrites the
@@ -10867,14 +10921,12 @@ async function syncHubUserPrefsNow(payload){
 async function loadHubUserPrefs(){
   if(_hubPrefsLoaded)return;
   _hubPrefsLoaded=true;
-  if(!LIST_IDS.hubUserPrefs||isPreviewMode||!currentUserEmail)return;
-  const email=(currentUserEmail||'').toLowerCase();
+  if(!LIST_IDS.hubUserPrefs||isPreviewMode||!currentUserEmail){renderHubPrefsSyncStatus();return;}
   try{
     const token=await getToken();
-    const items=await fetchGraphItems(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.hubUserPrefs}/items?expand=fields&$top=200`,token);
-    const row=items.find(it=>String(it.fields?.Title||'').toLowerCase()===email);
-    if(!row)return; // no row yet — this user's first save (see syncHubUserPrefsNow) creates one
-    _hubPrefsItemId=row.id;
+    const row=await findHubUserPrefsRow(token);
+    if(!row){setHubPrefsSyncState('synced');return;} // no row yet — the first save creates one
+    _hubPrefsItemId=String(row.id);
     const serverUpdatedAt=row.fields?.UpdatedAt?new Date(row.fields.UpdatedAt).getTime():0;
     let localUpdatedAt=0;
     try{localUpdatedAt=new Date(JSON.parse(localStorage.getItem(myWorkPrefsKey())||'{}')._updatedAt||0).getTime()||0;}catch(e){}
@@ -10882,7 +10934,13 @@ async function loadHubUserPrefs(){
       const serverPrefs=JSON.parse(row.fields.PrefsJson||'{}');
       localStorage.setItem(myWorkPrefsKey(),JSON.stringify({...serverPrefs,_updatedAt:row.fields.UpdatedAt}));
     }
-  }catch(e){console.warn('Could not load Hub User Prefs:',e);}
+    setHubPrefsSyncState('synced');
+  }catch(e){
+    // _hubPrefsItemId stays null; syncHubUserPrefsNow re-checks for an existing row before it
+    // would ever create one, so this can't lead to a duplicate.
+    console.warn('Could not load Hub User Prefs:',e);
+    setHubPrefsSyncState('failed',e);
+  }
 }
 function mwAutoBucket(t,today){
   if(['Done','Complete','Completed'].includes(t.status))return null;
@@ -10938,6 +10996,7 @@ function myWorkItems(includeUnassigned){
 
 function renderMyWork(){
   if(!isAuthed)return;
+  renderHubPrefsSyncStatus();
   const stats=document.getElementById('myWorkStats'),bucketsEl=document.getElementById('myWorkBuckets'),goingLiveEl=document.getElementById('myWorkGoingLive'),todayWidgetEl=document.getElementById('myWorkTodayWidget'),configEl=document.getElementById('myWorkConfig');
   if(!stats||!bucketsEl)return;
   const canSeePersonal=canAccessPanel('personaltasks');
