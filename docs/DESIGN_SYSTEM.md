@@ -62,7 +62,25 @@ Work Sans is the only typeface, loaded from Google Fonts at the top of `index.ht
 
 Follow the system's writing rules: first person plural, plain confident sentences, Australian spelling, no exclamation marks. In reports and KPIs, lead with the finding and the number, use TY/LY and "pts", and put negatives in brackets in tables, for example (1,287).
 
-Icons: the system has no icon set and says no decorative icons. The sidebar uses single-colour text glyphs only, and the Dashboard card titles, widget titles, quick-action cards, submission headings, development banner and sign-in screen carry no emoji. Functional marks (✓ ✕ ↻ ⚠ ☐ →) are fine. Don't add colour emoji to new UI.
+Icons: the system has no icon set and says no decorative icons. The OS has no colour emoji. Where a symbol carries meaning, it uses one single-colour glyph set, the same symbol for the same meaning everywhere:
+
+| Meaning | Glyph |
+| --- | --- |
+| Loaded Rewards / base member | ★ |
+| Functions | ◆ |
+| Ticketed (any platform) | ▣ |
+| Supplier involved | ⇄ |
+| Sport screening | ◎ |
+| Event / key date | ▦ |
+| Marketing / promotion | ▸ |
+| Live music | ♪ |
+| Blocked | ⊘ |
+| Awaiting / in review | ◔ |
+| Status dot (colour from its pill) | ● |
+| Done / OK, close / delete, edit, refresh, open link | ✓ ✕ ✎ ↻ ↗ |
+| Warning | ⚠︎ (text presentation) |
+
+Buttons and headings carry words, not glyph prefixes. The exceptions are the calendar type filters, which double as the legend for the glyphs above. Don't add colour emoji to new UI.
 
 ## Charts
 
@@ -91,8 +109,14 @@ Use `--series-ty` (navy) for this year, `--series-ly` (coral-500) for last year 
 - The Appearance page offers brand-palette swatches instead of a free colour picker. Defaults are navy-500 (Monthly Deals) and coral-500 (Loaded Rewards).
 - Emoji removed from the sidebar, the Dashboard headings, the quick-action cards, submission headings, the development banner and the sign-in screen. The sign-in screen shows the navy stacked logo.
 
+**Done (phase 3, content and components):**
+- All colour emoji removed (about 300, including the `\u{1F4A1}` escapes). Meaningful ones became the glyph set above; decorative ones and empty-state pictures were dropped. "Your event has been approved and is now Live! 🎉" now reads "Your event is approved and now live."
+- `.tbl` follows the DataTable component: navy header row with white uppercase labels, hairline rows, tabular figures, plus `.num` (right-aligned) and `tr.total` (bold with a navy rule) helpers.
+- `.stat` KPI tiles follow KpiCard: 12px padding and gaps, a label-style caption, a 1.5px rust border for attention (no tinted fill), and solid pills (`st-up` positive, `st-warn` gold-300, `st-alert` rust).
+- Every uppercase label in CSS and inline styles uses the `label` style: weight 800, 0.04em tracking.
+- Shared classes for the most repeated inline patterns: `.u-meta-sm`, `.u-meta`, `.u-meta-lg`, `.u-empty`, `.u-inp`, `.u-inp-sm` (64 elements moved off inline styles). The inputs keep their focus ring now.
+
 **Still to do:**
-1. **Inline styles** (about 1,600 `style=` attributes): move the repeated ones into classes that use the tokens. This is where most remaining inconsistency lives.
-2. **Emoji in content:** about 400 emoji remain inside renderers (activity type filters, tier icons, buttons, empty states). Replace them screen by screen with words, or with a small line-icon set if the brand adopts one.
-3. **Navy theme:** `design-system/tokens.css` has a `[data-theme="navy"]` block. Mirror it in `index.html` if a reversed view is wanted.
-4. **Report components:** use `design-system/components/bundle.css` classes (`.mh-kpi`, `.mh-table`, `.mh-callout`) for the Finance, Ticketing and venue report screens.
+1. **Inline layout styles:** about 1,200 lines still carry `style=`. Most are one-off layout (`display:none`, `flex:1`, margins) and don't affect the brand. Move them into classes when a screen is next reworked.
+2. **Navy theme:** `design-system/tokens.css` has a `[data-theme="navy"]` block. Mirror it in `index.html` if a reversed view is wanted.
+3. **TY/LY reporting:** the Finance and Campaign Performance screens show TY figures only. When LY data is available, use the CompareBars pattern (`--series-ty` navy and `--series-ly` coral, values always labelled).
