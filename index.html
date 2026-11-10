@@ -2580,9 +2580,8 @@ const CFG={clientId:'b7e650cb-f871-4884-b5ba-3f55c1d8d20b',authority:'https://lo
 const GOOGLE_CLIENT_ID='805946744245-e41ge33vlbr91t94olfqchk67o498ght.apps.googleusercontent.com';
 const GOOGLE_DRIVE_SCOPE='https://www.googleapis.com/auth/drive.readonly';
 
-// Photo Tagging — calls Google Cloud Vision's label-detection API straight from the browser (an
-// API key is enough, no OAuth), then writes the result back to the AITags column on the Digital
-// Media library via Graph. No Power Automate / premium connector involved anywhere in this path.
+// Photo Tagging — reads photos from SharePoint via Graph. Tag generation is paused until a
+// protected server-side Vision backend validates signed-in staff and writes tags back safely.
 // Photo Tagging must call a protected server-side Vision backend. Never put credentials in this
 // public GitHub Pages file. Configure the backend only after it validates signed-in staff.
 const PHOTO_TAGGING_BACKEND_URL='';
