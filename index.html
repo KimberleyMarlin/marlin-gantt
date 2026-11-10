@@ -405,7 +405,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 .lr-tier-icon{font-size:14px;flex-shrink:0;width:22px;text-align:center}
 .lr-tier-name{font-size:11px;font-weight:700;color:var(--text);flex:1}
 .lr-tier-offer{font-size:11px;color:var(--text2);font-weight:500}
-.lr-logo-box{width:52px;height:52px;border-radius:var(--radius-sm);background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.24);display:flex;align-items:center;justify-content:center;padding:7px;flex-shrink:0;overflow:hidden}
+.lr-logo-box{width:84px;height:52px;border-radius:var(--radius-sm);background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.24);display:flex;align-items:center;justify-content:center;padding:6px;flex-shrink:0;overflow:hidden}
 .lr-logo-box img{display:block;width:100%;height:100%;object-fit:contain;filter:none!important;opacity:1!important}
 .lr-activation-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:rgba(255,255,255,.4);margin-bottom:1px}
 .lr-summary-fields{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
@@ -735,7 +735,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
   .inbox-layout{grid-template-columns:1fr;min-height:0}
   .inbox-list-card{max-height:34vh}
   .inbox-chat-pane{min-height:54vh}
-  .activity-logo-box,.lr-logo-box{width:46px;height:46px}
+  .activity-logo-box{width:46px;height:46px}.lr-logo-box{width:68px;height:40px;padding:4px}
   .activity-summary-fields{grid-template-columns:1fr}
   .lr-price-panel{width:100%;align-items:flex-start;padding:0 0 0 58px}
   .ops-grid,.foundation-grid{grid-template-columns:1fr}
@@ -2833,7 +2833,7 @@ window.dumpCols=async function(listIdOrName){
 
 let KEY_DATES=[]; // Calendar Reference entries + auto-loaded public holidays
 
-const LR_LOGO='https://www.loadedrewards.com.au/wp-content/uploads/2026/08/cropped-Loaded-Rewards-Logo.webp';
+const LR_LOGO=new URL('./assets/loaded-rewards-logo.png',document.baseURI).href;
 
 // Group templates for tagging multiple people at once via @ — edit this list as your team's
 // structure changes. Group names show in the @ autocomplete alongside individual people.
@@ -8900,7 +8900,7 @@ function eventLogo(ev){
 
 function venueLogoBox(ev,loaded=false){
   const logo=VENUE_LOGOS[ev.venue]||(loaded?LR_LOGO:'');
-  if(logo)return`<div class="${loaded?'lr-logo-box':'activity-logo-box'}"><img src="${escapeAttr(logo)}" alt="${escapeAttr(shortVenue(ev.venue))}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="activity-logo-fallback" style="display:none;background:${vColor(ev.venue).c}">${escapeAttr(shortVenue(ev.venue).slice(0,2).toUpperCase())}</div></div>`;
+  if(logo)return`<div class="${loaded?'lr-logo-box':'activity-logo-box'}"><img src="${escapeAttr(logo)}" alt="${escapeAttr(loaded?'Loaded Rewards logo':shortVenue(ev.venue))}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="activity-logo-fallback" style="display:none;background:${vColor(ev.venue).c}">${escapeAttr(shortVenue(ev.venue).slice(0,2).toUpperCase())}</div></div>`;
   return`<div class="${loaded?'lr-logo-box':'activity-logo-box'}"><div class="activity-logo-fallback" style="background:${vColor(ev.venue).c}">${escapeAttr(shortVenue(ev.venue).slice(0,2).toUpperCase())}</div></div>`;
 }
 
