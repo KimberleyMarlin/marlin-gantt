@@ -11036,7 +11036,7 @@ function renderMyTasks(){
     function inQueueScope(t){
       if(queue==='design')return t.category==='Design Asset';
       if(queue==='web')return t.category==='Web Update';
-      if(queue==='mine')return isMyTask(t);
+      if(queue==='mine')return isCurrentUserAssignment(t.assignedTo);
       return true;
     }
     const doneList=MY_TASKS.filter(t=>t.title&&t.title.trim()&&t.status==='Done'&&inQueueScope(t))
