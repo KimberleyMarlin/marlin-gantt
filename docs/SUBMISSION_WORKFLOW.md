@@ -8,12 +8,16 @@ Updated: 2026-11-10.
 - **Job ticket**: an item in the shared SharePoint list **Tasks & Job Tickets** (`LIST_IDS.myTasks`, GUID `8dd02125…`). Linked to its activity through the `Campaign` lookup column (`CampaignLookupId`).
 - **Tasks & Job Tickets** is not the same list as Kimberley's private **My Tasks** list (`LIST_IDS.personalTasks`). The code key `myTasks` is historical. On-screen labels say "Tasks & Job Tickets".
 
+## Venue on job tickets
+
+Tasks & Job Tickets has a text `Venue` column (added through Admin & Schema). Manual job tickets, approval-created tickets and design briefs write it through `postSharedTask()`. If the column is missing or rejects the value, the save retries once without it, puts a `Venue: X` line at the top of Notes, and tells the user. `loadTasks()` reads the column first and falls back to that Notes line, so older tickets still show their venue.
+
 ## Current behaviour
 
 1. **Submit:** Activity submission creates a row at `WorkflowStage = Intake`. Bulk import also lands at Intake, with no per-row emails.
 2. **Triage:** The activity appears in Submissions for the reviewer.
 3. **Preview:** The first approval (Intake → In Design) opens a preview of proposed job tickets (`openApprovalPreview`). Each row shows why it was proposed, plus any detail carried from the submission. Owner and due date are editable, and any row can be unticked.
-4. **Create:** Only ticked rows are created (`confirmApprovalTasks`), each linked via `CampaignLookupId`. Submission detail (asset formats, POS notes, brief notes) goes into the ticket Notes.
+4. **Create:** Only ticked rows are created (`confirmApprovalTasks`), each linked via `CampaignLookupId` and with the activity's venue in the `Venue` column. Submission detail (asset formats, POS notes, brief notes) goes into the ticket Notes.
 5. **Advance:** The activity moves to In Design (shown as Planning) only after every ticked ticket saves. Then `DesignJobCreated` is set so a second approval never creates a second set. On any failure the activity stays at Intake and the failed tickets are listed. Retry only creates the ones that failed.
 6. **Skip:** "Skip tasks, just approve" advances without creating tickets.
 7. **Go live:** Review → Live is a plain one-click approval with no new tickets.
@@ -63,6 +67,5 @@ Rules add a ticket only when the template doesn't already cover that kind of wor
 
 ## Still open
 
-- Live test of the full approval flow (SUB-03 / FLOW-01), which is waiting on SAFE-02/03/04.
-- Venue on job tickets: the list has no Venue column, so Venue is kept in Notes.
+- Live test of the full approval flow (SUB-03 / FLOW-01), using `docs/LIVE_TEST_JOB_TICKETS.md`.
 - Later stages: per-team queues, Review with artwork or final URLs, and Live/Done advancing from job tickets.

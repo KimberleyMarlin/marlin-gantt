@@ -3663,12 +3663,13 @@ async function confirmApprovalTasks(){
       Status:'Not Started',
       Priority:row.dataset.taskPriority,
       CampaignLookupId:Number(ev.spId),
+      ...(ev.venue?{Venue:ev.venue}:{}),
       Notes:`Approved for campaign: ${ev.title} (${ev.venue})\nCampaign start: ${ev.start}${row.dataset.taskDetails?'\n'+row.dataset.taskDetails:''}`,
     };
     if(dueDate)fields.DueDate=dueDate+'T12:00:00Z';
     if(owner)fields.AssignedTo=owner;
     try{
-      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+      const res=await postSharedTask(token,fields);
       if(res.ok){row.dataset.created='1';checkbox.disabled=true;}
       else failures.push(`${row.dataset.taskTitle}: HTTP ${res.status}`);
     }catch(e){failures.push(`${row.dataset.taskTitle}: ${e.message}`);}
@@ -3682,7 +3683,7 @@ async function confirmApprovalTasks(){
   try{
     await advanceCampaignStage(ev,'In Design',{DesignJobCreated:true});
     closeApprovalPreview();
-    if(typeof showToast==='function')showToast(`"${ev.title}" approved → In Design, tasks created`);
+    if(typeof showToast==='function')showToast(`"${ev.title}" approved → In Design, tasks created${SHARED_TASK_VENUE_COLUMN?'':' (Venue saved in Notes: the Venue column is missing, add it in Schema Tools)'}`);
   }catch(e){
     msg.textContent='Tasks were created, but the activity could not be moved to In Design: '+e.message;
     msg.className='form-msg err';
@@ -8572,6 +8573,7 @@ async function saveDesignBrief(btn){
     Platform:type,
     AssetSpec:(document.getElementById('bSpecs').value||'')+(platforms?' | '+platforms:''),
     Notes:briefNotes,
+    Venue:venue,
     CopyRequired:!!document.getElementById('bCopy').value
   };
   const briefDue=document.getElementById('bBriefDue').value;if(briefDue)fields.DueDate=briefDue+'T12:00:00Z';
@@ -8589,7 +8591,7 @@ async function saveDesignBrief(btn){
   }
   try{
     const token=await getToken(true);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    const res=await postSharedTask(token,fields);
     if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
     const created=await res.json();
     const assigneeName=document.getElementById('bAssignTo').options[document.getElementById('bAssignTo').selectedIndex]?.text||assignTo;
@@ -11028,7 +11030,7 @@ function myWorkItems(includeUnassigned){
   const mapShared=t=>{
     const ev=t.campaignLookupId?eventById(t.campaignLookupId):eventByTitle(t.campaignLookup);
     const project=projectById(ev?.projectId);
-    return{...t,kind:'shared',key:'shared:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:ev?.venue||''};
+    return{...t,kind:'shared',key:'shared:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:t.venue||ev?.venue||''};
   };
   const personal=canSeePersonal?PERSONAL_TASKS.map(t=>{
     const ev=t.linkedActivityId?eventById(t.linkedActivityId):null;
@@ -11420,6 +11422,42 @@ function renderMyTasks(){
   document.getElementById('tasksList').innerHTML=mainListHtml+completedHtml;
 }
 
+// Creates one item in the shared Tasks & Job Tickets list. Venue is written to its own Venue
+// column. If that column doesn't exist yet (Graph 400 naming Venue, or a 400 when the column is
+// known to be missing), this retries once without it and keeps "Venue: X" at the top of Notes, so
+// a job ticket never fails over the venue and the venue is never silently lost. Once a fallback
+// happens, later saves in the same session skip straight to the Notes form.
+// Returns the Response, with .venueFallback=true when the Notes fallback was used.
+let SHARED_TASK_VENUE_COLUMN=true;
+function withVenueInNotes(fields){
+  const {Venue,...rest}=fields;
+  if(!Venue)return rest;
+  const notes=rest.Notes||'';
+  if(!/^Venue:/m.test(notes))rest.Notes=[`Venue: ${Venue}`,notes].filter(Boolean).join('\n\n');
+  return rest;
+}
+async function postSharedTask(token,fields){
+  const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`;
+  const post=f=>fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:f})});
+  if(!fields.Venue)return post(fields);
+  if(!SHARED_TASK_VENUE_COLUMN){const r=await post(withVenueInNotes(fields));r.venueFallback=true;return r;}
+  const res=await post(fields);
+  if(res.ok||res.status!==400)return res;
+  const body=await res.clone().text();
+  if(!/Venue/i.test(body))return res;
+  console.warn('Tasks & Job Tickets has no usable Venue column yet — saving Venue in Notes instead.',body.substring(0,200));
+  SHARED_TASK_VENUE_COLUMN=false;
+  const retry=await post(withVenueInNotes(fields));
+  retry.venueFallback=true;
+  return retry;
+}
+// Venue for a job ticket: the Venue column when present, otherwise the "Venue: X" line that
+// tickets saved before the column existed (or during a fallback) carry in Notes.
+function sharedTaskVenue(f){
+  if(f.Venue)return String(f.Venue);
+  const m=String(f.Notes||'').match(/^Venue:\s*(.+)$/m);
+  return m?m[1].trim():'';
+}
 async function loadTasks(){
   if(!isAuthed)return;
   if(!LIST_IDS.myTasks&&!isPreviewMode)MY_TASKS=[];
@@ -11435,7 +11473,7 @@ async function loadTasks(){
           title:f.Title||'',
           status:f.Status||'Not Started',
           priority:f.Priority||'',
-          venue:'', // Tasks list doesn't have Venue — use Campaign lookup
+          venue:sharedTaskVenue(f), // Venue column, or the legacy "Venue: X" line in Notes
           category:f.TaskType||'',
           due:f.DueDate?f.DueDate.split('T')[0]:'',
           notes:f.Notes||'',
@@ -12271,6 +12309,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'personalTasks',name:'EmailSender',displayName:'Email Sender',type:'text',purpose:'Outlook email-to-task — the original email\'s sender, for a Source=Outlook task.'},
   {listKey:'personalTasks',name:'EmailLink',displayName:'Email Link',type:'text',purpose:'Outlook email-to-task — a link back to the original email in Outlook.'},
   {listKey:'personalTasks',name:'EmailMessageId',displayName:'Email Message Id',type:'text',purpose:'Outlook email-to-task — the email\'s stable internet message id, used by the Power Automate flow to detect duplicates (including when a flagged email is later edited).'},
+  {listKey:'myTasks',name:'Venue',displayName:'Venue',type:'text',purpose:'Venue a job ticket is for. Written by manual Job submission, approval-created job tickets and design briefs. Text, not Choice, so a new venue added to the Hub never makes ticket saves fail. Until it exists, saves fall back to a "Venue: X" line in Notes.'},
   {listKey:'myTasks',name:'ConvertedFromPersonalTaskId',displayName:'Converted From Personal Task Id',type:'number',purpose:'Back-reference to the private Personal Task this shared task was converted from, written at creation time. The authoritative idempotency check for convertPersonalTaskToShared — a retry after a failed patch-back on the Personal Task side reuses this record instead of creating a duplicate.'},
   {listKey:'ideas',name:'ActivityType',displayName:'Activity Type',type:'choice',choices:ACTIVITY_TYPE_OPTIONS.join(', '),purpose:'Captured at idea stage so "Continue Brief" can prefill it on the Activity submission form.'},
   {listKey:'ideas',name:'PromotedActivityId',displayName:'Promoted Activity Id',type:'number',purpose:'Links an idea to the real Activity created from it via "Continue Brief", so reopening a promoted idea opens that Activity instead of letting it be promoted twice.'},
@@ -13708,12 +13747,13 @@ async function submitJob(){
     TaskType:document.getElementById('fJobType').value,
   };
   const due=document.getElementById('fJobDue').value;if(due)fields.DueDate=due+'T12:00:00Z';
-  // The Tasks & Job Tickets list does not currently have a Venue column. Preserve the selection in Notes
-  // until that schema debt is fixed, instead of silently throwing the user's venue away.
+  // Venue goes to the list's own Venue column; postSharedTask() falls back to a "Venue: X" line
+  // in Notes if that column hasn't been created yet.
   const venue=document.getElementById('fJobVenue').value;
+  if(venue)fields.Venue=venue;
   const rawNotes=document.getElementById('fJobNotes').value.trim();
-  const notes=[venue?`Venue: ${venue}`:'',rawNotes].filter(Boolean).join('\n\n');
-  if(notes)fields.Notes=notes;
+  const notes=[venue?`Venue: ${venue}`:'',rawNotes].filter(Boolean).join('\n\n'); // email body only
+  if(rawNotes)fields.Notes=rawNotes;
   const assign=document.getElementById('fJobAssign').value;if(assign)fields.AssignedTo=assign;
   // Campaign & digital linkage — writes the real "Campaign" Lookup column (CampaignLookupId is
   // the standard Graph write key for a Lookup column named "Campaign"). Previously this wrote
@@ -13744,7 +13784,7 @@ async function submitJob(){
   }
   try{
     const token=await getToken(true);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    const res=await postSharedTask(token,fields);
     if(res.ok){
       const created=await res.json();
       let emailDelivered=false;
@@ -13766,7 +13806,7 @@ async function submitJob(){
       const m=document.getElementById('fJobMsg');
       m.textContent=emailNeeded&&!emailDelivered
         ?'⚠︎︎ Job submitted, but the assignment email was not delivered. It is still visible in Tasks & Job Tickets.'
-        :`✓ Job submitted${emailDelivered?' and '+assigneeName+' was emailed.':' to the task list!'}`;
+        :`✓ Job submitted${emailDelivered?' and '+assigneeName+' was emailed.':' to the task list!'}${res.venueFallback?' Venue was saved in Notes because the Venue column is missing. Add it in Schema Tools.':''}`;
       m.className=emailNeeded&&!emailDelivered?'form-msg err':'form-msg ok';
       ['fJobTitle','fJobNotes','fJobDue','fJobMetaNotes','fJobGoogleNotes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
       ['fJobCampaign'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
