@@ -5570,13 +5570,15 @@ async function loadCampaigns(){
         ticketPlatform:f.TicketPlatform||'',
         ticketPrice:parseFloat(f.TicketPrice||0),
         capacity:parseInt(f.Capacity||0),
-        // Event image (uploaded Image column or EventImageURL) — used for card thumbnails
-        eventImageUrl:sharePointUrl(f.Image)||sharePointUrl(f.EventImageURL),
-        // Stable {driveId,itemId} reference for the featured image, so a fresh thumbnail can be
-        // resolved later instead of relying only on the (possibly expired) cached URL above — see
-        // resolveFeaturedImageUrl(). Absent on anything picked before this existed; eventImageUrl
-        // alone still works for those, maintaining compatibility with existing values.
-        eventImageRef:(()=>{try{const parsed=JSON.parse(f.EventImageRef||'null');return parsed?.driveId&&parsed?.itemId?parsed:null;}catch{return null;}})(),
+        // Event image — used for card thumbnails. Precedence: an uploaded Image column always wins;
+        // then a picked photo (EventImageRef), whose fresh thumbnail is filled in after load by
+        // hydrateFeaturedImageUrls(); then the legacy EventImageURL for photos picked before
+        // EventImageRef became the source of truth. EventImageURL is no longer written by the OS.
+        eventImageUrl:sharePointUrl(f.Image)||(parseEventImageRef(f.EventImageRef)?'':sharePointUrl(f.EventImageURL)),
+        legacyEventImageUrl:sharePointUrl(f.EventImageURL)||'',
+        // Stable {driveId,itemId} reference for the featured image — the source of truth for a
+        // picked photo. See pickEvPhoto() and resolveFeaturedImageUrl().
+        eventImageRef:parseEventImageRef(f.EventImageRef),
         // A second, independently-linkable SharePoint folder for completed artwork that sometimes
         // lives somewhere other than the Power Automate–created Activity folder.
         linkedArtworkFolderUrl:sharePointUrl(f.LinkedArtworkFolderURL)||'',
@@ -5642,6 +5644,7 @@ async function loadCampaigns(){
       EVENTS=[];
     }
     EVENTS.sort((a,b)=>a.start.localeCompare(b.start));
+    await hydrateFeaturedImageUrls();
     const el=document.getElementById('ovSub');
     if(el)el.textContent=`${EVENTS.length} activities loaded · ${new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'})}`;
   }catch(e){console.error('SP error:',e);showError(e.message);}
@@ -6777,49 +6780,112 @@ async function searchEvPhotos(evId,presetQuery){
   }
 }
 
-// Saves the picked photo. url is a cached thumbnail link for immediate, synchronous display
-// everywhere that still just does <img src> (and for EventImageURL back-compat); driveId/itemId
-// are the stable SharePoint reference, stored as EventImageRef, that resolveFeaturedImageUrl() can
-// use to fetch a fresh thumbnail later instead of relying on a Graph thumbnail URL that can expire.
-// Both legacy callers (no driveId/itemId) and the Remove action (empty url, no ref) are supported —
-// Remove clears EventImageRef too, so a stale reference never outlives the photo it pointed to.
+// ── SharePoint link-column writes ─────────────────────────────────────────────────────────────
+// Graph v1.0 doesn't officially support writing SharePoint Hyperlink columns: a plain string gets
+// generalException (500) and a {Url,Description} object gets invalidRequest (400). The only
+// reported working route is the undocumented `Prefer: apiversion=2.1` header, so Hyperlink writes
+// go through that, with a plain-string fallback for columns that are Single line of text.
+// Every SharePoint link column (Hyperlink or text) holds at most 255 characters.
+const SP_LINK_MAX_CHARS=255;
+// "HTTP 400: Invalid request (invalidRequest)" from a Graph error body, or the raw text if not JSON.
+function graphErrorText(status,bodyText){
+  let msg='',code='';
+  try{const p=JSON.parse(bodyText||'');msg=p?.error?.message||'';code=p?.error?.code||'';}catch{}
+  if(!msg&&!code)msg=String(bodyText||'').trim().slice(0,300);
+  return`HTTP ${status}${msg?': '+msg:''}${code?` (${code})`:''}`;
+}
+// Writes (or clears, when url is empty) one link column on a list item. Tries each payload shape
+// in turn and stops at the first success. Every attempt is an idempotent PATCH, so retrying is
+// safe. Returns {ok:true} or {ok:false,error} with the FIRST real Graph error (later fallbacks
+// usually fail for a less useful reason). Stops early when the column doesn't exist.
+async function writeSpLinkField(itemUrl,token,field,url){
+  url=(url||'').trim();
+  if(url.length>SP_LINK_MAX_CHARS)return{ok:false,error:`That link is ${url.length} characters long — SharePoint link columns hold at most ${SP_LINK_MAX_CHARS}. Use Share → Copy link to get a shorter one.`};
+  const prefer={Prefer:'apiversion=2.1'};
+  const attempts=url
+    ?[{value:{Url:url,Description:''},headers:prefer},{value:url,headers:{}}]
+    :[{value:null,headers:prefer},{value:{Url:'',Description:''},headers:prefer},{value:'',headers:{}}];
+  let firstError='';
+  for(const a of attempts){
+    let res,text='';
+    try{
+      res=await fetch(itemUrl,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',...a.headers},body:JSON.stringify({fields:{[field]:a.value}})});
+    }catch(e){if(!firstError)firstError=e.message||String(e);continue;}
+    if(res.ok)return{ok:true};
+    try{text=await res.text();}catch{}
+    const err=graphErrorText(res.status,text);
+    if(!firstError)firstError=err;
+    if(/Field '[^']+' is not recognized/i.test(text))return{ok:false,error:err};
+  }
+  return{ok:false,error:firstError||'Unknown error'};
+}
+// A friendly message only when Graph says the column doesn't exist; otherwise '' so the caller
+// shows the real Graph error instead of a guess.
+function missingColumnHint(error){
+  const m=String(error||'').match(/Field '([^']+)' is not recognized/i);
+  return m?`The ${m[1]} column doesn't exist in SharePoint yet — add it on the Activities list.`:'';
+}
+// Safe parse of the EventImageRef column. Returns {driveId,itemId} or null.
+function parseEventImageRef(raw){
+  if(!raw)return null;
+  try{
+    const p=typeof raw==='string'?JSON.parse(raw):raw;
+    return p&&typeof p.driveId==='string'&&typeof p.itemId==='string'&&p.driveId&&p.itemId?{driveId:p.driveId,itemId:p.itemId}:null;
+  }catch{return null;}
+}
+// For every Activity with a picked photo (EventImageRef) but no display URL yet, resolve a fresh
+// thumbnail. At most 6 requests in flight. Falls back to the legacy EventImageURL per Activity.
+async function hydrateFeaturedImageUrls(){
+  const todo=EVENTS.filter(e=>e.eventImageRef&&!e.eventImageUrl);
+  let i=0;
+  const worker=async()=>{
+    while(i<todo.length){
+      const ev=todo[i++];
+      try{ev.eventImageUrl=await resolveFeaturedImageUrl(ev)||'';}catch(e){console.warn('Featured image hydrate failed',e);}
+    }
+  };
+  await Promise.all(Array.from({length:Math.min(6,todo.length)},worker));
+}
+
+// Saves the picked photo. Only EventImageRef ({driveId,itemId}, ~130 chars, text column) is
+// written — it's the source of truth. The thumbnail url is kept in memory for immediate display
+// and never saved: signed Graph thumbnail links run to ~1,500 characters (over the 255-char
+// column limit) and expire anyway; a fresh one is resolved on every load.
+// Remove (empty url, no ref) clears EventImageRef, and also clears the legacy EventImageURL if
+// this Activity still has one, so an old photo can't reappear after reload.
 async function pickEvPhoto(evId,url,driveId,itemId){
   const ev=EVENTS.find(x=>String(x.id)===String(evId));if(!ev)return;
+  const itemUrl=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`;
   try{
     const token=await getToken(true);
-    const ref=driveId&&itemId?JSON.stringify({driveId,itemId}):'';
-    // Event Image URL is a Hyperlink column in SharePoint. Graph's Hyperlink/Picture column type
-    // needs a {Url, Description} object on write, never a bare string. Clearing the photo (url='')
-    // now sends an empty {Url:'',Description:''} object rather than a literal null — a bare null
-    // produced a new "invalidRequest" 400 (progress from the earlier "generalException" 500, but
-    // still wrong), which points at Graph rejecting null for this complex-typed field specifically.
-    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,token,{EventImageURL:{Url:url||'',Description:''},EventImageRef:ref});
-    const urlFailed=result.failed.find(f=>f.field==='EventImageURL');
-    const refFailed=ref&&result.failed.find(f=>f.field==='EventImageRef');
-    // EventImageRef is the stable, authoritative pointer — resolveFeaturedImageUrl() re-fetches a
-    // fresh thumbnail from it on every load. EventImageURL is only a same-session display cache /
-    // back-compat value for callers that still do a plain <img src>, and Graph's Hyperlink
-    // validation can reject some of the very long, token-heavy thumbnail URLs certain sources
-    // return (e.g. mediap.svc.ms transform URLs). That alone must not block the photo from being
-    // set when the real reference saved fine — it's logged, not fatal, unless there's no reference
-    // to fall back on either (legacy caller with no driveId/itemId).
-    if(urlFailed)console.warn('EventImageURL (display cache) could not be saved:',urlFailed.error);
-    ev.eventImageUrl=url; // reflect the pick immediately in this session regardless of what persisted
-    if(refFailed){
-      ev.eventImageRef=null;
+    if(url){
+      if(!driveId||!itemId){alert('Could not set photo: this photo has no SharePoint reference to save. Pick it again from one of the photo tabs.');return;}
+      const ref=JSON.stringify({driveId,itemId});
+      const res=await fetch(itemUrl,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{EventImageRef:ref}})});
+      if(!res.ok){
+        const err=graphErrorText(res.status,await res.text().catch(()=>''));
+        alert('Could not set photo: '+(missingColumnHint(err)||err));
+        return;
+      }
+      ev.eventImageRef={driveId,itemId};
+      ev.eventImageUrl=url;
+      _featuredImgUrlCache[driveId+'/'+itemId]=url;
       showPop(evId);
-      const m=(refFailed.error||'').match(/Field '([^']+)' is not recognized/);
-      alert(`Photo set, but the stable reference couldn't be saved${m?` — the ${m[1]} column doesn't exist in SharePoint yet`:''}. It'll display fine for now, but may need re-picking later if the link expires.`);
       return;
     }
-    ev.eventImageRef=ref?{driveId,itemId}:null;
-    if(urlFailed&&!ref){
-      // Nothing at all persisted: no stable reference to fall back on (legacy caller), and the
-      // URL itself couldn't be saved either.
-      const m=(urlFailed.error||'').match(/Field '([^']+)' is not recognized/);
-      const urlNote=` [url: ${url.length} chars — "${url.slice(0,120)}${url.length>120?'…':''}"]`;
-      alert(m?`The ${m[1]} column doesn't exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.`:`Could not save the photo: ${urlFailed.error||'unknown error'}${urlNote}`);
+    // Remove
+    const res=await fetch(itemUrl,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{EventImageRef:''}})});
+    if(!res.ok){
+      const err=graphErrorText(res.status,await res.text().catch(()=>''));
+      alert('Could not remove photo: '+(missingColumnHint(err)||err));
       return;
+    }
+    ev.eventImageRef=null;
+    ev.eventImageUrl='';
+    if(ev.legacyEventImageUrl){
+      const cleared=await writeSpLinkField(itemUrl,token,'EventImageURL','');
+      if(cleared.ok)ev.legacyEventImageUrl='';
+      else alert(`Photo removed, but an older saved photo link on this Activity couldn't be cleared, so that older photo may come back after you reload. SharePoint said: ${cleared.error}`);
     }
     showPop(evId);
   }catch(e){
@@ -6833,6 +6899,33 @@ async function pickEvPhoto(evId,url,driveId,itemId){
 function encodeSharingUrlForGraph(url){
   const base64=btoa(unescape(encodeURIComponent(url))).replace(/=+$/,'').replace(/\//g,'_').replace(/\+/g,'-');
   return'u!'+base64;
+}
+// A link pasted from the browser address bar (…/Forms/AllItems.aspx?id=%2Fsites%2F…) is a library
+// view URL, which the Shares API can't resolve. Returns [original] plus origin+id-path when the
+// URL carries an id= (or RootFolder=) parameter that starts with "/".
+function sharePointLinkCandidates(url){
+  const out=[url];
+  try{
+    const u=new URL(url);
+    const p=u.searchParams.get('id')||u.searchParams.get('RootFolder');
+    if(p&&p.startsWith('/')){
+      const direct=u.origin+p.split('/').map(encodeURIComponent).join('/');
+      if(!out.includes(direct))out.push(direct);
+    }
+  }catch{}
+  return out;
+}
+// Resolves a pasted/stored SharePoint link to its driveItem via /shares, trying each candidate
+// form. If all fail, throws the first real Graph error plus a hint to use Share → Copy link.
+async function fetchSharedDriveItem(url,token,query){
+  let firstError='';
+  for(const candidate of sharePointLinkCandidates(url)){
+    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${encodeSharingUrlForGraph(candidate)}/driveItem${query||''}`,{headers:{Authorization:'Bearer '+token}});
+    if(res.ok)return res.json();
+    const err=graphErrorText(res.status,await res.text().catch(()=>''));
+    if(!firstError)firstError=err;
+  }
+  throw new Error(`${firstError}. If you pasted this from the browser address bar, try the folder's Share → Copy link instead.`);
 }
 
 // Generalised folder browser shared by the "This Activity's Files" and "Linked Artwork Folder"
@@ -6851,10 +6944,7 @@ async function renderEvPhotoFolderTab(evId,bodyEl,folderUrl,source,emptyMsg){
     const crumb=stack[stack.length-1];
     let children,rootDriveId;
     if(!crumb.id){
-      const shareId=encodeSharingUrlForGraph(folderUrl);
-      const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$expand=children($select=id,name,webUrl,file,folder,thumbnails,parentReference;$expand=thumbnails)`,{headers:{Authorization:'Bearer '+token}});
-      if(!res.ok)throw new Error('HTTP '+res.status);
-      const data=await res.json();
+      const data=await fetchSharedDriveItem(folderUrl,token,'?$expand=children($select=id,name,webUrl,file,folder,thumbnails,parentReference;$expand=thumbnails)');
       children=data.children||[];
       rootDriveId=data.parentReference?.driveId||children[0]?.parentReference?.driveId;
       stack[0].driveId=rootDriveId;
@@ -6926,15 +7016,14 @@ async function linkEvArtworkFolder(evId){
   if(msgEl){msgEl.textContent='Checking folder…';msgEl.className='form-msg';}
   try{
     const token=await getToken();
-    const shareId=encodeSharingUrlForGraph(url);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$select=id,name,folder`,{headers:{Authorization:'Bearer '+token}});
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const data=await res.json();
+    const data=await fetchSharedDriveItem(url,token,'?$select=id,name,folder,webUrl');
     if(!data.folder)throw new Error('That link isn\'t a folder.');
+    // Store the folder's own webUrl (short and stable), not whatever was pasted.
+    const folderUrl=data.webUrl||url;
     const saveToken=await getToken(true);
-    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,saveToken,{LinkedArtworkFolderURL:url});
-    if(result.failed.length)throw new Error('The LinkedArtworkFolderURL column doesn\'t exist in SharePoint yet — add it (Hyperlink or Single line of text) on the Activities list.');
-    ev.linkedArtworkFolderUrl=url;
+    const result=await writeSpLinkField(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,saveToken,'LinkedArtworkFolderURL',folderUrl);
+    if(!result.ok)throw new Error(missingColumnHint(result.error)||result.error);
+    ev.linkedArtworkFolderUrl=folderUrl;
     delete _evFolderStack[`${evId}:artwork`];
     renderEvPhotoSource(evId);
   }catch(e){
@@ -6946,8 +7035,8 @@ async function unlinkEvArtworkFolder(evId){
   if(!confirm('Unlink this artwork folder? The folder and its files are not affected — this only removes the link from the Activity.'))return;
   try{
     const token=await getToken(true);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{LinkedArtworkFolderURL:''}})});
-    if(!res.ok)throw new Error('HTTP '+res.status);
+    const result=await writeSpLinkField(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,token,'LinkedArtworkFolderURL','');
+    if(!result.ok)throw new Error(missingColumnHint(result.error)||result.error);
     ev.linkedArtworkFolderUrl='';
     delete _evFolderStack[`${evId}:artwork`];
     renderEvPhotoSource(evId);
@@ -6977,17 +7066,15 @@ async function linkEvJobFolder(evId){
   if(msgEl){msgEl.textContent='Checking folder…';msgEl.className='form-msg';}
   try{
     const token=await getToken();
-    const shareId=encodeSharingUrlForGraph(url);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$select=id,name,folder`,{headers:{Authorization:'Bearer '+token}});
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const data=await res.json();
+    const data=await fetchSharedDriveItem(url,token,'?$select=id,name,folder,webUrl');
     if(!data.folder)throw new Error('That link isn\'t a folder.');
+    // Store the folder's own webUrl (short and stable), not whatever was pasted. writeSpLinkField()
+    // handles JobFolderURL whether it is a Hyperlink or a Single line of text column.
+    const folderUrl=data.webUrl||url;
     const saveToken=await getToken(true);
-    // JobFolderURL is a plain Single line of text column (see SCHEMA_KNOWN_GAPS and
-    // LinkedArtworkFolderURL's write below) — a bare string, not a {Url,Description} object.
-    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,saveToken,{JobFolderURL:url});
-    if(result.failed.length)throw new Error(result.failed[0].error||'Could not save the folder link.');
-    ev.jobFolderUrl=url;
+    const result=await writeSpLinkField(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,saveToken,'JobFolderURL',folderUrl);
+    if(!result.ok)throw new Error(missingColumnHint(result.error)||result.error);
+    ev.jobFolderUrl=folderUrl;
     showPop(evId);
   }catch(e){
     if(msgEl){msgEl.textContent='Could not link that folder: '+e.message;msgEl.className='form-msg err';}
@@ -7012,9 +7099,9 @@ async function createEvJobFolder(evId){
       throw new Error(parsed?.error?.message||`HTTP ${createRes.status}`);
     }
     const created=JSON.parse(createText);
-    // Same text-column shape as linkEvJobFolder() above — a bare string, not a Hyperlink object.
-    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,token,{JobFolderURL:created.webUrl});
-    if(result.failed.length)throw new Error(result.failed[0].error||'Folder was created, but saving the link back to this Activity failed — open '+created.webUrl+' and link it manually.');
+    // Same write path as linkEvJobFolder() above.
+    const result=await writeSpLinkField(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,token,'JobFolderURL',created.webUrl);
+    if(!result.ok)throw new Error(`Folder was created, but saving the link back to this Activity failed (${missingColumnHint(result.error)||result.error}). Open ${created.webUrl} and link it manually.`);
     ev.jobFolderUrl=created.webUrl;
     showPop(evId);
   }catch(e){
@@ -7031,7 +7118,7 @@ async function createEvJobFolder(evId){
 // breaking the image.
 const _featuredImgUrlCache={};
 async function resolveFeaturedImageUrl(ev){
-  if(!ev.eventImageRef?.driveId||!ev.eventImageRef?.itemId)return ev.eventImageUrl||ev.artworkFile||'';
+  if(!ev.eventImageRef?.driveId||!ev.eventImageRef?.itemId)return ev.eventImageUrl||ev.legacyEventImageUrl||ev.artworkFile||'';
   const{driveId,itemId}=ev.eventImageRef;
   const key=driveId+'/'+itemId;
   if(_featuredImgUrlCache[key])return _featuredImgUrlCache[key];
@@ -7043,7 +7130,7 @@ async function resolveFeaturedImageUrl(ev){
     const fresh=data.thumbnails?.[0]?.large?.url||data.thumbnails?.[0]?.medium?.url||data.thumbnails?.[0]?.small?.url||'';
     if(fresh){_featuredImgUrlCache[key]=fresh;return fresh;}
   }catch(e){console.warn('Could not resolve a fresh thumbnail for',key,e);}
-  return ev.eventImageUrl||ev.artworkFile||'';
+  return ev.eventImageUrl||ev.legacyEventImageUrl||ev.artworkFile||'';
 }
 // Finds every <img data-img-ref-ev> inside scopeSelector and swaps in a freshly-resolved thumbnail
 // for any Activity that has a stable image reference. Safe to call after any render that includes
@@ -11760,7 +11847,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'LoadedBasePrice',displayName:'Loaded Base Price',type:'number',purpose:'Loaded member price used for offer comparisons.'},
   {listKey:'campaigns',name:'JobFolderURL',displayName:'Job Folder URL',type:'text',purpose:'Folder link written back by the existing Power Automate flow.'},
   {listKey:'campaigns',name:'AssigneeName',displayName:'Assignee Name',type:'text',purpose:'Owner/assignee as plain text — the existing Assignee column is Person/Group, which silently drops a plain name string on save instead of erroring.'},
-  {listKey:'campaigns',name:'EventImageURL',displayName:'Event Image URL',type:'text',purpose:'Featured photo link, set from the Activity\'s own folder, a linked artwork folder, or the Digital Media library — shown on the Calendar hover card and Artwork feed.'},
+  {listKey:'campaigns',name:'EventImageURL',displayName:'Event Image URL',type:'text',purpose:'Legacy featured photo link — read-only fallback for photos picked before EventImageRef. The OS no longer writes it (signed thumbnail links exceed the 255-character column limit and expire); Remove clears it.'},
   {listKey:'campaigns',name:'EventImageRef',displayName:'Event Image Reference',type:'text',purpose:'Stable {driveId,itemId} JSON reference for the featured image, so a fresh thumbnail can be resolved later instead of relying only on EventImageURL, which can expire.'},
   {listKey:'campaigns',name:'LinkedArtworkFolderURL',displayName:'Linked Artwork Folder URL',type:'text',purpose:'A second, independently-linkable SharePoint folder for completed artwork, separate from the Power Automate–created JobFolderURL.'},
   {listKey:'comments',name:'ReadBy',displayName:'Read By',type:'text',purpose:'Comma-separated list of names who have read this comment — written by markCommentRead() so unread badges clear once the recipient opens it. Missing on the live list today, which is why read receipts silently fail.'},
