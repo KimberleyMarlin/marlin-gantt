@@ -1161,8 +1161,17 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
         <div class="fg"><label>Silo</label><select id="cSilo" onchange="renderCampaigns()"><option value="">All</option><option>Hero</option><option>Momentum</option><option>Always-On</option></select></div>
         <div class="fg"><label>Loaded</label><select id="cLoaded" onchange="renderCampaigns()"><option value="">All</option><option value="yes">⭐ Loaded Only</option><option value="no">Not Loaded</option></select></div>
       </div>
+      <div id="campBulkBar" style="display:none;margin-bottom:10px;padding:8px 12px;background:var(--surface);border:1px solid var(--accent);border-radius:var(--r);align-items:center;gap:8px;flex-wrap:wrap">
+        <span id="campBulkCount" style="font-size:12px;font-weight:700;color:var(--text)"></span>
+        <select id="campBulkStage" class="form-select" style="width:auto;min-width:150px"><option value="">Set stage…</option><option>Intake</option><option>In Design</option><option>In Build</option><option>Review</option><option>Ready for Live</option><option>Live</option><option>Done</option></select>
+        <button class="tb-btn" onclick="bulkApplyCampStage()">Apply</button>
+        <select id="campBulkStatus" class="form-select" style="width:auto;min-width:150px"><option value="">Set status…</option><option>Active</option><option>Paused</option><option>Cancelled</option><option>Archive</option></select>
+        <button class="tb-btn" onclick="bulkApplyCampStatus()">Apply</button>
+        <button class="tb-btn" onclick="clearCampSelection()">Clear selection</button>
+      </div>
       <div class="card"><div class="tbl-wrap"><table class="tbl" id="campTable" style="table-layout:fixed">
         <thead><tr>
+          <th style="width:28px;min-width:28px"><input type="checkbox" id="campSelectAllCb" title="Select all" onclick="toggleCampSelectAll(this.checked)"></th>
           <th class="sortable" data-camp-sort="title" tabindex="0" onclick="sortCampaigns('title')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortCampaigns('title')}" style="width:220px;min-width:120px;resize:horizontal;overflow:hidden">Campaign<span class="sort-mark"></span></th>
           <th class="sortable" data-camp-sort="venue" tabindex="0" onclick="sortCampaigns('venue')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortCampaigns('venue')}" style="width:140px;min-width:80px;resize:horizontal;overflow:hidden">Venue<span class="sort-mark"></span></th>
           <th class="sortable" data-camp-sort="type" tabindex="0" onclick="sortCampaigns('type')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortCampaigns('type')}" style="width:120px;min-width:80px;resize:horizontal;overflow:hidden">Type<span class="sort-mark"></span></th>
@@ -1172,7 +1181,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
           <th class="sortable" data-camp-sort="loaded" tabindex="0" onclick="sortCampaigns('loaded')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortCampaigns('loaded')}" style="width:60px;min-width:50px">Loaded<span class="sort-mark"></span></th>
           <th class="sortable" data-camp-sort="pos" tabindex="0" onclick="sortCampaigns('pos')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortCampaigns('pos')}" style="width:80px;min-width:60px">POS<span class="sort-mark"></span></th>
         </tr></thead>
-        <tbody id="campBody"><tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+        <tbody id="campBody"><tr><td colspan="9"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
       </table></div></div>
     </div>
   </div>
@@ -9821,7 +9830,7 @@ function renderCalendarYear(){
 // ═══════════════════════════════════════
 // ALL CAMPAIGNS
 // ═══════════════════════════════════════
-let campShowArchive=false,campSortKey='start',campSortDir='asc';
+let campShowArchive=false,campSortKey='start',campSortDir='asc',campSelected=new Set();
 function toggleCampArchive(){
   campShowArchive=!campShowArchive;
   const btn=document.getElementById('campArchiveToggle');
@@ -9862,6 +9871,10 @@ function renderCampaigns(){
     if(loadedFilter==='no'&&e.loadedRewards)return false;
     return true;
   });
+  // Selection only ever covers what the current filters show — an activity filtered out (venue
+  // changed, stage filter applied, etc.) shouldn't silently stay counted in a bulk edit.
+  const shownIds=new Set(evts.map(e=>String(e.id)));
+  Array.from(campSelected).forEach(id=>{if(!shownIds.has(id))campSelected.delete(id);});
   const sortValue=(event,key)=>({
     title:event.title||'',venue:event.venue||'',type:event.activityType||event.eventFormat||event.businessStream||'',
     start:event.start||'',stage:stageLabel(event.stage||''),status:event.status||'',loaded:event.loadedRewards?'Yes':'No',
@@ -9878,6 +9891,7 @@ function renderCampaigns(){
         const posText=ev.posStatus||(ev.posRequired?'Required':'');
         const vLogo=VENUE_LOGOS[ev.venue];
         return`<tr onclick="showActivityPage(${ev.id})" style="cursor:pointer">
+          <td onclick="event.stopPropagation()"><input type="checkbox" class="camp-select" data-id="${ev.id}" ${campSelected.has(String(ev.id))?'checked':''} onclick="event.stopPropagation();toggleCampRowSelect('${ev.id}')"></td>
           <td><div class="tbl-name" style="display:flex;align-items:center;gap:7px">${vLogo?`<img src="${vLogo}" alt="" style="height:16px;width:16px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">`:''}<span>${ev.title}${posWarn}</span></div>${ev.brand?`<div class="tbl-sub">${ev.brand}</div>`:''}</td>
           <td><span style="font-size:10px;font-weight:600;color:#fff;background:${vc.c};padding:2px 8px;border-radius:var(--radius-sm);white-space:nowrap;display:inline-block">${shortVenue(ev.venue)}</span></td>
           <td>${ev.activityType||ev.eventFormat?`<span class="tag t-gr" style="font-size:10px">${ev.activityType||ev.eventFormat}</span>`:'-'}</td>
@@ -9888,7 +9902,80 @@ function renderCampaigns(){
           <td>${posText?`<span style="font-size:10px;font-weight:500;color:${['Required','Pending','To Do','In Progress'].includes(posText)?'#9c732b':'#4a6e3e'}">${posText}</span>`:'-'}</td>
         </tr>`;
       }).join('')
-    :`<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3)">No campaigns match filters</td></tr>`;
+    :`<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3)">No campaigns match filters</td></tr>`;
+  updateCampBulkBar();
+}
+
+// ── Activities bulk select/edit — mirrors the Personal Tasks bulk pattern (togglePersonalTaskSelect
+// etc.): a plain Set of ids, toggled by the checkbox's own onclick, with a lightweight bar refresh
+// rather than a full re-render on every click. Unlike Personal Tasks, writes here go through
+// canEditCampaigns() and report a real success/failure count — these are shared, team-visible
+// records, so a bulk edit must say honestly what actually saved.
+function toggleCampRowSelect(id){
+  const key=String(id);
+  if(campSelected.has(key))campSelected.delete(key);else campSelected.add(key);
+  updateCampBulkBar();
+}
+function clearCampSelection(){
+  campSelected.clear();
+  document.querySelectorAll('#campBody .camp-select').forEach(cb=>cb.checked=false);
+  updateCampBulkBar();
+}
+function toggleCampSelectAll(checked){
+  document.querySelectorAll('#campBody .camp-select').forEach(cb=>{
+    cb.checked=checked;
+    if(checked)campSelected.add(cb.dataset.id);else campSelected.delete(cb.dataset.id);
+  });
+  updateCampBulkBar();
+}
+function updateCampBulkBar(){
+  const bar=document.getElementById('campBulkBar'),count=document.getElementById('campBulkCount');
+  if(!bar||!count)return;
+  const n=campSelected.size;
+  bar.style.display=n?'flex':'none';
+  count.textContent=n+' selected';
+  const visibleChecks=[...document.querySelectorAll('#campBody .camp-select')];
+  const selectAll=document.getElementById('campSelectAllCb');
+  if(selectAll){
+    const checkedCount=visibleChecks.filter(cb=>cb.checked).length;
+    selectAll.checked=visibleChecks.length>0&&checkedCount===visibleChecks.length;
+    selectAll.indeterminate=checkedCount>0&&checkedCount<visibleChecks.length;
+  }
+}
+async function bulkApplyCampField(sharePointField,evProp,newValue,fieldLabel){
+  if(!newValue||!campSelected.size)return;
+  if(!canEditCampaigns()){alert('You do not have permission to edit activities.');return;}
+  const ids=[...campSelected];
+  if(!confirm(`Set ${fieldLabel} to "${newValue}" on ${ids.length} activit${ids.length===1?'y':'ies'}?`))return;
+  const token=await getToken(true);
+  let okCount=0;const failures=[];
+  for(const id of ids){
+    const ev=EVENTS.find(e=>String(e.id)===id);if(!ev)continue;
+    if(ev[evProp]===newValue){okCount++;continue;}
+    const old=ev[evProp];ev[evProp]=newValue;
+    try{
+      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{[sharePointField]:newValue}})});
+      if(!res.ok)throw new Error('HTTP '+res.status);
+      okCount++;
+    }catch(e){
+      ev[evProp]=old;
+      failures.push(ev.title||id);
+    }
+  }
+  renderCampaigns();
+  if(typeof renderPipeline==='function')renderPipeline();
+  if(failures.length)alert(`Updated ${fieldLabel} on ${okCount} of ${ids.length} activities. Failed: ${failures.slice(0,8).join(', ')}${failures.length>8?` and ${failures.length-8} more`:''}.`);
+  else if(typeof showToast==='function')showToast('Bulk update',`${fieldLabel[0].toUpperCase()+fieldLabel.slice(1)} set to "${newValue}" on ${okCount} activit${okCount===1?'y':'ies'}.`);
+}
+function bulkApplyCampStage(){
+  const sel=document.getElementById('campBulkStage');
+  const value=sel?.value;if(!value)return;
+  bulkApplyCampField('WorkflowStage','stage',value,'stage').then(()=>{if(sel)sel.value='';});
+}
+function bulkApplyCampStatus(){
+  const sel=document.getElementById('campBulkStatus');
+  const value=sel?.value;if(!value)return;
+  bulkApplyCampField('Status','status',value,'status').then(()=>{if(sel)sel.value='';});
 }
 
 // ═══════════════════════════════════════
