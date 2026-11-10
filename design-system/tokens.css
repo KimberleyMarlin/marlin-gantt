@@ -1,0 +1,121 @@
+/* Marlin Hospitality — generated from tokens.json. Do not edit by hand: change tokens.json and regenerate.
+   Light is the default theme. Add data-theme="navy" to any element for the reversed navy theme. */
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800;900&family=Poppins:wght@400;700;900&display=swap');
+
+:root {
+  /* Palette */
+  --navy-900: #14416d; /* Primary brand navy: logo, headings, report header band, table headers. */
+  --navy-700: #1e578e; /* Navy tone: raised surface in the navy theme, secondary chart series. */
+  --navy-500: #396998; /* Navy mother colour: focus ring on light grounds, links. */
+  --navy-300: #5884af; /* Light navy tone: chart fills, hairlines in the navy theme. */
+  --navy-100: #88aacd; /* Pale navy tint: chart fills, illustration. */
+  --green-900: #4a6e3e; /* Deep green: positive text and positive pill fill on light grounds. */
+  --green-700: #678d5d; /* Brand green (applied palette): positive borders, positive chart marks, signage. */
+  --green-500: #89a97e; /* Green mother colour: illustration and chart fills. */
+  --green-300: #b1c8a9; /* Light green: positive pill fill and text in the navy theme. */
+  --green-100: #d8e3d4; /* Green tint: "What's working" callout ground. */
+  --mist-900: #7886ab; /* Deep mist: decorative only (3.6:1 on white, not for text). */
+  --mist-700: #aab3cd; /* Mist tone: decorative fills. */
+  --mist-500: #d5dae7; /* Mist mother colour (applied palette): hairlines and borders on light grounds; muted text in the navy theme. */
+  --mist-100: #f4f5f7; /* Mist tint: panel and card grounds on light pages. */
+  --cream-900: #bba873; /* Deep cream: decorative only. */
+  --cream-700: #dccea5; /* Cream tone: decorative fills. */
+  --cream-500: #fff6dc; /* Brand cream (applied palette): logo on navy, warm page ground, headings in the navy theme. */
+  --cream-100: #fffbf2; /* Cream tint: warm page ground. */
+  --gold-900: #9c732b; /* Deep gold: large text only on white (4.3:1). */
+  --gold-700: #c3912c; /* Gold tone: chart fills. */
+  --gold-500: #efb824; /* Gold mother colour: chart fills, signage. */
+  --gold-300: #fdcf4f; /* Brand gold (applied palette): accent on navy, focus ring in the navy theme, signage. */
+  --gold-100: #fdda7a; /* Pale gold: highlight fills. */
+  --coral-900: #a64a24; /* Rust: attention text and attention pill fill on light grounds (replaces the report pack's red). */
+  --coral-700: #c8693e; /* Coral tone: chart fills; not for small text on white (3.8:1). */
+  --coral-500: #ea8e68; /* Coral mother colour: "last year" chart series; decorative on white (2.5:1). */
+  --coral-300: #fab496; /* Light coral: attention pill fill and text in the navy theme. */
+  --coral-100: #fcd3c1; /* Coral tint: "Needs attention" callout ground. */
+  --white: #ffffff; /* Paper white: page ground, reversed logo and text on navy. */
+  --black: #000000; /* Body copy colour in the brand book. */
+  --slate: #5f6b7a; /* Muted text (from the TLB report pack): captions, axis labels, footnotes on white and mist-100. */
+  --grey: #a9a6a7; /* Brand-book grey for page meta and draft labels. 2.4:1 on white: large or decorative text only. */
+
+  /* Semantic roles — Light theme */
+  --surface: var(--white); /* Page ground. */
+  --surface-alt: var(--mist-100); /* Cards, KPI tiles, chart panels. */
+  --surface-warm: var(--cream-100); /* Warm alternative page ground for guest-facing pieces. */
+  --ink: var(--black); /* Body copy on surface and surface-alt (21:1 light; 10.5:1 and 7.5:1 navy). */
+  --ink-brand: var(--navy-900); /* Headings, values, section titles on surface and surface-alt (10.5:1 / 9.7:1). */
+  --ink-muted: var(--slate); /* Captions and secondary labels on surface and surface-alt (5.4:1, 5.0:1 light; 7.5:1, 5.3:1 navy). */
+  --line: var(--mist-500); /* Hairlines and table row rules; decorative, not a control border. */
+  --line-strong: var(--navy-900); /* Section rules (the brand-book footer rule), table total rules. */
+  --accent: var(--navy-900); /* Primary fill: header bands, table headers, TY bars, solid buttons. */
+  --on-accent: var(--white); /* Text and marks on accent (10.5:1 / 7.1:1). */
+  --positive: var(--green-900); /* Better-than-target text and pill fill (5.9:1 on white; 5.8:1 on navy; on navy-700 use the pill, 4.2:1). */
+  --on-positive: var(--white); /* Text on a positive fill. */
+  --positive-line: var(--green-700); /* Border of a KPI card that is on track (3.8:1 / 5.8:1). */
+  --positive-tint: var(--green-100); /* "What's working" callout ground; ink-brand on it (7.9:1). */
+  --attention: var(--coral-900); /* Worse-than-target text and pill fill (5.8:1 on white; 6.0:1 on navy). The system has no red. */
+  --on-attention: var(--white); /* Text on an attention fill. */
+  --attention-line: var(--coral-900); /* Border of a KPI card that needs attention. */
+  --attention-tint: var(--coral-100); /* "Needs attention" callout ground; ink-brand on it (7.6:1). */
+  --series-ty: var(--navy-900); /* Chart series: this year. */
+  --series-ly: var(--coral-500); /* Chart series: last year (source pair: 2.5:1 on white, below 3:1; always label the bars). */
+  --series-3: var(--green-700); /* Chart series: third category (e.g. Mezzanine in revenue by area). */
+  --focus: var(--navy-500); /* Focus ring, 2px solid (5.8:1 on white; 7.1:1 on navy). */
+
+  /* Type families */
+  --font-sans: "Work Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-stationery: "Poppins", "Work Sans", Arial, sans-serif;
+  --font-numeral: "Pressio", "Work Sans", sans-serif;
+
+  /* Spacing */
+  --space-1: 4px; /* Gap between a value and its delta pill. */
+  --space-2: 8px; /* Gap inside compare bars; pill padding. */
+  --space-3: 12px; /* KPI card padding; gap between KPI cards. */
+  --space-4: 16px; /* Card padding on screens; table cell horizontal padding. */
+  --space-6: 24px; /* Gap between report sections. */
+  --space-8: 32px; /* Header band padding. */
+  --space-12: 48px; /* Page margin on screens. */
+  --space-16: 64px; /* Page margin on print pages and slides. */
+
+  /* Radius */
+  --radius-none: 0px; /* Tables, header bands, chart bars. */
+  --radius-sm: 3px; /* KPI cards, callouts, delta pills. */
+  --radius-frame: 24px; /* The brand frame on cover and divider pages. */
+}
+
+/* Semantic roles — Navy theme */
+[data-theme="navy"] {
+  --surface: var(--navy-900);
+  --surface-alt: var(--navy-700);
+  --surface-warm: var(--navy-900);
+  --ink: var(--white);
+  --ink-brand: var(--cream-500);
+  --ink-muted: var(--mist-500);
+  --line: var(--navy-300);
+  --line-strong: var(--cream-500);
+  --accent: var(--gold-300);
+  --on-accent: var(--navy-900);
+  --positive: var(--green-300);
+  --on-positive: var(--navy-900);
+  --positive-line: var(--green-300);
+  --positive-tint: var(--navy-700);
+  --attention: var(--coral-300);
+  --on-attention: var(--navy-900);
+  --attention-line: var(--coral-300);
+  --attention-tint: var(--navy-700);
+  --series-ty: var(--cream-500);
+  --series-ly: var(--coral-500);
+  --series-3: var(--green-300);
+  --focus: var(--gold-300);
+}
+
+/* Text styles */
+.mh-type-display { font: 900 64px/0.95 var(--font-sans); text-transform: uppercase; }
+.mh-type-h1 { font: 900 40px/1.05 var(--font-sans); text-transform: uppercase; }
+.mh-type-h2 { font: 800 26px/1.1 var(--font-sans); text-transform: uppercase; }
+.mh-type-h3 { font: 700 20px/1.25 var(--font-sans); }
+.mh-type-lead { font: 800 18px/1.35 var(--font-sans); }
+.mh-type-body { font: 500 16px/1.4 var(--font-sans); }
+.mh-type-small { font: 500 13px/1.4 var(--font-sans); }
+.mh-type-label { font: 800 12px/1.2 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; }
+.mh-type-kpi { font: 800 28px/1.1 var(--font-sans); font-variant-numeric: tabular-nums; }
+.mh-type-numeral { font: 400 40px/1 var(--font-numeral); }
