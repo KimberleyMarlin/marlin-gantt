@@ -2548,7 +2548,8 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
   <div class="popup" style="max-width:640px">
     <div class="pop-h"><div class="pop-title" id="approvalPreviewTitle">Proposed work</div><button class="pop-close" onclick="closeApprovalPreview()">✕</button></div>
     <div class="pop-body">
-      <div class="form-notice">Approving moves this to Planning. Untick anything not needed, or adjust owner / due date — these are suggestions based on the activity's type, not fixed.</div>
+      <div class="form-notice">Approving moves this to Planning. Untick anything not needed, or adjust owner / due date — these are suggestions based on the activity's group and the submission answers, not fixed.</div>
+      <div id="approvalPreviewSource" style="font-size:11px;color:var(--text3);margin:4px 0 8px"></div>
       <div id="approvalPreviewMsg" class="form-msg"></div>
       <div id="approvalPreviewRows"></div>
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
@@ -3179,7 +3180,13 @@ function calcSubmissionTiming(ev){
 }
 
 // Auto-select playbook template key from ActivityType + Silo + EventFormat
+// Which playbook template an activity starts from. Activity Group/Subtype (the taxonomy on the
+// submit form) decides first; activities saved before that taxonomy existed have no Group, so they
+// fall back to the original ActivityType/EventFormat/BusinessStream logic unchanged.
 function autoSelectPlaybook(ev){
+  return playbookFromActivityGroup(ev)||playbookFromLegacyFields(ev);
+}
+function playbookFromLegacyFields(ev){
   const type=(ev.activityType||'').toLowerCase();
   const format=ev.eventFormat||'';
   const stream=ev.businessStream||'';
@@ -3199,6 +3206,159 @@ function autoSelectPlaybook(ev){
   if(type==='promotion / offer')return'Loaded Rewards';
   if(type==='maintenance / update')return'Maintenance';
   return'default';
+}
+// Subtype → template for subtypes that need their own; anything else in a Group uses the Group's
+// default below. Single-deliverable work requests (Maintenance, Collateral, Content) get a
+// subtype-specific template rather than a whole campaign's worth of jobs.
+const PLAYBOOK_BY_SUBTYPE={
+  'Ticketed Event':'Ticketed Event',
+  'Live Music / Entertainment':'Live Music',
+  'Recurring Event':'Recurring Event',
+  'Function / Private Event Promotion':'Functions Campaign',
+  'Loaded Rewards Campaign':'Loaded Rewards',
+  'Functions & Events Campaign':'Functions Campaign',
+  'Supplier / Trade Campaign':'Supplier Activation',
+  'Supplier-Funded Promotion':'Supplier Activation',
+  'Supplier Product Activation':'Supplier Activation',
+  'New Menu':'Menu Change','Menu Update':'Menu Change','Menu Price Change':'Menu Change',
+  'Organic Social Media':'Request: Social','Email Campaign':'Request: EDM','SMS Campaign':'Request: SMS',
+  'Website Content':'Request: Website','Photography':'Request: Content Shoot','Video Production':'Request: Content Shoot',
+  'Public Relations':'Request: General','Internal Communications':'Request: General',
+  'Signage':'Request: Print','Printed Collateral':'Request: Print','Merchandise':'Request: Design',
+  'Brand Assets':'Request: Design','Venue Information Update':'Request: Venue Info','Website Update':'Request: Website',
+  'Artwork Amendment':'Request: Design','Existing Menu Amendment':'Menu Change','POS Update':'Request: POS',
+  'Price Update':'Request: POS','Website Correction':'Request: Website','Booking Setup':'Request: Booking',
+  'Print Request':'Request: Print','General Marketing Work Request':'Request: General',
+};
+const PLAYBOOK_BY_GROUP={
+  'Food & Beverage':'Product Feature',
+  'Promotions & Offers':'Promotion',
+  'Events & Entertainment':'Venue Activation',
+  'Campaigns & Marketing':'Seasonal Campaign',
+  'Content & Communications':'Request: General',
+  'Venue, Brand & Collateral':'Request: Design',
+  'Maintenance / Work Requests':'Request: General',
+};
+function playbookFromActivityGroup(ev){
+  const group=ev.activityGroup||'';
+  if(!group)return null;
+  // A ticketed flag always wins — whatever the subtype, a ticketed event needs ticketing work.
+  if(ev.ticketed&&group==='Events & Entertainment')return'Ticketed Event';
+  return PLAYBOOK_BY_SUBTYPE[ev.activitySubtype]||PLAYBOOK_BY_GROUP[group]||'default';
+}
+function playbookSourceLabel(ev){
+  if(ev.activityGroup)return`Activity Group: ${ev.activityGroup}${ev.activitySubtype?' › '+ev.activitySubtype:''}`;
+  return'Activity Type / Format (no Activity Group set)';
+}
+
+// What kind of deliverable a ticket is, so answer rules can tell "already covered" from "missing".
+function ticketKind(t){
+  if(t.kind)return t.kind;
+  const title=(t.title||'').toLowerCase();
+  switch(t.taskType){
+    case'Design Asset':return'design';
+    case'Print / Signage':return'print';
+    case'Social Post':return'social';
+    case'EDM / Newsletter':return'edm';
+    case'POS Update':return'pos';
+    case'Paid Ad':return title.includes('meta')?'metaAds':'googleAds';
+    case'Web Update':
+      if(title.includes('ticket platform'))return'ticketing';
+      if(title.includes('google business'))return'gbp';
+      return'web';
+    case'Admin':
+      if(title.includes('push notification')||title.includes('app'))return'app';
+      if(title.includes('staff brief'))return'staff';
+      if(title.includes('tracking'))return'tracking';
+      return'admin';
+  }
+  return'other';
+}
+
+// Submission answers → job tickets (docs/SUBMISSION_WORKFLOW.md "Proposed job rules").
+// Returns {templateKey, sourceLabel, tickets[]}. Each ticket carries:
+//   reason  — shown in the preview so the approver can see why it's proposed
+//   checked — false when the submission explicitly said this work isn't needed (still shown,
+//             so the approver can tick it back on; nothing is silently dropped)
+//   details — extra Notes text written to the ticket (asset formats, POS notes, brief notes)
+function buildProposedTickets(ev){
+  const templateKey=autoSelectPlaybook(ev);
+  const template=PLAYBOOK_TEMPLATES[templateKey]||PLAYBOOK_TEMPLATES['default'];
+  const tickets=template.map(t=>({...t,kind:ticketKind(t),reason:`${templateKey} playbook`,checked:true,details:''}));
+  const has=kind=>tickets.some(t=>t.kind===kind);
+  const first=kind=>tickets.find(t=>t.kind===kind);
+  const add=(t,reason)=>tickets.push({...t,kind:t.kind||ticketKind(t),reason,checked:true,details:t.details||''});
+  const untick=(kind,reason)=>tickets.filter(t=>t.kind===kind&&t.checked).forEach(t=>{t.checked=false;t.reason+=` · unticked: ${reason}`;});
+  const appendDetail=(t,text)=>{if(t&&text)t.details=t.details?t.details+'\n'+text:text;};
+
+  const channels=(ev.channels||[]).map(c=>String(c).toLowerCase());
+  const assets=(ev.assetsNeeded||[]).map(a=>String(a));
+  const assetsLc=assets.map(a=>a.toLowerCase());
+  const chan=name=>channels.includes(name.toLowerCase());
+  const asset=name=>assetsLc.includes(name.toLowerCase());
+  const yes=v=>v===true||String(v).toLowerCase()==='yes';
+  const channelsAnswered=channels.length>0;
+
+  // Any AssetsNeeded → Design Asset ticket listing the selected formats.
+  if(assets.length){
+    if(!has('design'))add({title:'Design Brief — requested assets',taskType:'Design Asset',assignKey:'designer',leadDays:14,priority:'High'},'Assets requested on submission');
+    appendDetail(first('design'),`Assets requested: ${assets.join(', ')}`);
+    if(ev.assetTVsDetail)appendDetail(first('design'),`TVs: ${ev.assetTVsDetail}`);
+    if(ev.assetNewsletterDetail)appendDetail(first('design'),`Newsletter asset: ${ev.assetNewsletterDetail}`);
+  }
+  // In-venue or TV assets → print/screen ticket, assigned to design.
+  if((asset('In-venue')||asset('TVs'))&&!has('print')){
+    add({title:'In-venue print / screen assets',taskType:'Print / Signage',assignKey:'designer',leadDays:7,priority:'Medium',
+      details:[asset('TVs')&&ev.assetTVsDetail?`TVs: ${ev.assetTVsDetail}`:''].filter(Boolean).join('\n')},'In-venue / TV assets requested');
+  }
+  // Website channel or asset → website ticket.
+  if(chan('Website')||asset('Website')||ev.landingPageRequired){
+    if(!has('web'))add({title:'Website update / page',taskType:'Web Update',assignKey:'web',leadDays:10,priority:'High'},'Website selected on submission');
+    appendDetail(first('web'),ev.websiteBriefNotes?`Website brief: ${ev.websiteBriefNotes}`:'');
+  }
+  // Ticketed → ticket platform publish, plus a website listing.
+  if(ev.ticketed){
+    if(!has('ticketing'))add({title:'Ticket platform setup & publish',taskType:'Web Update',assignKey:'web',leadDays:14,priority:'High'},'Ticketed event');
+    if(!has('web'))add({title:'Website event listing',taskType:'Web Update',assignKey:'web',leadDays:14,priority:'High'},'Ticketed event');
+    appendDetail(first('ticketing'),[ev.ticketPlatform?`Platform: ${ev.ticketPlatform}`:'',ev.ticketPrice?`Price: $${ev.ticketPrice}`:'',ev.capacity?`Capacity: ${ev.capacity}`:'',ev.ticketLaunchDate?`Ticket launch: ${ev.ticketLaunchDate}`:''].filter(Boolean).join(' · '));
+  }
+  // Meta channel → social/Meta ticket.
+  if(chan('Meta')||asset('Meta')){
+    if(!has('social'))add({title:'Social / Meta posts',taskType:'Social Post',assignKey:'marketing',leadDays:7,priority:'Medium'},'Meta selected on submission');
+    appendDetail(first('social'),ev.metaBriefNotes?`Meta brief: ${ev.metaBriefNotes}`:'');
+  }else if(channelsAnswered){
+    untick('social','Meta not selected');
+  }
+  // Google Ads channel → paid media setup & tracking.
+  if(chan('Google Ads')||ev.googleAdsEligible){
+    if(!has('googleAds'))add({title:'Google Ads setup & tracking',taskType:'Paid Ad',assignKey:'marketing',leadDays:14,priority:'Medium'},'Google Ads selected on submission');
+    appendDetail(first('googleAds'),ev.googleAdsBriefNotes?`Google Ads brief: ${ev.googleAdsBriefNotes}`:'');
+  }else if(channelsAnswered){
+    untick('googleAds','Google Ads not selected');
+  }
+  // Newsletter channel/asset (or Loaded "Newsletter required") → EDM ticket.
+  const wantsEdm=chan('Newsletter')||asset('Newsletter')||yes(ev.newsletterRequired);
+  if(wantsEdm){
+    if(!has('edm'))add({title:'EDM / newsletter feature',taskType:'EDM / Newsletter',assignKey:'marketing',leadDays:10,priority:'Medium'},'Newsletter selected on submission');
+    appendDetail(first('edm'),ev.assetNewsletterDetail?`Newsletter: ${ev.assetNewsletterDetail}`:'');
+  }else if(String(ev.newsletterRequired).toLowerCase()==='no'||channelsAnswered){
+    untick('edm','Newsletter not selected');
+  }
+  // Loaded Rewards → app setup (newsletter/design/POS only via their own answers above/below).
+  if(ev.loadedRewards||chan('Loaded')||asset('Loaded')){
+    if(String(ev.appRequired).toLowerCase()==='no')untick('app','App not required');
+    else if(!has('app'))add({title:'Loaded app setup',taskType:'Admin',assignKey:'marketing',leadDays:10,priority:'High'},'Loaded Rewards');
+    appendDetail(first('app'),[ev.appHeading?`App heading: ${ev.appHeading}`:'',ev.appShortDescription?`Short description: ${ev.appShortDescription}`:''].filter(Boolean).join('\n'));
+  }
+  // POS required → POS ticket with the submitted notes. Explicit "Not Required" unticks any
+  // template POS ticket (new submissions always record one or the other; older ones record neither).
+  if(ev.posRequired){
+    if(!has('pos'))add({title:'POS update',taskType:'POS Update',assignKey:'ops',leadDays:7,priority:'High'},'POS update requested');
+    appendDetail(first('pos'),ev.posNotes?`POS notes: ${ev.posNotes}`:'');
+  }else if(ev.posStatus==='Not Required'){
+    untick('pos','POS not requested');
+  }
+  return{templateKey,sourceLabel:playbookSourceLabel(ev),tickets};
 }
 
 // SEO/SEM validation — returns array of issues
@@ -3288,6 +3448,37 @@ const PLAYBOOK_TEMPLATES={
     {title:'Update website content',                   taskType:'Web Update',       assignKey:'web',      leadDays:5,  priority:'Medium'},
     {title:'POS / menu update',                        taskType:'POS Update',       assignKey:'ops',      leadDays:3,  priority:'High'},
   ],
+  // Templates for Activity Group/Subtype (see PLAYBOOK_BY_SUBTYPE / PLAYBOOK_BY_GROUP).
+  'Product Feature':[
+    {title:'Design Brief — product feature assets',    taskType:'Design Asset',    assignKey:'designer', leadDays:14, priority:'High'},
+    {title:'Social post — product feature',            taskType:'Social Post',      assignKey:'marketing',leadDays:5,  priority:'Medium'},
+    {title:'Staff brief',                              taskType:'Admin',            assignKey:'ops',      leadDays:3,  priority:'Medium'},
+  ],
+  'Menu Change':[
+    {title:'Menu artwork update',                      taskType:'Design Asset',    assignKey:'designer', leadDays:10, priority:'High'},
+    {title:'Website menu update',                      taskType:'Web Update',       assignKey:'web',      leadDays:5,  priority:'High'},
+    {title:'POS / menu update',                        taskType:'POS Update',       assignKey:'ops',      leadDays:3,  priority:'High'},
+    {title:'Staff brief',                              taskType:'Admin',            assignKey:'ops',      leadDays:3,  priority:'Medium'},
+  ],
+  'Promotion':[
+    {title:'Design Brief — promotion assets',          taskType:'Design Asset',    assignKey:'designer', leadDays:14, priority:'High'},
+    {title:'Social post — promotion',                  taskType:'Social Post',      assignKey:'marketing',leadDays:7,  priority:'Medium'},
+    {title:'Staff brief — offer details',              taskType:'Admin',            assignKey:'ops',      leadDays:3,  priority:'High'},
+  ],
+  'Request: Design':[{title:'Design request',          taskType:'Design Asset',    assignKey:'designer', leadDays:7,  priority:'Medium'}],
+  'Request: Print':[{title:'Print / signage request',  taskType:'Print / Signage',  assignKey:'designer', leadDays:10, priority:'Medium'}],
+  'Request: Website':[{title:'Website update',         taskType:'Web Update',       assignKey:'web',      leadDays:5,  priority:'Medium'}],
+  'Request: Venue Info':[
+    {title:'Website venue info update',                taskType:'Web Update',       assignKey:'web',      leadDays:5,  priority:'Medium'},
+    {title:'Google Business Profile update',           taskType:'Web Update',       assignKey:'web',      leadDays:5,  priority:'Medium'},
+  ],
+  'Request: Booking':[{title:'Booking setup',          taskType:'Web Update',       assignKey:'web',      leadDays:7,  priority:'Medium'}],
+  'Request: POS':[{title:'POS update',                 taskType:'POS Update',       assignKey:'ops',      leadDays:3,  priority:'High'}],
+  'Request: Social':[{title:'Social content',          taskType:'Social Post',      assignKey:'marketing',leadDays:5,  priority:'Medium'}],
+  'Request: EDM':[{title:'EDM build & send',           taskType:'EDM / Newsletter', assignKey:'marketing',leadDays:7,  priority:'Medium'}],
+  'Request: SMS':[{title:'SMS copy & send',            taskType:'General',          assignKey:'marketing',leadDays:3,  priority:'Medium'}],
+  'Request: Content Shoot':[{title:'Photo / video shoot', taskType:'General',        assignKey:'marketing',leadDays:14, priority:'Medium'}],
+  'Request: General':[{title:'Marketing work request', taskType:'General',          assignKey:'marketing',leadDays:5,  priority:'Medium'}],
   'default':[
     {title:'Design Brief',                             taskType:'Design Asset',    assignKey:'designer', leadDays:14, priority:'High'},
     {title:'Social post',                              taskType:'Social Post',      assignKey:'marketing',leadDays:7,  priority:'Medium'},
@@ -3305,7 +3496,7 @@ let ROLE_EMAILS={designer:'',web:'',marketing:'',ops:''};
 async function runPlaybook(ev){
   if(!canApproveCampaigns())return{created:0,errors:['You do not have permission to approve campaigns.']};
   if(!isAuthed||!ev?.spId)return{created:0,errors:[]};
-  if(!LIST_IDS.myTasks)return{created:0,errors:['Shared Work Items are not connected yet. No workflow tasks were created. Configure the approved SharePoint list before running this playbook.']};
+  if(!LIST_IDS.myTasks)return{created:0,errors:['The Tasks & Job Tickets list is not connected yet. No workflow tasks were created. Configure the approved SharePoint list before running this playbook.']};
   // Auto-select template from ActivityType + Silo + EventFormat
   const templateKey=autoSelectPlaybook(ev);
   const template=PLAYBOOK_TEMPLATES[templateKey]||PLAYBOOK_TEMPLATES['default'];
@@ -3409,19 +3600,20 @@ function openApprovalPreview(evId){
   const ev=EVENTS.find(e=>e.id===evId);
   if(!ev)return;
   APPROVAL_PREVIEW_EV_ID=evId;
-  const templateKey=autoSelectPlaybook(ev);
-  const template=PLAYBOOK_TEMPLATES[templateKey]||PLAYBOOK_TEMPLATES['default'];
+  const {templateKey,sourceLabel,tickets}=buildProposedTickets(ev);
   const startDate=new Date(ev.start+'T00:00:00');
   const people=M365_USERS.length?M365_USERS:[];
-  document.getElementById('approvalPreviewTitle').textContent=`Proposed work — "${ev.title}"`;
+  document.getElementById('approvalPreviewTitle').textContent=`Proposed job tickets — "${ev.title}"`;
   document.getElementById('approvalPreviewMsg').textContent='';
   document.getElementById('approvalPreviewMsg').className='form-msg';
-  document.getElementById('approvalPreviewRows').innerHTML=template.map((task,i)=>{
+  const sourceEl=document.getElementById('approvalPreviewSource');
+  if(sourceEl)sourceEl.textContent=`Playbook: ${templateKey} · chosen from ${sourceLabel}. Each ticket shows why it is proposed; unticked ones were marked not needed on the submission.`;
+  document.getElementById('approvalPreviewRows').innerHTML=tickets.map((task,i)=>{
     const dueDate=new Date(startDate);dueDate.setDate(dueDate.getDate()-task.leadDays);
     const defaultOwner=ROLE_EMAILS[task.assignKey]||'';
-    return`<div class="form-group full" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)" data-approval-row="${i}" data-task-title="${escapeAttr(task.title)}" data-task-type="${escapeAttr(task.taskType)}" data-task-priority="${escapeAttr(task.priority)}">
-      <input type="checkbox" checked style="flex-shrink:0">
-      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">${escapeAttr(task.title)}</div><div class="u-meta">${escapeAttr(task.taskType)} · ${escapeAttr(task.priority)}</div></div>
+    return`<div class="form-group full" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)" data-approval-row="${i}" data-task-title="${escapeAttr(task.title)}" data-task-type="${escapeAttr(task.taskType)}" data-task-priority="${escapeAttr(task.priority)}" data-task-details="${escapeAttr(task.details||'')}">
+      <input type="checkbox" ${task.checked?'checked':''} style="flex-shrink:0">
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">${escapeAttr(task.title)}</div><div class="u-meta">${escapeAttr(task.taskType)} · ${escapeAttr(task.priority)} · ${escapeAttr(task.reason)}</div>${task.details?`<div class="u-meta" style="color:var(--ink-muted);white-space:pre-wrap">${escapeAttr(task.details)}</div>`:''}</div>
       <select class="form-select" style="max-width:150px;font-size:12px"><option value="">Unassigned</option>${people.map(u=>`<option value="${escapeAttr(u.email)}" ${u.email===defaultOwner?'selected':''}>${escapeAttr(u.name)}</option>`).join('')}</select>
       <input type="date" class="form-input" style="max-width:135px;font-size:12px" value="${toLocalISODate(dueDate)}">
     </div>`;
@@ -3471,12 +3663,13 @@ async function confirmApprovalTasks(){
       Status:'Not Started',
       Priority:row.dataset.taskPriority,
       CampaignLookupId:Number(ev.spId),
-      Notes:`Approved for campaign: ${ev.title} (${ev.venue})\nCampaign start: ${ev.start}`,
+      ...(ev.venue?{Venue:ev.venue}:{}),
+      Notes:`Approved for campaign: ${ev.title} (${ev.venue})\nCampaign start: ${ev.start}${row.dataset.taskDetails?'\n'+row.dataset.taskDetails:''}`,
     };
     if(dueDate)fields.DueDate=dueDate+'T12:00:00Z';
     if(owner)fields.AssignedTo=owner;
     try{
-      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+      const res=await postSharedTask(token,fields);
       if(res.ok){row.dataset.created='1';checkbox.disabled=true;}
       else failures.push(`${row.dataset.taskTitle}: HTTP ${res.status}`);
     }catch(e){failures.push(`${row.dataset.taskTitle}: ${e.message}`);}
@@ -3490,7 +3683,7 @@ async function confirmApprovalTasks(){
   try{
     await advanceCampaignStage(ev,'In Design',{DesignJobCreated:true});
     closeApprovalPreview();
-    if(typeof showToast==='function')showToast(`"${ev.title}" approved → In Design, tasks created`);
+    if(typeof showToast==='function')showToast(`"${ev.title}" approved → In Design, tasks created${SHARED_TASK_VENUE_COLUMN?'':' (Venue saved in Notes: the Venue column is missing, add it in Schema Tools)'}`);
   }catch(e){
     msg.textContent='Tasks were created, but the activity could not be moved to In Design: '+e.message;
     msg.className='form-msg err';
@@ -8359,7 +8552,7 @@ async function saveDesignBrief(btn){
     document.getElementById('briefFormMsg').className='form-msg err';return;
   }
   if(!LIST_IDS.myTasks&&!isPreviewMode){
-    document.getElementById('briefFormMsg').textContent='Shared Work Items are not connected yet. Nothing was saved.';
+    document.getElementById('briefFormMsg').textContent='The Tasks & Job Tickets list is not connected yet. Nothing was saved.';
     document.getElementById('briefFormMsg').className='form-msg err';return;
   }
   const platforms=Array.from(document.querySelectorAll('#bPlatformPills input:checked')).map(i=>i.value).join(', ');
@@ -8380,6 +8573,7 @@ async function saveDesignBrief(btn){
     Platform:type,
     AssetSpec:(document.getElementById('bSpecs').value||'')+(platforms?' | '+platforms:''),
     Notes:briefNotes,
+    Venue:venue,
     CopyRequired:!!document.getElementById('bCopy').value
   };
   const briefDue=document.getElementById('bBriefDue').value;if(briefDue)fields.DueDate=briefDue+'T12:00:00Z';
@@ -8397,7 +8591,7 @@ async function saveDesignBrief(btn){
   }
   try{
     const token=await getToken(true);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    const res=await postSharedTask(token,fields);
     if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
     const created=await res.json();
     const assigneeName=document.getElementById('bAssignTo').options[document.getElementById('bAssignTo').selectedIndex]?.text||assignTo;
@@ -8410,14 +8604,14 @@ async function saveDesignBrief(btn){
         mailToken,tokenError:mailTokenError,
         subject:`New design brief: ${title}`,
         link:taskLink,
-        content:`Hi ${assigneeName},\n\n${detail}\n\nOpen My Tasks: ${taskLink}`
+        content:`Hi ${assigneeName},\n\n${detail}\n\nOpen Tasks & Job Tickets: ${taskLink}`
       });
     }
     const emailDelivered=emailNeeded&&!emailResult.failed.length&&!emailResult.missing.length&&emailResult.sent>0;
     const notified=!emailNeeded||emailDelivered;
     document.getElementById('briefFormMsg').textContent=notified
       ?`✓ Brief submitted${emailDelivered?' and '+assigneeName+' was emailed.':'.'}`
-      :'⚠︎︎ Brief submitted, but the assignment email was not delivered. It is still visible in My Tasks.';
+      :'⚠︎︎ Brief submitted, but the assignment email was not delivered. It is still visible in Tasks & Job Tickets.';
     document.getElementById('briefFormMsg').className=notified?'form-msg ok':'form-msg err';
     await loadTasks();
     if(notified)setTimeout(()=>closeDesignBrief(),1500);
@@ -10836,7 +11030,7 @@ function myWorkItems(includeUnassigned){
   const mapShared=t=>{
     const ev=t.campaignLookupId?eventById(t.campaignLookupId):eventByTitle(t.campaignLookup);
     const project=projectById(ev?.projectId);
-    return{...t,kind:'shared',key:'shared:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:ev?.venue||''};
+    return{...t,kind:'shared',key:'shared:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:t.venue||ev?.venue||''};
   };
   const personal=canSeePersonal?PERSONAL_TASKS.map(t=>{
     const ev=t.linkedActivityId?eventById(t.linkedActivityId):null;
@@ -10882,7 +11076,7 @@ function renderMyWork(){
   const badge=document.getElementById('myWorkBadge');if(badge){badge.textContent=open.length;badge.style.display=open.length?'':'none';}
 
   const configNotes=[];
-  if(!LIST_IDS.myTasks&&!isPreviewMode)configNotes.push('<strong>Shared Work Items are not connected yet.</strong> Your private tasks still work normally. Shared assignments will appear here once their own SharePoint list is approved and connected.');
+  if(!LIST_IDS.myTasks&&!isPreviewMode)configNotes.push('<strong>The Tasks & Job Tickets list is not connected yet.</strong> Your private tasks still work normally. Shared assignments will appear here once their own SharePoint list is approved and connected.');
   if(canSeePersonal&&PERSONAL_TASKS_ERROR)configNotes.push('<strong>Personal Tasks could not be loaded.</strong> '+escapeAttr(PERSONAL_TASKS_ERROR));
   if(!LIST_IDS.hubUserPrefs&&!isPreviewMode)configNotes.push('This board\'s layout (buckets, order, Today\'s 3) is saved in this browser only for now — it won\'t follow you to another device until Hub User Prefs is set up.');
   if(configEl)configEl.innerHTML=configNotes.length?`<div style="background:var(--gold-bg);border:1px solid #dccea5;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.5">${configNotes.join('<br>')}</div>`:'';
@@ -11228,6 +11422,42 @@ function renderMyTasks(){
   document.getElementById('tasksList').innerHTML=mainListHtml+completedHtml;
 }
 
+// Creates one item in the shared Tasks & Job Tickets list. Venue is written to its own Venue
+// column. If that column doesn't exist yet (Graph 400 naming Venue, or a 400 when the column is
+// known to be missing), this retries once without it and keeps "Venue: X" at the top of Notes, so
+// a job ticket never fails over the venue and the venue is never silently lost. Once a fallback
+// happens, later saves in the same session skip straight to the Notes form.
+// Returns the Response, with .venueFallback=true when the Notes fallback was used.
+let SHARED_TASK_VENUE_COLUMN=true;
+function withVenueInNotes(fields){
+  const {Venue,...rest}=fields;
+  if(!Venue)return rest;
+  const notes=rest.Notes||'';
+  if(!/^Venue:/m.test(notes))rest.Notes=[`Venue: ${Venue}`,notes].filter(Boolean).join('\n\n');
+  return rest;
+}
+async function postSharedTask(token,fields){
+  const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`;
+  const post=f=>fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:f})});
+  if(!fields.Venue)return post(fields);
+  if(!SHARED_TASK_VENUE_COLUMN){const r=await post(withVenueInNotes(fields));r.venueFallback=true;return r;}
+  const res=await post(fields);
+  if(res.ok||res.status!==400)return res;
+  const body=await res.clone().text();
+  if(!/Venue/i.test(body))return res;
+  console.warn('Tasks & Job Tickets has no usable Venue column yet — saving Venue in Notes instead.',body.substring(0,200));
+  SHARED_TASK_VENUE_COLUMN=false;
+  const retry=await post(withVenueInNotes(fields));
+  retry.venueFallback=true;
+  return retry;
+}
+// Venue for a job ticket: the Venue column when present, otherwise the "Venue: X" line that
+// tickets saved before the column existed (or during a fallback) carry in Notes.
+function sharedTaskVenue(f){
+  if(f.Venue)return String(f.Venue);
+  const m=String(f.Notes||'').match(/^Venue:\s*(.+)$/m);
+  return m?m[1].trim():'';
+}
 async function loadTasks(){
   if(!isAuthed)return;
   if(!LIST_IDS.myTasks&&!isPreviewMode)MY_TASKS=[];
@@ -11243,7 +11473,7 @@ async function loadTasks(){
           title:f.Title||'',
           status:f.Status||'Not Started',
           priority:f.Priority||'',
-          venue:'', // Tasks list doesn't have Venue — use Campaign lookup
+          venue:sharedTaskVenue(f), // Venue column, or the legacy "Venue: X" line in Notes
           category:f.TaskType||'',
           due:f.DueDate?f.DueDate.split('T')[0]:'',
           notes:f.Notes||'',
@@ -11339,7 +11569,7 @@ async function saveTask(){
   const title=document.getElementById('tTitle').value.trim();
   if(!title){document.getElementById('taskFormMsg').textContent='Please enter a title.';document.getElementById('taskFormMsg').className='form-msg err';return;}
   if(!LIST_IDS.myTasks&&!isPreviewMode){
-    document.getElementById('taskFormMsg').textContent='Shared Work Items are not connected to a SharePoint list yet. Nothing was saved.';
+    document.getElementById('taskFormMsg').textContent='The Tasks & Job Tickets list is not connected to a SharePoint list yet. Nothing was saved.';
     document.getElementById('taskFormMsg').className='form-msg err';
     return;
   }
@@ -11425,7 +11655,7 @@ async function saveTask(){
             tokenError:taskMailTokenError,
             subject:`New task assigned: ${title}`,
             link:taskLink,
-            content:`Hi ${assigneeName},\n\n${taskDetails}\n\nOpen My Tasks: ${taskLink}`
+            content:`Hi ${assigneeName},\n\n${taskDetails}\n\nOpen Tasks & Job Tickets: ${taskLink}`
           });
           if(emailResult.failed?.length)alert('Task saved, but the assignment email could not be sent to '+assigneeName+'.');
         }
@@ -11524,7 +11754,7 @@ function renderPersonalTasks(){
   }
   const today=toLocalISODate(new Date());
   // Converted tasks are closed (not "Open") but are intentionally left out of "Completed" too — they
-  // didn't get done here, they became a shared task, which is tracked as its own item in My Tasks.
+  // didn't get done here, they became a shared task, which is tracked as its own item in Tasks & Job Tickets.
   const open=PERSONAL_TASKS.filter(task=>task.status!=='Done'&&task.status!=='Converted');
   const overdue=open.filter(task=>task.due&&task.due<today);
   const done=PERSONAL_TASKS.filter(task=>task.status==='Done');
@@ -11597,7 +11827,7 @@ function renderPersonalTasks(){
     // of that, read as 'Hub' so nothing changes for existing rows.
     const emailHtml=task.source==='Outlook'?`<span title="${escapeAttr(task.emailSender?'From: '+task.emailSender:'From Outlook')}" style="color:#396998">✉︎${task.emailLink?` <a href="${escapeAttr(task.emailLink)}" target="_blank" onclick="event.stopPropagation()" style="color:#396998">Open email</a>`:''}</span>`:'';
     const convertBtn=(!isSubtask&&!isClosed)?`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();convertPersonalTaskToShared('${task.id}')" title="Create a linked Shared Task, keep this one as a record">→ Shared</button>`:'';
-    const cbAttrs=isConverted?`title="Converted to a shared task — see My Tasks"`:`onclick="togglePersonalTask('${task.id}')"`;
+    const cbAttrs=isConverted?`title="Converted to a shared task — see Tasks & Job Tickets"`:`onclick="togglePersonalTask('${task.id}')"`;
     let row=`<div class="task-item ${task.priority==='Critical'&&!isClosed?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isClosed?'done':''}" ${cbAttrs}>${isDone?'✓':isConverted?'↗':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isClosed?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${emailHtml}${linkedHtml}${projectHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right">${task.priority?`<span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority)}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}${convertBtn}${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
     if(!isSubtask&&subtasks.length&&expanded){
       row+=`<div class="pt-subtasks">${subtasks.map(child=>{shownChildIds.add(child.id);return personalTaskRowHtml(child,true);}).join('')}</div>`;
@@ -11762,7 +11992,7 @@ async function savePersonalTask(){
 // exists). Idempotent: see the ConvertedFromPersonalTaskId check below.
 async function convertPersonalTaskToShared(taskId){
   const task=PERSONAL_TASKS.find(t=>String(t.id)===String(taskId));if(!task)return;
-  if(!LIST_IDS.myTasks){alert('Shared Work Items list isn\'t connected yet.');return;}
+  if(!LIST_IDS.myTasks){alert('The Tasks & Job Tickets list isn\'t connected yet.');return;}
   // Idempotency: the Shared Task created below always carries ConvertedFromPersonalTaskId, written in
   // the SAME create call as the task itself. That's the authoritative check — not this Personal Task's
   // own Status — because Status is exactly the field whose later patch-back can fail while the shared
@@ -11771,7 +12001,7 @@ async function convertPersonalTaskToShared(taskId){
   const existingShared=MY_TASKS.find(t=>String(t.convertedFromPersonalTaskId||'')===String(task.id));
   if(existingShared){
     if(task.status==='Converted'){
-      const msg=`Already converted — see "${existingShared.title}" in My Tasks.`;
+      const msg=`Already converted — see "${existingShared.title}" in Tasks & Job Tickets.`;
       if(typeof showToast==='function')showToast(msg);else alert(msg);
       return;
     }
@@ -11780,7 +12010,7 @@ async function convertPersonalTaskToShared(taskId){
     await finishPersonalTaskConversion(task,existingShared,token);
     return;
   }
-  if(!confirm(`Convert "${task.title}" into a shared task? It will appear in the team's My Tasks. This record stays here, marked as converted.`))return;
+  if(!confirm(`Convert "${task.title}" into a shared task? It will appear in the team's Tasks & Job Tickets list. This record stays here, marked as converted.`))return;
   try{
     const token=await getToken(true);
     const linkedEvent=task.linkedActivityId?EVENTS.find(e=>String(e.id)===String(task.linkedActivityId)):null;
@@ -11802,7 +12032,7 @@ async function convertPersonalTaskToShared(taskId){
 // shared task has no assignee. Split out so a retry (existingShared found above) can call just this
 // half without re-creating the shared task.
 async function finishPersonalTaskConversion(task,sharedTask,token){
-  const tag=`[Converted to shared task — see My Tasks: "${sharedTask.title}"]`;
+  const tag=`[Converted to shared task — see Tasks & Job Tickets: "${sharedTask.title}"]`;
   const newNotes=task.notes&&task.notes.includes(tag)?task.notes:(task.notes?`${task.notes}\n\n${tag}`:tag);
   try{
     const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${task.id}`,token,{Status:'Converted',Notes:newNotes});
@@ -11820,7 +12050,7 @@ async function finishPersonalTaskConversion(task,sharedTask,token){
     alert(`The shared task "${sharedTask.title}" exists, but marking this record as converted failed: ${e.message}. Clicking "→ Shared" again is safe and will reuse this same shared task.`);
   }
   if(!sharedTask.assignedTo){
-    const warn=`Heads up: the shared task "${sharedTask.title}" has no assignee yet — open My Tasks to assign someone.`;
+    const warn=`Heads up: the shared task "${sharedTask.title}" has no assignee yet — open Tasks & Job Tickets to assign someone.`;
     if(typeof showToast==='function')showToast(warn);else alert(warn);
   }
 }
@@ -11994,7 +12224,7 @@ async function bulkDeletePersonalTasks(){
 // ═══════════════════════════════════════
 const SCHEMA_TOOL_LISTS={
   campaigns:{label:'Marketing & Activations 2026',listIdKey:'campaigns'},
-  myTasks:{label:'Shared Work Items (My Tasks)',listIdKey:'myTasks'},
+  myTasks:{label:'Tasks & Job Tickets (shared)',listIdKey:'myTasks'},
   personalTasks:{label:'My Tasks (personal)',listIdKey:'personalTasks'},
   projects:{label:'Marketing Projects',listIdKey:'projects'},
   ideas:{label:'Idea Bank',listIdKey:'ideas'},
@@ -12079,6 +12309,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'personalTasks',name:'EmailSender',displayName:'Email Sender',type:'text',purpose:'Outlook email-to-task — the original email\'s sender, for a Source=Outlook task.'},
   {listKey:'personalTasks',name:'EmailLink',displayName:'Email Link',type:'text',purpose:'Outlook email-to-task — a link back to the original email in Outlook.'},
   {listKey:'personalTasks',name:'EmailMessageId',displayName:'Email Message Id',type:'text',purpose:'Outlook email-to-task — the email\'s stable internet message id, used by the Power Automate flow to detect duplicates (including when a flagged email is later edited).'},
+  {listKey:'myTasks',name:'Venue',displayName:'Venue',type:'text',purpose:'Venue a job ticket is for. Written by manual Job submission, approval-created job tickets and design briefs. Text, not Choice, so a new venue added to the Hub never makes ticket saves fail. Until it exists, saves fall back to a "Venue: X" line in Notes.'},
   {listKey:'myTasks',name:'ConvertedFromPersonalTaskId',displayName:'Converted From Personal Task Id',type:'number',purpose:'Back-reference to the private Personal Task this shared task was converted from, written at creation time. The authoritative idempotency check for convertPersonalTaskToShared — a retry after a failed patch-back on the Personal Task side reuses this record instead of creating a duplicate.'},
   {listKey:'ideas',name:'ActivityType',displayName:'Activity Type',type:'choice',choices:ACTIVITY_TYPE_OPTIONS.join(', '),purpose:'Captured at idea stage so "Continue Brief" can prefill it on the Activity submission form.'},
   {listKey:'ideas',name:'PromotedActivityId',displayName:'Promoted Activity Id',type:'number',purpose:'Links an idea to the real Activity created from it via "Continue Brief", so reopening a promoted idea opens that Activity instead of letting it be promoted twice.'},
@@ -12548,7 +12779,7 @@ function renderOperationsMap(){
       <div class="ops-flow">
         <div class="ops-stage"><h3>1. Inputs</h3><ul><li>Flagged emails and direct task emails</li><li>Venue submissions and activity briefs</li><li>Supplier, offer and product information</li><li>Leadership decisions and deadlines</li></ul></div>
         <div class="ops-arrow">→</div>
-        <div class="ops-stage core"><h3>2. SharePoint source of truth</h3><ul><li>My Tasks, four-person work register</li><li>Marketing &amp; Activations master list</li><li>Loaded Rewards and reference lists</li><li>Mailing CRM, consent and import history</li></ul></div>
+        <div class="ops-stage core"><h3>2. SharePoint source of truth</h3><ul><li>Tasks &amp; Job Tickets, shared team work register</li><li>Marketing &amp; Activations master list</li><li>Loaded Rewards and reference lists</li><li>Mailing CRM, consent and import history</li></ul></div>
         <div class="ops-arrow">→</div>
         <div class="ops-stage"><h3>3. Marlin OS workflow</h3><ul><li>Priority, owner and due-date control</li><li>Dependencies and approval gates</li><li>Activity, task and CRM dashboards</li><li>Inbox, comments and exception review</li></ul></div>
         <div class="ops-arrow">→</div>
@@ -13506,7 +13737,7 @@ async function submitIdeaNew(){
 async function submitJob(){
   const title=document.getElementById('fJobTitle').value.trim();
   if(!title){const m=document.getElementById('fJobMsg');m.textContent='Please enter a title.';m.className='form-msg err';return;}
-  if(!LIST_IDS.myTasks&&!isPreviewMode){const m=document.getElementById('fJobMsg');m.textContent='Shared Work Items are not connected yet. Nothing was saved.';m.className='form-msg err';return;}
+  if(!LIST_IDS.myTasks&&!isPreviewMode){const m=document.getElementById('fJobMsg');m.textContent='The Tasks & Job Tickets list is not connected yet. Nothing was saved.';m.className='form-msg err';return;}
   const btn=document.querySelector('#submitFormJob .btn-p');
   if(btn){btn.disabled=true;btn.textContent='Submitting…';}
   const fields={
@@ -13516,12 +13747,13 @@ async function submitJob(){
     TaskType:document.getElementById('fJobType').value,
   };
   const due=document.getElementById('fJobDue').value;if(due)fields.DueDate=due+'T12:00:00Z';
-  // The My Tasks list does not currently have a Venue column. Preserve the selection in Notes
-  // until that schema debt is fixed, instead of silently throwing the user's venue away.
+  // Venue goes to the list's own Venue column; postSharedTask() falls back to a "Venue: X" line
+  // in Notes if that column hasn't been created yet.
   const venue=document.getElementById('fJobVenue').value;
+  if(venue)fields.Venue=venue;
   const rawNotes=document.getElementById('fJobNotes').value.trim();
-  const notes=[venue?`Venue: ${venue}`:'',rawNotes].filter(Boolean).join('\n\n');
-  if(notes)fields.Notes=notes;
+  const notes=[venue?`Venue: ${venue}`:'',rawNotes].filter(Boolean).join('\n\n'); // email body only
+  if(rawNotes)fields.Notes=rawNotes;
   const assign=document.getElementById('fJobAssign').value;if(assign)fields.AssignedTo=assign;
   // Campaign & digital linkage — writes the real "Campaign" Lookup column (CampaignLookupId is
   // the standard Graph write key for a Lookup column named "Campaign"). Previously this wrote
@@ -13552,7 +13784,7 @@ async function submitJob(){
   }
   try{
     const token=await getToken(true);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    const res=await postSharedTask(token,fields);
     if(res.ok){
       const created=await res.json();
       let emailDelivered=false;
@@ -13567,14 +13799,14 @@ async function submitJob(){
           mailToken:jobMailToken,tokenError:jobMailTokenError,
           subject:`New job assigned: ${title}`,
           link:taskLink,
-          content:`Hi ${assigneeName},\n\n${detail}\n\nOpen My Tasks: ${taskLink}`
+          content:`Hi ${assigneeName},\n\n${detail}\n\nOpen Tasks & Job Tickets: ${taskLink}`
         });
         emailDelivered=!emailResult.failed.length&&!emailResult.missing.length&&emailResult.sent>0;
       }
       const m=document.getElementById('fJobMsg');
       m.textContent=emailNeeded&&!emailDelivered
-        ?'⚠︎︎ Job submitted, but the assignment email was not delivered. It is still visible in My Tasks.'
-        :`✓ Job submitted${emailDelivered?' and '+assigneeName+' was emailed.':' to the task list!'}`;
+        ?'⚠︎︎ Job submitted, but the assignment email was not delivered. It is still visible in Tasks & Job Tickets.'
+        :`✓ Job submitted${emailDelivered?' and '+assigneeName+' was emailed.':' to the task list!'}${res.venueFallback?' Venue was saved in Notes because the Venue column is missing. Add it in Schema Tools.':''}`;
       m.className=emailNeeded&&!emailDelivered?'form-msg err':'form-msg ok';
       ['fJobTitle','fJobNotes','fJobDue','fJobMetaNotes','fJobGoogleNotes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
       ['fJobCampaign'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});

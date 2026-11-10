@@ -10,7 +10,7 @@
 
 **Fix:** The first (Intake → In Design) approval now opens a preview overlay of the proposed jobs for that activity's playbook template, with editable owner/due date per row and the ability to untick any that aren't needed. Only ticked rows are created, each correctly linked via `CampaignLookupId` (the "Campaign task lookup" fix above). Only once every ticked row succeeds does the activity actually advance to In Design, with `DesignJobCreated` set so re-approving (or double-clicking) never creates a second set of tasks. A partial failure keeps the activity at Intake and shows exactly which tasks didn't land, so nothing is silently half-done. "Skip tasks, just approve" remains available for activities that genuinely need none. The old `runPlaybook()` is left in the file, archived with a comment, not deleted — it was never wired up and the new preview/confirm flow fully replaces what it would have done.
 
-**Still open:** the playbook template choice (`autoSelectPlaybook`) is still driven by `ActivityType`/`EventFormat`/`BusinessStream` rather than the richer Activity Group taxonomy the briefing-system work proposes — revisit once that taxonomy exists.
+**Template choice — RESOLVED 2026-11-10:** `autoSelectPlaybook` now uses Activity Group/Subtype first and falls back to ActivityType/EventFormat/BusinessStream only for activities with no Group. `buildProposedTickets` then applies the submission-answer rules from `SUBMISSION_WORKFLOW.md`. See that doc for the mapping.
 
 ## Campaign task lookup is not consistently mapped — RESOLVED 2026-10-14
 
@@ -44,11 +44,13 @@ Hub roles decide what the interface displays. SharePoint still decides whether e
 
 Define a least-privilege Microsoft 365 group for Hub users, then grant list permissions deliberately. Venue submissions and comments require Contribute access to their target lists. Read-only calendar users do not need write permission everywhere.
 
-## My Tasks has no Venue column
+## Tasks & Job Tickets has no Venue column — CODE DONE 2026-11-10, column to be created
 
-v12 preserves the selected venue in Notes, for example `Venue: The Left Bank`. This is human-readable but not reliably filterable.
+**Issue (as it was):** v12 kept the selected venue in Notes (`Venue: The Left Bank`), which is readable but can't be filtered. Approval-created tickets and design briefs had no venue field at all.
 
-**Recommended fix:** add a Venue Choice column to `My Tasks`, update submission and loading code to use it, then remove the Notes workaround.
+**Fix:** A text `Venue` column on Tasks & Job Tickets is listed in Admin & Schema, ready to create. Manual jobs, approval-created tickets and design briefs write it through `postSharedTask()`. If the column is missing, the save falls back to the Notes line and says so. `loadTasks()` reads the column, falling back to the Notes line for older tickets. It's text rather than Choice so a venue added later never makes saves fail.
+
+**Still to do:** create the column (Part A of `docs/LIVE_TEST_JOB_TICKETS.md`).
 
 ## Retire stale copies and the unexplained Azure app
 
