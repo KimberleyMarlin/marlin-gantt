@@ -470,11 +470,13 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .art-controls{position:sticky;top:50px;z-index:8;background:var(--bg);padding:8px 0 10px;display:flex;gap:7px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:12px}
 .art-month{margin-bottom:28px}.art-month-head{position:sticky;top:101px;z-index:7;background:var(--bg);padding:8px 0;display:flex;align-items:baseline;gap:10px}
 .art-month-title{font-family:'DM Serif Display',serif;font-size:20px;letter-spacing:-.02em}.art-month-count{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)}
-.art-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:12px}
+/* Artwork overview: A4 portrait cards (210×297), sized small so more fit per row. */
+.art-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .art-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:var(--tr);display:flex;flex-direction:column;min-width:0}
 .art-card:hover{border-color:var(--border2);box-shadow:var(--sh);transform:translateY(-1px)}
-.art-img{height:190px;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--text3);font-size:11px;text-align:center;padding:14px}
-.art-img img{width:100%;height:100%;object-fit:cover;display:block}.art-body{padding:10px 12px;display:flex;flex-direction:column;gap:5px}
+.art-img{aspect-ratio:210/297;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--text3);font-size:11px;text-align:center;padding:10px}
+.art-img:has(img){padding:0}
+.art-img img{width:100%;height:100%;object-fit:contain;display:block}.art-body{padding:10px 12px;display:flex;flex-direction:column;gap:5px}
 .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:18px;align-items:start}
 .proj-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;cursor:pointer;transition:var(--tr)}
 .proj-card:hover{border-color:var(--border2);box-shadow:var(--sh);transform:translateY(-1px)}
