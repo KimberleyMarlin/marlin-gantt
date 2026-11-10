@@ -56,13 +56,13 @@ Work Sans is the only typeface, loaded from Google Fonts at the top of `index.ht
 | Body | Medium (500), 14px. |
 | Former monospace numbers | Work Sans with `font-variant-numeric: tabular-nums`. |
 
-**App density (a deliberate difference from the system).** The system's text styles are sized for reports and decks: `body` 16px, `small` 13px, `label` 12px. The OS is a dense working tool, so it keeps a 14px body and uses 10–12px for table cells, chips and meta. Don't go below 10px for anything someone needs to read. Today the OS has 12 or more distinct sizes (9–14px in half-pixel steps). Proposed app scale for the clean-up: 10 / 11 / 12 / 14 / 18 / 24 / 28px.
+**App density (a deliberate difference from the system).** The system's text styles are sized for reports and decks: `body` 16px, `small` 13px, `label` 12px. The OS is a dense working tool, so it keeps a 14px body and uses 10–12px for table cells, chips and meta. Nothing is set below 10px, and there are no half-pixel sizes. The working app scale is 10 / 11 / 12 / 13 / 14px for interface text, then 16 / 18 / 20 / 22 / 28px for headings and figures. Use those sizes in new code.
 
 ## Writing in the UI
 
 Follow the system's writing rules: first person plural, plain confident sentences, Australian spelling, no exclamation marks. In reports and KPIs, lead with the finding and the number, use TY/LY and "pts", and put negatives in brackets in tables, for example (1,287).
 
-Not yet applied: the OS uses emoji as icons throughout (sidebar, cards, buttons), and the system has no icon set and says no decorative icons. Replacing them is a bigger, screen-by-screen job (see below).
+Icons: the system has no icon set and says no decorative icons. The sidebar uses single-colour text glyphs only, and the Dashboard card titles, widget titles, quick-action cards, submission headings, development banner and sign-in screen carry no emoji. Functional marks (✓ ✕ ↻ ⚠ ☐ →) are fine. Don't add colour emoji to new UI.
 
 ## Charts
 
@@ -80,11 +80,19 @@ Use `--series-ty` (navy) for this year, `--series-ly` (coral-500) for last year 
 - The calendar venue-trade scale rebuilt on the green tones, with readable text colours.
 - The sidebar logo is the system's `marlin-hospitality-stacked-white.svg`. If that file isn't deployed next to `index.html`, it falls back to the old PNG, then to text.
 
+**Done (phase 2, the clean-up):**
+- Every off-palette colour mapped to a brand tone by meaning: blues to navy, violets (design, review, key dates) to navy-700, teals (ready for live, publishing) to green, late and overdue oranges to rust, warning ambers to gold, neutrals to slate, grey and mist, and Loaded Rewards to coral. The only hex values left are venue colours, the Microsoft sign-in logo, the brand palette itself and two unused dark-mode values.
+- Pipeline stages now read: Intake slate, In Design navy-900, In Build gold-900, Review navy-700, Ready for Live green-700, Live green-900, Done mist-700.
+- All gradients removed (the Loaded Rewards banners and tier cards are flat navy-900; venue stripes use the venue's primary colour). The hatched pattern on recurring Gantt bars stays, because it carries meaning.
+- All remaining hardcoded shadows removed or replaced with a hairline.
+- All 4–14px and 999px radii are now `--radius-sm`. 50% dots and 2px marks are unchanged.
+- Type: no sizes under 10px and no half-pixel sizes.
+- Loaded Rewards header rebuilt as a report-header band: navy ground, white uppercase title, gold active tab.
+- The Appearance page offers brand-palette swatches instead of a free colour picker. Defaults are navy-500 (Monthly Deals) and coral-500 (Loaded Rewards).
+- Emoji removed from the sidebar, the Dashboard headings, the quick-action cards, submission headings, the development banner and the sign-in screen. The sign-in screen shows the navy stacked logo.
+
 **Still to do:**
-1. **Remaining hardcoded colours** (about 80 unique hex values in the JavaScript renderers): indigo and violet (`#7c3aed`, `#6366f1`, `#ede9fe`), Tailwind blues and teals (`#2563eb`, `#0d9488`, `#0891b2`), ambers (`#b45309`, `#f59e0b`, `#ca8a04`), and pipeline and stage colour maps. Map each to a system token by meaning.
-2. **Inline styles** (about 1,600 `style=` attributes): move the repeated ones into classes that use the tokens.
-3. **Type scale:** collapse the half-pixel sizes onto the app scale above.
-4. **Hardcoded radii** (`border-radius: 6px / 8px / 10px / 12px / 20px` in inline styles): use `--radius-sm`, or `--radius-none` for data.
-5. **Emoji icons:** replace with plain text labels, or a small, consistent line-icon set if the brand adopts one.
-6. **Navy theme:** add a `[data-theme="navy"]` block mapping the semantic tokens to the Navy theme values (surface navy-900, ink white, ink-brand cream-500, accent gold-300) if a reversed view is wanted.
-7. **The Appearance page** (`THEME_TOKENS`) still offers free colour pickers. Limit the choices to brand tokens.
+1. **Inline styles** (about 1,600 `style=` attributes): move the repeated ones into classes that use the tokens. This is where most remaining inconsistency lives.
+2. **Emoji in content:** about 400 emoji remain inside renderers (activity type filters, tier icons, buttons, empty states). Replace them screen by screen with words, or with a small line-icon set if the brand adopts one.
+3. **Navy theme:** `design-system/tokens.css` has a `[data-theme="navy"]` block. Mirror it in `index.html` if a reversed view is wanted.
+4. **Report components:** use `design-system/components/bundle.css` classes (`.mh-kpi`, `.mh-table`, `.mh-callout`) for the Finance, Ticketing and venue report screens.
