@@ -10,7 +10,7 @@
 
 **Fix:** The first (Intake → In Design) approval now opens a preview overlay of the proposed jobs for that activity's playbook template, with editable owner/due date per row and the ability to untick any that aren't needed. Only ticked rows are created, each correctly linked via `CampaignLookupId` (the "Campaign task lookup" fix above). Only once every ticked row succeeds does the activity actually advance to In Design, with `DesignJobCreated` set so re-approving (or double-clicking) never creates a second set of tasks. A partial failure keeps the activity at Intake and shows exactly which tasks didn't land, so nothing is silently half-done. "Skip tasks, just approve" remains available for activities that genuinely need none. The old `runPlaybook()` is left in the file, archived with a comment, not deleted — it was never wired up and the new preview/confirm flow fully replaces what it would have done.
 
-**Still open:** the playbook template choice (`autoSelectPlaybook`) is still driven by `ActivityType`/`EventFormat`/`BusinessStream` rather than the richer Activity Group taxonomy the briefing-system work proposes — revisit once that taxonomy exists.
+**Template choice — RESOLVED 2026-11-10:** `autoSelectPlaybook` now uses Activity Group/Subtype first and falls back to ActivityType/EventFormat/BusinessStream only for activities with no Group. `buildProposedTickets` then applies the submission-answer rules from `SUBMISSION_WORKFLOW.md`. See that doc for the mapping.
 
 ## Campaign task lookup is not consistently mapped — RESOLVED 2026-10-14
 
