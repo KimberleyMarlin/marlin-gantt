@@ -1854,9 +1854,9 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 
   <!-- PHOTO TAGGING -->
   <div class="panel" id="p-phototagging">
-    <div class="ph"><div><div class="ph-eye">Digital Media library</div><div class="ph-title">Photo <em>Tagging</em></div><div class="ph-sub">Browse folders and AI-tag photos, or search across every tag already generated — runs straight from the browser, no Power Automate involved.</div></div></div>
+    <div class="ph"><div><div class="ph-eye">Digital Media library</div><div class="ph-title">Photo <em>Tagging</em></div><div class="ph-sub">Browse the digital media library and search existing tags. Generating tags will be enabled after a protected Vision backend is connected.</div></div></div>
     <div class="ca">
-      <div id="ptNotConfigured" style="display:none;background:var(--gold-bg);border:1px solid #dccea5;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.5"><strong>Photo Tagging isn't connected yet.</strong> This needs a Google Cloud Vision API key set in the code (GOOGLE_VISION_API_KEY) before it can be used.</div>
+      <div id="ptNotConfigured" style="display:none;background:var(--gold-bg);border:1px solid #dccea5;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.5"><strong>Photo Tagging is paused.</strong> A protected server-side Vision connection is required. Do not paste a Google Cloud key or secret into this public app.</div>
       <div id="ptWrap" style="display:none">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
           <input class="form-input" id="ptSearchInput" type="search" placeholder="Search every tagged photo (e.g. “beer”)…" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')ptSearch()">
@@ -2580,13 +2580,11 @@ const CFG={clientId:'b7e650cb-f871-4884-b5ba-3f55c1d8d20b',authority:'https://lo
 const GOOGLE_CLIENT_ID='805946744245-e41ge33vlbr91t94olfqchk67o498ght.apps.googleusercontent.com';
 const GOOGLE_DRIVE_SCOPE='https://www.googleapis.com/auth/drive.readonly';
 
-// Photo Tagging — calls Google Cloud Vision's label-detection API straight from the browser (an
-// API key is enough, no OAuth), then writes the result back to the AITags column on the Digital
-// Media library via Graph. No Power Automate / premium connector involved anywhere in this path.
-// Paste the API key from Google Cloud Console → APIs & Services → Credentials — leave blank to
-// keep the feature hidden. The Digital Media library's drive ID is fixed below; it doesn't change
-// unless the library itself is deleted and recreated.
-const GOOGLE_VISION_API_KEY='AIzaSyDRuH5I4E_zWv02o8atS4CR2zLMZkq88zU';
+// Photo Tagging — reads photos from SharePoint via Graph. Tag generation is paused until a
+// protected server-side Vision backend validates signed-in staff and writes tags back safely.
+// Photo Tagging must call a protected server-side Vision backend. Never put credentials in this
+// public GitHub Pages file. Configure the backend only after it validates signed-in staff.
+const PHOTO_TAGGING_BACKEND_URL='';
 const DIGITAL_MEDIA_DRIVE_ID='b!nNEymQHH-USapvbmTivj6MUjOnOvRKdGt3tKLEHQKgW6fFNcyMOoR51GxWrNifrc';
 const SP_SITE='marlingroupaus.sharepoint.com,9932d19c-c701-44f9-9aa6-f6e64e2be3e8';
 
@@ -6485,7 +6483,7 @@ function renderPhotoTagging(){
   const notConfigured=document.getElementById('ptNotConfigured');
   const wrap=document.getElementById('ptWrap');
   if(!notConfigured||!wrap)return;
-  if(!GOOGLE_VISION_API_KEY||!DIGITAL_MEDIA_DRIVE_ID){notConfigured.style.display='';wrap.style.display='none';return;}
+  if(!PHOTO_TAGGING_BACKEND_URL||!DIGITAL_MEDIA_DRIVE_ID){notConfigured.style.display='';wrap.style.display='none';return;}
   notConfigured.style.display='none';wrap.style.display='';
   if(!ptCurrentItems.length&&ptMode==='browse')ptLoadFolder();
 }
@@ -6626,10 +6624,7 @@ async function ptTagOne(itemId){
     if(!imgRes.ok)throw new Error('Could not fetch image (HTTP '+imgRes.status+')');
     const buffer=await imgRes.arrayBuffer();
     const base64=ptArrayBufferToBase64(buffer);
-    const visionRes=await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API_KEY}`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({requests:[{image:{content:base64},features:[{type:'LABEL_DETECTION',maxResults:10}]}]})
-    });
+    throw new Error('Photo tagging is paused until a protected Vision backend is connected. Do not place an API key in this public app.');
     if(!visionRes.ok)throw new Error('Vision API error (HTTP '+visionRes.status+')');
     const visionData=await visionRes.json();
     const labels=visionData.responses?.[0]?.labelAnnotations||[];
