@@ -127,25 +127,61 @@ Rule: only metrics with a field that already exists, one definition each, and a 
 
 ---
 
-## 6. Decisions needed from Kim
+## 6. Decisions (Kim, 11 Nov 2026)
 
-| ID | Decision | Recommendation |
+| ID | Decision | Outcome |
 |---|---|---|
-| P3-D1 | Approve the MKT-01 list (§5), K1 to K9 now and K10 to K11 later | Yes |
-| P3-D2 | "Completed": exclude auto-completed activities everywhere, or include them everywhere? | Exclude. Auto-completion means nobody reported on it |
-| P3-D3 | Add a `ReportSubmittedAt` date column to Activities so K2 and the "Wrap report needed" alert can tell reported from unreported | Yes. One Date column, set by `savePostCampaign()`. Needs a SAFE-04 controlled-record test |
-| P3-D4 | REV-02 v1 scope: read-only Google Business Profile via Power Automate into a SharePoint list | Yes, pending REV-01 answers (§3.2) |
-| P3-D5 | Does the group already pay for a review-monitoring tool? | Kim to confirm. If yes, it changes REV-02 |
+| P3-D1 | MKT-01 list | **Approved:** K1, K2, K4 to K9 now. K3, K10, K11 later |
+| P3-D2 | "Completed" rule | **Include auto-completed.** Anything past its end date, or marked Done / Complete / Archived, counts as **Delivered**. Cancelled never counts |
+| P3-D3 | `ReportSubmittedAt` column | **Yes.** Date column on Activities, set by the Post-Campaign Report |
+| P3-D4 | REV-02 v1 scope | **Google Business Profile, read-only**, Power Automate into a SharePoint list |
+| P3-D5 | Existing review-monitoring tool? | Answered by D4: none, build the Google flow |
 
 ---
 
-## 7. Next items in this workstream
+## 7. MKT-02 build, first slice (11 Nov 2026)
 
-1. Kim answers P3-D1 to P3-D5.
-2. Re-test the §4 fixes in the live app and record the evidence in the register.
-3. MKT-02 (after SAFE-04): one shared metric helper so dashboard and Finance read the same definitions, plus freshness labels. No new panels: it lands in Insights under UX-01.
-4. REV-02 (after REV-01 and SAFE-04): the Guest Reviews list and flow. The Reviews nav stays hidden until it ships.
+Built in `index.html`. No new panels or nav items.
 
-## 8. Change log
+- **One definition per KPI.** `computeMarketingKpis()` and its helpers (`isActivityDelivered`, `isActivityReported`, `activityTicketRevenue`) sit just above the Post-Campaign Report code. The dashboard card and Finance's Campaign Performance both render from it, so the §2.4 drift is gone.
+- **Dashboard card** renamed **Reporting & Performance** (matching the widget library). Everyone sees Delivered, Reports done, Ticket sell-through, Loaded redemptions and Covers (est.). Budget roles also see Spend vs budget, Net cost to Marlin and Ticket revenue.
+- **Freshness label** under the card and the Finance stats: "From SharePoint, as of {date time}" (the last full load), or "UI preview, not live data".
+- **`ReportSubmittedAt`.** Saved with each Post-Campaign Report, read on load, and listed in Admin & Schema so an admin can create the column from the app. If the column doesn't exist yet, the save still works and the report message lists it as skipped.
+- **"Reported"** means a `ReportSubmittedAt` date, or (for older reports) any saved actual.
+- **Alerts.** "Wrap report needed" and the Needs Action / venue "report required" counts now skip reported activities. Wrap alerts only cover activities that ended in the last 60 days, so including auto-completed activities doesn't flood the list.
+
+Tested in UI preview with sample activities (reported, auto-completed with and without actuals, cancelled, future): both screens show the same figures, and cancelled and future activities are excluded. **Not yet tested against live SharePoint.**
+
+### Kim's setup step
+
+1. Sign in as an admin, open **Admin & Schema**, and create **Report Submitted** (`ReportSubmittedAt`, Date) on Marketing & Activations 2026. Or add it in SharePoint list settings with that exact internal name.
+2. Save one Post-Campaign Report, reload, and check that the column has today's date, that the activity drops out of "Wrap report needed", and that Reports done goes up by one.
+
+---
+
+## 8. REV-02 · Guest reviews setup (Google Business Profile, read-only)
+
+This part runs in Google and Power Automate, not in the app, so it needs people with those accounts. In order:
+
+1. **Profile access.** For each venue, list the Google account that owns or manages its Business Profile. Ideally one group account manages all five.
+2. **API access.** In Google Cloud, create a project under the group account and request **Business Profile API** access (Google approves this manually, which can take a few weeks). Enable the "My Business Account Management" and "My Business Business Information" APIs, plus the v4 reviews endpoint (`accounts/{a}/locations/{l}/reviews`).
+3. **SharePoint list `Guest Reviews`.** Columns: `Venue` (choice, the five venues), `Source` (choice, Google), `ReviewId` (text, unique), `Rating` (number 1 to 5), `ReviewDate` (date), `ReviewText` (multi-line), `ReviewerName` (text), `ReviewUrl` (hyperlink), `Replied` (yes/no), `ReplyDate` (date). Read access for marketing roles, write only for the flow account. Include it in the SAFE-04 permission audit.
+4. **Power Automate flow,** daily. For each venue location, call the reviews endpoint with an HTTP action and Google OAuth (a premium connector licence is needed). Upsert into `Guest Reviews` by `ReviewId`. Credentials stay in the flow, never in `index.html` (see SAFE-05).
+5. **Then the OS work (P03·01):** add the list to `LIST_IDS`, load it, and show K10 (average rating and new reviews per venue per month) in the Reporting & Performance card. The Reviews nav stays hidden until the list has a month of data.
+
+Before starting step 4, confirm whether Power Automate in the tenant has a ready-made Google Business Profile connector. If it does, use it instead of the raw HTTP action.
+
+---
+
+## 9. Next items in this workstream
+
+1. Kim: create `ReportSubmittedAt` and run the §7 check. Re-test the §4 fixes.
+2. Kim / IT: REV-02 steps 1 to 3 (§8). The Google API approval is the long pole, so start it first.
+3. Align any remaining screens on the shared helper: the Venue Activity Snapshot and the Loaded Rewards card still count on their own.
+4. P03·01: wire `Guest Reviews` into the OS once the list has data.
+5. Later: K3 (on-time launch, needs stage history) and K11 (ad platforms).
+
+## 10. Change log
 
 - 2026-11-10: Created. Code inventory of reporting surfaces at `0a68252`. REV-01 source map and MKT-01 KPI list drafted for decision. Post-Campaign Report carry-over and dashboard Ticket Revenue fixed (§4).
+- 2026-11-11: Decisions P3-D1 to D5 recorded. MKT-02 first slice built: shared KPI helper, dashboard and Finance on one definition, freshness labels, `ReportSubmittedAt`, alerts skip reported activities. REV-02 setup steps written.

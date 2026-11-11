@@ -968,7 +968,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
       <div class="dash-widget" data-widget="reportrequired" style="margin-bottom:12px">
         <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
         <details class="dash-card" open>
-          <summary class="card-h"><span class="card-title">Reporting Required</span></summary>
+          <summary class="card-h"><span class="card-title">Reporting &amp; Performance</span></summary>
           <div id="ovResults"><div class="loading"><div class="spinner"></div></div></div>
         </details>
       </div>
@@ -1502,7 +1502,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
            four. Completed activities only, since these numbers are only final once a
            Post-Campaign Report has been saved. -->
       <div class="form-section-head" style="margin-top:20px">Campaign Performance</div>
-      <div class="field-help" style="margin-bottom:10px">Completed activities only — these numbers are only final once a Post-Campaign Report has been saved.</div>
+      <div class="field-help" style="margin-bottom:10px">Delivered activities (past their end date or marked Done). Numbers are only final once a Post-Campaign Report has been saved. <span id="perfFreshness"></span></div>
       <div class="stats" id="perfStats" style="margin-bottom:12px"></div>
       <div class="card">
         <div class="card-h" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
@@ -4491,6 +4491,7 @@ function busynessTextColor(level){
 // ═══════════════════════════════════════
 let msalApp=null,isAuthed=false,currentUser=null,currentUserEmail='',isPreviewMode=false;
 let EVENTS=[],MY_TASKS=[],PERSONAL_TASKS=[],PROJECTS=[],SPONSORSHIPS=[];
+let ACTIVITIES_LOADED_AT=null; // set by loadAll(); drives the freshness label on every KPI (MKT-02)
 let PERSONAL_TASKS_ERROR='';
 let personalTaskSelected=new Set(),personalTaskExpanded=new Set();
 const TASK_SHARING_ENABLED=true;
@@ -4914,6 +4915,7 @@ async function loadAll(){
   await loadM365Users();
   await loadAllComments();
   await loadHubUserPrefs();
+  ACTIVITIES_LOADED_AT=new Date();
   SPONSORSHIPS=[...STATIC_SPONSORSHIPS];
   updateAdminImportVisibility();
   generateNotifications();
@@ -5602,6 +5604,9 @@ async function loadCampaigns(){
         ticketRevenue:parseFloat(f.TicketRevenue||0),
         redemptions:parseInt(f.Redemptions||0),
         covers:parseInt(f.Covers||0),
+        // Set by savePostCampaign(). Empty on activities reported before the column existed;
+        // isActivityReported() falls back to "any actual saved" for those.
+        reportSubmittedAt:f.ReportSubmittedAt?String(f.ReportSubmittedAt).split('T')[0]:'',
         // Ticketing — also true for an activity saved under the old EventFormat="Ticketed Event"
         // value, from before Ticketed? became its own field, so nothing already marked ticketed
         // loses that status just because Event Format no longer offers it as a choice.
@@ -8051,7 +8056,7 @@ function renderOverview(){
 
   // Needs action — approvals + blocked + overdue briefs
   const needsAction=[];
-  EVENTS.filter(e=>e.autoCompleted&&!['Archive','Archived','Cancelled'].includes(e.status)).slice(0,3).forEach(e=>needsAction.push({icon:'▥',text:e.title,sub:'Report required — ended '+fmtShort(e.end),urgent:false,click:`showPop(${e.id})`}));
+  EVENTS.filter(e=>e.autoCompleted&&!isActivityReported(e)&&!['Archive','Archived','Cancelled'].includes(e.status)).slice(0,3).forEach(e=>needsAction.push({icon:'▥',text:e.title,sub:'Report required — ended '+fmtShort(e.end),urgent:false,click:`showPop(${e.id})`}));
   MY_TASKS.filter(t=>t.status==='Blocked').slice(0,3).forEach(t=>needsAction.push({icon:'⊘',text:t.title,sub:'Blocked task',urgent:true,click:`openEditTask('${t.id}')`}));
   document.getElementById('ovNeedsAction').innerHTML=needsAction.length
     ?needsAction.slice(0,6).map(n=>`<div onclick="${n.click}" style="display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border-bottom:0.5px solid var(--border);cursor:pointer">
@@ -8104,7 +8109,7 @@ function renderOverview(){
       const liveNow=vEvts.filter(e=>e.stage==='Live').length;
       const upcoming7=vEvts.filter(e=>new Date(e.start+'T00:00:00')>=today&&new Date(e.start+'T00:00:00')<=in14).length;
       const inDesign=vEvts.filter(e=>['In Design'].includes(e.stage)).length;
-      const needsReport=EVENTS.filter(e=>e.venue===v&&e.autoCompleted&&!['Archive','Archived','Cancelled'].includes(e.status)).length;
+      const needsReport=EVENTS.filter(e=>e.venue===v&&e.autoCompleted&&!isActivityReported(e)&&!['Archive','Archived','Cancelled'].includes(e.status)).length;
       const vc=vColor(v);
       return`<div onclick="navToScheduleView('venuemonth')" style="border:1px solid var(--border);border-top:3px solid ${vc.c};border-radius:var(--radius-sm);padding:12px;cursor:pointer" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
         <div style="font-size:11px;font-weight:800;color:${vc.c};margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">${VCODES[i]}</div>
@@ -8134,23 +8139,12 @@ function renderOverview(){
       </div>`;}).join('')
     :'<div class="u-empty">All tasks done ✓</div>';
 
-  // Results snapshot
-  const completed=allEvts.filter(e=>(e.stage==='Done'&&!e.autoCompleted)||e.status==='Complete'||e.status==='Archive'||e.status==='Archived');
-  const totalSpend=completed.reduce((a,e)=>a+(e.actualSpend||0),0);
-  // The saved TicketRevenue (what the Post-Campaign Report records and Finance sums) wins;
-  // tickets × price is only the fallback for activities reported before that field was saved.
-  // Finance and this card still define "completed" differently: see docs/P03_REVIEWS_MARKETING_INTEL.md.
-  const totalRevenue=completed.reduce((a,e)=>a+(e.ticketRevenue||(e.ticketsSold||0)*(e.ticketPrice||0)),0);
-  const supplierFunds=completed.reduce((a,e)=>a+(e.supplierContrib||0),0);
+  // Reporting & Performance — every number comes from computeMarketingKpis() (MKT-02).
   const canSeeFinancials=!!rolePermissions().canViewBudget;
-  document.getElementById('ovResults').innerHTML=canSeeFinancials?`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px">
-      <div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:var(--text)">${completed.length}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Completed</div></div>
-      <div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:var(--accent)">${totalSpend>0?'$'+Math.round(totalSpend/1000)+'k':'—'}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Actual Spend</div></div>
-      <div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:var(--gold)">${totalRevenue>0?'$'+Math.round(totalRevenue/1000)+'k':'—'}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Ticket Revenue</div></div>
-      <div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:#4a6e3e">${supplierFunds>0?'$'+Math.round(supplierFunds/1000)+'k':'—'}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Supplier Funds</div></div>
-    </div>
-  `:`<div style="padding:10px"><div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:var(--text)">${completed.length}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Completed</div></div></div>`;
+  const kpis=computeMarketingKpis(allEvts,{withMoney:canSeeFinancials});
+  document.getElementById('ovResults').innerHTML=`
+    <div class="stats" style="padding:10px;margin-bottom:0;grid-template-columns:repeat(auto-fill,minmax(120px,1fr))">${renderKpiTiles(kpis,canSeeFinancials)}</div>
+    <div class="u-meta" style="padding:0 12px 10px">${escapeAttr(kpiFreshnessLabel(kpis))}${kpis.unreported.length?` · ${kpis.unreported.length} delivered activit${kpis.unreported.length===1?'y needs':'ies need'} a report`:''}</div>`;
 
   renderDashMyPriorities();
   renderDashOverdueBlocked();
@@ -8470,6 +8464,79 @@ function renderWorkload(targetId='workloadBody',limit=0){
 }
 
 // ═══════════════════════════════════════
+// MARKETING KPIs (MKT-01 / MKT-02) — the single definition of every reporting number.
+// The dashboard card and the Finance panel both read from here, so a label means the same thing
+// everywhere. Definitions are in docs/P03_REVIEWS_MARKETING_INTEL.md §5; change them there and here
+// together. Money KPIs are returned only for roles with canViewBudget (still UI-only gating: SAFE-04).
+// ═══════════════════════════════════════
+// K1 "Delivered": decided 11 Nov 2026 (P3-D2) to INCLUDE auto-completed activities — anything past
+// its end date counts as delivered whether or not someone moved it to Done. Cancelled never counts.
+function isActivityDelivered(e){
+  if(['Cancelled','Canceled'].includes(e.status))return false;
+  return e.stage==='Done'||!!e.autoCompleted||['Complete','Archive','Archived'].includes(e.status);
+}
+// K2 "Reported": a saved ReportSubmittedAt, or for activities reported before that column existed,
+// any post-campaign actual on the record.
+function isActivityReported(e){
+  return !!e.reportSubmittedAt||!!(e.actualSpend||e.supplierContrib||e.ticketsSold||e.ticketRevenue||e.redemptions||e.covers);
+}
+// K6 per activity: the saved figure wins; tickets × price only for older reports without one.
+function activityTicketRevenue(e){
+  return e.ticketRevenue||(e.ticketsSold||0)*(e.ticketPrice||0);
+}
+function computeMarketingKpis(events,{withMoney=false}={}){
+  const delivered=events.filter(isActivityDelivered);
+  const reported=delivered.filter(isActivityReported);
+  const ticketed=delivered.filter(e=>e.ticketed&&e.capacity>0);
+  const sum=(arr,fn)=>arr.reduce((a,e)=>a+(fn(e)||0),0);
+  const k={
+    delivered:delivered.length,                                             // K1
+    reported:reported.length,                                               // K2 numerator
+    reportRate:delivered.length?Math.round(reported.length/delivered.length*100):null, // K2
+    unreported:delivered.filter(e=>!isActivityReported(e)),
+    sellThrough:ticketed.length?Math.round(sum(ticketed,e=>e.ticketsSold)/sum(ticketed,e=>e.capacity)*100):null, // K7
+    ticketedCount:ticketed.length,
+    ticketsSold:sum(delivered,e=>e.ticketsSold),
+    redemptions:sum(delivered,e=>e.redemptions),                            // K8
+    covers:sum(delivered,e=>e.covers),                                      // K9 (estimates)
+    loadedAt:ACTIVITIES_LOADED_AT,
+  };
+  if(withMoney){
+    const budget=sum(delivered,e=>e.budget),spend=sum(delivered,e=>e.actualSpend);
+    k.budget=budget;k.spend=spend;
+    k.spendVsBudget=budget>0?Math.round(spend/budget*100):null;            // K4
+    k.netCost=Math.max(spend-sum(delivered,e=>e.supplierContrib),0);        // K5
+    k.supplierFunds=sum(delivered,e=>e.supplierContrib);
+    k.ticketRevenue=sum(delivered,activityTicketRevenue);                   // K6
+  }
+  return k;
+}
+function kpiFreshnessLabel(k){
+  const t=k&&k.loadedAt;
+  if(isPreviewMode)return 'UI preview, not live data';
+  return t?`From SharePoint, as of ${t.toLocaleDateString('en-AU',{day:'numeric',month:'short'})} ${t.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})}`:'Not loaded yet';
+}
+function kpiMoney(v){return v>0?'$'+Math.round(v).toLocaleString():'—';}
+function kpiTile(value,label,sub){
+  return `<div class="stat"><div class="stat-n">${value}</div><div class="stat-l">${label}</div>${sub?`<div class="u-meta" style="margin-top:4px">${sub}</div>`:''}</div>`;
+}
+function renderKpiTiles(k,withMoney){
+  const tiles=[
+    kpiTile(k.delivered,'Delivered'),
+    kpiTile(k.reportRate===null?'—':k.reportRate+'%','Reports done',`${k.reported} of ${k.delivered}`),
+    kpiTile(k.sellThrough===null?'—':k.sellThrough+'%','Ticket sell-through',k.ticketedCount?`${k.ticketsSold.toLocaleString()} tickets, ${k.ticketedCount} ticketed`:'No ticketed activities with capacity'),
+    kpiTile(k.redemptions.toLocaleString(),'Loaded redemptions'),
+    kpiTile(k.covers.toLocaleString(),'Covers (est.)','Estimated on the report form'),
+  ];
+  if(withMoney)tiles.push(
+    kpiTile(k.spendVsBudget===null?'—':k.spendVsBudget+'%','Spend vs budget',`${kpiMoney(k.spend)} of ${kpiMoney(k.budget)}`),
+    kpiTile(kpiMoney(k.netCost),'Net cost to Marlin',`After ${kpiMoney(k.supplierFunds)} supplier funds`),
+    kpiTile(kpiMoney(k.ticketRevenue),'Ticket revenue'),
+  );
+  return tiles.join('');
+}
+
+// ═══════════════════════════════════════
 // POST-CAMPAIGN REPORTING
 // ═══════════════════════════════════════
 let _reportingEventId=null;
@@ -8562,6 +8629,7 @@ async function savePostCampaign(btn){
     const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`;
     const stageRes=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{WorkflowStage:'Done'}})});
     if(!stageRes.ok)throw new Error('HTTP '+stageRes.status);
+    fields.ReportSubmittedAt=toLocalISODate(new Date());
     const{WorkflowStage,...reportFields}=fields;
     const{failed}=await patchImportOptionalFields(url,token,reportFields);
     document.getElementById('reportFormMsg').textContent=failed.length
@@ -10512,24 +10580,17 @@ function renderBudget(){
   // savePostCampaign() actually persists them instead of silently dropping three of the four.
   // Completed activities only, since these numbers are only final once a Post-Campaign Report has
   // been saved.
-  const completed=EVENTS.filter(e=>e.stage==='Done'||e.status==='Complete'||e.status==='Archive'||e.status==='Archived');
-  const totalTickets=completed.reduce((a,e)=>a+(e.ticketsSold||0),0);
-  const totalRevenue=completed.reduce((a,e)=>a+(e.ticketRevenue||0),0);
-  const totalRedemptions=completed.reduce((a,e)=>a+(e.redemptions||0),0);
-  const totalCovers=completed.reduce((a,e)=>a+(e.covers||0),0);
-  document.getElementById('perfStats').innerHTML=`
-    <div class="stat"><div class="stat-n">${completed.length}</div><div class="stat-l">Completed</div></div>
-    <div class="stat"><div class="stat-n">${totalTickets.toLocaleString()}</div><div class="stat-l">Tickets Sold</div></div>
-    <div class="stat"><div class="stat-n">${totalRevenue>0?'$'+Math.round(totalRevenue).toLocaleString():'—'}</div><div class="stat-l">Ticket Revenue</div></div>
-    <div class="stat"><div class="stat-n">${totalRedemptions.toLocaleString()}</div><div class="stat-l">Loaded Redemptions</div></div>
-    <div class="stat"><div class="stat-n">${totalCovers.toLocaleString()}</div><div class="stat-l">Covers / Pax</div></div>
-  `;
+  // Same definitions as the dashboard card: computeMarketingKpis() (MKT-02).
+  const completed=EVENTS.filter(isActivityDelivered);
+  const perfKpis=computeMarketingKpis(EVENTS,{withMoney:!!rolePermissions().canViewBudget});
+  document.getElementById('perfStats').innerHTML=renderKpiTiles(perfKpis,!!rolePermissions().canViewBudget);
+  const perfFresh=document.getElementById('perfFreshness');if(perfFresh)perfFresh.textContent=kpiFreshnessLabel(perfKpis);
   const perfDim=document.getElementById('perfRollupDim')?.value||'venue';
-  const perfRollup=groupRollup(completed,perfDim,()=>0,e=>({tickets:e.ticketsSold||0,revenue:e.ticketRevenue||0,redemptions:e.redemptions||0,covers:e.covers||0}));
+  const perfRollup=groupRollup(completed,perfDim,()=>0,e=>({tickets:e.ticketsSold||0,revenue:activityTicketRevenue(e),redemptions:e.redemptions||0,covers:e.covers||0}));
   const perfRows=perfRollup.sort((a,b)=>b[1].sums.revenue-a[1].sums.revenue||b[1].sums.tickets-a[1].sums.tickets);
   document.getElementById('bPerfRollup').innerHTML=perfRows.length
     ?`<div style="overflow-x:auto"><table class="tbl" style="min-width:520px">
-        <thead><tr><th>${ROLLUP_DIM_LABELS[perfDim]||'Group'}</th><th style="text-align:right">Activities</th><th style="text-align:right">Tickets</th><th style="text-align:right">Revenue</th><th style="text-align:right">Redemptions</th><th style="text-align:right">Covers</th></tr></thead>
+        <thead><tr><th>${ROLLUP_DIM_LABELS[perfDim]||'Group'}</th><th style="text-align:right">Activities</th><th style="text-align:right">Tickets</th><th style="text-align:right">Revenue</th><th style="text-align:right">Redemptions</th><th style="text-align:right">Covers (est.)</th></tr></thead>
         <tbody>${perfRows.map(([name,g])=>`<tr><td>${escapeAttr(name)}</td><td style="text-align:right">${g.count}</td><td style="text-align:right">${g.sums.tickets||'—'}</td><td style="text-align:right">${g.sums.revenue?'$'+Math.round(g.sums.revenue).toLocaleString():'—'}</td><td style="text-align:right">${g.sums.redemptions||'—'}</td><td style="text-align:right">${g.sums.covers||'—'}</td></tr>`).join('')}</tbody>
       </table></div>`
     :'<div style="padding:12px;color:var(--text3);font-size:12px;text-align:center">No completed activities with performance data yet</div>';
@@ -11945,6 +12006,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'TicketRevenue',displayName:'Ticket Revenue',type:'number',purpose:'Post-Campaign Report — captured on the form since before this session but never actually saved until now (confirmed bug fix).'},
   {listKey:'campaigns',name:'Redemptions',displayName:'Redemptions',type:'number',purpose:'Post-Campaign Report — Loaded Rewards redemptions. Same confirmed bug fix as Ticket Revenue.'},
   {listKey:'campaigns',name:'Covers',displayName:'Covers',type:'number',purpose:'Post-Campaign Report — estimated covers/pax. Same confirmed bug fix as Ticket Revenue.'},
+  {listKey:'campaigns',name:'ReportSubmittedAt',displayName:'Report Submitted',type:'date',purpose:'Post-Campaign Report — the date the report was saved. Tells reported activities from unreported ones (KPI K2, "Wrap report needed" alerts).'},
   {listKey:'campaigns',name:'LoadedRewards',displayName:'Loaded Rewards',type:'choice',choices:'Yes',purpose:'Independent Yes/No flag for whether Loaded Rewards is involved — separate from Brand/Business Stream so an activity under a different brand can still have a Loaded component. Only needed if none of LoadedRewards/Loaded Rewards/LoadedRewardsPromo/IsLoaded already exist.'},
   {listKey:'campaigns',name:'EventSeating',displayName:'Event Seating',type:'choice',choices:'Seated, Standing, Table Service, Mixed',purpose:'The seating/setup breakdown for the event.'},
   {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number',purpose:'Groups Activities that belong to one recurring series.'},
@@ -12992,7 +13054,10 @@ function generateNotifications(){
     .forEach(e=>{const key=`appr-${e.id}`;NOTIFS.push({key,icon:'◔',text:`Awaiting approval: ${e.title} · ${e.venue}`,time:'Needs review',color:'var(--blue-bg)',category:'action',unread:!readKeys.includes(key),eventId:e.id});});
 
   // Reporting required
-  EVENTS.filter(e=>isAssignedToMe(e)&&e.stage==='Done'&&e.status!=='Archive'&&e.status!=='Cancelled')
+  // Only activities that ended in the last 60 days: delivered now includes auto-completed ones
+  // (P3-D2), and alerting on every unreported activity from earlier in the year would bury the rest.
+  const reportCutoff=new Date(today);reportCutoff.setDate(reportCutoff.getDate()-60);
+  EVENTS.filter(e=>isAssignedToMe(e)&&isActivityDelivered(e)&&!isActivityReported(e)&&e.status!=='Archive'&&new Date((e.end||e.start)+'T00:00:00')>=reportCutoff)
     .forEach(e=>{const key=`report-${e.id}`;NOTIFS.push({key,icon:'▥',text:`Wrap report needed: ${e.title}`,time:'Post-campaign',color:'var(--purple-bg)',category:'action',unread:!readKeys.includes(key),eventId:e.id});});
 
   // POS pending on upcoming campaigns
