@@ -10727,6 +10727,7 @@ async function refreshMyWork(){
 // anyone else. Personal Tasks keep their own real Sequence-backed drag-reorder on the Personal
 // Tasks page untouched; this board is a separate, local organising layer on top of both sources.
 let _mwTab='today';
+let _mwMenuKey=null; // key of the row whose ⋯ action menu is open (My Work Plan 2.5), one at a time
 const MW_DEFAULT_BUCKETS=[
   {id:'_blocked',name:'Needs a decision',why:'Blocked and waiting on you. Smallest list, biggest effect.',mark:'!',color:'#a64a24'},
   {id:'_overdue',name:'Overdue',why:'Past their due date and not done.',mark:'●',color:'#a64a24'},
@@ -10941,6 +10942,15 @@ function renderMyWork(){
       const completeCb=t.kind==='activity'
         ?`<span class="task-cb" style="visibility:hidden"></span>`
         :`<div class="task-cb ${done?'done':''}" onclick="event.stopPropagation();mwToggleComplete('${t.kind}','${t.id}')" title="${done?'Mark not done':'Mark complete'}">${done?'✓':''}</div>`;
+      // My Work Plan 2.5 — act on a row without opening it. Shared rows the signed-in user can't
+      // edit (canEditTeamTask) get the ⋯ trigger itself disabled, with a tooltip, rather than an
+      // openable menu whose actions would just fail — the same "don't offer what will be refused"
+      // principle as the rest of this app's permission gating.
+      const sharedLocked=t.kind==='shared'&&!canEditTeamTask(t);
+      const menuBtn=sharedLocked
+        ?`<button class="tb-btn" disabled title="You don't have permission to edit this task" style="font-size:11px;opacity:.45;cursor:not-allowed;flex-shrink:0" onclick="event.stopPropagation()">⋯</button>`
+        :`<button class="tb-btn" title="More actions" onclick="event.stopPropagation();mwToggleRowMenu('${t.key}')" style="font-size:11px;flex-shrink:0">⋯</button>`;
+      const menuPanel=(!sharedLocked&&_mwMenuKey===t.key)?mwRowMenuHtml(t):'';
       return`<div draggable="true" ondragstart="mwDragStart(event,'${t.key}')" ondragend="mwDragEnd(event)" ondragover="mwDragOverRow(event)" ondrop="mwDropOnRow(event,'${bucket.id}','${t.key}')" onclick="mwOpenItem('${t.key}')" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-top:1px solid var(--border);cursor:pointer">
         <span style="color:#aab3cd;font-size:11px;cursor:grab;flex-shrink:0" title="Drag to move">⠿</span>
         ${completeCb}
@@ -10956,7 +10966,8 @@ function renderMyWork(){
         </div>
         ${t.priority?`<span class="tag ${priTag[t.priority]||'t-gr'}" style="flex-shrink:0">${escapeAttr(t.priority)}</span>`:''}
         <span style="font-family:var(--font-sans);font-variant-numeric:tabular-nums;font-size:10px;color:${late?'var(--red)':'var(--text3)'};font-weight:${late?'700':'400'};flex-shrink:0;min-width:44px;text-align:right">${t.due?escapeAttr(fmtShort(t.due)):'—'}</span>
-      </div>`;
+        ${menuBtn}
+      </div>${menuPanel}`;
     }).join('');
     return`<div ondragover="mwDragOverBucket(event)" ondrop="mwDropOnBucket(event,'${bucket.id}')" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden">
       <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--surface2)">
@@ -11043,6 +11054,99 @@ function mwDropOnToday(e,slotIndex){
   saveMyWorkPrefs(prefs);renderMyWork();
 }
 function mwClearTodaySlot(i){const prefs=loadMyWorkPrefs();if(prefs.today)prefs.today[i]=null;saveMyWorkPrefs(prefs);renderMyWork();}
+
+// ── My Work Plan 2.5 — act on a row without opening it ─────────────────────────────────────────
+function mwToggleRowMenu(key){_mwMenuKey=_mwMenuKey===key?null:key;renderMyWork();}
+function mwRowMenuHtml(t){
+  const kind=t.kind,id=t.id,pinned=(loadMyWorkPrefs().today||[]).includes(t.key);
+  const pinBtn=`<button class="tb-btn" style="font-size:11px" onclick="event.stopPropagation();mwTogglePinToday('${t.key}')">${pinned?"Unpin from Today's 3":"Pin to Today's 3"}</button>`;
+  if(kind==='activity'){
+    return`<div onclick="event.stopPropagation()" style="padding:10px 12px 12px 34px;border-top:1px solid var(--border);background:var(--surface2);display:flex;gap:5px;flex-wrap:wrap">
+      <button class="tb-btn" style="font-size:11px" onclick="event.stopPropagation();mwOpenItem('${t.key}')">Open activity</button>
+      ${pinBtn}
+    </div>`;
+  }
+  // Personal and Shared rows get the same set of quick actions — Priority, Due, Blocked/Unblock,
+  // Pin — since both lists have the same fields (see Phase 1.4 for Personal's Status choices;
+  // Shared's Status has never offered more than Not Started/Done in its own form, but the write
+  // here is attempted the same optimistic, fail-safe way as every other save in this app: flip,
+  // show it, roll back and say so if SharePoint actually rejects it — not pre-guessed and blocked.
+  const priorities=['Critical','High','Medium','Low',''];
+  const isSubtask=kind==='personal'&&!!t.parentId;
+  const canConvert=kind==='personal'&&t.status!=='Converted'&&!isSubtask;
+  return`<div onclick="event.stopPropagation()" style="padding:10px 12px 12px 34px;border-top:1px solid var(--border);background:var(--surface2)">
+    <div style="margin-bottom:8px">
+      <div class="u-meta" style="margin-bottom:4px">Priority</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">${priorities.map(p=>`<button class="tb-btn ${t.priority===p?'p':''}" style="font-size:11px" onclick="event.stopPropagation();mwSetPriority('${kind}','${id}','${p}')">${p||'None'}</button>`).join('')}</div>
+    </div>
+    <div style="margin-bottom:8px">
+      <div class="u-meta" style="margin-bottom:4px">Due</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+        <button class="tb-btn" style="font-size:11px" onclick="event.stopPropagation();mwQuickDue('${kind}','${id}','today')">Today</button>
+        <button class="tb-btn" style="font-size:11px" onclick="event.stopPropagation();mwQuickDue('${kind}','${id}','tomorrow')">Tomorrow</button>
+        <button class="tb-btn" style="font-size:11px" onclick="event.stopPropagation();mwQuickDue('${kind}','${id}','monday')">Next Monday</button>
+        <input type="date" value="${t.due||''}" onclick="event.stopPropagation()" onchange="event.stopPropagation();mwSetDue('${kind}','${id}',this.value)" style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text)">
+        <button class="tb-btn" style="font-size:11px" onclick="event.stopPropagation();mwSetDue('${kind}','${id}','')">Clear</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap">
+      <button class="tb-btn" style="font-size:11px" onclick="event.stopPropagation();mwSetBlocked('${kind}','${id}',${t.status!=='Blocked'})">${t.status==='Blocked'?'Unblock':'Mark Blocked'}</button>
+      ${pinBtn}
+      ${canConvert?`<button class="tb-btn" style="font-size:11px" onclick="event.stopPropagation();convertPersonalTaskToShared('${id}')">→ Shared</button>`:''}
+    </div>
+  </div>`;
+}
+function mwTogglePinToday(key){
+  const prefs=loadMyWorkPrefs();
+  const arr=prefs.today||(prefs.today=[null,null,null]);
+  _mwMenuKey=null;
+  const idx=arr.indexOf(key);
+  if(idx!==-1){
+    arr[idx]=null;
+  }else{
+    const emptyIdx=arr.indexOf(null);
+    if(emptyIdx!==-1)arr[emptyIdx]=key;
+    else{
+      if(!confirm("Today's 3 is already full — replace the first slot with this task?")){renderMyWork();return;}
+      arr[0]=key;
+    }
+  }
+  prefs.today=arr;
+  saveMyWorkPrefs(prefs);renderMyWork();
+}
+// Shared by the Priority/Due/Blocked row-menu actions — one optimistic write path for both
+// kind:'personal' and kind:'shared' rows, same flip-render-then-await-rollback-on-failure pattern
+// as 1.2's toggleTask/togglePersonalTask. memValue is what the in-memory item property becomes
+// immediately (e.g. a plain due date); writeValue is what actually goes to SharePoint (e.g. that
+// date plus a time component) when the two need to differ.
+async function mwPatchTaskField(kind,id,prop,field,memValue,writeValue){
+  const list=kind==='personal'?PERSONAL_TASKS:MY_TASKS;
+  const task=list.find(t=>String(t.id)===String(id));if(!task)return;
+  if(kind==='shared'&&!canEditTeamTask(task)){alert('You do not have permission to edit this task.');return;}
+  const listId=kind==='personal'?LIST_IDS.personalTasks:LIST_IDS.myTasks;
+  const old=task[prop];task[prop]=memValue;
+  renderMyWork();
+  try{
+    if(listId&&!isPreviewMode&&!(kind==='personal'&&String(id).startsWith('PT-'))){
+      const token=await getToken(true);
+      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${listId}/items/${id}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{[field]:writeValue}})});
+      if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+    }
+  }catch(e){
+    task[prop]=old;
+    renderMyWork();
+    alert('Could not save that change: '+e.message);
+  }
+}
+function mwSetPriority(kind,id,value){_mwMenuKey=null;mwPatchTaskField(kind,id,'priority','Priority',value,value);}
+function mwSetDue(kind,id,dateStr){_mwMenuKey=null;mwPatchTaskField(kind,id,'due','DueDate',dateStr||'',dateStr?dateStr+'T12:00:00Z':null);}
+function mwSetBlocked(kind,id,blocked){_mwMenuKey=null;mwPatchTaskField(kind,id,'status','Status',blocked?'Blocked':'Not Started',blocked?'Blocked':'Not Started');}
+function mwQuickDue(kind,id,which){
+  const d=new Date();
+  if(which==='tomorrow')d.setDate(d.getDate()+1);
+  else if(which==='monday'){const day=d.getDay();d.setDate(d.getDate()+(((1-day+7)%7)||7));}
+  mwSetDue(kind,id,toLocalISODate(d));
+}
 
 function renderMyWorkIfVisible(){
   if(document.getElementById('p-mywork')?.classList.contains('active'))renderMyWork();
@@ -11757,7 +11861,7 @@ async function savePersonalTask(){
 // exists). Idempotent: see the ConvertedFromPersonalTaskId check below.
 async function convertPersonalTaskToShared(taskId){
   const task=PERSONAL_TASKS.find(t=>String(t.id)===String(taskId));if(!task)return;
-  if(!LIST_IDS.myTasks){alert('Shared Work Items list isn\'t connected yet.');return;}
+  if(!LIST_IDS.myTasks&&!isPreviewMode){alert('Shared Work Items list isn\'t connected yet.');return;}
   // Idempotency: the Shared Task created below always carries ConvertedFromPersonalTaskId, written in
   // the SAME create call as the task itself. That's the authoritative check — not this Personal Task's
   // own Status — because Status is exactly the field whose later patch-back can fail while the shared
@@ -11771,22 +11875,27 @@ async function convertPersonalTaskToShared(taskId){
       return;
     }
     if(!confirm(`"${task.title}" was already converted to the shared task "${existingShared.title}" — only this record's own "converted" marker failed to save last time. Mark it now? (No new shared task will be created.)`))return;
-    const token=await getToken(true);
+    const token=isPreviewMode?null:await getToken(true);
     await finishPersonalTaskConversion(task,existingShared,token);
     return;
   }
   if(!confirm(`Convert "${task.title}" into a shared task? It will appear in the team's My Tasks. This record stays here, marked as converted.`))return;
   try{
-    const token=await getToken(true);
     const linkedEvent=task.linkedActivityId?EVENTS.find(e=>String(e.id)===String(task.linkedActivityId)):null;
-    const fields={Title:task.title,Status:'Not Started',ConvertedFromPersonalTaskId:Number(task.id)};
-    if(task.priority)fields.Priority=task.priority;
-    if(task.notes)fields.Notes=task.notes;
-    if(task.due)fields.DueDate=task.due+'T12:00:00Z';
-    if(linkedEvent?.spId)fields.CampaignLookupId=Number(linkedEvent.spId);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
-    if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
-    const created=await res.json();
+    let created={id:'T-'+Date.now()},token=null;
+    // Preview Mode has no real session (msalApp is never initialised there) — same as every other
+    // write in this app, stay purely in-memory rather than calling getToken()/fetch at all.
+    if(!isPreviewMode){
+      token=await getToken(true);
+      const fields={Title:task.title,Status:'Not Started',ConvertedFromPersonalTaskId:Number(task.id)};
+      if(task.priority)fields.Priority=task.priority;
+      if(task.notes)fields.Notes=task.notes;
+      if(task.due)fields.DueDate=task.due+'T12:00:00Z';
+      if(linkedEvent?.spId)fields.CampaignLookupId=Number(linkedEvent.spId);
+      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+      if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+      created=await res.json();
+    }
     const newShared={id:created.id,title:task.title,status:'Not Started',priority:task.priority||'',category:'',due:task.due,notes:task.notes||'',blocker:'',assignedTo:'',campaignLookup:linkedEvent?.title||'',campaignLookupId:linkedEvent?.spId?String(linkedEvent.spId):'',convertedFromPersonalTaskId:String(task.id)};
     MY_TASKS.push(newShared);
     await finishPersonalTaskConversion(task,newShared,token);
@@ -11800,18 +11909,31 @@ async function finishPersonalTaskConversion(task,sharedTask,token){
   const tag=`[Converted to shared task — see My Tasks: "${sharedTask.title}"]`;
   const newNotes=task.notes&&task.notes.includes(tag)?task.notes:(task.notes?`${task.notes}\n\n${tag}`:tag);
   try{
-    const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${task.id}`,token,{Status:'Converted',Notes:newNotes});
-    const statusFailed=result.failed.find(f=>f.field==='Status');
-    if(statusFailed){
-      renderPersonalTasks();
-      alert(`The shared task "${sharedTask.title}" exists, but marking this record as converted failed (${statusFailed.error||'unknown error'}). The "→ Shared" button will stay visible — clicking it again is safe and will reuse this same shared task rather than creating a new one.`);
-    }else{
-      task.status='Converted';task.notes=newNotes;
-      renderPersonalTasks();
-      if(typeof showToast==='function')showToast(`"${task.title}" is now a shared task.`);
+    // Preview Mode, and a Personal Task never synced to SharePoint (local-only "PT-" id), have
+    // nothing to patch back — same convention as togglePersonalTask()/mwPatchTaskField.
+    if(!isPreviewMode&&LIST_IDS.personalTasks&&!String(task.id).startsWith('PT-')){
+      const result=await patchImportOptionalFields(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.personalTasks}/items/${task.id}`,token,{Status:'Converted',Notes:newNotes});
+      const statusFailed=result.failed.find(f=>f.field==='Status');
+      if(statusFailed){
+        renderPersonalTasks();renderMyWorkIfVisible();
+        alert(`The shared task "${sharedTask.title}" exists, but marking this record as converted failed (${statusFailed.error||'unknown error'}). The "→ Shared" button will stay visible — clicking it again is safe and will reuse this same shared task rather than creating a new one.`);
+        if(!sharedTask.assignedTo){
+          const warn=`Heads up: the shared task "${sharedTask.title}" has no assignee yet — open My Tasks to assign someone.`;
+          if(typeof showToast==='function')showToast(warn);else alert(warn);
+        }
+        return;
+      }
     }
+    task.status='Converted';task.notes=newNotes;
+    renderPersonalTasks();renderMyWorkIfVisible();
+    if(typeof showToast==='function')showToast(`"${task.title}" is now a shared task.`);
+    if(!sharedTask.assignedTo){
+      const warn=`Heads up: the shared task "${sharedTask.title}" has no assignee yet — open My Tasks to assign someone.`;
+      if(typeof showToast==='function')showToast(warn);else alert(warn);
+    }
+    return;
   }catch(e){
-    renderPersonalTasks();
+    renderPersonalTasks();renderMyWorkIfVisible();
     alert(`The shared task "${sharedTask.title}" exists, but marking this record as converted failed: ${e.message}. Clicking "→ Shared" again is safe and will reuse this same shared task.`);
   }
   if(!sharedTask.assignedTo){
