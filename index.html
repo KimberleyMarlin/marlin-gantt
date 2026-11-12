@@ -971,7 +971,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
       <div class="dash-widget" data-widget="reportrequired" style="margin-bottom:12px">
         <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
         <details class="dash-card" open>
-          <summary class="card-h"><span class="card-title">Reporting Required</span></summary>
+          <summary class="card-h"><span class="card-title">Reporting &amp; Performance</span></summary>
           <div id="ovResults"><div class="loading"><div class="spinner"></div></div></div>
         </details>
       </div>
@@ -1434,10 +1434,11 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
         <div class="form-grid">
           <div class="form-group report-financial"><label class="form-label">Actual Spend ($)</label><input class="form-input" id="rActualSpend" type="number" step="0.01" placeholder="0.00"></div>
           <div class="form-group report-financial"><label class="form-label">Supplier Contribution ($)</label><input class="form-input" id="rSupplierContrib" type="number" step="0.01" placeholder="0.00"></div>
-          <div class="form-group"><label class="form-label">Tickets Sold</label><input class="form-input" id="rTicketsSold" type="number" placeholder="0"></div>
-          <div class="form-group report-financial"><label class="form-label">Ticket Revenue ($)</label><input class="form-input" id="rTicketRevenue" type="number" step="0.01" placeholder="Auto-calculated if left blank"></div>
-          <div class="form-group"><label class="form-label">Loaded Redemptions</label><input class="form-input" id="rRedemptions" type="number" placeholder="0"></div>
+          <div class="form-group report-ticketed"><label class="form-label">Tickets Sold</label><input class="form-input" id="rTicketsSold" type="number" placeholder="0"></div>
+          <div class="form-group report-financial report-ticketed"><label class="form-label">Ticket Revenue ($)</label><input class="form-input" id="rTicketRevenue" type="number" step="0.01" placeholder="Auto-calculated if left blank"></div>
+          <div class="form-group report-loaded"><label class="form-label">Loaded Redemptions</label><input class="form-input" id="rRedemptions" type="number" placeholder="0"></div>
           <div class="form-group"><label class="form-label">Estimated Covers / Pax</label><input class="form-input" id="rCovers" type="number" placeholder="0"></div>
+          <div class="form-group full" id="rChannelWrap"><label class="form-label">Channel results</label><div class="field-help" style="margin:0 0 8px">For the channels this activity used. Type in what the platform reports; leave blank if you don't have it.</div><div id="rChannelFields"></div></div>
           <div class="form-group full"><label class="form-label">What worked?</label><textarea class="form-textarea" id="rWorked" placeholder="Key wins, strong performing channels, positive feedback…" style="min-height:60px"></textarea></div>
           <div class="form-group full"><label class="form-label">What to improve next time?</label><textarea class="form-textarea" id="rImprove" placeholder="What would you change, what was missing, what didn't land…" style="min-height:60px"></textarea></div>
         </div>
@@ -1514,7 +1515,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
            four. Completed activities only, since these numbers are only final once a
            Post-Campaign Report has been saved. -->
       <div class="form-section-head" style="margin-top:20px">Campaign Performance</div>
-      <div class="field-help" style="margin-bottom:10px">Completed activities only — these numbers are only final once a Post-Campaign Report has been saved.</div>
+      <div class="field-help" style="margin-bottom:10px">Delivered activities (past their end date or marked Done). Numbers are only final once a Post-Campaign Report has been saved. <span id="perfFreshness"></span></div>
       <div class="stats" id="perfStats" style="margin-bottom:12px"></div>
       <div class="card">
         <div class="card-h" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
@@ -4501,6 +4502,7 @@ function busynessTextColor(level){
 // ═══════════════════════════════════════
 let msalApp=null,isAuthed=false,currentUser=null,currentUserEmail='',isPreviewMode=false;
 let EVENTS=[],MY_TASKS=[],PERSONAL_TASKS=[],PROJECTS=[],SPONSORSHIPS=[];
+let ACTIVITIES_LOADED_AT=null; // set by loadAll(); drives the freshness label on every KPI (MKT-02)
 let PERSONAL_TASKS_ERROR='';
 let personalTaskSelected=new Set(),personalTaskExpanded=new Set();
 const TASK_SHARING_ENABLED=true;
@@ -4950,6 +4952,7 @@ async function loadAll(){
   await loadM365Users();
   await loadAllComments();
   await loadHubUserPrefs();
+  ACTIVITIES_LOADED_AT=new Date();
   SPONSORSHIPS=[...STATIC_SPONSORSHIPS];
   updateAdminImportVisibility();
   generateNotifications();
@@ -5638,6 +5641,12 @@ async function loadCampaigns(){
         ticketRevenue:parseFloat(f.TicketRevenue||0),
         redemptions:parseInt(f.Redemptions||0),
         covers:parseInt(f.Covers||0),
+        // Set by savePostCampaign(). Empty on activities reported before the column existed;
+        // isActivityReported() falls back to "any actual saved" for those.
+        reportSubmittedAt:f.ReportSubmittedAt?String(f.ReportSubmittedAt).split('T')[0]:'',
+        reportWorked:f.ReportWorked||'',
+        reportImprove:f.ReportImprove||'',
+        channelResults:parseChannelResults(f.ChannelResults),
         // Ticketing — also true for an activity saved under the old EventFormat="Ticketed Event"
         // value, from before Ticketed? became its own field, so nothing already marked ticketed
         // loses that status just because Event Format no longer offers it as a choice.
@@ -8084,7 +8093,7 @@ function renderOverview(){
 
   // Needs action — approvals + blocked + overdue briefs
   const needsAction=[];
-  EVENTS.filter(e=>e.autoCompleted&&!['Archive','Archived','Cancelled'].includes(e.status)).slice(0,3).forEach(e=>needsAction.push({icon:'▥',text:e.title,sub:'Report required — ended '+fmtShort(e.end),urgent:false,click:`showPop(${e.id})`}));
+  EVENTS.filter(e=>e.autoCompleted&&!isActivityReported(e)&&!['Archive','Archived','Cancelled'].includes(e.status)).slice(0,3).forEach(e=>needsAction.push({icon:'▥',text:e.title,sub:'Report required — ended '+fmtShort(e.end),urgent:false,click:`showPop(${e.id})`}));
   MY_TASKS.filter(t=>t.status==='Blocked').slice(0,3).forEach(t=>needsAction.push({icon:'⊘',text:t.title,sub:'Blocked task',urgent:true,click:`openEditTask('${t.id}')`}));
   document.getElementById('ovNeedsAction').innerHTML=needsAction.length
     ?needsAction.slice(0,6).map(n=>`<div onclick="${n.click}" style="display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border-bottom:0.5px solid var(--border);cursor:pointer">
@@ -8137,7 +8146,7 @@ function renderOverview(){
       const liveNow=vEvts.filter(e=>e.stage==='Live').length;
       const upcoming7=vEvts.filter(e=>new Date(e.start+'T00:00:00')>=today&&new Date(e.start+'T00:00:00')<=in14).length;
       const inDesign=vEvts.filter(e=>['In Design'].includes(e.stage)).length;
-      const needsReport=EVENTS.filter(e=>e.venue===v&&e.autoCompleted&&!['Archive','Archived','Cancelled'].includes(e.status)).length;
+      const needsReport=EVENTS.filter(e=>e.venue===v&&e.autoCompleted&&!isActivityReported(e)&&!['Archive','Archived','Cancelled'].includes(e.status)).length;
       const vc=vColor(v);
       return`<div onclick="navToScheduleView('venuemonth')" style="border:1px solid var(--border);border-top:3px solid ${vc.c};border-radius:var(--radius-sm);padding:12px;cursor:pointer" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
         <div style="font-size:11px;font-weight:800;color:${vc.c};margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">${VCODES[i]}</div>
@@ -8167,20 +8176,12 @@ function renderOverview(){
       </div>`;}).join('')
     :'<div class="u-empty">All tasks done ✓</div>';
 
-  // Results snapshot
-  const completed=allEvts.filter(e=>(e.stage==='Done'&&!e.autoCompleted)||e.status==='Complete'||e.status==='Archive'||e.status==='Archived');
-  const totalSpend=completed.reduce((a,e)=>a+(e.actualSpend||0),0);
-  const totalRevenue=completed.reduce((a,e)=>a+(e.ticketsSold||0)*(e.ticketPrice||0),0);
-  const supplierFunds=completed.reduce((a,e)=>a+(e.supplierContrib||0),0);
+  // Reporting & Performance — every number comes from computeMarketingKpis() (MKT-02).
   const canSeeFinancials=!!rolePermissions().canViewBudget;
-  document.getElementById('ovResults').innerHTML=canSeeFinancials?`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px">
-      <div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:var(--text)">${completed.length}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Completed</div></div>
-      <div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:var(--accent)">${totalSpend>0?'$'+Math.round(totalSpend/1000)+'k':'—'}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Actual Spend</div></div>
-      <div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:var(--gold)">${totalRevenue>0?'$'+Math.round(totalRevenue/1000)+'k':'—'}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Ticket Revenue</div></div>
-      <div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:#4a6e3e">${supplierFunds>0?'$'+Math.round(supplierFunds/1000)+'k':'—'}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Supplier Funds</div></div>
-    </div>
-  `:`<div style="padding:10px"><div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:var(--text)">${completed.length}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Completed</div></div></div>`;
+  const kpis=computeMarketingKpis(allEvts,{withMoney:canSeeFinancials});
+  document.getElementById('ovResults').innerHTML=`
+    <div class="stats" style="padding:10px;margin-bottom:0;grid-template-columns:repeat(auto-fill,minmax(120px,1fr))">${renderKpiTiles(kpis,canSeeFinancials)}</div>
+    <div class="u-meta" style="padding:0 12px 10px">${escapeAttr(kpiFreshnessLabel(kpis))}${kpis.unreported.length?` · ${kpis.unreported.length} delivered activit${kpis.unreported.length===1?'y needs':'ies need'} a report`:''}</div>`;
 
   renderDashMyPriorities();
   renderDashOverdueBlocked();
@@ -8500,6 +8501,79 @@ function renderWorkload(targetId='workloadBody',limit=0){
 }
 
 // ═══════════════════════════════════════
+// MARKETING KPIs (MKT-01 / MKT-02) — the single definition of every reporting number.
+// The dashboard card and the Finance panel both read from here, so a label means the same thing
+// everywhere. Definitions are in docs/P03_REVIEWS_MARKETING_INTEL.md §5; change them there and here
+// together. Money KPIs are returned only for roles with canViewBudget (still UI-only gating: SAFE-04).
+// ═══════════════════════════════════════
+// K1 "Delivered": decided 11 Nov 2026 (P3-D2) to INCLUDE auto-completed activities — anything past
+// its end date counts as delivered whether or not someone moved it to Done. Cancelled never counts.
+function isActivityDelivered(e){
+  if(['Cancelled','Canceled'].includes(e.status))return false;
+  return e.stage==='Done'||!!e.autoCompleted||['Complete','Archive','Archived'].includes(e.status);
+}
+// K2 "Reported": a saved ReportSubmittedAt, or for activities reported before that column existed,
+// any post-campaign actual on the record.
+function isActivityReported(e){
+  return !!e.reportSubmittedAt||!!(e.actualSpend||e.supplierContrib||e.ticketsSold||e.ticketRevenue||e.redemptions||e.covers||e.reportWorked||e.reportImprove)||Object.keys(e.channelResults||{}).length>0;
+}
+// K6 per activity: the saved figure wins; tickets × price only for older reports without one.
+function activityTicketRevenue(e){
+  return e.ticketRevenue||(e.ticketsSold||0)*(e.ticketPrice||0);
+}
+function computeMarketingKpis(events,{withMoney=false}={}){
+  const delivered=events.filter(isActivityDelivered);
+  const reported=delivered.filter(isActivityReported);
+  const ticketed=delivered.filter(e=>e.ticketed&&e.capacity>0);
+  const sum=(arr,fn)=>arr.reduce((a,e)=>a+(fn(e)||0),0);
+  const k={
+    delivered:delivered.length,                                             // K1
+    reported:reported.length,                                               // K2 numerator
+    reportRate:delivered.length?Math.round(reported.length/delivered.length*100):null, // K2
+    unreported:delivered.filter(e=>!isActivityReported(e)),
+    sellThrough:ticketed.length?Math.round(sum(ticketed,e=>e.ticketsSold)/sum(ticketed,e=>e.capacity)*100):null, // K7
+    ticketedCount:ticketed.length,
+    ticketsSold:sum(delivered,e=>e.ticketsSold),
+    redemptions:sum(delivered,e=>e.redemptions),                            // K8
+    covers:sum(delivered,e=>e.covers),                                      // K9 (estimates)
+    loadedAt:ACTIVITIES_LOADED_AT,
+  };
+  if(withMoney){
+    const budget=sum(delivered,e=>e.budget),spend=sum(delivered,e=>e.actualSpend);
+    k.budget=budget;k.spend=spend;
+    k.spendVsBudget=budget>0?Math.round(spend/budget*100):null;            // K4
+    k.netCost=Math.max(spend-sum(delivered,e=>e.supplierContrib),0);        // K5
+    k.supplierFunds=sum(delivered,e=>e.supplierContrib);
+    k.ticketRevenue=sum(delivered,activityTicketRevenue);                   // K6
+  }
+  return k;
+}
+function kpiFreshnessLabel(k){
+  const t=k&&k.loadedAt;
+  if(isPreviewMode)return 'UI preview, not live data';
+  return t?`From SharePoint, as of ${t.toLocaleDateString('en-AU',{day:'numeric',month:'short'})} ${t.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})}`:'Not loaded yet';
+}
+function kpiMoney(v){return v>0?'$'+Math.round(v).toLocaleString():'—';}
+function kpiTile(value,label,sub){
+  return `<div class="stat"><div class="stat-n">${value}</div><div class="stat-l">${label}</div>${sub?`<div class="u-meta" style="margin-top:4px">${sub}</div>`:''}</div>`;
+}
+function renderKpiTiles(k,withMoney){
+  const tiles=[
+    kpiTile(k.delivered,'Delivered'),
+    kpiTile(k.reportRate===null?'—':k.reportRate+'%','Reports done',`${k.reported} of ${k.delivered}`),
+    kpiTile(k.sellThrough===null?'—':k.sellThrough+'%','Ticket sell-through',k.ticketedCount?`${k.ticketsSold.toLocaleString()} tickets, ${k.ticketedCount} ticketed`:'No ticketed activities with capacity'),
+    kpiTile(k.redemptions.toLocaleString(),'Loaded redemptions'),
+    kpiTile(k.covers.toLocaleString(),'Covers (est.)','Estimated on the report form'),
+  ];
+  if(withMoney)tiles.push(
+    kpiTile(k.spendVsBudget===null?'—':k.spendVsBudget+'%','Spend vs budget',`${kpiMoney(k.spend)} of ${kpiMoney(k.budget)}`),
+    kpiTile(kpiMoney(k.netCost),'Net cost to Marlin',`After ${kpiMoney(k.supplierFunds)} supplier funds`),
+    kpiTile(kpiMoney(k.ticketRevenue),'Ticket revenue'),
+  );
+  return tiles.join('');
+}
+
+// ═══════════════════════════════════════
 // POST-CAMPAIGN REPORTING
 // ═══════════════════════════════════════
 let _reportingEventId=null;
@@ -8512,17 +8586,114 @@ function openPostCampaign(evId){
   document.querySelectorAll('#postCampaignOv .report-financial').forEach(el=>el.style.display=canSeeFinancials?'':'none');
   const title=document.getElementById('reportCampaignTitle');
   if(title)title.textContent=ev.title+' · '+ev.venue;
-  // Pre-fill existing actuals
-  const fields=['rActualSpend','rSupplierContrib','rTicketsSold','rRedemptions'];
-  fields.forEach(f=>{ const el=document.getElementById(f);if(el)el.value=''; });
-  if(ev.actualSpend)document.getElementById('rActualSpend').value=ev.actualSpend;
-  if(ev.supplierContrib)document.getElementById('rSupplierContrib').value=ev.supplierContrib;
-  if(ev.ticketsSold)document.getElementById('rTicketsSold').value=ev.ticketsSold;
+  // Reset every input, then pre-fill this activity's saved actuals. Previously only four inputs
+  // were cleared, so Ticket Revenue, Covers and the two notes carried over from the last report
+  // opened, and saving would write them onto this activity (the notes into its Description).
+  const prefill={rActualSpend:ev.actualSpend,rSupplierContrib:ev.supplierContrib,rTicketsSold:ev.ticketsSold,rTicketRevenue:ev.ticketRevenue,rRedemptions:ev.redemptions,rCovers:ev.covers,rWorked:ev.reportWorked||legacyReportNotes(ev.description).worked,rImprove:ev.reportImprove||legacyReportNotes(ev.description).improve};
+  // Only ask what fits this activity: ticket fields for ticketed activities, redemptions for Loaded
+  // ones. A field that already holds a saved figure always shows, so nothing saved is hidden.
+  const showTickets=ev.ticketed||!!ev.ticketsSold||!!ev.ticketRevenue;
+  const showLoaded=ev.loadedRewards||!!ev.redemptions;
+  document.querySelectorAll('#postCampaignOv .report-ticketed').forEach(el=>el.style.display=showTickets?'':'none');
+  document.querySelectorAll('#postCampaignOv .report-loaded').forEach(el=>el.style.display=showLoaded?'':'none');
+  document.querySelectorAll('#postCampaignOv .report-financial.report-ticketed').forEach(el=>el.style.display=showTickets&&canSeeFinancials?'':'none');
+  renderReportChannelFields(ev);
+  Object.entries(prefill).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v||'';});
+  const msg=document.getElementById('reportFormMsg');if(msg){msg.textContent='';msg.className='form-msg';}
+  const roiDiv=document.getElementById('roiCalc');if(roiDiv)roiDiv.style.display='none';
   document.getElementById('postCampaignOv').classList.add('show');
-  // Live ROI calc
+  // Live ROI calc. Bound once: the old code added another listener every time the form opened.
   ['rActualSpend','rSupplierContrib','rTicketsSold','rTicketRevenue','rRedemptions','rCovers'].forEach(id=>{
-    const el=document.getElementById(id);if(el)el.addEventListener('input',calcROI);
+    const el=document.getElementById(id);if(el&&!el.dataset.roiBound){el.addEventListener('input',calcROI);el.dataset.roiBound='1';}
   });
+  calcROI();
+}
+
+// Columns the Post-Campaign Report writes that may not exist on older lists. Created on an
+// admin's first save (see savePostCampaign) or from Admin & Schema.
+const REPORT_COLUMN_DEFS={
+  ReportSubmittedAt:{name:'ReportSubmittedAt',displayName:'Report Submitted',dateTime:{format:'dateOnly'}},
+  ReportWorked:{name:'ReportWorked',displayName:'Report: What Worked',text:{allowMultipleLines:true}},
+  ReportImprove:{name:'ReportImprove',displayName:'Report: To Improve',text:{allowMultipleLines:true}},
+  ChannelResults:{name:'ChannelResults',displayName:'Channel Results',text:{allowMultipleLines:true}},
+};
+// Creates one report column on Marketing & Activations 2026. "Already exists" counts as success.
+async function ensureReportColumn(token,name){
+  const def=REPORT_COLUMN_DEFS[name];if(!def)return{ok:false,error:'Unknown column '+name};
+  try{
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/columns`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(def)});
+    if(res.ok)return{ok:true};
+    const text=await res.text();
+    if(res.status===409||/already exists|duplicate/i.test(text))return{ok:true};
+    return{ok:false,error:`HTTP ${res.status}: ${text}`};
+  }catch(e){return{ok:false,error:e.message};}
+}
+
+// Channel results: which numbers to ask for, per channel. Keys match the Channels values set on
+// Submit. Channels not listed here (In-venue, Radio, Loaded) have no platform numbers to type in.
+const CHANNEL_RESULT_METRICS={
+  'Meta':[['reach','Reach'],['clicks','Link clicks']],
+  'Google Ads':[['impressions','Impressions'],['clicks','Clicks']],
+  'Newsletter':[['sent','Sent'],['opens','Opens'],['clicks','Clicks']],
+  'Website':[['visits','Page visits']],
+  'SMS':[['sent','Sent'],['clicks','Clicks']],
+  'Google Business Profile':[['views','Views']],
+};
+function reportChannelsFor(ev){
+  const used=(ev.channels||[]).filter(c=>CHANNEL_RESULT_METRICS[c]);
+  Object.keys(ev.channelResults||{}).forEach(c=>{if(CHANNEL_RESULT_METRICS[c]&&!used.includes(c))used.push(c);});
+  return used;
+}
+function renderReportChannelFields(ev){
+  const box=document.getElementById('rChannelFields');if(!box)return;
+  const chans=reportChannelsFor(ev);
+  box.innerHTML=chans.length?chans.map(c=>`<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:var(--ink-brand);margin-bottom:4px">${escapeAttr(c)}</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px">${CHANNEL_RESULT_METRICS[c].map(([k,l])=>{const v=ev.channelResults?.[c]?.[k];return`<label style="font-size:11px;color:var(--ink-muted)">${l}<input class="form-input" type="number" min="0" data-chan="${escapeAttr(c)}" data-metric="${k}" value="${v!=null?v:''}" placeholder="—"></label>`;}).join('')}</div></div>`).join('')
+    :'<div class="u-meta">No digital channels are recorded on this activity. Add them under Channels on the activity to report on them here.</div>';
+}
+function readReportChannelFields(){
+  const out={};
+  document.querySelectorAll('#rChannelFields input[data-chan]').forEach(el=>{
+    if(el.value==='')return;const n=Number(el.value);if(!Number.isFinite(n))return;
+    (out[el.dataset.chan]=out[el.dataset.chan]||{})[el.dataset.metric]=n;
+  });
+  return out;
+}
+function parseChannelResults(raw){
+  if(!raw)return{};
+  try{const o=JSON.parse(raw);return o&&typeof o==='object'&&!Array.isArray(o)?o:{};}catch{return{};}
+}
+// Older reports kept their notes inside Description after a marker. Used only when the
+// ReportWorked / ReportImprove columns are empty.
+function legacyReportNotes(description){
+  const i=String(description||'').lastIndexOf('--- POST-CAMPAIGN REPORT ---');
+  if(i<0)return{worked:'',improve:''};
+  const block=description.slice(i+28);
+  const w=block.match(/✓ What worked:\n([\s\S]*?)(?:\n\n↻ To improve:|$)/);
+  const m=block.match(/↻ To improve:\n([\s\S]*)$/);
+  return{worked:(w?.[1]||'').trim(),improve:(m?.[1]||'').trim()};
+}
+
+// Read-only summary of a saved report, shown on the activity (popup and page).
+function renderReportSummary(ev){
+  if(!isActivityReported(ev))return'';
+  const canMoney=!!rolePermissions().canViewBudget;
+  const fig=[];
+  if(canMoney&&ev.actualSpend)fig.push(['Actual spend',kpiMoney(ev.actualSpend)]);
+  if(canMoney&&ev.supplierContrib)fig.push(['Supplier contribution',kpiMoney(ev.supplierContrib)]);
+  if(ev.ticketsSold)fig.push(['Tickets sold',ev.ticketsSold.toLocaleString()+(ev.capacity?` of ${ev.capacity.toLocaleString()} (${Math.round(ev.ticketsSold/ev.capacity*100)}%)`:'')]);
+  if(canMoney&&activityTicketRevenue(ev))fig.push(['Ticket revenue',kpiMoney(activityTicketRevenue(ev))]);
+  if(ev.redemptions)fig.push(['Loaded redemptions',ev.redemptions.toLocaleString()]);
+  if(ev.covers)fig.push(['Covers (est.)',ev.covers.toLocaleString()]);
+  const chans=Object.entries(ev.channelResults||{}).filter(([c])=>CHANNEL_RESULT_METRICS[c]);
+  const notes=ev.reportWorked||ev.reportImprove?{worked:ev.reportWorked,improve:ev.reportImprove}:legacyReportNotes(ev.description);
+  const row=(l,v)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid var(--line);font-size:12px"><span style="color:var(--ink-muted)">${l}</span><span style="font-weight:700;color:var(--ink-brand);text-align:right">${v}</span></div>`;
+  return`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:var(--text3);text-transform:uppercase">Post-campaign report</div><div class="u-meta">${ev.reportSubmittedAt?'Saved '+fmtShort(ev.reportSubmittedAt):''}</div></div>
+    ${fig.map(([l,v])=>row(l,v)).join('')}
+    ${chans.map(([c,m])=>row(escapeAttr(c),CHANNEL_RESULT_METRICS[c].filter(([k])=>m[k]!=null).map(([k,l])=>`${Number(m[k]).toLocaleString()} ${l.toLowerCase()}`).join(' · ')||'—')).join('')}
+    ${notes.worked?`<div style="margin-top:10px;font-size:12px"><div style="font-weight:700;color:var(--ink-brand);margin-bottom:2px">What worked</div><div style="white-space:pre-wrap;color:var(--ink)">${escapeAttr(notes.worked)}</div></div>`:''}
+    ${notes.improve?`<div style="margin-top:8px;font-size:12px"><div style="font-weight:700;color:var(--ink-brand);margin-bottom:2px">To improve next time</div><div style="white-space:pre-wrap;color:var(--ink)">${escapeAttr(notes.improve)}</div></div>`:''}
+  </div>`;
 }
 
 function closePostCampaign(){document.getElementById('postCampaignOv').classList.remove('show');_reportingEventId=null;}
@@ -8582,7 +8753,13 @@ async function savePostCampaign(btn){
     // that included either of these notes was silently failing the entire save (WorkflowStage and
     // every other field in the same PATCH included), not just the notes. Fixed to the real
     // Description field, appended rather than overwritten.
-    if(worked||improve)fields.Description=(ev.description||'')+'\n\n--- POST-CAMPAIGN REPORT ---\n'+(worked?'✓ What worked:\n'+worked+'\n\n':'')+(improve?'↻ To improve:\n'+improve:'');
+    // Notes now live in their own columns (ReportWorked / ReportImprove), so re-saving a report
+    // replaces them instead of appending another copy into Description. If those columns can't be
+    // written, the notes fall back to the old Description append below so they're never lost.
+    if(worked||ev.reportWorked)fields.ReportWorked=worked;
+    if(improve||ev.reportImprove)fields.ReportImprove=improve;
+    const channelResults=readReportChannelFields();
+    if(Object.keys(channelResults).length||ev.channelResults)fields.ChannelResults=JSON.stringify(channelResults);
     // WorkflowStage is the one field this save must never lose — sent on its own first so an
     // unconfirmed report column (TicketRevenue/Redemptions/Covers are new) can never block marking
     // the campaign Done. The rest retries field-by-field on a group failure, same resilience as
@@ -8590,8 +8767,29 @@ async function savePostCampaign(btn){
     const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`;
     const stageRes=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{WorkflowStage:'Done'}})});
     if(!stageRes.ok)throw new Error('HTTP '+stageRes.status);
+    fields.ReportSubmittedAt=toLocalISODate(new Date());
     const{WorkflowStage,...reportFields}=fields;
-    const{failed}=await patchImportOptionalFields(url,token,reportFields);
+    let{failed}=await patchImportOptionalFields(url,token,reportFields);
+    // Self-setup: the first time an admin saves a report and the report columns don't exist yet,
+    // create them (additive, no existing records change) and write those fields again.
+    // Non-admins just see them listed as skipped, same as any other missing column.
+    const missingReportCols=failed.map(f=>f.field).filter(n=>REPORT_COLUMN_DEFS[n]);
+    if(missingReportCols.length&&currentRole==='admin'){
+      for(const name of missingReportCols){
+        const created=await ensureReportColumn(token,name);
+        if(!created.ok){console.warn(`Report column ${name} could not be created:`,created.error);continue;}
+        const retry=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{[name]:fields[name]}})});
+        if(retry.ok)failed=failed.filter(f=>f.field!==name);
+      }
+    }
+    // Notes couldn't go into their own columns: keep them in Description as before.
+    const legacy=legacyReportNotes(ev.description);
+    const notesChanged=worked!==legacy.worked||improve!==legacy.improve;
+    if((worked||improve)&&notesChanged&&failed.some(f=>f.field==='ReportWorked'||f.field==='ReportImprove')){
+      const desc=(ev.description||'')+'\n\n--- POST-CAMPAIGN REPORT ---\n'+(worked?'✓ What worked:\n'+worked+'\n\n':'')+(improve?'↻ To improve:\n'+improve:'');
+      const dres=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Description:desc}})});
+      if(dres.ok)failed=failed.filter(f=>f.field!=='ReportWorked'&&f.field!=='ReportImprove');
+    }
     document.getElementById('reportFormMsg').textContent=failed.length
       ?`✓ Report saved. Campaign marked Complete. ${failed.length} field${failed.length===1?'':'s'} skipped (not set up in SharePoint yet): ${failed.map(f=>f.field).join(', ')}.`
       :'✓ Report saved. Campaign marked Complete.';
@@ -10625,24 +10823,17 @@ function renderBudget(){
   // savePostCampaign() actually persists them instead of silently dropping three of the four.
   // Completed activities only, since these numbers are only final once a Post-Campaign Report has
   // been saved.
-  const completed=EVENTS.filter(e=>e.stage==='Done'||e.status==='Complete'||e.status==='Archive'||e.status==='Archived');
-  const totalTickets=completed.reduce((a,e)=>a+(e.ticketsSold||0),0);
-  const totalRevenue=completed.reduce((a,e)=>a+(e.ticketRevenue||0),0);
-  const totalRedemptions=completed.reduce((a,e)=>a+(e.redemptions||0),0);
-  const totalCovers=completed.reduce((a,e)=>a+(e.covers||0),0);
-  document.getElementById('perfStats').innerHTML=`
-    <div class="stat"><div class="stat-n">${completed.length}</div><div class="stat-l">Completed</div></div>
-    <div class="stat"><div class="stat-n">${totalTickets.toLocaleString()}</div><div class="stat-l">Tickets Sold</div></div>
-    <div class="stat"><div class="stat-n">${totalRevenue>0?'$'+Math.round(totalRevenue).toLocaleString():'—'}</div><div class="stat-l">Ticket Revenue</div></div>
-    <div class="stat"><div class="stat-n">${totalRedemptions.toLocaleString()}</div><div class="stat-l">Loaded Redemptions</div></div>
-    <div class="stat"><div class="stat-n">${totalCovers.toLocaleString()}</div><div class="stat-l">Covers / Pax</div></div>
-  `;
+  // Same definitions as the dashboard card: computeMarketingKpis() (MKT-02).
+  const completed=EVENTS.filter(isActivityDelivered);
+  const perfKpis=computeMarketingKpis(EVENTS,{withMoney:!!rolePermissions().canViewBudget});
+  document.getElementById('perfStats').innerHTML=renderKpiTiles(perfKpis,!!rolePermissions().canViewBudget);
+  const perfFresh=document.getElementById('perfFreshness');if(perfFresh)perfFresh.textContent=kpiFreshnessLabel(perfKpis);
   const perfDim=document.getElementById('perfRollupDim')?.value||'venue';
-  const perfRollup=groupRollup(completed,perfDim,()=>0,e=>({tickets:e.ticketsSold||0,revenue:e.ticketRevenue||0,redemptions:e.redemptions||0,covers:e.covers||0}));
+  const perfRollup=groupRollup(completed,perfDim,()=>0,e=>({tickets:e.ticketsSold||0,revenue:activityTicketRevenue(e),redemptions:e.redemptions||0,covers:e.covers||0}));
   const perfRows=perfRollup.sort((a,b)=>b[1].sums.revenue-a[1].sums.revenue||b[1].sums.tickets-a[1].sums.tickets);
   document.getElementById('bPerfRollup').innerHTML=perfRows.length
     ?`<div style="overflow-x:auto"><table class="tbl" style="min-width:520px">
-        <thead><tr><th>${ROLLUP_DIM_LABELS[perfDim]||'Group'}</th><th style="text-align:right">Activities</th><th style="text-align:right">Tickets</th><th style="text-align:right">Revenue</th><th style="text-align:right">Redemptions</th><th style="text-align:right">Covers</th></tr></thead>
+        <thead><tr><th>${ROLLUP_DIM_LABELS[perfDim]||'Group'}</th><th style="text-align:right">Activities</th><th style="text-align:right">Tickets</th><th style="text-align:right">Revenue</th><th style="text-align:right">Redemptions</th><th style="text-align:right">Covers (est.)</th></tr></thead>
         <tbody>${perfRows.map(([name,g])=>`<tr><td>${escapeAttr(name)}</td><td style="text-align:right">${g.count}</td><td style="text-align:right">${g.sums.tickets||'—'}</td><td style="text-align:right">${g.sums.revenue?'$'+Math.round(g.sums.revenue).toLocaleString():'—'}</td><td style="text-align:right">${g.sums.redemptions||'—'}</td><td style="text-align:right">${g.sums.covers||'—'}</td></tr>`).join('')}</tbody>
       </table></div>`
     :'<div style="padding:12px;color:var(--text3);font-size:12px;text-align:center">No completed activities with performance data yet</div>';
@@ -12058,6 +12249,10 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'TicketRevenue',displayName:'Ticket Revenue',type:'number',purpose:'Post-Campaign Report — captured on the form since before this session but never actually saved until now (confirmed bug fix).'},
   {listKey:'campaigns',name:'Redemptions',displayName:'Redemptions',type:'number',purpose:'Post-Campaign Report — Loaded Rewards redemptions. Same confirmed bug fix as Ticket Revenue.'},
   {listKey:'campaigns',name:'Covers',displayName:'Covers',type:'number',purpose:'Post-Campaign Report — estimated covers/pax. Same confirmed bug fix as Ticket Revenue.'},
+  {listKey:'campaigns',name:'ReportSubmittedAt',displayName:'Report Submitted',type:'date',purpose:'Post-Campaign Report — the date the report was saved. Tells reported activities from unreported ones (KPI K2, "Wrap report needed" alerts).'},
+  {listKey:'campaigns',name:'ReportWorked',displayName:'Report: What Worked',type:'text',purpose:'Post-Campaign Report — "What worked?" notes. Replaces appending them into Description.'},
+  {listKey:'campaigns',name:'ReportImprove',displayName:'Report: To Improve',type:'text',purpose:'Post-Campaign Report — "What to improve next time?" notes.'},
+  {listKey:'campaigns',name:'ChannelResults',displayName:'Channel Results',type:'text',purpose:'Post-Campaign Report — per-channel numbers typed in from Meta, Google Ads, newsletter, website, SMS and Google Business Profile, stored as JSON.'},
   {listKey:'campaigns',name:'LoadedRewards',displayName:'Loaded Rewards',type:'choice',choices:'Yes',purpose:'Independent Yes/No flag for whether Loaded Rewards is involved — separate from Brand/Business Stream so an activity under a different brand can still have a Loaded component. Only needed if none of LoadedRewards/Loaded Rewards/LoadedRewardsPromo/IsLoaded already exist.'},
   {listKey:'campaigns',name:'EventSeating',displayName:'Event Seating',type:'choice',choices:'Seated, Standing, Table Service, Mixed',purpose:'The seating/setup breakdown for the event.'},
   {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number',purpose:'Groups Activities that belong to one recurring series.'},
@@ -13105,7 +13300,10 @@ function generateNotifications(){
     .forEach(e=>{const key=`appr-${e.id}`;NOTIFS.push({key,icon:'◔',text:`Awaiting approval: ${e.title} · ${e.venue}`,time:'Needs review',color:'var(--blue-bg)',category:'action',unread:!readKeys.includes(key),eventId:e.id});});
 
   // Reporting required
-  EVENTS.filter(e=>isAssignedToMe(e)&&e.stage==='Done'&&e.status!=='Archive'&&e.status!=='Cancelled')
+  // Only activities that ended in the last 60 days: delivered now includes auto-completed ones
+  // (P3-D2), and alerting on every unreported activity from earlier in the year would bury the rest.
+  const reportCutoff=new Date(today);reportCutoff.setDate(reportCutoff.getDate()-60);
+  EVENTS.filter(e=>isAssignedToMe(e)&&isActivityDelivered(e)&&!isActivityReported(e)&&e.status!=='Archive'&&new Date((e.end||e.start)+'T00:00:00')>=reportCutoff)
     .forEach(e=>{const key=`report-${e.id}`;NOTIFS.push({key,icon:'▥',text:`Wrap report needed: ${e.title}`,time:'Post-campaign',color:'var(--purple-bg)',category:'action',unread:!readKeys.includes(key),eventId:e.id});});
 
   // POS pending on upcoming campaigns
@@ -15243,13 +15441,16 @@ function renderActivityDetail(id,mode){
       ${linkedTasks.length?linkedTasks.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><div class="task-cb ${t.status==='Done'?'done':''}" onclick="togglePersonalTask('${t.id}')">${t.status==='Done'?'✓':''}</div><div style="flex:1;font-size:13px;cursor:pointer;${t.status==='Done'?'text-decoration:line-through;color:var(--text3)':''}" onclick="navTo('personaltasks')" title="Open in Personal Tasks">${escapeAttr(t.title)}</div>${t.due?`<span class="u-meta">${fmtDate(t.due)}</span>`:''}</div>`).join(''):'<div style="font-size:12px;color:var(--text3);padding:6px 0">No personal tasks linked to this activity yet.</div>'}
     </div>`;
   }
+  h+=renderReportSummary(ev);
   // Action buttons
   h+=`<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">`;
   if(ev.stage==='Review'&&canApprove){
     h+=`<button id="approveBtn-${ev.id}" class="btn btn-p" onclick="approveCampaign(${ev.id},this)">✓ Approve</button>`;
   }
-  if(canEdit&&(ev.autoCompleted||ev.stage==='Reporting Required'||ev.stage==='Complete')){
-    h+=`<button class="btn btn-p" onclick="closePop();openPostCampaign(${ev.spId})">Post-Campaign Report</button>`;
+  // Any delivered activity can be reported on, and a saved report can be edited. Previously the
+  // button vanished once the report moved the activity to Done, so a report couldn't be corrected.
+  if(canEdit&&(isActivityDelivered(ev)||ev.stage==='Reporting Required')){
+    h+=`<button class="btn ${isActivityReported(ev)?'btn-s':'btn-p'}" onclick="closePop();openPostCampaign(${ev.spId})">${isActivityReported(ev)?'Edit report':'Post-Campaign Report'}</button>`;
   }
   if(canEdit&&['Intake','In Design','Review'].includes(ev.stage)){
     h+=`<button class="btn btn-s" onclick="closePop();openDesignBrief(${ev.spId})">✎ Submit Design Brief</button>`;
