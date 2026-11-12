@@ -8564,6 +8564,18 @@ function openPostCampaign(evId){
   calcROI();
 }
 
+// Creates the Report Submitted (ReportSubmittedAt, date only) column on Marketing & Activations 2026.
+// Treats "already exists" as success. Returns {ok, error}.
+async function ensureReportSubmittedColumn(token){
+  try{
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/columns`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name:'ReportSubmittedAt',displayName:'Report Submitted',dateTime:{format:'dateOnly'}})});
+    if(res.ok)return{ok:true};
+    const text=await res.text();
+    if(res.status===409||/already exists|duplicate/i.test(text))return{ok:true};
+    return{ok:false,error:`HTTP ${res.status}: ${text}`};
+  }catch(e){return{ok:false,error:e.message};}
+}
+
 function closePostCampaign(){document.getElementById('postCampaignOv').classList.remove('show');_reportingEventId=null;}
 
 function calcROI(){
@@ -8631,7 +8643,17 @@ async function savePostCampaign(btn){
     if(!stageRes.ok)throw new Error('HTTP '+stageRes.status);
     fields.ReportSubmittedAt=toLocalISODate(new Date());
     const{WorkflowStage,...reportFields}=fields;
-    const{failed}=await patchImportOptionalFields(url,token,reportFields);
+    let{failed}=await patchImportOptionalFields(url,token,reportFields);
+    // Self-setup: the first time an admin saves a report and the Report Submitted column doesn't
+    // exist yet, create it (additive, no existing records change) and write the date again.
+    // Non-admins just see it listed as skipped, same as any other missing column.
+    if(failed.some(f=>f.field==='ReportSubmittedAt')&&currentRole==='admin'){
+      const created=await ensureReportSubmittedColumn(token);
+      if(created.ok){
+        const retry=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{ReportSubmittedAt:fields.ReportSubmittedAt}})});
+        if(retry.ok)failed=failed.filter(f=>f.field!=='ReportSubmittedAt');
+      }else console.warn('Report Submitted column could not be created:',created.error);
+    }
     document.getElementById('reportFormMsg').textContent=failed.length
       ?`✓ Report saved. Campaign marked Complete. ${failed.length} field${failed.length===1?'':'s'} skipped (not set up in SharePoint yet): ${failed.map(f=>f.field).join(', ')}.`
       :'✓ Report saved. Campaign marked Complete.';

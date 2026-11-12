@@ -152,10 +152,9 @@ Built in `index.html`. No new panels or nav items.
 
 Tested in UI preview with sample activities (reported, auto-completed with and without actuals, cancelled, future): both screens show the same figures, and cancelled and future activities are excluded. **Not yet tested against live SharePoint.**
 
-### Kim's setup step
+### Report Submitted column: sets itself up
 
-1. Sign in as an admin, open **Admin & Schema**, and create **Report Submitted** (`ReportSubmittedAt`, Date) on Marketing & Activations 2026. Or add it in SharePoint list settings with that exact internal name.
-2. Save one Post-Campaign Report, reload, and check that the column has today's date, that the activity drops out of "Wrap report needed", and that Reports done goes up by one.
+No manual step. The first time an admin saves a Post-Campaign Report, the app creates the **Report Submitted** (`ReportSubmittedAt`) column on Marketing & Activations 2026 and writes the date. Nothing existing changes. If the create fails (for example, a permissions refusal), the save still completes and the column is listed as skipped. Admin & Schema can also create it.
 
 ---
 
@@ -175,7 +174,7 @@ Before starting step 4, confirm whether Power Automate in the tenant has a ready
 
 ## 9. Next items in this workstream
 
-1. Kim: create `ReportSubmittedAt` and run the §7 check. Re-test the §4 fixes.
+1. Merge this branch so the changes go live, then save one report as an admin and reload (§7). Re-test the §4 fixes.
 2. Kim / IT: REV-02 steps 1 to 3 (§8). The Google API approval is the long pole, so start it first.
 3. Align any remaining screens on the shared helper: the Venue Activity Snapshot and the Loaded Rewards card still count on their own.
 4. P03·01: wire `Guest Reviews` into the OS once the list has data.
@@ -185,3 +184,4 @@ Before starting step 4, confirm whether Power Automate in the tenant has a ready
 
 - 2026-11-10: Created. Code inventory of reporting surfaces at `0a68252`. REV-01 source map and MKT-01 KPI list drafted for decision. Post-Campaign Report carry-over and dashboard Ticket Revenue fixed (§4).
 - 2026-11-11: Decisions P3-D1 to D5 recorded. MKT-02 first slice built: shared KPI helper, dashboard and Finance on one definition, freshness labels, `ReportSubmittedAt`, alerts skip reported activities. REV-02 setup steps written.
+- 2026-11-12: Report Submitted column now creates itself on an admin's first report save. Kim asked to finish the marketing report before Google reviews.
