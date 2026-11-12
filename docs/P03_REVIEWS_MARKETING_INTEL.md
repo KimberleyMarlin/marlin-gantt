@@ -158,6 +158,23 @@ No manual step. The first time an admin saves a Post-Campaign Report, the app cr
 
 ---
 
+### Post-Campaign Report, second slice (12 Nov 2026)
+
+Kim chose: only ask what fits, a saved report view, and channel results.
+
+- **Only ask what fits.** Ticket fields show for ticketed activities and Loaded redemptions for Loaded activities. Covers shows for everything. A field that already holds a saved figure always shows.
+- **Channel results.** For each channel recorded on the activity, the form asks for the platform's numbers: Meta (reach, link clicks), Google Ads (impressions, clicks), Newsletter (sent, opens, clicks), Website (page visits), SMS (sent, clicks), Google Business Profile (views). These are typed in by hand for now and stored as JSON in a `ChannelResults` column. In-venue, Radio and Loaded have no platform numbers.
+- **Notes in their own columns.** `ReportWorked` and `ReportImprove` replace appending into Description, so saving twice no longer duplicates the notes. Older notes are still read from Description. If the columns can't be written, notes fall back to the old Description append.
+- **Saved report view.** The activity popup and page now show a "Post-campaign report" section with the date saved, figures (money only for budget roles), sell-through, channel results and notes.
+- **Edit report.** The report button stays on delivered activities and reads "Edit report" once a report exists. Before, it disappeared once a report moved the activity to Done, so a report couldn't be corrected.
+- **Self-setup.** All four report columns (`ReportSubmittedAt`, `ReportWorked`, `ReportImprove`, `ChannelResults`) are created on an admin's first report save, and are listed in Admin & Schema.
+
+Tested in UI preview: a ticketed and a Loaded activity, legacy notes, channel inputs and the summary view. Not yet tested on live SharePoint.
+
+**Not yet:** channel numbers aren't summed into the dashboard KPIs. That's the obvious next step once a few reports have them.
+
+---
+
 ## 8. REV-02 · Guest reviews setup (Google Business Profile, read-only)
 
 This part runs in Google and Power Automate, not in the app, so it needs people with those accounts. In order:
@@ -185,3 +202,4 @@ Before starting step 4, confirm whether Power Automate in the tenant has a ready
 - 2026-11-10: Created. Code inventory of reporting surfaces at `0a68252`. REV-01 source map and MKT-01 KPI list drafted for decision. Post-Campaign Report carry-over and dashboard Ticket Revenue fixed (§4).
 - 2026-11-11: Decisions P3-D1 to D5 recorded. MKT-02 first slice built: shared KPI helper, dashboard and Finance on one definition, freshness labels, `ReportSubmittedAt`, alerts skip reported activities. REV-02 setup steps written.
 - 2026-11-12: Report Submitted column now creates itself on an admin's first report save. Kim asked to finish the marketing report before Google reviews.
+- 2026-11-12: Post-Campaign Report second slice: fields fit the activity, channel results, notes in their own columns, saved report view, Edit report.
