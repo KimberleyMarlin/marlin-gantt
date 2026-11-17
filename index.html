@@ -238,6 +238,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 .mr-h{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-brand);padding-bottom:6px;border-bottom:2px solid var(--line-strong,var(--ink-brand))}
 .mr-sub{font-size:14px;font-weight:700;color:var(--ink-brand)}
 .mr-note{font-size:12px;color:var(--ink-muted);max-width:72ch}
+.mr-sec a{color:var(--navy-500);font-weight:600}
 .mr-chart{border:1px solid var(--line);padding:10px;overflow-x:auto;background:var(--surface)}
 .mr-chart svg{min-width:480px;width:100%;height:auto;display:block}
 .mr-key{display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--ink-muted)}
@@ -1523,7 +1524,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
           <option value="all">All time</option>
         </select>
         <select class="form-select" id="mrVenue" style="width:auto;font-size:12px" onchange="renderMarketingReport()" aria-label="Venue"></select>
-        <button class="btn btn-s" onclick="loadReviewsData(true)">Refresh reviews</button>
+        <button class="btn btn-s" onclick="loadReviewsData(true);loadWeeklyReports(true)">Refresh</button>
         <button class="btn btn-s" onclick="window.print()">Print</button>
       </div>
     </div>
@@ -8635,7 +8636,20 @@ const REVIEWS_SOURCE={
   sheet:'Data',
   name:'Reviews – Master',
   webUrl:'https://marlingroupaus.sharepoint.com/sites/MarlinHospitalityMarketing/Shared Documents/WORKING_Marketing Dashboard/Reviews Hub/Reviews - Master.xlsx',
+  // Weekly review exports (the Fiverr file) land here, by the Upload button or a Power Automate
+  // flow that saves emailed attachments. Every .xlsx/.csv in it is read and merged with the master.
+  importsPath:'WORKING_Marketing Dashboard/Reviews Hub/Imports',
+  importsUrl:'https://marlingroupaus.sharepoint.com/sites/MarlinHospitalityMarketing/Shared Documents/WORKING_Marketing Dashboard/Reviews Hub/Imports',
 };
+// Weekly venue report PDFs (sales, labour, functions — management only), saved by a Power Automate
+// flow from the weekly email. Same document library as the reviews.
+const WEEKLY_REPORTS={
+  path:'WORKING_Marketing Dashboard/Weekly Venue Reports',
+  url:'https://marlingroupaus.sharepoint.com/sites/MarlinHospitalityMarketing/Shared Documents/WORKING_Marketing Dashboard/Weekly Venue Reports',
+};
+// Short codes used in report file names, e.g. "WBC - Week 19 Report.pdf".
+const REPORT_VENUE_CODES={WBC:'Whitfords Brewing Co',TLB:'The Left Bank',LB:'The Left Bank',RAV:'The Ravenswood',HD:'Hotel Darwin',MB:'Mustang Bar',NBC:'Northbridge Brewing Co'};
+let WEEKLY_REPORT_FILES=[],WEEKLY_REPORTS_STATE={status:'idle',error:''};
 // Spreadsheet venue names → the OS's venue names.
 const REVIEW_VENUE_MAP={
   'ravenswood hotel':'The Ravenswood','the ravenswood':'The Ravenswood',
@@ -8650,13 +8664,33 @@ let REVIEWS=[],REVIEWS_STATE={status:'idle',error:'',loadedAt:null,skipped:0};
 // The sheet mixes real dates (Excel serials), dd/mm/yy text and m/d/yy text, because each week's
 // export is pasted in as it comes. Serials are unambiguous; for text, rows run newest to oldest,
 // so take whichever reading sits closest to (and not after) the row above.
-function parseReviewRows(values){
-  const head=values.findIndex(r=>String(r[0]||'').trim().toLowerCase()==='venue');
+function parseReviewRows(values,sourceName='',ordered=true){
+  // Find the header row and map columns by name, so an export with a different column order
+  // (or extra columns) still reads. Falls back to the master's fixed order.
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const head=Math.max(0,values.findIndex(r=>r.some(c=>norm(c)==='venue')&&r.some(c=>/rating|stars/.test(norm(c)))));
+  const H=(values[head]||[]).map(norm);
+  // Exact header names win over prefixes, and each column is claimed once, so "Review date"
+  // can't be mistaken for "Review" (the text).
+  const used=new Set();
+  const col=(names,fallback)=>{
+    let i=H.findIndex((h,j)=>!used.has(j)&&names.includes(h));
+    if(i<0)i=H.findIndex((h,j)=>!used.has(j)&&names.some(n=>h.startsWith(n)));
+    if(i<0&&!used.has(fallback))i=fallback;
+    if(i>=0)used.add(i);return i;};
+  const C={};
+  C.date=col(['review date','date','published','date posted'],2);
+  C.reply=col(['business response','response','reply','owner response','owner reply'],6);
+  C.name=col(['reviewer name','reviewer','author','name'],3);
+  C.rating=col(['rating','stars','star rating'],4);
+  C.source=col(['source','platform','site'],5);
+  C.venue=col(['venue','location','business','business name'],0);
+  C.text=col(['review','review text','comment','text'],1);
   const out=[];let prev=null;let skipped=0;const today=new Date();
   for(const row of values.slice(head+1)){
-    const venueRaw=String(row[0]||'').trim();const rating=Number(row[4]);
+    const venueRaw=String(row[C.venue]||'').trim();const rating=Number(String(row[C.rating]||'').replace(/[^\d.]/g,''));
     if(!venueRaw||!(rating>=1&&rating<=5))continue;
-    let d=null;const raw=row[2];
+    let d=null;const raw=row[C.date];
     if(typeof raw==='number'&&raw>20000)d=new Date(Date.UTC(1899,11,30)+Math.round(raw)*864e5);
     else{
       const m=String(raw||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
@@ -8667,17 +8701,54 @@ function parseReviewRows(values){
         // than a few days after it.
         const mk=(dd,mm)=>{if(mm<1||mm>12||dd<1||dd>31)return null;const x=new Date(Date.UTC(y,mm-1,dd));return x.getUTCMonth()===mm-1?x:null;};
         const au=mk(a,b),us=mk(b,a);
-        if(!prev)d=au&&au<=today?au:(us&&us<=today?us:null);
+        // Unsorted files (weekly exports): Australian unless that's in the future.
+        if(!ordered||!prev)d=au&&au<=today?au:(us&&us<=today?us:null);
         else{const ceil=prev.getTime()+3*864e5;
           d=[au,us].filter(x=>x&&x.getTime()<=ceil).sort((x,z)=>Math.abs(prev-x)-Math.abs(prev-z))[0]||null;}
       }
     }
     if(!d||isNaN(d)){skipped++;continue;}
     prev=d;
-    out.push({venue:REVIEW_VENUE_MAP[venueRaw.toLowerCase()]||venueRaw,date:d.toISOString().slice(0,10),rating,source:String(row[5]||'').trim()||'Google',replied:!!String(row[6]||'').trim(),hasText:!!String(row[1]||'').trim()});
+    out.push({venue:REVIEW_VENUE_MAP[venueRaw.toLowerCase()]||venueRaw,date:d.toISOString().slice(0,10),rating:Math.round(rating),
+      source:String(row[C.source]||'').trim()||'Google',replied:!!String(row[C.reply]||'').trim(),
+      reviewer:String(row[C.name]||'').trim(),text:String(row[C.text]||'').trim(),hasText:!!String(row[C.text]||'').trim(),from:sourceName});
   }
   return{rows:out,skipped};
 }
+// Minimal CSV reader (quoted fields, commas and newlines inside quotes) for .csv exports.
+function parseCsvRows(text){
+  const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){f+='"';i++;}else q=false;}else f+=ch;}
+    else if(ch==='"')q=true;else if(ch===','){row.push(f);f='';}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f='';}
+    else f+=ch;}
+  if(f||row.length){row.push(f);rows.push(row);}
+  return rows;
+}
+const graphDrive=()=>`https://graph.microsoft.com/v1.0/drives/${REVIEWS_SOURCE.driveId}`;
+const graphPath=p=>p.split('/').map(encodeURIComponent).join('/');
+async function readWorkbookValues(itemId,token,sheet){
+  const auth={headers:{Authorization:'Bearer '+token}};
+  let name=sheet;
+  if(!name){
+    const ws=await fetchWithRetry(`${graphDrive()}/items/${itemId}/workbook/worksheets?$select=name`,auth);
+    if(!ws.ok)throw new Error(`HTTP ${ws.status}`);
+    const names=((await ws.json()).value||[]).map(w=>w.name);
+    name=names.find(n=>/^data$/i.test(n))||names.find(n=>/review/i.test(n))||names[0];
+  }
+  const res=await fetchWithRetry(`${graphDrive()}/items/${itemId}/workbook/worksheets('${encodeURIComponent(name)}')/usedRange(valuesOnly=true)?$select=values`,auth);
+  if(!res.ok)throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,200)}`);
+  return(await res.json()).values||[];
+}
+async function listDriveFolder(path,token){
+  const res=await fetchWithRetry(`${graphDrive()}/root:/${graphPath(path)}:/children?$select=id,name,file,folder,webUrl,lastModifiedDateTime,createdDateTime&$top=999`,{headers:{Authorization:'Bearer '+token}});
+  if(res.status===404)return[];
+  if(!res.ok)throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,200)}`);
+  return(await res.json()).value||[];
+}
+// Same review in the master and an export (or two overlapping exports) counts once.
+const reviewKey=r=>[r.venue,r.date,r.reviewer.toLowerCase(),r.rating,r.text.slice(0,40).toLowerCase()].join('|');
 async function loadReviewsData(force=false){
   if(REVIEWS_STATE.status==='loading')return;
   if(REVIEWS_STATE.status==='ok'&&!force){renderMarketingReport();return;}
@@ -8685,12 +8756,61 @@ async function loadReviewsData(force=false){
   REVIEWS_STATE.status='loading';renderMarketingReport();
   try{
     const token=await getToken();
-    const url=`https://graph.microsoft.com/v1.0/drives/${REVIEWS_SOURCE.driveId}/items/${REVIEWS_SOURCE.itemId}/workbook/worksheets('${REVIEWS_SOURCE.sheet}')/usedRange(valuesOnly=true)?$select=values`;
-    const res=await fetchWithRetry(url,{headers:{Authorization:'Bearer '+token}});
-    if(!res.ok)throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,200)}`);
-    const{rows,skipped}=parseReviewRows((await res.json()).values||[]);
-    REVIEWS=rows;REVIEWS_STATE={status:'ok',error:'',loadedAt:new Date(),skipped};
+    const seen=new Set(),all=[];let skipped=0;const files=[];const errors=[];
+    const add=(rows,label)=>{let added=0;rows.forEach(r=>{const k=reviewKey(r);if(seen.has(k))return;seen.add(k);all.push(r);added++;});files.push({name:label,added,total:rows.length});};
+    const master=parseReviewRows(await readWorkbookValues(REVIEWS_SOURCE.itemId,token,REVIEWS_SOURCE.sheet),REVIEWS_SOURCE.name);
+    skipped+=master.skipped;add(master.rows,REVIEWS_SOURCE.name);
+    for(const f of (await listDriveFolder(REVIEWS_SOURCE.importsPath,token)).filter(f=>f.file&&/\.(xlsx|csv)$/i.test(f.name)).sort((a,b)=>String(b.lastModifiedDateTime).localeCompare(String(a.lastModifiedDateTime)))){
+      try{
+        let values;
+        if(/\.csv$/i.test(f.name)){const r=await fetchWithRetry(`${graphDrive()}/items/${f.id}/content`,{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw new Error('HTTP '+r.status);values=parseCsvRows(await r.text());}
+        else values=await readWorkbookValues(f.id,token);
+        const p=parseReviewRows(values,f.name,false);skipped+=p.skipped;add(p.rows,f.name);
+      }catch(e){errors.push(`${f.name}: ${e.message}`);}
+    }
+    REVIEWS=all.sort((a,b)=>b.date.localeCompare(a.date));
+    REVIEWS_STATE={status:'ok',error:errors.join(' · '),loadedAt:new Date(),skipped,files};
   }catch(e){REVIEWS_STATE={status:'error',error:e.message||String(e),loadedAt:null,skipped:0};}
+  renderMarketingReport();
+}
+// Upload a weekly export into the Imports folder. The file keeps its name, prefixed with today's
+// date so two weeks' "export.xlsx" don't overwrite each other.
+async function uploadReviewsFile(input){
+  const file=input.files?.[0];input.value='';
+  if(!file)return;
+  if(!/\.(xlsx|csv)$/i.test(file.name)){alert('Upload the reviews export as an .xlsx or .csv file.');return;}
+  if(file.size>4*1024*1024){alert('That file is over 4 MB. Save it to the Imports folder in SharePoint instead.');return;}
+  const btn=document.getElementById('mrUploadBtn');if(btn){btn.disabled=true;btn.textContent='Uploading…';}
+  try{
+    const token=await getToken(true);
+    const name=`${toLocalISODate(new Date())} ${file.name}`;
+    const res=await fetch(`${graphDrive()}/root:/${graphPath(REVIEWS_SOURCE.importsPath+'/'+name)}:/content?@microsoft.graph.conflictBehavior=rename`,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':file.type||'application/octet-stream'},body:file});
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,200)}`);
+    await loadReviewsData(true);
+    const f=(REVIEWS_STATE.files||[]).find(x=>x.name===name);
+    alert(f?`Uploaded ${name}. ${f.added} new review${f.added===1?'':'s'} added (${f.total-f.added} already counted).`:`Uploaded ${name}, but it couldn't be read: ${REVIEWS_STATE.error||'no review rows found'}.`);
+  }catch(e){alert('Upload failed: '+e.message);}
+  if(btn){btn.disabled=false;btn.textContent='Upload reviews file';}
+}
+
+// Weekly venue reports: list the PDFs saved from the weekly email (top level and one folder deep).
+async function loadWeeklyReports(force=false){
+  if(!rolePermissions().canViewBudget||isPreviewMode)return;
+  if(WEEKLY_REPORTS_STATE.status==='loading'||(WEEKLY_REPORTS_STATE.status==='ok'&&!force))return;
+  WEEKLY_REPORTS_STATE={status:'loading',error:''};
+  try{
+    const token=await getToken();
+    const top=await listDriveFolder(WEEKLY_REPORTS.path,token);
+    let files=top.filter(f=>f.file);
+    for(const d of top.filter(f=>f.folder))files=files.concat((await listDriveFolder(`${WEEKLY_REPORTS.path}/${d.name}`,token)).filter(f=>f.file));
+    WEEKLY_REPORT_FILES=files.filter(f=>/\.pdf$/i.test(f.name)).map(f=>{
+      const code=(f.name.match(/^([A-Za-z]{2,4})\b/)||[])[1]?.toUpperCase();
+      const named=Object.values(REPORT_VENUE_CODES).find(v=>f.name.toLowerCase().includes(v.toLowerCase().replace(/^the /,'').split(' ')[0]));
+      const week=(f.name.match(/week[\s_-]*(\d{1,2})/i)||[])[1]||'';
+      return{name:f.name,url:f.webUrl,venue:REPORT_VENUE_CODES[code]||named||'',week,received:(f.createdDateTime||f.lastModifiedDateTime||'').slice(0,10)};
+    }).sort((a,b)=>b.received.localeCompare(a.received));
+    WEEKLY_REPORTS_STATE={status:'ok',error:''};
+  }catch(e){WEEKLY_REPORTS_STATE={status:'error',error:e.message||String(e)};}
   renderMarketingReport();
 }
 
@@ -8748,6 +8868,7 @@ function mrInsights(rs,venueRows){
 function renderMarketingReport(){
   const body=document.getElementById('mrBody');if(!body)return;
   if(REVIEWS_STATE.status==='idle'){loadReviewsData();return;}
+  if(WEEKLY_REPORTS_STATE.status==='idle')loadWeeklyReports();
   // Venue picker, filled once from the venues the OS knows plus any in the reviews.
   const vSel=document.getElementById('mrVenue');
   const venues=[...new Set([...VENUES_DATA.map(v=>v.name).filter(Boolean),...REVIEWS.map(r=>r.venue)])].sort();
@@ -8785,7 +8906,7 @@ function renderMarketingReport(){
         ${kpiTile(st.n.toLocaleString(),'Reviews',`${[...new Set(rs.map(r=>r.source))].join(' & ')}`)}
         ${kpiTile(st.avg.toFixed(2),'Average rating','Out of 5')}
         ${kpiTile(mrPct(st.five,st.n),'Five-star',`${st.five} of ${st.n}`)}
-        ${kpiTile(mrPct(st.low,st.n),'One or two stars',`${st.low} reviews`)}
+        ${kpiTile(mrPct(st.low,st.n),'One or two stars',`${st.low} review${st.low===1?'':'s'}`)}
         ${kpiTile(mrPct(st.replied,st.n),'Replied to',`${mrPct(st.lowReplied,st.low)} of bad reviews`)}
       </div>
       <div class="mr-sub">Average rating and number of reviews by month</div>
@@ -8807,10 +8928,26 @@ function renderMarketingReport(){
         ${ins.bad.length?`<div class="mr-call att"><h4>Needs attention</h4><ul>${ins.bad.map(x=>`<li>${x}</li>`).join('')}</ul></div>`:''}
       </div>`;
     }
-    h+=`<div class="mr-note">From <em>${escapeAttr(REVIEWS_SOURCE.name)}</em>, read ${REVIEWS_STATE.loadedAt?REVIEWS_STATE.loadedAt.toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):''}. ${REVIEWS.length.toLocaleString()} reviews in the workbook${REVIEWS_STATE.skipped?`, ${REVIEWS_STATE.skipped} rows skipped (date couldn't be read)`:''}. "Replied" means a business response is recorded.</div>`;
-    if(staleDays!==null&&staleDays>14)h+=`<div class="mr-call att"><h4>The reviews workbook is out of date</h4><div>The newest review in it is from ${fmtDate(latest)}, ${staleDays} days ago. Reviews since then aren't counted until the workbook is updated.</div></div>`;
+    const srcFiles=REVIEWS_STATE.files||[];const imports=srcFiles.slice(1);
+    h+=`<div class="mr-note">Read ${REVIEWS_STATE.loadedAt?REVIEWS_STATE.loadedAt.toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):''} from <em>${escapeAttr(REVIEWS_SOURCE.name)}</em>${imports.length?` and ${imports.length} weekly export${imports.length===1?'':'s'} in <a href="${escapeAttr(REVIEWS_SOURCE.importsUrl)}" target="_blank" rel="noopener">Imports</a> (${imports.reduce((a,f)=>a+f.added,0)} new reviews)`:''}. ${REVIEWS.length.toLocaleString()} reviews in total, duplicates counted once${REVIEWS_STATE.skipped?`; ${REVIEWS_STATE.skipped} rows skipped (date couldn't be read)`:''}. "Replied" means a business response is recorded.${REVIEWS_STATE.error?` <span style="color:var(--attention)">Couldn't read: ${escapeAttr(REVIEWS_STATE.error)}</span>`:''}</div>`;
+    if(canEditCampaigns())h+=`<div class="mr-noprint" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="file" id="mrUploadInput" accept=".xlsx,.csv" style="display:none" onchange="uploadReviewsFile(this)"><button class="btn btn-s" id="mrUploadBtn" onclick="document.getElementById('mrUploadInput').click()">Upload reviews file</button><span class="mr-note">The weekly reviews export (.xlsx or .csv). It's saved to the Imports folder and added straight away.</span></div>`;
+    if(staleDays!==null&&staleDays>14)h+=`<div class="mr-call att"><h4>Reviews are out of date</h4><div>The newest review is from ${fmtDate(latest)}, ${staleDays} days ago. Upload the latest weekly export, or set up the email automation, to bring it up to date.</div></div>`;
   }
   h+='</div>';
+  // 3. Weekly venue reports — management PDFs (sales, labour, functions), budget roles only.
+  if(rolePermissions().canViewBudget&&!isPreviewMode){
+    h+=`<div class="mr-sec"><div class="mr-h">Weekly venue reports${venue?' · '+escapeAttr(venue):''}</div>`;
+    if(WEEKLY_REPORTS_STATE.status==='loading'||WEEKLY_REPORTS_STATE.status==='idle')h+='<div class="loading"><div class="spinner"></div></div>';
+    else if(WEEKLY_REPORTS_STATE.status==='error')h+=`<div class="mr-note">Couldn't read the Weekly Venue Reports folder: ${escapeAttr(WEEKLY_REPORTS_STATE.error)}</div>`;
+    else{
+      const list=WEEKLY_REPORT_FILES.filter(f=>!venue||f.venue===venue);
+      const latestByVenue=[];const seenV=new Set();list.forEach(f=>{const k=f.venue||f.name;if(!seenV.has(k)){seenV.add(k);latestByVenue.push(f);}});
+      h+=list.length?`<div style="overflow-x:auto"><table class="tbl" style="min-width:420px"><thead><tr><th>Venue</th><th>Week</th><th>Received</th><th>Report</th></tr></thead><tbody>${latestByVenue.map(f=>`<tr><td>${escapeAttr(f.venue||'—')}</td><td>${f.week?'Week '+escapeAttr(f.week):'—'}</td><td>${f.received?fmtDate(f.received):''}</td><td><a href="${escapeAttr(f.url)}" target="_blank" rel="noopener">${escapeAttr(f.name)}</a></td></tr>`).join('')}</tbody></table></div>
+        <div class="mr-note">Latest report per venue. ${list.length} report${list.length===1?'':'s'} in <a href="${escapeAttr(WEEKLY_REPORTS.url)}" target="_blank" rel="noopener">Weekly Venue Reports</a>. Management only: these include sales and wages.</div>`
+        :`<div class="mr-note">No weekly reports yet. They appear here once the weekly report emails are saved to <a href="${escapeAttr(WEEKLY_REPORTS.url)}" target="_blank" rel="noopener">Weekly Venue Reports</a> (see the Power Automate steps in docs/REVIEWS_AND_REPORTS_AUTOMATION.md).</div>`;
+    }
+    h+='</div>';
+  }
   body.innerHTML=h;
 }
 

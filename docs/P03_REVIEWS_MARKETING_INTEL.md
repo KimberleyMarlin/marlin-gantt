@@ -220,3 +220,4 @@ Before starting step 4, confirm whether Power Automate in the tenant has a ready
 - 2026-11-12: Report Submitted column now creates itself on an admin's first report save. Kim asked to finish the marketing report before Google reviews.
 - 2026-11-12: Post-Campaign Report second slice: fields fit the activity, channel results, notes in their own columns, saved report view, Edit report.
 - 2026-11-17: Marketing Report page added (campaign results + live reviews from Reviews – Master), at Kim's request.
+- 2026-11-17: Option A built: Upload reviews file + Imports folder merged with the master (duplicates counted once); Weekly venue reports section (budget roles). Email automation and Google API steps in `docs/REVIEWS_AND_REPORTS_AUTOMATION.md`.
