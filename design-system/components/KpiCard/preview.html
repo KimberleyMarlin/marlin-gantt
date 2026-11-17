@@ -1,0 +1,12 @@
+<!-- @dsCard group="Report" height=170 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><style>body{padding:16px} .row{display:grid;gap:12px} .g4{grid-template-columns:repeat(4,minmax(0,1fr))} .g2{grid-template-columns:repeat(2,minmax(0,1fr))} .flex{display:flex;gap:8px;flex-wrap:wrap;align-items:center}</style></head>
+<body>
+<div id="root"></div>
+<script>
+  var M = window.Marlin, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{className:'row g4'},h(M.KpiCard,{label:'Sales',value:'$164,101',delta:'−12.0%',tone:'attention',compare:[{label:'TY',value:164.1,display:'$164.1k'},{label:'LY',value:186.5,display:'$186.5k'}]}),h(M.KpiCard,{label:'COGS · 30.2% of sales',value:'$49,602',delta:'+2.5 pts',tone:'attention',compare:[{label:'TY',value:49.6,display:'$49.6k'},{label:'LY',value:51.6,display:'$51.6k'}]}),h(M.KpiCard,{label:'Member visits',value:'664',delta:'+7.1%',tone:'positive',compare:[{label:'TY',value:664,display:'664'},{label:'LY',value:620,display:'620'}]}),h(M.KpiCard,{label:'GP %',value:'69.8%',note:'vs 72.3% LY'})));
+</script>
+</body>
+</html>

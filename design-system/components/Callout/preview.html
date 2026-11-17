@@ -1,0 +1,12 @@
+<!-- @dsCard group="Report" height=150 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><style>body{padding:16px} .row{display:grid;gap:12px} .g4{grid-template-columns:repeat(4,minmax(0,1fr))} .g2{grid-template-columns:repeat(2,minmax(0,1fr))} .flex{display:flex;gap:8px;flex-wrap:wrap;align-items:center}</style></head>
+<body>
+<div id="root"></div>
+<script>
+  var M = window.Marlin, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{className:'row g2'},h(M.Callout,{tone:'positive',title:'What’s working',items:['Loyalty: members spend $41 a visit vs $24 for non-members.','Functions: Week 12 revenue up 75% on LY.','Guests: rating 4.73, no bad reviews.']}),h(M.Callout,{tone:'attention',title:'What needs attention',items:['Sales down 12%, and below LY for 13 weeks straight.','Wages didn’t follow sales: hours down 1% while sales fell 12%.','Discounts 7.8% of sales (LY 4.7%).']})));
+</script>
+</body>
+</html>

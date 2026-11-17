@@ -1,0 +1,12 @@
+<!-- @dsCard group="Typography" height=120 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><style>body{padding:16px} .row{display:grid;gap:12px} .g4{grid-template-columns:repeat(4,minmax(0,1fr))} .g2{grid-template-columns:repeat(2,minmax(0,1fr))} .flex{display:flex;gap:8px;flex-wrap:wrap;align-items:center}</style></head>
+<body>
+<div id="root"></div>
+<script>
+  var M = window.Marlin, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{className:'row'},h(M.SectionTitle,{number:'1.1',title:'Who we are',lead:'At Marlin Hospitality, hospitality is about more than venues.'})));
+</script>
+</body>
+</html>
