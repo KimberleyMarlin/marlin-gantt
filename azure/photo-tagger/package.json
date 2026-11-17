@@ -1,0 +1,14 @@
+{
+  "name": "marlin-os-photo-tagger",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Azure Function that tags Digital Media photos with Claude for the Marlin OS.",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.7.0",
+    "@azure/functions": "^4.17.0"
+  }
+}
