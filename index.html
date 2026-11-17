@@ -259,6 +259,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 .activity-summary-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:var(--tr)}
 .activity-summary-row:last-child{border-bottom:none}
 .activity-summary-row:hover{background:var(--surface2)}
+.activity-logo-box.is-wide{width:88px}
 .activity-logo-box{width:54px;height:54px;border:1px solid var(--border);border-radius:var(--radius-sm);background:#fff;display:flex;align-items:center;justify-content:center;padding:7px;flex-shrink:0;overflow:hidden}
 .activity-logo-box img{display:block;width:100%;height:100%;object-fit:contain}
 .activity-logo-fallback{width:100%;height:100%;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800;letter-spacing:.04em}
@@ -8886,16 +8887,28 @@ const VENUE_LOGOS={
   'Hotel Darwin':'https://www.loadedrewards.com.au/wp-content/uploads/2025/01/HD_Rebrand_Logo_Narrow_Black.png',
   'The Ravenswood':'https://www.loadedrewards.com.au/wp-content/uploads/2025/05/Ravenswood-Logo-Mono_Black.png'
 };
+// "Loaded as the main branding": Primary Brand or Department is Loaded Rewards, or the title is
+// one of the "LOADED REWARDS_<supplier> [MONTH]" jobs (those are often saved with no Primary Brand).
+// Venue activities that merely also run through the Loaded app (loadedRewards flag) keep their venue logo.
+function isLoadedBranded(ev){
+  if(!ev)return false;
+  return ev.brand==='Loaded Rewards'||(ev.department||'')==='Loaded Rewards'||/^\s*loaded\s*rewards(?![a-z])/i.test(ev.title||'');
+}
+// The logo that identifies an activity: the Loaded Rewards logo for Loaded-branded jobs, else the venue's.
+function activityBrandLogo(ev){
+  return isLoadedBranded(ev)?LR_LOGO:(VENUE_LOGOS[ev.venue]||'');
+}
 function eventLogo(ev){
-  // Loaded department -> Loaded logo; else own image; else venue logo
-  if((ev.department||'')==='Loaded Rewards')return LR_LOGO;
+  // Loaded-branded -> Loaded logo; else own image; else venue logo
+  if(isLoadedBranded(ev))return LR_LOGO;
   if(ev.eventImageUrl)return ev.eventImageUrl;
   return VENUE_LOGOS[ev.venue]||'';
 }
 
 function venueLogoBox(ev,loaded=false){
-  const logo=VENUE_LOGOS[ev.venue]||(loaded?LR_LOGO:'');
-  if(logo)return`<div class="${loaded?'lr-logo-box':'activity-logo-box'}"><img src="${escapeAttr(logo)}" alt="${escapeAttr(loaded?'Loaded Rewards logo':shortVenue(ev.venue))}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="activity-logo-fallback" style="display:none;background:${vColor(ev.venue).c}">${escapeAttr(shortVenue(ev.venue).slice(0,2).toUpperCase())}</div></div>`;
+  const lb=isLoadedBranded(ev);
+  const logo=lb?LR_LOGO:(VENUE_LOGOS[ev.venue]||(loaded?LR_LOGO:''));
+  if(logo)return`<div class="${loaded?'lr-logo-box':'activity-logo-box'+(lb?' is-wide':'')}"><img src="${escapeAttr(logo)}" alt="${escapeAttr(loaded||lb?'Loaded Rewards logo':shortVenue(ev.venue))}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="activity-logo-fallback" style="display:none;background:${vColor(ev.venue).c}">${escapeAttr(shortVenue(ev.venue).slice(0,2).toUpperCase())}</div></div>`;
   return`<div class="${loaded?'lr-logo-box':'activity-logo-box'}"><div class="activity-logo-fallback" style="background:${vColor(ev.venue).c}">${escapeAttr(shortVenue(ev.venue).slice(0,2).toUpperCase())}</div></div>`;
 }
 
@@ -9928,10 +9941,11 @@ function renderCampaigns(){
         const sc=stageColors[ev.stage]||'#5f6b7a';
         const posWarn=['Required','Pending','To Do','In Progress'].includes(ev.posStatus)?'<span title="POS update outstanding" style="color:#9c732b">⚠︎︎</span>':'';
         const posText=ev.posStatus||(ev.posRequired?'Required':'');
-        const vLogo=VENUE_LOGOS[ev.venue];
+        const vLogo=activityBrandLogo(ev);
+        const vLogoLoaded=isLoadedBranded(ev);
         return`<tr onclick="showActivityPage(${ev.id})" style="cursor:pointer">
           <td onclick="event.stopPropagation()"><input type="checkbox" class="camp-select" data-id="${ev.id}" ${campSelected.has(String(ev.id))?'checked':''} onclick="event.stopPropagation();toggleCampRowSelect('${ev.id}')"></td>
-          <td><div class="tbl-name" style="display:flex;align-items:center;gap:7px">${vLogo?`<img src="${vLogo}" alt="" style="height:16px;width:16px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">`:''}<span>${ev.title}${posWarn}</span></div>${ev.brand?`<div class="tbl-sub">${ev.brand}</div>`:''}</td>
+          <td><div class="tbl-name" style="display:flex;align-items:center;gap:7px">${vLogo?`<img src="${escapeAttr(vLogo)}" alt="${vLogoLoaded?'Loaded Rewards':''}" title="${vLogoLoaded?'Loaded Rewards':escapeAttr(shortVenue(ev.venue))}" style="height:${vLogoLoaded?'22px':'16px'};width:${vLogoLoaded?'40px':'16px'};object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">`:''}<span>${ev.title}${posWarn}</span></div>${ev.brand?`<div class="tbl-sub">${ev.brand}</div>`:''}</td>
           <td><span style="font-size:10px;font-weight:600;color:#fff;background:${vc.c};padding:2px 8px;border-radius:var(--radius-sm);white-space:nowrap;display:inline-block">${shortVenue(ev.venue)}</span></td>
           <td>${ev.activityType||ev.eventFormat?`<span class="tag t-gr" style="font-size:10px">${ev.activityType||ev.eventFormat}</span>`:'-'}</td>
           <td style="font-size:12px;white-space:nowrap">${fmtShort(ev.start)}</td>
