@@ -1524,7 +1524,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
           <option value="all">All time</option>
         </select>
         <select class="form-select" id="mrVenue" style="width:auto;font-size:12px" onchange="renderMarketingReport()" aria-label="Venue"></select>
-        <button class="btn btn-s" onclick="loadReviewsData(true);loadWeeklyReports(true)">Refresh</button>
+        <button class="btn btn-s" onclick="loadReviewsData(true);loadWeeklyReports(true);loadMetaData(true)">Refresh</button>
         <button class="btn btn-s" onclick="window.print()">Print</button>
       </div>
     </div>
@@ -5001,6 +5001,7 @@ async function loadAll(){
   await loadAllComments();
   await loadHubUserPrefs();
   ACTIVITIES_LOADED_AT=new Date();
+  if(!isPreviewMode)loadMetaData(true); // not awaited: activity pages show Meta totals once it lands
   SPONSORSHIPS=[...STATIC_SPONSORSHIPS];
   updateAdminImportVisibility();
   generateNotifications();
@@ -8869,6 +8870,7 @@ function renderMarketingReport(){
   const body=document.getElementById('mrBody');if(!body)return;
   if(REVIEWS_STATE.status==='idle'){loadReviewsData();return;}
   if(WEEKLY_REPORTS_STATE.status==='idle')loadWeeklyReports();
+  if(META_STATE.status==='idle')loadMetaData();
   // Venue picker, filled once from the venues the OS knows plus any in the reviews.
   const vSel=document.getElementById('mrVenue');
   const venues=[...new Set([...VENUES_DATA.map(v=>v.name).filter(Boolean),...REVIEWS.map(r=>r.venue)])].sort();
@@ -8890,6 +8892,9 @@ function renderMarketingReport(){
     <div class="mr-note">${escapeAttr(kpiFreshnessLabel(k))}. Activities that ended in the period. ${k.unreported.length?`${k.unreported.length} delivered activit${k.unreported.length===1?'y still needs':'ies still need'} a post-campaign report, so these figures will grow as reports are filed.`:''}</div>
     ${chanRows.length?`<div class="mr-sub">Channel results</div><div style="overflow-x:auto"><table class="tbl" style="min-width:420px"><thead><tr><th>Channel</th><th class="n">Campaigns</th><th>Totals</th></tr></thead><tbody>${chanRows.map(([c,t])=>`<tr><td>${escapeAttr(c)}</td><td class="n">${t.n}</td><td>${CHANNEL_RESULT_METRICS[c].filter(([kk])=>t[kk]!=null).map(([kk,l])=>`${Math.round(t[kk]).toLocaleString()} ${l.toLowerCase()}`).join(' · ')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="mr-note">No channel results recorded yet. They appear here once post-campaign reports include Meta, newsletter or other channel numbers.</div>'}
   </div>`;
+
+  // 1b. Meta ads, from the daily Meta flow.
+  h+=renderMetaSection(venue,from,periodLabel);
 
   // 2. Guest reviews
   h+=`<div class="mr-sec"><div class="mr-h">Guest reviews · ${escapeAttr(periodLabel)}${venue?' · '+escapeAttr(venue):''}</div>`;
@@ -8949,6 +8954,125 @@ function renderMarketingReport(){
     h+='</div>';
   }
   body.innerHTML=h;
+}
+
+
+// ═══════════════════════════════════════
+// META ADS (P03). A daily Power Automate flow calls the Meta Marketing API and saves one CSV per
+// day to the Meta Imports folder (see docs/META_SETUP.md). Columns:
+//   date, account_id, account_name, campaign_id, campaign_name, spend, impressions, reach, clicks, link_clicks
+// The token lives only in the flow; the OS just reads the files with the user's SharePoint sign-in.
+// Campaigns are matched to venues and activities by the naming rule "CODE | Activity name | MonYY".
+// ═══════════════════════════════════════
+const META_IMPORTS={
+  path:'WORKING_Marketing Dashboard/Meta Imports',
+  url:'https://marlingroupaus.sharepoint.com/sites/MarlinHospitalityMarketing/Shared Documents/WORKING_Marketing Dashboard/Meta Imports',
+};
+let META_ROWS=[],META_STATE={status:'idle',error:'',files:0,loadedAt:null,latest:''};
+const normTitle=t=>String(t||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,' ').trim();
+// "WBC | Trivia Night | Nov26" → {code:'WBC', venue:'Whitfords Brewing Co', activity:'trivia night'}
+function parseMetaCampaignName(name,accountName){
+  const parts=String(name||'').split('|').map(x=>x.trim()).filter(Boolean);
+  const code=(parts[0]||'').toUpperCase();
+  let venue=REPORT_VENUE_CODES[code]||'';
+  if(!venue){const acc=String(accountName||'').toLowerCase();
+    venue=Object.values(REPORT_VENUE_CODES).find(v=>acc.includes(v.toLowerCase().replace(/^the /,'').split(' ')[0]))||'';}
+  return{code:REPORT_VENUE_CODES[code]?code:'',venue,activity:normTitle(REPORT_VENUE_CODES[code]?parts[1]:'')};
+}
+async function loadMetaData(force=false){
+  if(isPreviewMode||META_STATE.status==='loading'||(META_STATE.status==='ok'&&!force))return;
+  META_STATE={...META_STATE,status:'loading'};
+  try{
+    const token=await getToken();
+    const files=(await listDriveFolder(META_IMPORTS.path,token)).filter(f=>f.file&&/\.csv$/i.test(f.name))
+      .sort((a,b)=>String(a.lastModifiedDateTime).localeCompare(String(b.lastModifiedDateTime)));
+    const byKey=new Map();
+    for(const f of files){
+      const r=await fetchWithRetry(`${graphDrive()}/items/${f.id}/content`,{headers:{Authorization:'Bearer '+token}});
+      if(!r.ok)continue;
+      const rows=parseCsvRows(await r.text());const H=(rows[0]||[]).map(h=>String(h).trim().toLowerCase());
+      const ix=n=>H.indexOf(n);
+      rows.slice(1).forEach(c=>{
+        const get=n=>ix(n)>=0?c[ix(n)]:'';const num=n=>Number(String(get(n)||'0').replace(/[^\d.-]/g,''))||0;
+        const date=String(get('date')||get('date_start')).slice(0,10);const cid=String(get('campaign_id'));
+        if(!date||!cid)return;
+        const m=parseMetaCampaignName(get('campaign_name'),get('account_name'));
+        // A later file for the same day and campaign replaces the earlier one (Meta revises recent days).
+        byKey.set(date+'|'+cid,{date,campaignId:cid,campaign:String(get('campaign_name')),account:String(get('account_name')),
+          spend:num('spend'),impressions:num('impressions'),reach:num('reach'),clicks:num('clicks'),linkClicks:num('link_clicks')||num('inline_link_clicks'),...m});
+      });
+    }
+    META_ROWS=[...byKey.values()];
+    META_STATE={status:'ok',error:'',files:files.length,loadedAt:new Date(),latest:META_ROWS.reduce((a,r)=>r.date>a?r.date:a,'')};
+  }catch(e){META_STATE={status:'error',error:e.message||String(e),files:0,loadedAt:null,latest:''};}
+  if(document.getElementById('p-mktreport')?.classList.contains('active'))renderMarketingReport();
+}
+function metaTotals(rows){
+  const t={spend:0,impressions:0,reach:0,clicks:0,linkClicks:0,campaigns:new Set(rows.map(r=>r.campaignId)).size};
+  rows.forEach(r=>{t.spend+=r.spend;t.impressions+=r.impressions;t.reach+=r.reach;t.clicks+=r.clicks;t.linkClicks+=r.linkClicks;});
+  t.ctr=t.impressions?t.linkClicks/t.impressions*100:null;t.cpc=t.linkClicks?t.spend/t.linkClicks:null;
+  return t;
+}
+// The activity a campaign belongs to: same venue, activity name matches the title, and the
+// campaign ran between 60 days before the activity started and 7 days after it ended.
+function metaActivityFor(campaignRows){
+  const r0=campaignRows[0];if(!r0?.activity||!r0.venue)return null;
+  const first=campaignRows.reduce((a,r)=>r.date<a?r.date:a,'9999'),last=campaignRows.reduce((a,r)=>r.date>a?r.date:a,'');
+  const shift=(d,n)=>{const x=new Date(d+'T00:00:00');x.setDate(x.getDate()+n);return toLocalISODate(x);};
+  const cands=EVENTS.filter(e=>e.venue===r0.venue&&e.start&&!['Cancelled','Canceled'].includes(e.status)).filter(e=>{
+    const t=normTitle(e.title);return t&&(t===r0.activity||t.includes(r0.activity)||r0.activity.includes(t));
+  }).filter(e=>first<=shift(e.end||e.start,7)&&last>=shift(e.start,-60));
+  return cands.sort((a,b)=>Math.abs(new Date(a.start)-new Date(first))-Math.abs(new Date(b.start)-new Date(first)))[0]||null;
+}
+function metaCampaignsGrouped(rows){
+  const g=new Map();rows.forEach(r=>{if(!g.has(r.campaignId))g.set(r.campaignId,[]);g.get(r.campaignId).push(r);});
+  return[...g.values()].map(rs=>({rows:rs,name:rs[rs.length-1].campaign,venue:rs[0].venue,t:metaTotals(rs),activity:metaActivityFor(rs)}));
+}
+function renderMetaSection(venue,from,periodLabel){
+  const canMoney=!!rolePermissions().canViewBudget;
+  let h=`<div class="mr-sec"><div class="mr-h">Meta ads · ${escapeAttr(periodLabel)}${venue?' · '+escapeAttr(venue):''}</div>`;
+  if(isPreviewMode)return h+'<div class="mr-note">UI preview has no live data.</div></div>';
+  if(META_STATE.status==='loading'||META_STATE.status==='idle')return h+'<div class="loading"><div class="spinner"></div></div></div>';
+  if(META_STATE.status==='error')return h+`<div class="mr-note">Couldn't read the Meta Imports folder: ${escapeAttr(META_STATE.error)}</div></div>`;
+  if(!META_ROWS.length)return h+`<div class="mr-note">No Meta data yet. It appears here once the daily Meta flow starts saving files to <a href="${escapeAttr(META_IMPORTS.url)}" target="_blank" rel="noopener">Meta Imports</a> (docs/META_SETUP.md).</div></div>`;
+  const rows=META_ROWS.filter(r=>r.date>=from&&(!venue||r.venue===venue));
+  if(!rows.length)return h+'<div class="mr-note">No Meta ad activity in this period.</div></div>';
+  const t=metaTotals(rows);
+  h+=`<div class="stats" style="margin-bottom:0">
+    ${canMoney?kpiTile(kpiMoney(t.spend),'Spend',`${t.campaigns} campaign${t.campaigns===1?'':'s'}`):kpiTile(t.campaigns,'Campaigns')}
+    ${kpiTile(t.impressions.toLocaleString(),'Impressions')}
+    ${kpiTile(t.linkClicks.toLocaleString(),'Link clicks')}
+    ${kpiTile(t.ctr===null?'—':t.ctr.toFixed(2)+'%','Click-through rate','Link clicks ÷ impressions')}
+    ${canMoney?kpiTile(t.cpc===null?'—':'$'+t.cpc.toFixed(2),'Cost per click','Spend ÷ link clicks'):''}
+  </div>`;
+  if(!venue){
+    const vs=[...new Set(rows.map(r=>r.venue||'Unassigned'))].map(v=>({v,t:metaTotals(rows.filter(r=>(r.venue||'Unassigned')===v))})).sort((a,b)=>b.t.impressions-a.t.impressions);
+    h+=`<div class="mr-sub">By venue</div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Venue</th><th class="n">Campaigns</th>${canMoney?'<th class="n">Spend</th>':''}<th class="n">Impressions</th><th class="n">Link clicks</th><th class="n">CTR</th>${canMoney?'<th class="n">CPC</th>':''}</tr></thead><tbody>${vs.map(({v,t})=>`<tr><td>${escapeAttr(v)}</td><td class="n">${t.campaigns}</td>${canMoney?`<td class="n">${kpiMoney(t.spend)}</td>`:''}<td class="n">${t.impressions.toLocaleString()}</td><td class="n">${t.linkClicks.toLocaleString()}</td><td class="n">${t.ctr===null?'—':t.ctr.toFixed(2)+'%'}</td>${canMoney?`<td class="n">${t.cpc===null?'—':'$'+t.cpc.toFixed(2)}</td>`:''}</tr>`).join('')}</tbody></table></div>`;
+  }
+  const camps=metaCampaignsGrouped(rows).sort((a,b)=>b.t.impressions-a.t.impressions);
+  const unmatched=camps.filter(c=>!c.activity);
+  h+=`<div class="mr-sub">Campaigns</div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Campaign</th><th>Activity in the OS</th>${canMoney?'<th class="n">Spend</th>':''}<th class="n">Impressions</th><th class="n">Link clicks</th><th class="n">CTR</th></tr></thead><tbody>${camps.slice(0,15).map(c=>`<tr><td>${escapeAttr(c.name)}</td><td>${c.activity?`<a href="#" onclick="event.preventDefault();showPop(${Number(c.activity.id)})">${escapeAttr(c.activity.title)}</a>`:'<span class="u-meta">Not matched</span>'}</td>${canMoney?`<td class="n">${kpiMoney(c.t.spend)}</td>`:''}<td class="n">${c.t.impressions.toLocaleString()}</td><td class="n">${c.t.linkClicks.toLocaleString()}</td><td class="n">${c.t.ctr===null?'—':c.t.ctr.toFixed(2)+'%'}</td></tr>`).join('')}</tbody></table></div>`;
+  h+=`<div class="mr-note">${camps.length>15?`Top 15 of ${camps.length} campaigns by impressions. `:''}${unmatched.length?`${unmatched.length} campaign${unmatched.length===1?' isn\'t':'s aren\'t'} matched to an activity. Name campaigns "CODE | Activity name | MonYY" (e.g. WBC | Trivia Night | Nov26) using the activity's title in the OS. `:''}From ${META_STATE.files} file${META_STATE.files===1?'':'s'} in <a href="${escapeAttr(META_IMPORTS.url)}" target="_blank" rel="noopener">Meta Imports</a>, latest day ${META_STATE.latest?fmtDate(META_STATE.latest):'—'}.</div>`;
+  const stale=META_STATE.latest?Math.floor((Date.now()-new Date(META_STATE.latest+'T00:00:00'))/864e5):null;
+  if(stale!==null&&stale>3)h+=`<div class="mr-call att"><h4>Meta data has stopped updating</h4><div>The newest day is ${fmtDate(META_STATE.latest)}, ${stale} days ago. Check the Meta flow in Power Automate; the access token may need renewing.</div></div>`;
+  return h+'</div>';
+}
+// On an activity: totals for the Meta campaigns matched to it, read straight from Ads Manager data.
+function renderActivityMeta(ev){
+  if(!META_ROWS.length)return'';
+  const camps=metaCampaignsGrouped(META_ROWS.filter(r=>r.venue===ev.venue)).filter(c=>c.activity&&String(c.activity.id)===String(ev.id));
+  if(!camps.length)return'';
+  const canMoney=!!rolePermissions().canViewBudget;
+  const t=metaTotals(camps.flatMap(c=>c.rows));
+  const row=(l,v)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid var(--line);font-size:12px"><span style="color:var(--ink-muted)">${l}</span><span style="font-weight:700;color:var(--ink-brand);text-align:right">${v}</span></div>`;
+  return`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:var(--text3);text-transform:uppercase">Meta ads</div><div class="u-meta">From Ads Manager · ${camps.length} campaign${camps.length===1?'':'s'}</div></div>
+    ${canMoney?row('Spend',kpiMoney(t.spend)):''}
+    ${row('Impressions',t.impressions.toLocaleString())}
+    ${row('Link clicks',t.linkClicks.toLocaleString())}
+    ${row('Click-through rate',t.ctr===null?'—':t.ctr.toFixed(2)+'%')}
+    ${canMoney?row('Cost per click',t.cpc===null?'—':'$'+t.cpc.toFixed(2)):''}
+  </div>`;
 }
 
 // ═══════════════════════════════════════
@@ -15832,6 +15956,7 @@ function renderActivityDetail(id,mode){
       ${linkedTasks.length?linkedTasks.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><div class="task-cb ${t.status==='Done'?'done':''}" onclick="togglePersonalTask('${t.id}')">${t.status==='Done'?'✓':''}</div><div style="flex:1;font-size:13px;cursor:pointer;${t.status==='Done'?'text-decoration:line-through;color:var(--text3)':''}" onclick="navTo('personaltasks')" title="Open in Personal Tasks">${escapeAttr(t.title)}</div>${t.due?`<span class="u-meta">${fmtDate(t.due)}</span>`:''}</div>`).join(''):'<div style="font-size:12px;color:var(--text3);padding:6px 0">No personal tasks linked to this activity yet.</div>'}
     </div>`;
   }
+  h+=renderActivityMeta(ev);
   h+=renderReportSummary(ev);
   // Action buttons
   h+=`<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">`;
