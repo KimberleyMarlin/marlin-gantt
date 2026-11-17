@@ -232,6 +232,29 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 /* ── TABLE ── */
 .tbl-wrap{overflow-x:auto;width:100%;-webkit-overflow-scrolling:touch}
 .tbl{width:100%;border-collapse:collapse;min-width:600px;font-variant-numeric:tabular-nums}
+/* ── MARKETING REPORT ── */
+.mr-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.mr-sec{display:grid;gap:12px;margin-bottom:28px}
+.mr-h{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-brand);padding-bottom:6px;border-bottom:2px solid var(--line-strong,var(--ink-brand))}
+.mr-sub{font-size:14px;font-weight:700;color:var(--ink-brand)}
+.mr-note{font-size:12px;color:var(--ink-muted);max-width:72ch}
+.mr-chart{border:1px solid var(--line);padding:10px;overflow-x:auto;background:var(--surface)}
+.mr-chart svg{min-width:480px;width:100%;height:auto;display:block}
+.mr-key{display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--ink-muted)}
+.mr-key i{display:inline-block;width:11px;height:11px;margin-right:5px;vertical-align:-1px}
+.mr-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.mr-call{padding:14px 16px;font-size:13px}
+.mr-call h4{margin:0 0 6px;font-size:13px;font-weight:800;color:var(--ink-brand)}
+.mr-call ul{margin:0;padding-left:18px;display:grid;gap:5px}
+.mr-call.pos{background:var(--positive-tint)}
+.mr-call.att{background:var(--attention-tint)}
+.mr-tag{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;letter-spacing:.03em;white-space:nowrap}
+.mr-tag.up{background:var(--positive);color:var(--on-positive)}
+.mr-tag.down{background:var(--attention);color:var(--on-attention)}
+.mr-tag.flat{border:1.5px solid var(--line);color:var(--ink-muted)}
+.tbl td.mr-bad{color:var(--attention);font-weight:700}
+.tbl td.n,.tbl th.n{text-align:right}
+@media print{.sb,.tb,.mr-controls .btn,.mr-noprint{display:none!important}.panel#p-mktreport{display:block!important}.mr-chart{break-inside:avoid}}
 /* DataTable (design-system/components/DataTable): navy header row, hairline rules, square corners */
 .tbl th{padding:7px 12px;text-align:left;font-size:11px;font-weight:800;color:var(--on-accent);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;background:var(--accent)}
 .tbl th.sortable{cursor:pointer;user-select:none;transition:background .15s}
@@ -797,6 +820,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
     <div class="sb-sec">Business</div>
     <button class="sb-item" data-p="crm" onclick="nav(this)"><span class="ico">◉</span>Contacts &amp; Mailing</button>
     <button class="sb-item" data-p="venues" onclick="nav(this)"><span class="ico">◎</span>Venues</button>
+    <button class="sb-item" data-p="mktreport" onclick="nav(this)"><span class="ico">▤</span>Marketing Report</button>
     <button class="sb-item" data-p="budget" onclick="nav(this)"><span class="ico">◈</span>Finance</button>
     <button class="sb-item" data-p="operations" onclick="nav(this)"><span class="ico">⌘</span>Oversight</button>
     <button class="sb-item" data-p="schema" onclick="nav(this)"><span class="ico">⌗</span>Admin &amp; Schema</button>
@@ -1486,6 +1510,28 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
   </div>
 
   <!-- BUDGET -->
+  <!-- MARKETING REPORT — campaign results (from Activities, same definitions as the dashboard)
+       and guest reviews (read live from the Reviews – Master workbook). P03, 17 Nov 2026. -->
+  <div class="panel" id="p-mktreport">
+    <div class="ph">
+      <div><div class="ph-eye">Campaign results &amp; guest reviews</div><div class="ph-title">Marketing Report</div></div>
+      <div class="mr-controls">
+        <select class="form-select" id="mrPeriod" style="width:auto;font-size:12px" onchange="renderMarketingReport()" aria-label="Period">
+          <option value="3">Last 3 months</option>
+          <option value="6">Last 6 months</option>
+          <option value="12" selected>Last 12 months</option>
+          <option value="all">All time</option>
+        </select>
+        <select class="form-select" id="mrVenue" style="width:auto;font-size:12px" onchange="renderMarketingReport()" aria-label="Venue"></select>
+        <button class="btn btn-s" onclick="loadReviewsData(true)">Refresh reviews</button>
+        <button class="btn btn-s" onclick="window.print()">Print</button>
+      </div>
+    </div>
+    <div class="ca">
+      <div id="mrBody"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+
   <div class="panel" id="p-budget">
     <div class="ph"><div><div class="ph-eye">Spend &amp; Budget</div><div class="ph-title">Finance</div></div></div>
     <div class="ca">
@@ -6330,7 +6376,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',appearance:'<em>Appearance</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',mktreport:'Marketing <em>Report</em>',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',appearance:'<em>Appearance</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -6386,7 +6432,7 @@ function showPanel(id){
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
   // Activities consolidation: Pipeline is a sub-view of 'campaigns' now — hide it when navigating elsewhere.
   if(id!=='campaigns'){const pipePanel=document.getElementById('p-pipeline');if(pipePanel)pipePanel.style.display='none';}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,appearance:renderAppearanceSettings,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging};
+  const map={mktreport:renderMarketingReport,overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,appearance:renderAppearanceSettings,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
   // Skip this for 'campaigns' while its Pipeline sub-view is showing — that block just hid the
@@ -8567,11 +8613,205 @@ function renderKpiTiles(k,withMoney){
     kpiTile(k.covers.toLocaleString(),'Covers (est.)','Estimated on the report form'),
   ];
   if(withMoney)tiles.push(
-    kpiTile(k.spendVsBudget===null?'—':k.spendVsBudget+'%','Spend vs budget',`${kpiMoney(k.spend)} of ${kpiMoney(k.budget)}`),
+    kpiTile(k.spendVsBudget===null?'—':k.spendVsBudget+'%','Spend vs budget',k.budget>0?`${kpiMoney(k.spend)} of ${kpiMoney(k.budget)}`:`${kpiMoney(k.spend)} spent, no budget recorded`),
     kpiTile(kpiMoney(k.netCost),'Net cost to Marlin',`After ${kpiMoney(k.supplierFunds)} supplier funds`),
     kpiTile(kpiMoney(k.ticketRevenue),'Ticket revenue'),
   );
   return tiles.join('');
+}
+
+
+// ═══════════════════════════════════════
+// MARKETING REPORT (P03)
+// Campaign results come from EVENTS through computeMarketingKpis(), so they match the dashboard.
+// Guest reviews are read live from the Reviews – Master workbook on the Marlin Hospitality
+// Marketing site (sheet "Data": Venue, Review, Review date, Reviewer Name, Rating, Source,
+// Business Response, Response date; newest rows at the top). When REV-02's Guest Reviews list
+// exists, swap loadReviewsData() to read it instead; everything downstream stays the same.
+// ═══════════════════════════════════════
+const REVIEWS_SOURCE={
+  driveId:'b!nNEymQHH-USapvbmTivj6MUjOnOvRKdGt3tKLEHQKgU_egVf0fN4SqcpKRs-yYTv',
+  itemId:'017Y3SVLS7RT67OBYOY5FL5VZWBB6YEWFI',
+  sheet:'Data',
+  name:'Reviews – Master',
+  webUrl:'https://marlingroupaus.sharepoint.com/sites/MarlinHospitalityMarketing/Shared Documents/WORKING_Marketing Dashboard/Reviews Hub/Reviews - Master.xlsx',
+};
+// Spreadsheet venue names → the OS's venue names.
+const REVIEW_VENUE_MAP={
+  'ravenswood hotel':'The Ravenswood','the ravenswood':'The Ravenswood',
+  'the left bank':'The Left Bank','left bank':'The Left Bank',
+  'whitfords brewing company':'Whitfords Brewing Co','whitfords brewing co':'Whitfords Brewing Co',
+  'hotel darwin':'Hotel Darwin','the hotel darwin':'Hotel Darwin',
+  'mustang bar':'Mustang Bar',
+  'northbridge brewing company':'Northbridge Brewing Co','northbridge brewing co':'Northbridge Brewing Co',
+};
+let REVIEWS=[],REVIEWS_STATE={status:'idle',error:'',loadedAt:null,skipped:0};
+
+// The sheet mixes real dates (Excel serials), dd/mm/yy text and m/d/yy text, because each week's
+// export is pasted in as it comes. Serials are unambiguous; for text, rows run newest to oldest,
+// so take whichever reading sits closest to (and not after) the row above.
+function parseReviewRows(values){
+  const head=values.findIndex(r=>String(r[0]||'').trim().toLowerCase()==='venue');
+  const out=[];let prev=null;let skipped=0;const today=new Date();
+  for(const row of values.slice(head+1)){
+    const venueRaw=String(row[0]||'').trim();const rating=Number(row[4]);
+    if(!venueRaw||!(rating>=1&&rating<=5))continue;
+    let d=null;const raw=row[2];
+    if(typeof raw==='number'&&raw>20000)d=new Date(Date.UTC(1899,11,30)+Math.round(raw)*864e5);
+    else{
+      const m=String(raw||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+      if(m){
+        const a=+m[1],b=+m[2];let y=+m[3];if(y<100)y+=2000;
+        // The newest row reads as Australian dd/mm unless that lands in the future. After that,
+        // take whichever reading (dd/mm or m/d) is closest to the row above without being more
+        // than a few days after it.
+        const mk=(dd,mm)=>{if(mm<1||mm>12||dd<1||dd>31)return null;const x=new Date(Date.UTC(y,mm-1,dd));return x.getUTCMonth()===mm-1?x:null;};
+        const au=mk(a,b),us=mk(b,a);
+        if(!prev)d=au&&au<=today?au:(us&&us<=today?us:null);
+        else{const ceil=prev.getTime()+3*864e5;
+          d=[au,us].filter(x=>x&&x.getTime()<=ceil).sort((x,z)=>Math.abs(prev-x)-Math.abs(prev-z))[0]||null;}
+      }
+    }
+    if(!d||isNaN(d)){skipped++;continue;}
+    prev=d;
+    out.push({venue:REVIEW_VENUE_MAP[venueRaw.toLowerCase()]||venueRaw,date:d.toISOString().slice(0,10),rating,source:String(row[5]||'').trim()||'Google',replied:!!String(row[6]||'').trim(),hasText:!!String(row[1]||'').trim()});
+  }
+  return{rows:out,skipped};
+}
+async function loadReviewsData(force=false){
+  if(REVIEWS_STATE.status==='loading')return;
+  if(REVIEWS_STATE.status==='ok'&&!force){renderMarketingReport();return;}
+  if(isPreviewMode){REVIEWS_STATE={status:'error',error:'UI preview has no live data. Sign in to load reviews.',loadedAt:null,skipped:0};renderMarketingReport();return;}
+  REVIEWS_STATE.status='loading';renderMarketingReport();
+  try{
+    const token=await getToken();
+    const url=`https://graph.microsoft.com/v1.0/drives/${REVIEWS_SOURCE.driveId}/items/${REVIEWS_SOURCE.itemId}/workbook/worksheets('${REVIEWS_SOURCE.sheet}')/usedRange(valuesOnly=true)?$select=values`;
+    const res=await fetchWithRetry(url,{headers:{Authorization:'Bearer '+token}});
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,200)}`);
+    const{rows,skipped}=parseReviewRows((await res.json()).values||[]);
+    REVIEWS=rows;REVIEWS_STATE={status:'ok',error:'',loadedAt:new Date(),skipped};
+  }catch(e){REVIEWS_STATE={status:'error',error:e.message||String(e),loadedAt:null,skipped:0};}
+  renderMarketingReport();
+}
+
+function mrPeriodStart(){
+  const v=document.getElementById('mrPeriod')?.value||'12';
+  if(v==='all')return'0000-00-00';
+  const d=new Date();d.setMonth(d.getMonth()-Number(v));return toLocalISODate(d);
+}
+function mrReviewStats(rs){
+  const n=rs.length;if(!n)return{n:0};
+  const low=rs.filter(r=>r.rating<=2);
+  return{n,avg:rs.reduce((a,r)=>a+r.rating,0)/n,five:rs.filter(r=>r.rating===5).length,low:low.length,
+    replied:rs.filter(r=>r.replied).length,lowReplied:low.filter(r=>r.replied).length};
+}
+const mrPct=(a,b)=>b?Math.round(a/b*100)+'%':'—';
+function mrMonthlyChart(rs){
+  const byM={};rs.forEach(r=>{const m=r.date.slice(0,7);(byM[m]=byM[m]||[]).push(r);});
+  const months=Object.keys(byM).sort();
+  if(months.length<2)return'<div class="u-meta">Not enough months in this period for a chart.</div>';
+  const data=months.map(m=>({m,n:byM[m].length,avg:byM[m].reduce((a,r)=>a+r.rating,0)/byM[m].length}));
+  const W=Math.max(900,months.length*60),H=280,L=40,R=40,T=22,B=34,pw=W-L-R,ph=H-T-B,bw=pw/months.length;
+  const lo=Math.min(3,Math.floor(Math.min(...data.map(d=>d.avg))*2)/2);
+  const maxN=Math.max(10,Math.ceil(Math.max(...data.map(d=>d.n))/20)*20);
+  const yr=v=>T+ph-(v-lo)/(5-lo)*ph,yc=n=>T+ph-n/maxN*ph;
+  const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Average rating and number of reviews by month">`;
+  for(let v=lo;v<=5.001;v+=0.5)s+=`<line x1="${L}" x2="${W-R}" y1="${yr(v)}" y2="${yr(v)}" stroke="var(--line)"/><text x="${L-6}" y="${yr(v)+4}" text-anchor="end" font-size="10" fill="var(--ink-muted)">${v.toFixed(1)}</text>`;
+  [0,maxN/2,maxN].forEach(n=>{s+=`<text x="${W-R+6}" y="${yc(n)+4}" font-size="10" fill="var(--ink-muted)">${n}</text>`;});
+  data.forEach((d,i)=>{const x=L+i*bw;const[y,mo]=d.m.split('-');
+    s+=`<rect x="${x+bw*.2}" y="${yc(d.n)}" width="${bw*.6}" height="${T+ph-yc(d.n)}" fill="var(--mist-500,var(--line))"><title>${d.n} reviews</title></rect>`;
+    s+=`<text x="${x+bw/2}" y="${H-B+16}" text-anchor="middle" font-size="10" fill="var(--ink-muted)">${MN[+mo-1]}${mo==='01'||i===0?` ${y.slice(2)}`:''}</text>`;});
+  s+=`<polyline fill="none" stroke="var(--ink-brand)" stroke-width="2.5" points="${data.map((d,i)=>`${L+i*bw+bw/2},${yr(d.avg)}`).join(' ')}"/>`;
+  data.forEach((d,i)=>{const c=d.avg<4?'var(--attention)':'var(--ink-brand)';const x=L+i*bw+bw/2;
+    s+=`<circle cx="${x}" cy="${yr(d.avg)}" r="4" fill="${c}"/><text x="${x}" y="${yr(d.avg)-8}" text-anchor="middle" font-size="10" font-weight="700" fill="${c}">${d.avg.toFixed(2)}</text>`;});
+  s+=`<text x="${L-6}" y="12" text-anchor="end" font-size="10" fill="var(--ink-muted)">Rating</text><text x="${W-4}" y="12" text-anchor="end" font-size="10" fill="var(--ink-muted)">Reviews</text></svg>`;
+  return s;
+}
+// Plain-language findings, worked out from the numbers rather than written by hand.
+function mrInsights(rs,venueRows){
+  const good=[],bad=[];
+  const ranked=venueRows.filter(v=>v.all.n>=10).sort((a,b)=>b.all.avg-a.all.avg);
+  if(ranked.length>1){const t=ranked[0];good.push(`${escapeAttr(t.venue)} has the highest rating at ${t.all.avg.toFixed(2)}${t.all.n?`, replying to ${mrPct(t.all.replied,t.all.n)} of reviews`:''}.`);}
+  venueRows.forEach(v=>{
+    if(v.early.n>=5&&v.late.n>=5){const diff=v.late.avg-v.early.avg;
+      if(diff>=0.15)good.push(`${escapeAttr(v.venue)} improved from ${v.early.avg.toFixed(2)} to ${v.late.avg.toFixed(2)}.`);
+      if(diff<=-0.15)bad.push(`${escapeAttr(v.venue)} fell from ${v.early.avg.toFixed(2)} to ${v.late.avg.toFixed(2)}.`);}
+    if(v.all.n>=10&&v.all.replied/v.all.n<0.2)bad.push(`${escapeAttr(v.venue)} replies to ${mrPct(v.all.replied,v.all.n)} of reviews.`);
+    if(v.all.n>=10&&v.all.low/v.all.n>=0.2)bad.push(`${escapeAttr(v.venue)}: ${mrPct(v.all.low,v.all.n)} of reviews are one or two stars.`);
+  });
+  const st=mrReviewStats(rs);
+  if(st.n&&st.five/st.n>=0.6)good.push(`${mrPct(st.five,st.n)} of reviews are five-star.`);
+  if(st.low)(st.lowReplied/st.low<0.5?bad:good).push(`${mrPct(st.lowReplied,st.low)} of one- and two-star reviews got a reply (${st.lowReplied} of ${st.low}).`);
+  return{good,bad};
+}
+function renderMarketingReport(){
+  const body=document.getElementById('mrBody');if(!body)return;
+  if(REVIEWS_STATE.status==='idle'){loadReviewsData();return;}
+  // Venue picker, filled once from the venues the OS knows plus any in the reviews.
+  const vSel=document.getElementById('mrVenue');
+  const venues=[...new Set([...VENUES_DATA.map(v=>v.name).filter(Boolean),...REVIEWS.map(r=>r.venue)])].sort();
+  const curV=vSel?.value||'';
+  if(vSel&&vSel.options.length!==venues.length+1)vSel.innerHTML='<option value="">All venues</option>'+venues.map(v=>`<option value="${escapeAttr(v)}">${escapeAttr(v)}</option>`).join('');
+  if(vSel)vSel.value=curV;
+  const venue=vSel?.value||'';const from=mrPeriodStart();
+  const periodLabel=document.getElementById('mrPeriod')?.selectedOptions[0]?.textContent||'';
+
+  // 1. Campaign results
+  const canMoney=!!rolePermissions().canViewBudget;
+  const evs=EVENTS.filter(e=>(!venue||e.venue===venue)&&String(e.end||e.start||'')>=from&&String(e.start||'')<=toLocalISODate(new Date()));
+  const k=computeMarketingKpis(evs,{withMoney:canMoney});
+  const chanTotals={};evs.filter(isActivityDelivered).forEach(e=>Object.entries(e.channelResults||{}).forEach(([c,m])=>{const t=chanTotals[c]=chanTotals[c]||{n:0};t.n++;Object.entries(m).forEach(([kk,v])=>t[kk]=(t[kk]||0)+Number(v||0));}));
+  const chanRows=Object.entries(chanTotals).filter(([c])=>CHANNEL_RESULT_METRICS[c]);
+  let h=`<div class="mr-sec">
+    <div class="mr-h">Campaign results · ${escapeAttr(periodLabel)}${venue?' · '+escapeAttr(venue):''}</div>
+    <div class="stats" style="margin-bottom:0">${renderKpiTiles(k,canMoney)}</div>
+    <div class="mr-note">${escapeAttr(kpiFreshnessLabel(k))}. Activities that ended in the period. ${k.unreported.length?`${k.unreported.length} delivered activit${k.unreported.length===1?'y still needs':'ies still need'} a post-campaign report, so these figures will grow as reports are filed.`:''}</div>
+    ${chanRows.length?`<div class="mr-sub">Channel results</div><div style="overflow-x:auto"><table class="tbl" style="min-width:420px"><thead><tr><th>Channel</th><th class="n">Campaigns</th><th>Totals</th></tr></thead><tbody>${chanRows.map(([c,t])=>`<tr><td>${escapeAttr(c)}</td><td class="n">${t.n}</td><td>${CHANNEL_RESULT_METRICS[c].filter(([kk])=>t[kk]!=null).map(([kk,l])=>`${Math.round(t[kk]).toLocaleString()} ${l.toLowerCase()}`).join(' · ')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="mr-note">No channel results recorded yet. They appear here once post-campaign reports include Meta, newsletter or other channel numbers.</div>'}
+  </div>`;
+
+  // 2. Guest reviews
+  h+=`<div class="mr-sec"><div class="mr-h">Guest reviews · ${escapeAttr(periodLabel)}${venue?' · '+escapeAttr(venue):''}</div>`;
+  if(REVIEWS_STATE.status==='loading')h+='<div class="loading"><div class="spinner"></div></div>';
+  else if(REVIEWS_STATE.status==='error')h+=`<div class="mr-call att"><h4>Couldn't load reviews</h4><div>${escapeAttr(REVIEWS_STATE.error)}</div><div class="mr-note" style="margin-top:6px">Reviews come from the <em>${escapeAttr(REVIEWS_SOURCE.name)}</em> workbook. Check you can open it in SharePoint, then use Refresh reviews.</div></div>`;
+  else{
+    const rs=REVIEWS.filter(r=>r.date>=from&&(!venue||r.venue===venue));
+    const latest=REVIEWS.reduce((a,r)=>r.date>a?r.date:a,'');
+    const staleDays=latest?Math.floor((Date.now()-new Date(latest+'T00:00:00'))/864e5):null;
+    const st=mrReviewStats(rs);
+    if(!st.n)h+='<div class="mr-note">No reviews in this period.</div>';
+    else{
+      h+=`<div class="stats" style="margin-bottom:0">
+        ${kpiTile(st.n.toLocaleString(),'Reviews',`${[...new Set(rs.map(r=>r.source))].join(' & ')}`)}
+        ${kpiTile(st.avg.toFixed(2),'Average rating','Out of 5')}
+        ${kpiTile(mrPct(st.five,st.n),'Five-star',`${st.five} of ${st.n}`)}
+        ${kpiTile(mrPct(st.low,st.n),'One or two stars',`${st.low} reviews`)}
+        ${kpiTile(mrPct(st.replied,st.n),'Replied to',`${mrPct(st.lowReplied,st.low)} of bad reviews`)}
+      </div>
+      <div class="mr-sub">Average rating and number of reviews by month</div>
+      <div class="mr-chart">${mrMonthlyChart(rs)}</div>
+      <div class="mr-key"><span><i style="background:var(--ink-brand)"></i>Average rating (left)</span><span><i style="background:var(--mist-500,var(--line))"></i>Reviews (right)</span><span><i style="background:var(--attention)"></i>Below 4.0</span></div>`;
+      // By venue, with the period split in half to show direction of travel.
+      const dates=rs.map(r=>r.date).sort();const mid=dates[Math.floor(dates.length/2)];
+      const vNames=[...new Set(rs.map(r=>r.venue))];
+      const venueRows=vNames.map(v=>{const vr=rs.filter(r=>r.venue===v);return{venue:v,all:mrReviewStats(vr),early:mrReviewStats(vr.filter(r=>r.date<mid)),late:mrReviewStats(vr.filter(r=>r.date>=mid))};}).sort((a,b)=>b.all.n-a.all.n);
+      if(!venue){
+        h+=`<div class="mr-sub">By venue</div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Venue</th><th class="n">Reviews</th><th class="n">Avg</th><th class="n">5★</th><th class="n">1–2★</th><th class="n">Replied</th><th>Earlier → later half</th></tr></thead><tbody>${venueRows.map(v=>{
+          const a=v.all;const tr=v.early.n>=5&&v.late.n>=5?v.late.avg-v.early.avg:null;
+          const tag=tr===null?'<span class="u-meta">Too few reviews</span>':`<span class="mr-tag ${tr>=0.15?'up':tr<=-0.15?'down':'flat'}">${v.early.avg.toFixed(2)} → ${v.late.avg.toFixed(2)}</span>`;
+          return`<tr><td>${escapeAttr(v.venue)}</td><td class="n">${a.n}</td><td class="n ${a.avg<4?'mr-bad':''}">${a.avg.toFixed(2)}</td><td class="n">${mrPct(a.five,a.n)}</td><td class="n ${a.low/a.n>=0.2?'mr-bad':''}">${mrPct(a.low,a.n)}</td><td class="n ${a.n>=10&&a.replied/a.n<0.2?'mr-bad':''}">${mrPct(a.replied,a.n)}</td><td>${tag}</td></tr>`;}).join('')}</tbody></table></div>`;
+      }
+      const ins=mrInsights(rs,venueRows);
+      if(ins.good.length||ins.bad.length)h+=`<div class="mr-cols">
+        ${ins.good.length?`<div class="mr-call pos"><h4>What's working</h4><ul>${ins.good.map(x=>`<li>${x}</li>`).join('')}</ul></div>`:''}
+        ${ins.bad.length?`<div class="mr-call att"><h4>Needs attention</h4><ul>${ins.bad.map(x=>`<li>${x}</li>`).join('')}</ul></div>`:''}
+      </div>`;
+    }
+    h+=`<div class="mr-note">From <em>${escapeAttr(REVIEWS_SOURCE.name)}</em>, read ${REVIEWS_STATE.loadedAt?REVIEWS_STATE.loadedAt.toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):''}. ${REVIEWS.length.toLocaleString()} reviews in the workbook${REVIEWS_STATE.skipped?`, ${REVIEWS_STATE.skipped} rows skipped (date couldn't be read)`:''}. "Replied" means a business response is recorded.</div>`;
+    if(staleDays!==null&&staleDays>14)h+=`<div class="mr-call att"><h4>The reviews workbook is out of date</h4><div>The newest review in it is from ${fmtDate(latest)}, ${staleDays} days ago. Reviews since then aren't counted until the workbook is updated.</div></div>`;
+  }
+  h+='</div>';
+  body.innerHTML=h;
 }
 
 // ═══════════════════════════════════════

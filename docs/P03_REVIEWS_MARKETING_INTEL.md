@@ -175,6 +175,22 @@ Tested in UI preview: a ticketed and a Loaded activity, legacy notes, channel in
 
 ---
 
+### Marketing Report page (17 Nov 2026)
+
+Kim asked for the boss update as a page in the OS. **Business → Marketing Report** (`mktreport`).
+
+- **Campaign results** for the chosen period and venue, from `computeMarketingKpis()` (same numbers as the dashboard), plus channel totals from post-campaign reports.
+- **Guest reviews**, read live from the *Reviews – Master* workbook on the Marlin Hospitality Marketing site (sheet `Data`) through the Graph workbook API with the user's own sign-in. Tiles, a monthly rating and volume chart, a by-venue table with the trend between the earlier and later half of the period, and "What's working / Needs attention" findings worked out from the numbers.
+- **Out-of-date warning** when the newest review in the workbook is more than 14 days old (today: 11 Aug 2026).
+- Period (3, 6, 12 months, all time) and venue filters, Refresh reviews, and Print.
+- The workbook mixes dd/mm/yy, m/d/yy and real dates. Rows run newest first, so each text date takes the reading closest to the row above. Checked against a separate analysis of the same data: 706 reviews read, 13 rows skipped, identical venue figures.
+
+**Deviation from the register:** §7 of `OS_RESET_MASTER.md` says P03 adds no nav items. Kim asked for this page directly on 17 Nov, so it has its own nav item under Business. It shows no financials to roles without `canViewBudget`.
+
+When REV-02's Guest Reviews list exists, `loadReviewsData()` switches source; the rest of the page stays the same.
+
+---
+
 ## 8. REV-02 · Guest reviews setup (Google Business Profile, read-only)
 
 This part runs in Google and Power Automate, not in the app, so it needs people with those accounts. In order:
@@ -203,3 +219,4 @@ Before starting step 4, confirm whether Power Automate in the tenant has a ready
 - 2026-11-11: Decisions P3-D1 to D5 recorded. MKT-02 first slice built: shared KPI helper, dashboard and Finance on one definition, freshness labels, `ReportSubmittedAt`, alerts skip reported activities. REV-02 setup steps written.
 - 2026-11-12: Report Submitted column now creates itself on an admin's first report save. Kim asked to finish the marketing report before Google reviews.
 - 2026-11-12: Post-Campaign Report second slice: fields fit the activity, channel results, notes in their own columns, saved report view, Edit report.
+- 2026-11-17: Marketing Report page added (campaign results + live reviews from Reviews – Master), at Kim's request.
