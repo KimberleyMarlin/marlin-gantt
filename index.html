@@ -232,6 +232,30 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 /* ── TABLE ── */
 .tbl-wrap{overflow-x:auto;width:100%;-webkit-overflow-scrolling:touch}
 .tbl{width:100%;border-collapse:collapse;min-width:600px;font-variant-numeric:tabular-nums}
+/* ── MARKETING REPORT ── */
+.mr-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.mr-sec{display:grid;gap:12px;margin-bottom:28px}
+.mr-h{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-brand);padding-bottom:6px;border-bottom:2px solid var(--line-strong,var(--ink-brand))}
+.mr-sub{font-size:14px;font-weight:700;color:var(--ink-brand)}
+.mr-note{font-size:12px;color:var(--ink-muted);max-width:72ch}
+.mr-sec a{color:var(--navy-500);font-weight:600}
+.mr-chart{border:1px solid var(--line);padding:10px;overflow-x:auto;background:var(--surface)}
+.mr-chart svg{min-width:480px;width:100%;height:auto;display:block}
+.mr-key{display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--ink-muted)}
+.mr-key i{display:inline-block;width:11px;height:11px;margin-right:5px;vertical-align:-1px}
+.mr-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.mr-call{padding:14px 16px;font-size:13px}
+.mr-call h4{margin:0 0 6px;font-size:13px;font-weight:800;color:var(--ink-brand)}
+.mr-call ul{margin:0;padding-left:18px;display:grid;gap:5px}
+.mr-call.pos{background:var(--positive-tint)}
+.mr-call.att{background:var(--attention-tint)}
+.mr-tag{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;letter-spacing:.03em;white-space:nowrap}
+.mr-tag.up{background:var(--positive);color:var(--on-positive)}
+.mr-tag.down{background:var(--attention);color:var(--on-attention)}
+.mr-tag.flat{border:1.5px solid var(--line);color:var(--ink-muted)}
+.tbl td.mr-bad{color:var(--attention);font-weight:700}
+.tbl td.n,.tbl th.n{text-align:right}
+@media print{.sb,.tb,.mr-controls .btn,.mr-noprint{display:none!important}.panel#p-mktreport{display:block!important}.mr-chart{break-inside:avoid}}
 /* DataTable (design-system/components/DataTable): navy header row, hairline rules, square corners */
 .tbl th{padding:7px 12px;text-align:left;font-size:11px;font-weight:800;color:var(--on-accent);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;background:var(--accent)}
 .tbl th.sortable{cursor:pointer;user-select:none;transition:background .15s}
@@ -259,6 +283,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 .activity-summary-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:var(--tr)}
 .activity-summary-row:last-child{border-bottom:none}
 .activity-summary-row:hover{background:var(--surface2)}
+.activity-logo-box.is-wide{width:88px}
 .activity-logo-box{width:54px;height:54px;border:1px solid var(--border);border-radius:var(--radius-sm);background:#fff;display:flex;align-items:center;justify-content:center;padding:7px;flex-shrink:0;overflow:hidden}
 .activity-logo-box img{display:block;width:100%;height:100%;object-fit:contain}
 .activity-logo-fallback{width:100%;height:100%;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800;letter-spacing:.04em}
@@ -405,7 +430,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 .lr-tier-icon{font-size:14px;flex-shrink:0;width:22px;text-align:center}
 .lr-tier-name{font-size:11px;font-weight:700;color:var(--text);flex:1}
 .lr-tier-offer{font-size:11px;color:var(--text2);font-weight:500}
-.lr-logo-box{width:52px;height:52px;border-radius:var(--radius-sm);background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.24);display:flex;align-items:center;justify-content:center;padding:7px;flex-shrink:0;overflow:hidden}
+.lr-logo-box{width:84px;height:52px;border-radius:var(--radius-sm);background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.24);display:flex;align-items:center;justify-content:center;padding:6px;flex-shrink:0;overflow:hidden}
 .lr-logo-box img{display:block;width:100%;height:100%;object-fit:contain;filter:none!important;opacity:1!important}
 .lr-activation-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:rgba(255,255,255,.4);margin-bottom:1px}
 .lr-summary-fields{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
@@ -735,7 +760,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
   .inbox-layout{grid-template-columns:1fr;min-height:0}
   .inbox-list-card{max-height:34vh}
   .inbox-chat-pane{min-height:54vh}
-  .activity-logo-box,.lr-logo-box{width:46px;height:46px}
+  .activity-logo-box{width:46px;height:46px}.lr-logo-box{width:68px;height:40px;padding:4px}
   .activity-summary-fields{grid-template-columns:1fr}
   .lr-price-panel{width:100%;align-items:flex-start;padding:0 0 0 58px}
   .ops-grid,.foundation-grid{grid-template-columns:1fr}
@@ -796,6 +821,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
     <div class="sb-sec">Business</div>
     <button class="sb-item" data-p="crm" onclick="nav(this)"><span class="ico">◉</span>Contacts &amp; Mailing</button>
     <button class="sb-item" data-p="venues" onclick="nav(this)"><span class="ico">◎</span>Venues</button>
+    <button class="sb-item" data-p="mktreport" onclick="nav(this)"><span class="ico">▤</span>Marketing Report</button>
     <button class="sb-item" data-p="budget" onclick="nav(this)"><span class="ico">◈</span>Finance</button>
     <button class="sb-item" data-p="operations" onclick="nav(this)"><span class="ico">⌘</span>Oversight</button>
     <button class="sb-item" data-p="schema" onclick="nav(this)"><span class="ico">⌗</span>Admin &amp; Schema</button>
@@ -971,7 +997,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
       <div class="dash-widget" data-widget="reportrequired" style="margin-bottom:12px">
         <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
         <details class="dash-card" open>
-          <summary class="card-h"><span class="card-title">Reporting Required</span></summary>
+          <summary class="card-h"><span class="card-title">Reporting &amp; Performance</span></summary>
           <div id="ovResults"><div class="loading"><div class="spinner"></div></div></div>
         </details>
       </div>
@@ -1434,10 +1460,11 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
         <div class="form-grid">
           <div class="form-group report-financial"><label class="form-label">Actual Spend ($)</label><input class="form-input" id="rActualSpend" type="number" step="0.01" placeholder="0.00"></div>
           <div class="form-group report-financial"><label class="form-label">Supplier Contribution ($)</label><input class="form-input" id="rSupplierContrib" type="number" step="0.01" placeholder="0.00"></div>
-          <div class="form-group"><label class="form-label">Tickets Sold</label><input class="form-input" id="rTicketsSold" type="number" placeholder="0"></div>
-          <div class="form-group report-financial"><label class="form-label">Ticket Revenue ($)</label><input class="form-input" id="rTicketRevenue" type="number" step="0.01" placeholder="Auto-calculated if left blank"></div>
-          <div class="form-group"><label class="form-label">Loaded Redemptions</label><input class="form-input" id="rRedemptions" type="number" placeholder="0"></div>
+          <div class="form-group report-ticketed"><label class="form-label">Tickets Sold</label><input class="form-input" id="rTicketsSold" type="number" placeholder="0"></div>
+          <div class="form-group report-financial report-ticketed"><label class="form-label">Ticket Revenue ($)</label><input class="form-input" id="rTicketRevenue" type="number" step="0.01" placeholder="Auto-calculated if left blank"></div>
+          <div class="form-group report-loaded"><label class="form-label">Loaded Redemptions</label><input class="form-input" id="rRedemptions" type="number" placeholder="0"></div>
           <div class="form-group"><label class="form-label">Estimated Covers / Pax</label><input class="form-input" id="rCovers" type="number" placeholder="0"></div>
+          <div class="form-group full" id="rChannelWrap"><label class="form-label">Channel results</label><div class="field-help" style="margin:0 0 8px">For the channels this activity used. Type in what the platform reports; leave blank if you don't have it.</div><div id="rChannelFields"></div></div>
           <div class="form-group full"><label class="form-label">What worked?</label><textarea class="form-textarea" id="rWorked" placeholder="Key wins, strong performing channels, positive feedback…" style="min-height:60px"></textarea></div>
           <div class="form-group full"><label class="form-label">What to improve next time?</label><textarea class="form-textarea" id="rImprove" placeholder="What would you change, what was missing, what didn't land…" style="min-height:60px"></textarea></div>
         </div>
@@ -1484,6 +1511,28 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
   </div>
 
   <!-- BUDGET -->
+  <!-- MARKETING REPORT — campaign results (from Activities, same definitions as the dashboard)
+       and guest reviews (read live from the Reviews – Master workbook). P03, 17 Nov 2026. -->
+  <div class="panel" id="p-mktreport">
+    <div class="ph">
+      <div><div class="ph-eye">Campaign results &amp; guest reviews</div><div class="ph-title">Marketing Report</div></div>
+      <div class="mr-controls">
+        <select class="form-select" id="mrPeriod" style="width:auto;font-size:12px" onchange="renderMarketingReport()" aria-label="Period">
+          <option value="3">Last 3 months</option>
+          <option value="6">Last 6 months</option>
+          <option value="12" selected>Last 12 months</option>
+          <option value="all">All time</option>
+        </select>
+        <select class="form-select" id="mrVenue" style="width:auto;font-size:12px" onchange="renderMarketingReport()" aria-label="Venue"></select>
+        <button class="btn btn-s" onclick="loadReviewsData(true);loadWeeklyReports(true)">Refresh</button>
+        <button class="btn btn-s" onclick="window.print()">Print</button>
+      </div>
+    </div>
+    <div class="ca">
+      <div id="mrBody"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+
   <div class="panel" id="p-budget">
     <div class="ph"><div><div class="ph-eye">Spend &amp; Budget</div><div class="ph-title">Finance</div></div></div>
     <div class="ca">
@@ -1514,7 +1563,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
            four. Completed activities only, since these numbers are only final once a
            Post-Campaign Report has been saved. -->
       <div class="form-section-head" style="margin-top:20px">Campaign Performance</div>
-      <div class="field-help" style="margin-bottom:10px">Completed activities only — these numbers are only final once a Post-Campaign Report has been saved.</div>
+      <div class="field-help" style="margin-bottom:10px">Delivered activities (past their end date or marked Done). Numbers are only final once a Post-Campaign Report has been saved. <span id="perfFreshness"></span></div>
       <div class="stats" id="perfStats" style="margin-bottom:12px"></div>
       <div class="card">
         <div class="card-h" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
@@ -1854,9 +1903,9 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 
   <!-- PHOTO TAGGING -->
   <div class="panel" id="p-phototagging">
-    <div class="ph"><div><div class="ph-eye">Digital Media library</div><div class="ph-title">Photo <em>Tagging</em></div><div class="ph-sub">Browse folders and AI-tag photos, or search across every tag already generated — runs straight from the browser, no Power Automate involved.</div></div></div>
+    <div class="ph"><div><div class="ph-eye">Digital Media library</div><div class="ph-title">Photo <em>Tagging</em></div><div class="ph-sub">Browse the digital media library and search existing tags. Generating tags will be enabled after a protected Vision backend is connected.</div></div></div>
     <div class="ca">
-      <div id="ptNotConfigured" style="display:none;background:var(--gold-bg);border:1px solid #dccea5;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.5"><strong>Photo Tagging isn't connected yet.</strong> This needs a Google Cloud Vision API key set in the code (GOOGLE_VISION_API_KEY) before it can be used.</div>
+      <div id="ptNotConfigured" style="display:none;background:var(--gold-bg);border:1px solid #dccea5;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.5"><strong>Photo Tagging is paused.</strong> A protected server-side Vision connection is required. Do not paste a Google Cloud key or secret into this public app.</div>
       <div id="ptWrap" style="display:none">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
           <input class="form-input" id="ptSearchInput" type="search" placeholder="Search every tagged photo (e.g. “beer”)…" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')ptSearch()">
@@ -2548,7 +2597,8 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
   <div class="popup" style="max-width:640px">
     <div class="pop-h"><div class="pop-title" id="approvalPreviewTitle">Proposed work</div><button class="pop-close" onclick="closeApprovalPreview()">✕</button></div>
     <div class="pop-body">
-      <div class="form-notice">Approving moves this to Planning. Untick anything not needed, or adjust owner / due date — these are suggestions based on the activity's type, not fixed.</div>
+      <div class="form-notice">Approving moves this to Planning. Untick anything not needed, or adjust owner / due date — these are suggestions based on the activity's group and the submission answers, not fixed.</div>
+      <div id="approvalPreviewSource" style="font-size:11px;color:var(--text3);margin:4px 0 8px"></div>
       <div id="approvalPreviewMsg" class="form-msg"></div>
       <div id="approvalPreviewRows"></div>
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
@@ -2580,13 +2630,11 @@ const CFG={clientId:'b7e650cb-f871-4884-b5ba-3f55c1d8d20b',authority:'https://lo
 const GOOGLE_CLIENT_ID='805946744245-e41ge33vlbr91t94olfqchk67o498ght.apps.googleusercontent.com';
 const GOOGLE_DRIVE_SCOPE='https://www.googleapis.com/auth/drive.readonly';
 
-// Photo Tagging — calls Google Cloud Vision's label-detection API straight from the browser (an
-// API key is enough, no OAuth), then writes the result back to the AITags column on the Digital
-// Media library via Graph. No Power Automate / premium connector involved anywhere in this path.
-// Paste the API key from Google Cloud Console → APIs & Services → Credentials — leave blank to
-// keep the feature hidden. The Digital Media library's drive ID is fixed below; it doesn't change
-// unless the library itself is deleted and recreated.
-const GOOGLE_VISION_API_KEY='AIzaSyDRuH5I4E_zWv02o8atS4CR2zLMZkq88zU';
+// Photo Tagging — reads photos from SharePoint via Graph. Tag generation is paused until a
+// protected server-side Vision backend validates signed-in staff and writes tags back safely.
+// Photo Tagging must call a protected server-side Vision backend. Never put credentials in this
+// public GitHub Pages file. Configure the backend only after it validates signed-in staff.
+const PHOTO_TAGGING_BACKEND_URL='';
 const DIGITAL_MEDIA_DRIVE_ID='b!nNEymQHH-USapvbmTivj6MUjOnOvRKdGt3tKLEHQKgW6fFNcyMOoR51GxWrNifrc';
 const SP_SITE='marlingroupaus.sharepoint.com,9932d19c-c701-44f9-9aa6-f6e64e2be3e8';
 
@@ -2833,7 +2881,7 @@ window.dumpCols=async function(listIdOrName){
 
 let KEY_DATES=[]; // Calendar Reference entries + auto-loaded public holidays
 
-const LR_LOGO='https://www.loadedrewards.com.au/wp-content/uploads/2026/08/cropped-Loaded-Rewards-Logo.webp';
+const LR_LOGO=new URL('./assets/loaded-rewards-logo.png',document.baseURI).href;
 
 // Group templates for tagging multiple people at once via @ — edit this list as your team's
 // structure changes. Group names show in the @ autocomplete alongside individual people.
@@ -3179,7 +3227,13 @@ function calcSubmissionTiming(ev){
 }
 
 // Auto-select playbook template key from ActivityType + Silo + EventFormat
+// Which playbook template an activity starts from. Activity Group/Subtype (the taxonomy on the
+// submit form) decides first; activities saved before that taxonomy existed have no Group, so they
+// fall back to the original ActivityType/EventFormat/BusinessStream logic unchanged.
 function autoSelectPlaybook(ev){
+  return playbookFromActivityGroup(ev)||playbookFromLegacyFields(ev);
+}
+function playbookFromLegacyFields(ev){
   const type=(ev.activityType||'').toLowerCase();
   const format=ev.eventFormat||'';
   const stream=ev.businessStream||'';
@@ -3199,6 +3253,159 @@ function autoSelectPlaybook(ev){
   if(type==='promotion / offer')return'Loaded Rewards';
   if(type==='maintenance / update')return'Maintenance';
   return'default';
+}
+// Subtype → template for subtypes that need their own; anything else in a Group uses the Group's
+// default below. Single-deliverable work requests (Maintenance, Collateral, Content) get a
+// subtype-specific template rather than a whole campaign's worth of jobs.
+const PLAYBOOK_BY_SUBTYPE={
+  'Ticketed Event':'Ticketed Event',
+  'Live Music / Entertainment':'Live Music',
+  'Recurring Event':'Recurring Event',
+  'Function / Private Event Promotion':'Functions Campaign',
+  'Loaded Rewards Campaign':'Loaded Rewards',
+  'Functions & Events Campaign':'Functions Campaign',
+  'Supplier / Trade Campaign':'Supplier Activation',
+  'Supplier-Funded Promotion':'Supplier Activation',
+  'Supplier Product Activation':'Supplier Activation',
+  'New Menu':'Menu Change','Menu Update':'Menu Change','Menu Price Change':'Menu Change',
+  'Organic Social Media':'Request: Social','Email Campaign':'Request: EDM','SMS Campaign':'Request: SMS',
+  'Website Content':'Request: Website','Photography':'Request: Content Shoot','Video Production':'Request: Content Shoot',
+  'Public Relations':'Request: General','Internal Communications':'Request: General',
+  'Signage':'Request: Print','Printed Collateral':'Request: Print','Merchandise':'Request: Design',
+  'Brand Assets':'Request: Design','Venue Information Update':'Request: Venue Info','Website Update':'Request: Website',
+  'Artwork Amendment':'Request: Design','Existing Menu Amendment':'Menu Change','POS Update':'Request: POS',
+  'Price Update':'Request: POS','Website Correction':'Request: Website','Booking Setup':'Request: Booking',
+  'Print Request':'Request: Print','General Marketing Work Request':'Request: General',
+};
+const PLAYBOOK_BY_GROUP={
+  'Food & Beverage':'Product Feature',
+  'Promotions & Offers':'Promotion',
+  'Events & Entertainment':'Venue Activation',
+  'Campaigns & Marketing':'Seasonal Campaign',
+  'Content & Communications':'Request: General',
+  'Venue, Brand & Collateral':'Request: Design',
+  'Maintenance / Work Requests':'Request: General',
+};
+function playbookFromActivityGroup(ev){
+  const group=ev.activityGroup||'';
+  if(!group)return null;
+  // A ticketed flag always wins — whatever the subtype, a ticketed event needs ticketing work.
+  if(ev.ticketed&&group==='Events & Entertainment')return'Ticketed Event';
+  return PLAYBOOK_BY_SUBTYPE[ev.activitySubtype]||PLAYBOOK_BY_GROUP[group]||'default';
+}
+function playbookSourceLabel(ev){
+  if(ev.activityGroup)return`Activity Group: ${ev.activityGroup}${ev.activitySubtype?' › '+ev.activitySubtype:''}`;
+  return'Activity Type / Format (no Activity Group set)';
+}
+
+// What kind of deliverable a ticket is, so answer rules can tell "already covered" from "missing".
+function ticketKind(t){
+  if(t.kind)return t.kind;
+  const title=(t.title||'').toLowerCase();
+  switch(t.taskType){
+    case'Design Asset':return'design';
+    case'Print / Signage':return'print';
+    case'Social Post':return'social';
+    case'EDM / Newsletter':return'edm';
+    case'POS Update':return'pos';
+    case'Paid Ad':return title.includes('meta')?'metaAds':'googleAds';
+    case'Web Update':
+      if(title.includes('ticket platform'))return'ticketing';
+      if(title.includes('google business'))return'gbp';
+      return'web';
+    case'Admin':
+      if(title.includes('push notification')||title.includes('app'))return'app';
+      if(title.includes('staff brief'))return'staff';
+      if(title.includes('tracking'))return'tracking';
+      return'admin';
+  }
+  return'other';
+}
+
+// Submission answers → job tickets (docs/SUBMISSION_WORKFLOW.md "Proposed job rules").
+// Returns {templateKey, sourceLabel, tickets[]}. Each ticket carries:
+//   reason  — shown in the preview so the approver can see why it's proposed
+//   checked — false when the submission explicitly said this work isn't needed (still shown,
+//             so the approver can tick it back on; nothing is silently dropped)
+//   details — extra Notes text written to the ticket (asset formats, POS notes, brief notes)
+function buildProposedTickets(ev){
+  const templateKey=autoSelectPlaybook(ev);
+  const template=PLAYBOOK_TEMPLATES[templateKey]||PLAYBOOK_TEMPLATES['default'];
+  const tickets=template.map(t=>({...t,kind:ticketKind(t),reason:`${templateKey} playbook`,checked:true,details:''}));
+  const has=kind=>tickets.some(t=>t.kind===kind);
+  const first=kind=>tickets.find(t=>t.kind===kind);
+  const add=(t,reason)=>tickets.push({...t,kind:t.kind||ticketKind(t),reason,checked:true,details:t.details||''});
+  const untick=(kind,reason)=>tickets.filter(t=>t.kind===kind&&t.checked).forEach(t=>{t.checked=false;t.reason+=` · unticked: ${reason}`;});
+  const appendDetail=(t,text)=>{if(t&&text)t.details=t.details?t.details+'\n'+text:text;};
+
+  const channels=(ev.channels||[]).map(c=>String(c).toLowerCase());
+  const assets=(ev.assetsNeeded||[]).map(a=>String(a));
+  const assetsLc=assets.map(a=>a.toLowerCase());
+  const chan=name=>channels.includes(name.toLowerCase());
+  const asset=name=>assetsLc.includes(name.toLowerCase());
+  const yes=v=>v===true||String(v).toLowerCase()==='yes';
+  const channelsAnswered=channels.length>0;
+
+  // Any AssetsNeeded → Design Asset ticket listing the selected formats.
+  if(assets.length){
+    if(!has('design'))add({title:'Design Brief — requested assets',taskType:'Design Asset',assignKey:'designer',leadDays:14,priority:'High'},'Assets requested on submission');
+    appendDetail(first('design'),`Assets requested: ${assets.join(', ')}`);
+    if(ev.assetTVsDetail)appendDetail(first('design'),`TVs: ${ev.assetTVsDetail}`);
+    if(ev.assetNewsletterDetail)appendDetail(first('design'),`Newsletter asset: ${ev.assetNewsletterDetail}`);
+  }
+  // In-venue or TV assets → print/screen ticket, assigned to design.
+  if((asset('In-venue')||asset('TVs'))&&!has('print')){
+    add({title:'In-venue print / screen assets',taskType:'Print / Signage',assignKey:'designer',leadDays:7,priority:'Medium',
+      details:[asset('TVs')&&ev.assetTVsDetail?`TVs: ${ev.assetTVsDetail}`:''].filter(Boolean).join('\n')},'In-venue / TV assets requested');
+  }
+  // Website channel or asset → website ticket.
+  if(chan('Website')||asset('Website')||ev.landingPageRequired){
+    if(!has('web'))add({title:'Website update / page',taskType:'Web Update',assignKey:'web',leadDays:10,priority:'High'},'Website selected on submission');
+    appendDetail(first('web'),ev.websiteBriefNotes?`Website brief: ${ev.websiteBriefNotes}`:'');
+  }
+  // Ticketed → ticket platform publish, plus a website listing.
+  if(ev.ticketed){
+    if(!has('ticketing'))add({title:'Ticket platform setup & publish',taskType:'Web Update',assignKey:'web',leadDays:14,priority:'High'},'Ticketed event');
+    if(!has('web'))add({title:'Website event listing',taskType:'Web Update',assignKey:'web',leadDays:14,priority:'High'},'Ticketed event');
+    appendDetail(first('ticketing'),[ev.ticketPlatform?`Platform: ${ev.ticketPlatform}`:'',ev.ticketPrice?`Price: $${ev.ticketPrice}`:'',ev.capacity?`Capacity: ${ev.capacity}`:'',ev.ticketLaunchDate?`Ticket launch: ${ev.ticketLaunchDate}`:''].filter(Boolean).join(' · '));
+  }
+  // Meta channel → social/Meta ticket.
+  if(chan('Meta')||asset('Meta')){
+    if(!has('social'))add({title:'Social / Meta posts',taskType:'Social Post',assignKey:'marketing',leadDays:7,priority:'Medium'},'Meta selected on submission');
+    appendDetail(first('social'),ev.metaBriefNotes?`Meta brief: ${ev.metaBriefNotes}`:'');
+  }else if(channelsAnswered){
+    untick('social','Meta not selected');
+  }
+  // Google Ads channel → paid media setup & tracking.
+  if(chan('Google Ads')||ev.googleAdsEligible){
+    if(!has('googleAds'))add({title:'Google Ads setup & tracking',taskType:'Paid Ad',assignKey:'marketing',leadDays:14,priority:'Medium'},'Google Ads selected on submission');
+    appendDetail(first('googleAds'),ev.googleAdsBriefNotes?`Google Ads brief: ${ev.googleAdsBriefNotes}`:'');
+  }else if(channelsAnswered){
+    untick('googleAds','Google Ads not selected');
+  }
+  // Newsletter channel/asset (or Loaded "Newsletter required") → EDM ticket.
+  const wantsEdm=chan('Newsletter')||asset('Newsletter')||yes(ev.newsletterRequired);
+  if(wantsEdm){
+    if(!has('edm'))add({title:'EDM / newsletter feature',taskType:'EDM / Newsletter',assignKey:'marketing',leadDays:10,priority:'Medium'},'Newsletter selected on submission');
+    appendDetail(first('edm'),ev.assetNewsletterDetail?`Newsletter: ${ev.assetNewsletterDetail}`:'');
+  }else if(String(ev.newsletterRequired).toLowerCase()==='no'||channelsAnswered){
+    untick('edm','Newsletter not selected');
+  }
+  // Loaded Rewards → app setup (newsletter/design/POS only via their own answers above/below).
+  if(ev.loadedRewards||chan('Loaded')||asset('Loaded')){
+    if(String(ev.appRequired).toLowerCase()==='no')untick('app','App not required');
+    else if(!has('app'))add({title:'Loaded app setup',taskType:'Admin',assignKey:'marketing',leadDays:10,priority:'High'},'Loaded Rewards');
+    appendDetail(first('app'),[ev.appHeading?`App heading: ${ev.appHeading}`:'',ev.appShortDescription?`Short description: ${ev.appShortDescription}`:''].filter(Boolean).join('\n'));
+  }
+  // POS required → POS ticket with the submitted notes. Explicit "Not Required" unticks any
+  // template POS ticket (new submissions always record one or the other; older ones record neither).
+  if(ev.posRequired){
+    if(!has('pos'))add({title:'POS update',taskType:'POS Update',assignKey:'ops',leadDays:7,priority:'High'},'POS update requested');
+    appendDetail(first('pos'),ev.posNotes?`POS notes: ${ev.posNotes}`:'');
+  }else if(ev.posStatus==='Not Required'){
+    untick('pos','POS not requested');
+  }
+  return{templateKey,sourceLabel:playbookSourceLabel(ev),tickets};
 }
 
 // SEO/SEM validation — returns array of issues
@@ -3288,6 +3495,37 @@ const PLAYBOOK_TEMPLATES={
     {title:'Update website content',                   taskType:'Web Update',       assignKey:'web',      leadDays:5,  priority:'Medium'},
     {title:'POS / menu update',                        taskType:'POS Update',       assignKey:'ops',      leadDays:3,  priority:'High'},
   ],
+  // Templates for Activity Group/Subtype (see PLAYBOOK_BY_SUBTYPE / PLAYBOOK_BY_GROUP).
+  'Product Feature':[
+    {title:'Design Brief — product feature assets',    taskType:'Design Asset',    assignKey:'designer', leadDays:14, priority:'High'},
+    {title:'Social post — product feature',            taskType:'Social Post',      assignKey:'marketing',leadDays:5,  priority:'Medium'},
+    {title:'Staff brief',                              taskType:'Admin',            assignKey:'ops',      leadDays:3,  priority:'Medium'},
+  ],
+  'Menu Change':[
+    {title:'Menu artwork update',                      taskType:'Design Asset',    assignKey:'designer', leadDays:10, priority:'High'},
+    {title:'Website menu update',                      taskType:'Web Update',       assignKey:'web',      leadDays:5,  priority:'High'},
+    {title:'POS / menu update',                        taskType:'POS Update',       assignKey:'ops',      leadDays:3,  priority:'High'},
+    {title:'Staff brief',                              taskType:'Admin',            assignKey:'ops',      leadDays:3,  priority:'Medium'},
+  ],
+  'Promotion':[
+    {title:'Design Brief — promotion assets',          taskType:'Design Asset',    assignKey:'designer', leadDays:14, priority:'High'},
+    {title:'Social post — promotion',                  taskType:'Social Post',      assignKey:'marketing',leadDays:7,  priority:'Medium'},
+    {title:'Staff brief — offer details',              taskType:'Admin',            assignKey:'ops',      leadDays:3,  priority:'High'},
+  ],
+  'Request: Design':[{title:'Design request',          taskType:'Design Asset',    assignKey:'designer', leadDays:7,  priority:'Medium'}],
+  'Request: Print':[{title:'Print / signage request',  taskType:'Print / Signage',  assignKey:'designer', leadDays:10, priority:'Medium'}],
+  'Request: Website':[{title:'Website update',         taskType:'Web Update',       assignKey:'web',      leadDays:5,  priority:'Medium'}],
+  'Request: Venue Info':[
+    {title:'Website venue info update',                taskType:'Web Update',       assignKey:'web',      leadDays:5,  priority:'Medium'},
+    {title:'Google Business Profile update',           taskType:'Web Update',       assignKey:'web',      leadDays:5,  priority:'Medium'},
+  ],
+  'Request: Booking':[{title:'Booking setup',          taskType:'Web Update',       assignKey:'web',      leadDays:7,  priority:'Medium'}],
+  'Request: POS':[{title:'POS update',                 taskType:'POS Update',       assignKey:'ops',      leadDays:3,  priority:'High'}],
+  'Request: Social':[{title:'Social content',          taskType:'Social Post',      assignKey:'marketing',leadDays:5,  priority:'Medium'}],
+  'Request: EDM':[{title:'EDM build & send',           taskType:'EDM / Newsletter', assignKey:'marketing',leadDays:7,  priority:'Medium'}],
+  'Request: SMS':[{title:'SMS copy & send',            taskType:'General',          assignKey:'marketing',leadDays:3,  priority:'Medium'}],
+  'Request: Content Shoot':[{title:'Photo / video shoot', taskType:'General',        assignKey:'marketing',leadDays:14, priority:'Medium'}],
+  'Request: General':[{title:'Marketing work request', taskType:'General',          assignKey:'marketing',leadDays:5,  priority:'Medium'}],
   'default':[
     {title:'Design Brief',                             taskType:'Design Asset',    assignKey:'designer', leadDays:14, priority:'High'},
     {title:'Social post',                              taskType:'Social Post',      assignKey:'marketing',leadDays:7,  priority:'Medium'},
@@ -3305,7 +3543,7 @@ let ROLE_EMAILS={designer:'',web:'',marketing:'',ops:''};
 async function runPlaybook(ev){
   if(!canApproveCampaigns())return{created:0,errors:['You do not have permission to approve campaigns.']};
   if(!isAuthed||!ev?.spId)return{created:0,errors:[]};
-  if(!LIST_IDS.myTasks)return{created:0,errors:['Shared Work Items are not connected yet. No workflow tasks were created. Configure the approved SharePoint list before running this playbook.']};
+  if(!LIST_IDS.myTasks)return{created:0,errors:['The Tasks & Job Tickets list is not connected yet. No workflow tasks were created. Configure the approved SharePoint list before running this playbook.']};
   // Auto-select template from ActivityType + Silo + EventFormat
   const templateKey=autoSelectPlaybook(ev);
   const template=PLAYBOOK_TEMPLATES[templateKey]||PLAYBOOK_TEMPLATES['default'];
@@ -3409,19 +3647,20 @@ function openApprovalPreview(evId){
   const ev=EVENTS.find(e=>e.id===evId);
   if(!ev)return;
   APPROVAL_PREVIEW_EV_ID=evId;
-  const templateKey=autoSelectPlaybook(ev);
-  const template=PLAYBOOK_TEMPLATES[templateKey]||PLAYBOOK_TEMPLATES['default'];
+  const {templateKey,sourceLabel,tickets}=buildProposedTickets(ev);
   const startDate=new Date(ev.start+'T00:00:00');
   const people=M365_USERS.length?M365_USERS:[];
-  document.getElementById('approvalPreviewTitle').textContent=`Proposed work — "${ev.title}"`;
+  document.getElementById('approvalPreviewTitle').textContent=`Proposed job tickets — "${ev.title}"`;
   document.getElementById('approvalPreviewMsg').textContent='';
   document.getElementById('approvalPreviewMsg').className='form-msg';
-  document.getElementById('approvalPreviewRows').innerHTML=template.map((task,i)=>{
+  const sourceEl=document.getElementById('approvalPreviewSource');
+  if(sourceEl)sourceEl.textContent=`Playbook: ${templateKey} · chosen from ${sourceLabel}. Each ticket shows why it is proposed; unticked ones were marked not needed on the submission.`;
+  document.getElementById('approvalPreviewRows').innerHTML=tickets.map((task,i)=>{
     const dueDate=new Date(startDate);dueDate.setDate(dueDate.getDate()-task.leadDays);
     const defaultOwner=ROLE_EMAILS[task.assignKey]||'';
-    return`<div class="form-group full" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)" data-approval-row="${i}" data-task-title="${escapeAttr(task.title)}" data-task-type="${escapeAttr(task.taskType)}" data-task-priority="${escapeAttr(task.priority)}">
-      <input type="checkbox" checked style="flex-shrink:0">
-      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">${escapeAttr(task.title)}</div><div class="u-meta">${escapeAttr(task.taskType)} · ${escapeAttr(task.priority)}</div></div>
+    return`<div class="form-group full" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)" data-approval-row="${i}" data-task-title="${escapeAttr(task.title)}" data-task-type="${escapeAttr(task.taskType)}" data-task-priority="${escapeAttr(task.priority)}" data-task-details="${escapeAttr(task.details||'')}">
+      <input type="checkbox" ${task.checked?'checked':''} style="flex-shrink:0">
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">${escapeAttr(task.title)}</div><div class="u-meta">${escapeAttr(task.taskType)} · ${escapeAttr(task.priority)} · ${escapeAttr(task.reason)}</div>${task.details?`<div class="u-meta" style="color:var(--ink-muted);white-space:pre-wrap">${escapeAttr(task.details)}</div>`:''}</div>
       <select class="form-select" style="max-width:150px;font-size:12px"><option value="">Unassigned</option>${people.map(u=>`<option value="${escapeAttr(u.email)}" ${u.email===defaultOwner?'selected':''}>${escapeAttr(u.name)}</option>`).join('')}</select>
       <input type="date" class="form-input" style="max-width:135px;font-size:12px" value="${toLocalISODate(dueDate)}">
     </div>`;
@@ -3471,12 +3710,13 @@ async function confirmApprovalTasks(){
       Status:'Not Started',
       Priority:row.dataset.taskPriority,
       CampaignLookupId:Number(ev.spId),
-      Notes:`Approved for campaign: ${ev.title} (${ev.venue})\nCampaign start: ${ev.start}`,
+      ...(ev.venue?{Venue:ev.venue}:{}),
+      Notes:`Approved for campaign: ${ev.title} (${ev.venue})\nCampaign start: ${ev.start}${row.dataset.taskDetails?'\n'+row.dataset.taskDetails:''}`,
     };
     if(dueDate)fields.DueDate=dueDate+'T12:00:00Z';
     if(owner)fields.AssignedTo=owner;
     try{
-      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+      const res=await postSharedTask(token,fields);
       if(res.ok){row.dataset.created='1';checkbox.disabled=true;}
       else failures.push(`${row.dataset.taskTitle}: HTTP ${res.status}`);
     }catch(e){failures.push(`${row.dataset.taskTitle}: ${e.message}`);}
@@ -3490,7 +3730,7 @@ async function confirmApprovalTasks(){
   try{
     await advanceCampaignStage(ev,'In Design',{DesignJobCreated:true});
     closeApprovalPreview();
-    if(typeof showToast==='function')showToast(`"${ev.title}" approved → In Design, tasks created`);
+    if(typeof showToast==='function')showToast(`"${ev.title}" approved → In Design, tasks created${SHARED_TASK_VENUE_COLUMN?'':' (Venue saved in Notes: the Venue column is missing, add it in Schema Tools)'}`);
   }catch(e){
     msg.textContent='Tasks were created, but the activity could not be moved to In Design: '+e.message;
     msg.className='form-msg err';
@@ -4503,6 +4743,7 @@ function busynessTextColor(level){
 // ═══════════════════════════════════════
 let msalApp=null,isAuthed=false,currentUser=null,currentUserEmail='',isPreviewMode=false;
 let EVENTS=[],MY_TASKS=[],PERSONAL_TASKS=[],PROJECTS=[],SPONSORSHIPS=[];
+let ACTIVITIES_LOADED_AT=null; // set by loadAll(); drives the freshness label on every KPI (MKT-02)
 let PERSONAL_TASKS_ERROR='';
 let personalTaskSelected=new Set(),personalTaskExpanded=new Set();
 const TASK_SHARING_ENABLED=true;
@@ -4952,6 +5193,7 @@ async function loadAll(){
   await loadM365Users();
   await loadAllComments();
   await loadHubUserPrefs();
+  ACTIVITIES_LOADED_AT=new Date();
   SPONSORSHIPS=[...STATIC_SPONSORSHIPS];
   updateAdminImportVisibility();
   generateNotifications();
@@ -5640,6 +5882,12 @@ async function loadCampaigns(){
         ticketRevenue:parseFloat(f.TicketRevenue||0),
         redemptions:parseInt(f.Redemptions||0),
         covers:parseInt(f.Covers||0),
+        // Set by savePostCampaign(). Empty on activities reported before the column existed;
+        // isActivityReported() falls back to "any actual saved" for those.
+        reportSubmittedAt:f.ReportSubmittedAt?String(f.ReportSubmittedAt).split('T')[0]:'',
+        reportWorked:f.ReportWorked||'',
+        reportImprove:f.ReportImprove||'',
+        channelResults:parseChannelResults(f.ChannelResults),
         // Ticketing — also true for an activity saved under the old EventFormat="Ticketed Event"
         // value, from before Ticketed? became its own field, so nothing already marked ticketed
         // loses that status just because Event Format no longer offers it as a choice.
@@ -6322,7 +6570,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',appearance:'<em>Appearance</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',mktreport:'Marketing <em>Report</em>',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',appearance:'<em>Appearance</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -6378,7 +6626,7 @@ function showPanel(id){
   if(id!=='calendar'){Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const sp=document.getElementById(pid);if(sp)sp.style.display='none';});}
   // Activities consolidation: Pipeline is a sub-view of 'campaigns' now — hide it when navigating elsewhere.
   if(id!=='campaigns'){const pipePanel=document.getElementById('p-pipeline');if(pipePanel)pipePanel.style.display='none';}
-  const map={overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,appearance:renderAppearanceSettings,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging};
+  const map={mktreport:renderMarketingReport,overview:renderOverview,gantt:renderGantt,crossvenue:renderCrossVenue,pipeline:renderPipeline,calendar:initScheduleView,campaigns:initActivitiesView,artwork:renderArtwork,mywork:renderMyWork,loaded:renderLoaded,crm:renderCRM,ticketing:renderTicketing,design:renderDesign,workload:renderWorkload,social:renderSocial,budget:renderBudget,venues:renderVenues,sponsorships:renderSponsorships,specials:renderSpecials,mytasks:renderMyTasks,personaltasks:renderPersonalTasks,schema:renderSchemaTools,appearance:renderAppearanceSettings,operations:renderOperationsMap,projects:renderProjects,approvals:renderApprovals,notifications:renderNotifications,inbox:renderInbox,venuemonth:renderVenueMonth,ideas:renderIdeas,submit:()=>{},drivesearch:renderDriveSearch,phototagging:renderPhotoTagging};
   if(map[id])map[id]();
   // Bulletproof: force the content area to have real height regardless of CSS cascade.
   // Skip this for 'campaigns' while its Pipeline sub-view is showing — that block just hid the
@@ -6485,7 +6733,7 @@ function renderPhotoTagging(){
   const notConfigured=document.getElementById('ptNotConfigured');
   const wrap=document.getElementById('ptWrap');
   if(!notConfigured||!wrap)return;
-  if(!GOOGLE_VISION_API_KEY||!DIGITAL_MEDIA_DRIVE_ID){notConfigured.style.display='';wrap.style.display='none';return;}
+  if(!PHOTO_TAGGING_BACKEND_URL||!DIGITAL_MEDIA_DRIVE_ID){notConfigured.style.display='';wrap.style.display='none';return;}
   notConfigured.style.display='none';wrap.style.display='';
   if(!ptCurrentItems.length&&ptMode==='browse')ptLoadFolder();
 }
@@ -6626,10 +6874,7 @@ async function ptTagOne(itemId){
     if(!imgRes.ok)throw new Error('Could not fetch image (HTTP '+imgRes.status+')');
     const buffer=await imgRes.arrayBuffer();
     const base64=ptArrayBufferToBase64(buffer);
-    const visionRes=await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API_KEY}`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({requests:[{image:{content:base64},features:[{type:'LABEL_DETECTION',maxResults:10}]}]})
-    });
+    throw new Error('Photo tagging is paused until a protected Vision backend is connected. Do not place an API key in this public app.');
     if(!visionRes.ok)throw new Error('Vision API error (HTTP '+visionRes.status+')');
     const visionData=await visionRes.json();
     const labels=visionData.responses?.[0]?.labelAnnotations||[];
@@ -8089,7 +8334,7 @@ function renderOverview(){
 
   // Needs action — approvals + blocked + overdue briefs
   const needsAction=[];
-  EVENTS.filter(e=>e.autoCompleted&&!['Archive','Archived','Cancelled'].includes(e.status)).slice(0,3).forEach(e=>needsAction.push({icon:'▥',text:e.title,sub:'Report required — ended '+fmtShort(e.end),urgent:false,click:`showPop(${e.id})`}));
+  EVENTS.filter(e=>e.autoCompleted&&!isActivityReported(e)&&!['Archive','Archived','Cancelled'].includes(e.status)).slice(0,3).forEach(e=>needsAction.push({icon:'▥',text:e.title,sub:'Report required — ended '+fmtShort(e.end),urgent:false,click:`showPop(${e.id})`}));
   MY_TASKS.filter(t=>t.status==='Blocked').slice(0,3).forEach(t=>needsAction.push({icon:'⊘',text:t.title,sub:'Blocked task',urgent:true,click:`openEditTask('${t.id}')`}));
   document.getElementById('ovNeedsAction').innerHTML=needsAction.length
     ?needsAction.slice(0,6).map(n=>`<div onclick="${n.click}" style="display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border-bottom:0.5px solid var(--border);cursor:pointer">
@@ -8142,7 +8387,7 @@ function renderOverview(){
       const liveNow=vEvts.filter(e=>e.stage==='Live').length;
       const upcoming7=vEvts.filter(e=>new Date(e.start+'T00:00:00')>=today&&new Date(e.start+'T00:00:00')<=in14).length;
       const inDesign=vEvts.filter(e=>['In Design'].includes(e.stage)).length;
-      const needsReport=EVENTS.filter(e=>e.venue===v&&e.autoCompleted&&!['Archive','Archived','Cancelled'].includes(e.status)).length;
+      const needsReport=EVENTS.filter(e=>e.venue===v&&e.autoCompleted&&!isActivityReported(e)&&!['Archive','Archived','Cancelled'].includes(e.status)).length;
       const vc=vColor(v);
       return`<div onclick="navToScheduleView('venuemonth')" style="border:1px solid var(--border);border-top:3px solid ${vc.c};border-radius:var(--radius-sm);padding:12px;cursor:pointer" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
         <div style="font-size:11px;font-weight:800;color:${vc.c};margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">${VCODES[i]}</div>
@@ -8172,20 +8417,12 @@ function renderOverview(){
       </div>`;}).join('')
     :'<div class="u-empty">All tasks done ✓</div>';
 
-  // Results snapshot
-  const completed=allEvts.filter(e=>(e.stage==='Done'&&!e.autoCompleted)||e.status==='Complete'||e.status==='Archive'||e.status==='Archived');
-  const totalSpend=completed.reduce((a,e)=>a+(e.actualSpend||0),0);
-  const totalRevenue=completed.reduce((a,e)=>a+(e.ticketsSold||0)*(e.ticketPrice||0),0);
-  const supplierFunds=completed.reduce((a,e)=>a+(e.supplierContrib||0),0);
+  // Reporting & Performance — every number comes from computeMarketingKpis() (MKT-02).
   const canSeeFinancials=!!rolePermissions().canViewBudget;
-  document.getElementById('ovResults').innerHTML=canSeeFinancials?`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px">
-      <div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:var(--text)">${completed.length}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Completed</div></div>
-      <div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:var(--accent)">${totalSpend>0?'$'+Math.round(totalSpend/1000)+'k':'—'}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Actual Spend</div></div>
-      <div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:var(--gold)">${totalRevenue>0?'$'+Math.round(totalRevenue/1000)+'k':'—'}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Ticket Revenue</div></div>
-      <div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:#4a6e3e">${supplierFunds>0?'$'+Math.round(supplierFunds/1000)+'k':'—'}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Supplier Funds</div></div>
-    </div>
-  `:`<div style="padding:10px"><div style="padding:10px;background:var(--surface2);border-radius:var(--radius-sm)"><div style="font-size:18px;font-weight:700;color:var(--text)">${completed.length}</div><div style="font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.04em">Completed</div></div></div>`;
+  const kpis=computeMarketingKpis(allEvts,{withMoney:canSeeFinancials});
+  document.getElementById('ovResults').innerHTML=`
+    <div class="stats" style="padding:10px;margin-bottom:0;grid-template-columns:repeat(auto-fill,minmax(120px,1fr))">${renderKpiTiles(kpis,canSeeFinancials)}</div>
+    <div class="u-meta" style="padding:0 12px 10px">${escapeAttr(kpiFreshnessLabel(kpis))}${kpis.unreported.length?` · ${kpis.unreported.length} delivered activit${kpis.unreported.length===1?'y needs':'ies need'} a report`:''}</div>`;
 
   renderDashMyPriorities();
   renderDashOverdueBlocked();
@@ -8359,7 +8596,7 @@ async function saveDesignBrief(btn){
     document.getElementById('briefFormMsg').className='form-msg err';return;
   }
   if(!LIST_IDS.myTasks&&!isPreviewMode){
-    document.getElementById('briefFormMsg').textContent='Shared Work Items are not connected yet. Nothing was saved.';
+    document.getElementById('briefFormMsg').textContent='The Tasks & Job Tickets list is not connected yet. Nothing was saved.';
     document.getElementById('briefFormMsg').className='form-msg err';return;
   }
   const platforms=Array.from(document.querySelectorAll('#bPlatformPills input:checked')).map(i=>i.value).join(', ');
@@ -8380,6 +8617,7 @@ async function saveDesignBrief(btn){
     Platform:type,
     AssetSpec:(document.getElementById('bSpecs').value||'')+(platforms?' | '+platforms:''),
     Notes:briefNotes,
+    Venue:venue,
     CopyRequired:!!document.getElementById('bCopy').value
   };
   const briefDue=document.getElementById('bBriefDue').value;if(briefDue)fields.DueDate=briefDue+'T12:00:00Z';
@@ -8397,7 +8635,7 @@ async function saveDesignBrief(btn){
   }
   try{
     const token=await getToken(true);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    const res=await postSharedTask(token,fields);
     if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
     const created=await res.json();
     const assigneeName=document.getElementById('bAssignTo').options[document.getElementById('bAssignTo').selectedIndex]?.text||assignTo;
@@ -8410,14 +8648,14 @@ async function saveDesignBrief(btn){
         mailToken,tokenError:mailTokenError,
         subject:`New design brief: ${title}`,
         link:taskLink,
-        content:`Hi ${assigneeName},\n\n${detail}\n\nOpen My Tasks: ${taskLink}`
+        content:`Hi ${assigneeName},\n\n${detail}\n\nOpen Tasks & Job Tickets: ${taskLink}`
       });
     }
     const emailDelivered=emailNeeded&&!emailResult.failed.length&&!emailResult.missing.length&&emailResult.sent>0;
     const notified=!emailNeeded||emailDelivered;
     document.getElementById('briefFormMsg').textContent=notified
       ?`✓ Brief submitted${emailDelivered?' and '+assigneeName+' was emailed.':'.'}`
-      :'⚠︎︎ Brief submitted, but the assignment email was not delivered. It is still visible in My Tasks.';
+      :'⚠︎︎ Brief submitted, but the assignment email was not delivered. It is still visible in Tasks & Job Tickets.';
     document.getElementById('briefFormMsg').className=notified?'form-msg ok':'form-msg err';
     await loadTasks();
     if(notified)setTimeout(()=>closeDesignBrief(),1500);
@@ -8505,6 +8743,409 @@ function renderWorkload(targetId='workloadBody',limit=0){
 }
 
 // ═══════════════════════════════════════
+// MARKETING KPIs (MKT-01 / MKT-02) — the single definition of every reporting number.
+// The dashboard card and the Finance panel both read from here, so a label means the same thing
+// everywhere. Definitions are in docs/P03_REVIEWS_MARKETING_INTEL.md §5; change them there and here
+// together. Money KPIs are returned only for roles with canViewBudget (still UI-only gating: SAFE-04).
+// ═══════════════════════════════════════
+// K1 "Delivered": decided 11 Nov 2026 (P3-D2) to INCLUDE auto-completed activities — anything past
+// its end date counts as delivered whether or not someone moved it to Done. Cancelled never counts.
+function isActivityDelivered(e){
+  if(['Cancelled','Canceled'].includes(e.status))return false;
+  return e.stage==='Done'||!!e.autoCompleted||['Complete','Archive','Archived'].includes(e.status);
+}
+// K2 "Reported": a saved ReportSubmittedAt, or for activities reported before that column existed,
+// any post-campaign actual on the record.
+function isActivityReported(e){
+  return !!e.reportSubmittedAt||!!(e.actualSpend||e.supplierContrib||e.ticketsSold||e.ticketRevenue||e.redemptions||e.covers||e.reportWorked||e.reportImprove)||Object.keys(e.channelResults||{}).length>0;
+}
+// K6 per activity: the saved figure wins; tickets × price only for older reports without one.
+function activityTicketRevenue(e){
+  return e.ticketRevenue||(e.ticketsSold||0)*(e.ticketPrice||0);
+}
+function computeMarketingKpis(events,{withMoney=false}={}){
+  const delivered=events.filter(isActivityDelivered);
+  const reported=delivered.filter(isActivityReported);
+  const ticketed=delivered.filter(e=>e.ticketed&&e.capacity>0);
+  const sum=(arr,fn)=>arr.reduce((a,e)=>a+(fn(e)||0),0);
+  const k={
+    delivered:delivered.length,                                             // K1
+    reported:reported.length,                                               // K2 numerator
+    reportRate:delivered.length?Math.round(reported.length/delivered.length*100):null, // K2
+    unreported:delivered.filter(e=>!isActivityReported(e)),
+    sellThrough:ticketed.length?Math.round(sum(ticketed,e=>e.ticketsSold)/sum(ticketed,e=>e.capacity)*100):null, // K7
+    ticketedCount:ticketed.length,
+    ticketsSold:sum(delivered,e=>e.ticketsSold),
+    redemptions:sum(delivered,e=>e.redemptions),                            // K8
+    covers:sum(delivered,e=>e.covers),                                      // K9 (estimates)
+    loadedAt:ACTIVITIES_LOADED_AT,
+  };
+  if(withMoney){
+    const budget=sum(delivered,e=>e.budget),spend=sum(delivered,e=>e.actualSpend);
+    k.budget=budget;k.spend=spend;
+    k.spendVsBudget=budget>0?Math.round(spend/budget*100):null;            // K4
+    k.netCost=Math.max(spend-sum(delivered,e=>e.supplierContrib),0);        // K5
+    k.supplierFunds=sum(delivered,e=>e.supplierContrib);
+    k.ticketRevenue=sum(delivered,activityTicketRevenue);                   // K6
+  }
+  return k;
+}
+function kpiFreshnessLabel(k){
+  const t=k&&k.loadedAt;
+  if(isPreviewMode)return 'UI preview, not live data';
+  return t?`From SharePoint, as of ${t.toLocaleDateString('en-AU',{day:'numeric',month:'short'})} ${t.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})}`:'Not loaded yet';
+}
+function kpiMoney(v){return v>0?'$'+Math.round(v).toLocaleString():'—';}
+function kpiTile(value,label,sub){
+  return `<div class="stat"><div class="stat-n">${value}</div><div class="stat-l">${label}</div>${sub?`<div class="u-meta" style="margin-top:4px">${sub}</div>`:''}</div>`;
+}
+function renderKpiTiles(k,withMoney){
+  const tiles=[
+    kpiTile(k.delivered,'Delivered'),
+    kpiTile(k.reportRate===null?'—':k.reportRate+'%','Reports done',`${k.reported} of ${k.delivered}`),
+    kpiTile(k.sellThrough===null?'—':k.sellThrough+'%','Ticket sell-through',k.ticketedCount?`${k.ticketsSold.toLocaleString()} tickets, ${k.ticketedCount} ticketed`:'No ticketed activities with capacity'),
+    kpiTile(k.redemptions.toLocaleString(),'Loaded redemptions'),
+    kpiTile(k.covers.toLocaleString(),'Covers (est.)','Estimated on the report form'),
+  ];
+  if(withMoney)tiles.push(
+    kpiTile(k.spendVsBudget===null?'—':k.spendVsBudget+'%','Spend vs budget',k.budget>0?`${kpiMoney(k.spend)} of ${kpiMoney(k.budget)}`:`${kpiMoney(k.spend)} spent, no budget recorded`),
+    kpiTile(kpiMoney(k.netCost),'Net cost to Marlin',`After ${kpiMoney(k.supplierFunds)} supplier funds`),
+    kpiTile(kpiMoney(k.ticketRevenue),'Ticket revenue'),
+  );
+  return tiles.join('');
+}
+
+
+// ═══════════════════════════════════════
+// MARKETING REPORT (P03)
+// Campaign results come from EVENTS through computeMarketingKpis(), so they match the dashboard.
+// Guest reviews are read live from the Reviews – Master workbook on the Marlin Hospitality
+// Marketing site (sheet "Data": Venue, Review, Review date, Reviewer Name, Rating, Source,
+// Business Response, Response date; newest rows at the top). When REV-02's Guest Reviews list
+// exists, swap loadReviewsData() to read it instead; everything downstream stays the same.
+// ═══════════════════════════════════════
+const REVIEWS_SOURCE={
+  driveId:'b!nNEymQHH-USapvbmTivj6MUjOnOvRKdGt3tKLEHQKgU_egVf0fN4SqcpKRs-yYTv',
+  itemId:'017Y3SVLS7RT67OBYOY5FL5VZWBB6YEWFI',
+  sheet:'Data',
+  name:'Reviews – Master',
+  webUrl:'https://marlingroupaus.sharepoint.com/sites/MarlinHospitalityMarketing/Shared Documents/WORKING_Marketing Dashboard/Reviews Hub/Reviews - Master.xlsx',
+  // Weekly review exports (the Fiverr file) land here, by the Upload button or a Power Automate
+  // flow that saves emailed attachments. Every .xlsx/.csv in it is read and merged with the master.
+  importsPath:'WORKING_Marketing Dashboard/Reviews Hub/Imports',
+  importsUrl:'https://marlingroupaus.sharepoint.com/sites/MarlinHospitalityMarketing/Shared Documents/WORKING_Marketing Dashboard/Reviews Hub/Imports',
+};
+// Weekly venue report PDFs (sales, labour, functions — management only), saved by a Power Automate
+// flow from the weekly email. Same document library as the reviews.
+const WEEKLY_REPORTS={
+  path:'WORKING_Marketing Dashboard/Weekly Venue Reports',
+  url:'https://marlingroupaus.sharepoint.com/sites/MarlinHospitalityMarketing/Shared Documents/WORKING_Marketing Dashboard/Weekly Venue Reports',
+};
+// Short codes used in report file names, e.g. "WBC - Week 19 Report.pdf".
+const REPORT_VENUE_CODES={WBC:'Whitfords Brewing Co',TLB:'The Left Bank',LB:'The Left Bank',RAV:'The Ravenswood',HD:'Hotel Darwin',MB:'Mustang Bar',NBC:'Northbridge Brewing Co'};
+let WEEKLY_REPORT_FILES=[],WEEKLY_REPORTS_STATE={status:'idle',error:''};
+// Spreadsheet venue names → the OS's venue names.
+const REVIEW_VENUE_MAP={
+  'ravenswood hotel':'The Ravenswood','the ravenswood':'The Ravenswood',
+  'the left bank':'The Left Bank','left bank':'The Left Bank',
+  'whitfords brewing company':'Whitfords Brewing Co','whitfords brewing co':'Whitfords Brewing Co',
+  'hotel darwin':'Hotel Darwin','the hotel darwin':'Hotel Darwin',
+  'mustang bar':'Mustang Bar',
+  'northbridge brewing company':'Northbridge Brewing Co','northbridge brewing co':'Northbridge Brewing Co',
+};
+let REVIEWS=[],REVIEWS_STATE={status:'idle',error:'',loadedAt:null,skipped:0};
+
+// The sheet mixes real dates (Excel serials), dd/mm/yy text and m/d/yy text, because each week's
+// export is pasted in as it comes. Serials are unambiguous; for text, rows run newest to oldest,
+// so take whichever reading sits closest to (and not after) the row above.
+function parseReviewRows(values,sourceName='',ordered=true){
+  // Find the header row and map columns by name, so an export with a different column order
+  // (or extra columns) still reads. Falls back to the master's fixed order.
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const head=Math.max(0,values.findIndex(r=>r.some(c=>norm(c)==='venue')&&r.some(c=>/rating|stars/.test(norm(c)))));
+  const H=(values[head]||[]).map(norm);
+  // Exact header names win over prefixes, and each column is claimed once, so "Review date"
+  // can't be mistaken for "Review" (the text).
+  const used=new Set();
+  const col=(names,fallback)=>{
+    let i=H.findIndex((h,j)=>!used.has(j)&&names.includes(h));
+    if(i<0)i=H.findIndex((h,j)=>!used.has(j)&&names.some(n=>h.startsWith(n)));
+    if(i<0&&!used.has(fallback))i=fallback;
+    if(i>=0)used.add(i);return i;};
+  const C={};
+  C.date=col(['review date','date','published','date posted'],2);
+  C.reply=col(['business response','response','reply','owner response','owner reply'],6);
+  C.name=col(['reviewer name','reviewer','author','name'],3);
+  C.rating=col(['rating','stars','star rating'],4);
+  C.source=col(['source','platform','site'],5);
+  C.venue=col(['venue','location','business','business name'],0);
+  C.text=col(['review','review text','comment','text'],1);
+  const out=[];let prev=null;let skipped=0;const today=new Date();
+  for(const row of values.slice(head+1)){
+    const venueRaw=String(row[C.venue]||'').trim();const rating=Number(String(row[C.rating]||'').replace(/[^\d.]/g,''));
+    if(!venueRaw||!(rating>=1&&rating<=5))continue;
+    let d=null;const raw=row[C.date];
+    if(typeof raw==='number'&&raw>20000)d=new Date(Date.UTC(1899,11,30)+Math.round(raw)*864e5);
+    else{
+      const m=String(raw||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+      if(m){
+        const a=+m[1],b=+m[2];let y=+m[3];if(y<100)y+=2000;
+        // The newest row reads as Australian dd/mm unless that lands in the future. After that,
+        // take whichever reading (dd/mm or m/d) is closest to the row above without being more
+        // than a few days after it.
+        const mk=(dd,mm)=>{if(mm<1||mm>12||dd<1||dd>31)return null;const x=new Date(Date.UTC(y,mm-1,dd));return x.getUTCMonth()===mm-1?x:null;};
+        const au=mk(a,b),us=mk(b,a);
+        // Unsorted files (weekly exports): Australian unless that's in the future.
+        if(!ordered||!prev)d=au&&au<=today?au:(us&&us<=today?us:null);
+        else{const ceil=prev.getTime()+3*864e5;
+          d=[au,us].filter(x=>x&&x.getTime()<=ceil).sort((x,z)=>Math.abs(prev-x)-Math.abs(prev-z))[0]||null;}
+      }
+    }
+    if(!d||isNaN(d)){skipped++;continue;}
+    prev=d;
+    out.push({venue:REVIEW_VENUE_MAP[venueRaw.toLowerCase()]||venueRaw,date:d.toISOString().slice(0,10),rating:Math.round(rating),
+      source:String(row[C.source]||'').trim()||'Google',replied:!!String(row[C.reply]||'').trim(),
+      reviewer:String(row[C.name]||'').trim(),text:String(row[C.text]||'').trim(),hasText:!!String(row[C.text]||'').trim(),from:sourceName});
+  }
+  return{rows:out,skipped};
+}
+// Minimal CSV reader (quoted fields, commas and newlines inside quotes) for .csv exports.
+function parseCsvRows(text){
+  const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){f+='"';i++;}else q=false;}else f+=ch;}
+    else if(ch==='"')q=true;else if(ch===','){row.push(f);f='';}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f='';}
+    else f+=ch;}
+  if(f||row.length){row.push(f);rows.push(row);}
+  return rows;
+}
+const graphDrive=()=>`https://graph.microsoft.com/v1.0/drives/${REVIEWS_SOURCE.driveId}`;
+const graphPath=p=>p.split('/').map(encodeURIComponent).join('/');
+async function readWorkbookValues(itemId,token,sheet){
+  const auth={headers:{Authorization:'Bearer '+token}};
+  let name=sheet;
+  if(!name){
+    const ws=await fetchWithRetry(`${graphDrive()}/items/${itemId}/workbook/worksheets?$select=name`,auth);
+    if(!ws.ok)throw new Error(`HTTP ${ws.status}`);
+    const names=((await ws.json()).value||[]).map(w=>w.name);
+    name=names.find(n=>/^data$/i.test(n))||names.find(n=>/review/i.test(n))||names[0];
+  }
+  const res=await fetchWithRetry(`${graphDrive()}/items/${itemId}/workbook/worksheets('${encodeURIComponent(name)}')/usedRange(valuesOnly=true)?$select=values`,auth);
+  if(!res.ok)throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,200)}`);
+  return(await res.json()).values||[];
+}
+async function listDriveFolder(path,token){
+  const res=await fetchWithRetry(`${graphDrive()}/root:/${graphPath(path)}:/children?$select=id,name,file,folder,webUrl,lastModifiedDateTime,createdDateTime&$top=999`,{headers:{Authorization:'Bearer '+token}});
+  if(res.status===404)return[];
+  if(!res.ok)throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,200)}`);
+  return(await res.json()).value||[];
+}
+// Same review in the master and an export (or two overlapping exports) counts once.
+const reviewKey=r=>[r.venue,r.date,r.reviewer.toLowerCase(),r.rating,r.text.slice(0,40).toLowerCase()].join('|');
+async function loadReviewsData(force=false){
+  if(REVIEWS_STATE.status==='loading')return;
+  if(REVIEWS_STATE.status==='ok'&&!force){renderMarketingReport();return;}
+  if(isPreviewMode){REVIEWS_STATE={status:'error',error:'UI preview has no live data. Sign in to load reviews.',loadedAt:null,skipped:0};renderMarketingReport();return;}
+  REVIEWS_STATE.status='loading';renderMarketingReport();
+  try{
+    const token=await getToken();
+    const seen=new Set(),all=[];let skipped=0;const files=[];const errors=[];
+    const add=(rows,label)=>{let added=0;rows.forEach(r=>{const k=reviewKey(r);if(seen.has(k))return;seen.add(k);all.push(r);added++;});files.push({name:label,added,total:rows.length});};
+    const master=parseReviewRows(await readWorkbookValues(REVIEWS_SOURCE.itemId,token,REVIEWS_SOURCE.sheet),REVIEWS_SOURCE.name);
+    skipped+=master.skipped;add(master.rows,REVIEWS_SOURCE.name);
+    for(const f of (await listDriveFolder(REVIEWS_SOURCE.importsPath,token)).filter(f=>f.file&&/\.(xlsx|csv)$/i.test(f.name)).sort((a,b)=>String(b.lastModifiedDateTime).localeCompare(String(a.lastModifiedDateTime)))){
+      try{
+        let values;
+        if(/\.csv$/i.test(f.name)){const r=await fetchWithRetry(`${graphDrive()}/items/${f.id}/content`,{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw new Error('HTTP '+r.status);values=parseCsvRows(await r.text());}
+        else values=await readWorkbookValues(f.id,token);
+        const p=parseReviewRows(values,f.name,false);skipped+=p.skipped;add(p.rows,f.name);
+      }catch(e){errors.push(`${f.name}: ${e.message}`);}
+    }
+    REVIEWS=all.sort((a,b)=>b.date.localeCompare(a.date));
+    REVIEWS_STATE={status:'ok',error:errors.join(' · '),loadedAt:new Date(),skipped,files};
+  }catch(e){REVIEWS_STATE={status:'error',error:e.message||String(e),loadedAt:null,skipped:0};}
+  renderMarketingReport();
+}
+// Upload a weekly export into the Imports folder. The file keeps its name, prefixed with today's
+// date so two weeks' "export.xlsx" don't overwrite each other.
+async function uploadReviewsFile(input){
+  const file=input.files?.[0];input.value='';
+  if(!file)return;
+  if(!/\.(xlsx|csv)$/i.test(file.name)){alert('Upload the reviews export as an .xlsx or .csv file.');return;}
+  if(file.size>4*1024*1024){alert('That file is over 4 MB. Save it to the Imports folder in SharePoint instead.');return;}
+  const btn=document.getElementById('mrUploadBtn');if(btn){btn.disabled=true;btn.textContent='Uploading…';}
+  try{
+    const token=await getToken(true);
+    const name=`${toLocalISODate(new Date())} ${file.name}`;
+    const res=await fetch(`${graphDrive()}/root:/${graphPath(REVIEWS_SOURCE.importsPath+'/'+name)}:/content?@microsoft.graph.conflictBehavior=rename`,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':file.type||'application/octet-stream'},body:file});
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,200)}`);
+    await loadReviewsData(true);
+    const f=(REVIEWS_STATE.files||[]).find(x=>x.name===name);
+    alert(f?`Uploaded ${name}. ${f.added} new review${f.added===1?'':'s'} added (${f.total-f.added} already counted).`:`Uploaded ${name}, but it couldn't be read: ${REVIEWS_STATE.error||'no review rows found'}.`);
+  }catch(e){alert('Upload failed: '+e.message);}
+  if(btn){btn.disabled=false;btn.textContent='Upload reviews file';}
+}
+
+// Weekly venue reports: list the PDFs saved from the weekly email (top level and one folder deep).
+async function loadWeeklyReports(force=false){
+  if(!rolePermissions().canViewBudget||isPreviewMode)return;
+  if(WEEKLY_REPORTS_STATE.status==='loading'||(WEEKLY_REPORTS_STATE.status==='ok'&&!force))return;
+  WEEKLY_REPORTS_STATE={status:'loading',error:''};
+  try{
+    const token=await getToken();
+    const top=await listDriveFolder(WEEKLY_REPORTS.path,token);
+    let files=top.filter(f=>f.file);
+    for(const d of top.filter(f=>f.folder))files=files.concat((await listDriveFolder(`${WEEKLY_REPORTS.path}/${d.name}`,token)).filter(f=>f.file));
+    WEEKLY_REPORT_FILES=files.filter(f=>/\.pdf$/i.test(f.name)).map(f=>{
+      const code=(f.name.match(/^([A-Za-z]{2,4})\b/)||[])[1]?.toUpperCase();
+      const named=Object.values(REPORT_VENUE_CODES).find(v=>f.name.toLowerCase().includes(v.toLowerCase().replace(/^the /,'').split(' ')[0]));
+      const week=(f.name.match(/week[\s_-]*(\d{1,2})/i)||[])[1]||'';
+      return{name:f.name,url:f.webUrl,venue:REPORT_VENUE_CODES[code]||named||'',week,received:(f.createdDateTime||f.lastModifiedDateTime||'').slice(0,10)};
+    }).sort((a,b)=>b.received.localeCompare(a.received));
+    WEEKLY_REPORTS_STATE={status:'ok',error:''};
+  }catch(e){WEEKLY_REPORTS_STATE={status:'error',error:e.message||String(e)};}
+  renderMarketingReport();
+}
+
+function mrPeriodStart(){
+  const v=document.getElementById('mrPeriod')?.value||'12';
+  if(v==='all')return'0000-00-00';
+  const d=new Date();d.setMonth(d.getMonth()-Number(v));return toLocalISODate(d);
+}
+function mrReviewStats(rs){
+  const n=rs.length;if(!n)return{n:0};
+  const low=rs.filter(r=>r.rating<=2);
+  return{n,avg:rs.reduce((a,r)=>a+r.rating,0)/n,five:rs.filter(r=>r.rating===5).length,low:low.length,
+    replied:rs.filter(r=>r.replied).length,lowReplied:low.filter(r=>r.replied).length};
+}
+const mrPct=(a,b)=>b?Math.round(a/b*100)+'%':'—';
+function mrMonthlyChart(rs){
+  const byM={};rs.forEach(r=>{const m=r.date.slice(0,7);(byM[m]=byM[m]||[]).push(r);});
+  const months=Object.keys(byM).sort();
+  if(months.length<2)return'<div class="u-meta">Not enough months in this period for a chart.</div>';
+  const data=months.map(m=>({m,n:byM[m].length,avg:byM[m].reduce((a,r)=>a+r.rating,0)/byM[m].length}));
+  const W=Math.max(900,months.length*60),H=280,L=40,R=40,T=22,B=34,pw=W-L-R,ph=H-T-B,bw=pw/months.length;
+  const lo=Math.min(3,Math.floor(Math.min(...data.map(d=>d.avg))*2)/2);
+  const maxN=Math.max(10,Math.ceil(Math.max(...data.map(d=>d.n))/20)*20);
+  const yr=v=>T+ph-(v-lo)/(5-lo)*ph,yc=n=>T+ph-n/maxN*ph;
+  const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Average rating and number of reviews by month">`;
+  for(let v=lo;v<=5.001;v+=0.5)s+=`<line x1="${L}" x2="${W-R}" y1="${yr(v)}" y2="${yr(v)}" stroke="var(--line)"/><text x="${L-6}" y="${yr(v)+4}" text-anchor="end" font-size="10" fill="var(--ink-muted)">${v.toFixed(1)}</text>`;
+  [0,maxN/2,maxN].forEach(n=>{s+=`<text x="${W-R+6}" y="${yc(n)+4}" font-size="10" fill="var(--ink-muted)">${n}</text>`;});
+  data.forEach((d,i)=>{const x=L+i*bw;const[y,mo]=d.m.split('-');
+    s+=`<rect x="${x+bw*.2}" y="${yc(d.n)}" width="${bw*.6}" height="${T+ph-yc(d.n)}" fill="var(--mist-500,var(--line))"><title>${d.n} reviews</title></rect>`;
+    s+=`<text x="${x+bw/2}" y="${H-B+16}" text-anchor="middle" font-size="10" fill="var(--ink-muted)">${MN[+mo-1]}${mo==='01'||i===0?` ${y.slice(2)}`:''}</text>`;});
+  s+=`<polyline fill="none" stroke="var(--ink-brand)" stroke-width="2.5" points="${data.map((d,i)=>`${L+i*bw+bw/2},${yr(d.avg)}`).join(' ')}"/>`;
+  data.forEach((d,i)=>{const c=d.avg<4?'var(--attention)':'var(--ink-brand)';const x=L+i*bw+bw/2;
+    s+=`<circle cx="${x}" cy="${yr(d.avg)}" r="4" fill="${c}"/><text x="${x}" y="${yr(d.avg)-8}" text-anchor="middle" font-size="10" font-weight="700" fill="${c}">${d.avg.toFixed(2)}</text>`;});
+  s+=`<text x="${L-6}" y="12" text-anchor="end" font-size="10" fill="var(--ink-muted)">Rating</text><text x="${W-4}" y="12" text-anchor="end" font-size="10" fill="var(--ink-muted)">Reviews</text></svg>`;
+  return s;
+}
+// Plain-language findings, worked out from the numbers rather than written by hand.
+function mrInsights(rs,venueRows){
+  const good=[],bad=[];
+  const ranked=venueRows.filter(v=>v.all.n>=10).sort((a,b)=>b.all.avg-a.all.avg);
+  if(ranked.length>1){const t=ranked[0];good.push(`${escapeAttr(t.venue)} has the highest rating at ${t.all.avg.toFixed(2)}${t.all.n?`, replying to ${mrPct(t.all.replied,t.all.n)} of reviews`:''}.`);}
+  venueRows.forEach(v=>{
+    if(v.early.n>=5&&v.late.n>=5){const diff=v.late.avg-v.early.avg;
+      if(diff>=0.15)good.push(`${escapeAttr(v.venue)} improved from ${v.early.avg.toFixed(2)} to ${v.late.avg.toFixed(2)}.`);
+      if(diff<=-0.15)bad.push(`${escapeAttr(v.venue)} fell from ${v.early.avg.toFixed(2)} to ${v.late.avg.toFixed(2)}.`);}
+    if(v.all.n>=10&&v.all.replied/v.all.n<0.2)bad.push(`${escapeAttr(v.venue)} replies to ${mrPct(v.all.replied,v.all.n)} of reviews.`);
+    if(v.all.n>=10&&v.all.low/v.all.n>=0.2)bad.push(`${escapeAttr(v.venue)}: ${mrPct(v.all.low,v.all.n)} of reviews are one or two stars.`);
+  });
+  const st=mrReviewStats(rs);
+  if(st.n&&st.five/st.n>=0.6)good.push(`${mrPct(st.five,st.n)} of reviews are five-star.`);
+  if(st.low)(st.lowReplied/st.low<0.5?bad:good).push(`${mrPct(st.lowReplied,st.low)} of one- and two-star reviews got a reply (${st.lowReplied} of ${st.low}).`);
+  return{good,bad};
+}
+function renderMarketingReport(){
+  const body=document.getElementById('mrBody');if(!body)return;
+  if(REVIEWS_STATE.status==='idle'){loadReviewsData();return;}
+  if(WEEKLY_REPORTS_STATE.status==='idle')loadWeeklyReports();
+  // Venue picker, filled once from the venues the OS knows plus any in the reviews.
+  const vSel=document.getElementById('mrVenue');
+  const venues=[...new Set([...VENUES_DATA.map(v=>v.name).filter(Boolean),...REVIEWS.map(r=>r.venue)])].sort();
+  const curV=vSel?.value||'';
+  if(vSel&&vSel.options.length!==venues.length+1)vSel.innerHTML='<option value="">All venues</option>'+venues.map(v=>`<option value="${escapeAttr(v)}">${escapeAttr(v)}</option>`).join('');
+  if(vSel)vSel.value=curV;
+  const venue=vSel?.value||'';const from=mrPeriodStart();
+  const periodLabel=document.getElementById('mrPeriod')?.selectedOptions[0]?.textContent||'';
+
+  // 1. Campaign results
+  const canMoney=!!rolePermissions().canViewBudget;
+  const evs=EVENTS.filter(e=>(!venue||e.venue===venue)&&String(e.end||e.start||'')>=from&&String(e.start||'')<=toLocalISODate(new Date()));
+  const k=computeMarketingKpis(evs,{withMoney:canMoney});
+  const chanTotals={};evs.filter(isActivityDelivered).forEach(e=>Object.entries(e.channelResults||{}).forEach(([c,m])=>{const t=chanTotals[c]=chanTotals[c]||{n:0};t.n++;Object.entries(m).forEach(([kk,v])=>t[kk]=(t[kk]||0)+Number(v||0));}));
+  const chanRows=Object.entries(chanTotals).filter(([c])=>CHANNEL_RESULT_METRICS[c]);
+  let h=`<div class="mr-sec">
+    <div class="mr-h">Campaign results · ${escapeAttr(periodLabel)}${venue?' · '+escapeAttr(venue):''}</div>
+    <div class="stats" style="margin-bottom:0">${renderKpiTiles(k,canMoney)}</div>
+    <div class="mr-note">${escapeAttr(kpiFreshnessLabel(k))}. Activities that ended in the period. ${k.unreported.length?`${k.unreported.length} delivered activit${k.unreported.length===1?'y still needs':'ies still need'} a post-campaign report, so these figures will grow as reports are filed.`:''}</div>
+    ${chanRows.length?`<div class="mr-sub">Channel results</div><div style="overflow-x:auto"><table class="tbl" style="min-width:420px"><thead><tr><th>Channel</th><th class="n">Campaigns</th><th>Totals</th></tr></thead><tbody>${chanRows.map(([c,t])=>`<tr><td>${escapeAttr(c)}</td><td class="n">${t.n}</td><td>${CHANNEL_RESULT_METRICS[c].filter(([kk])=>t[kk]!=null).map(([kk,l])=>`${Math.round(t[kk]).toLocaleString()} ${l.toLowerCase()}`).join(' · ')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="mr-note">No channel results recorded yet. They appear here once post-campaign reports include Meta, newsletter or other channel numbers.</div>'}
+  </div>`;
+
+  // 2. Guest reviews
+  h+=`<div class="mr-sec"><div class="mr-h">Guest reviews · ${escapeAttr(periodLabel)}${venue?' · '+escapeAttr(venue):''}</div>`;
+  if(REVIEWS_STATE.status==='loading')h+='<div class="loading"><div class="spinner"></div></div>';
+  else if(REVIEWS_STATE.status==='error')h+=`<div class="mr-call att"><h4>Couldn't load reviews</h4><div>${escapeAttr(REVIEWS_STATE.error)}</div><div class="mr-note" style="margin-top:6px">Reviews come from the <em>${escapeAttr(REVIEWS_SOURCE.name)}</em> workbook. Check you can open it in SharePoint, then use Refresh reviews.</div></div>`;
+  else{
+    const rs=REVIEWS.filter(r=>r.date>=from&&(!venue||r.venue===venue));
+    const latest=REVIEWS.reduce((a,r)=>r.date>a?r.date:a,'');
+    const staleDays=latest?Math.floor((Date.now()-new Date(latest+'T00:00:00'))/864e5):null;
+    const st=mrReviewStats(rs);
+    if(!st.n)h+='<div class="mr-note">No reviews in this period.</div>';
+    else{
+      h+=`<div class="stats" style="margin-bottom:0">
+        ${kpiTile(st.n.toLocaleString(),'Reviews',`${[...new Set(rs.map(r=>r.source))].join(' & ')}`)}
+        ${kpiTile(st.avg.toFixed(2),'Average rating','Out of 5')}
+        ${kpiTile(mrPct(st.five,st.n),'Five-star',`${st.five} of ${st.n}`)}
+        ${kpiTile(mrPct(st.low,st.n),'One or two stars',`${st.low} review${st.low===1?'':'s'}`)}
+        ${kpiTile(mrPct(st.replied,st.n),'Replied to',`${mrPct(st.lowReplied,st.low)} of bad reviews`)}
+      </div>
+      <div class="mr-sub">Average rating and number of reviews by month</div>
+      <div class="mr-chart">${mrMonthlyChart(rs)}</div>
+      <div class="mr-key"><span><i style="background:var(--ink-brand)"></i>Average rating (left)</span><span><i style="background:var(--mist-500,var(--line))"></i>Reviews (right)</span><span><i style="background:var(--attention)"></i>Below 4.0</span></div>`;
+      // By venue, with the period split in half to show direction of travel.
+      const dates=rs.map(r=>r.date).sort();const mid=dates[Math.floor(dates.length/2)];
+      const vNames=[...new Set(rs.map(r=>r.venue))];
+      const venueRows=vNames.map(v=>{const vr=rs.filter(r=>r.venue===v);return{venue:v,all:mrReviewStats(vr),early:mrReviewStats(vr.filter(r=>r.date<mid)),late:mrReviewStats(vr.filter(r=>r.date>=mid))};}).sort((a,b)=>b.all.n-a.all.n);
+      if(!venue){
+        h+=`<div class="mr-sub">By venue</div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Venue</th><th class="n">Reviews</th><th class="n">Avg</th><th class="n">5★</th><th class="n">1–2★</th><th class="n">Replied</th><th>Earlier → later half</th></tr></thead><tbody>${venueRows.map(v=>{
+          const a=v.all;const tr=v.early.n>=5&&v.late.n>=5?v.late.avg-v.early.avg:null;
+          const tag=tr===null?'<span class="u-meta">Too few reviews</span>':`<span class="mr-tag ${tr>=0.15?'up':tr<=-0.15?'down':'flat'}">${v.early.avg.toFixed(2)} → ${v.late.avg.toFixed(2)}</span>`;
+          return`<tr><td>${escapeAttr(v.venue)}</td><td class="n">${a.n}</td><td class="n ${a.avg<4?'mr-bad':''}">${a.avg.toFixed(2)}</td><td class="n">${mrPct(a.five,a.n)}</td><td class="n ${a.low/a.n>=0.2?'mr-bad':''}">${mrPct(a.low,a.n)}</td><td class="n ${a.n>=10&&a.replied/a.n<0.2?'mr-bad':''}">${mrPct(a.replied,a.n)}</td><td>${tag}</td></tr>`;}).join('')}</tbody></table></div>`;
+      }
+      const ins=mrInsights(rs,venueRows);
+      if(ins.good.length||ins.bad.length)h+=`<div class="mr-cols">
+        ${ins.good.length?`<div class="mr-call pos"><h4>What's working</h4><ul>${ins.good.map(x=>`<li>${x}</li>`).join('')}</ul></div>`:''}
+        ${ins.bad.length?`<div class="mr-call att"><h4>Needs attention</h4><ul>${ins.bad.map(x=>`<li>${x}</li>`).join('')}</ul></div>`:''}
+      </div>`;
+    }
+    const srcFiles=REVIEWS_STATE.files||[];const imports=srcFiles.slice(1);
+    h+=`<div class="mr-note">Read ${REVIEWS_STATE.loadedAt?REVIEWS_STATE.loadedAt.toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):''} from <em>${escapeAttr(REVIEWS_SOURCE.name)}</em>${imports.length?` and ${imports.length} weekly export${imports.length===1?'':'s'} in <a href="${escapeAttr(REVIEWS_SOURCE.importsUrl)}" target="_blank" rel="noopener">Imports</a> (${imports.reduce((a,f)=>a+f.added,0)} new reviews)`:''}. ${REVIEWS.length.toLocaleString()} reviews in total, duplicates counted once${REVIEWS_STATE.skipped?`; ${REVIEWS_STATE.skipped} rows skipped (date couldn't be read)`:''}. "Replied" means a business response is recorded.${REVIEWS_STATE.error?` <span style="color:var(--attention)">Couldn't read: ${escapeAttr(REVIEWS_STATE.error)}</span>`:''}</div>`;
+    if(canEditCampaigns())h+=`<div class="mr-noprint" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="file" id="mrUploadInput" accept=".xlsx,.csv" style="display:none" onchange="uploadReviewsFile(this)"><button class="btn btn-s" id="mrUploadBtn" onclick="document.getElementById('mrUploadInput').click()">Upload reviews file</button><span class="mr-note">The weekly reviews export (.xlsx or .csv). It's saved to the Imports folder and added straight away.</span></div>`;
+    if(staleDays!==null&&staleDays>14)h+=`<div class="mr-call att"><h4>Reviews are out of date</h4><div>The newest review is from ${fmtDate(latest)}, ${staleDays} days ago. Upload the latest weekly export, or set up the email automation, to bring it up to date.</div></div>`;
+  }
+  h+='</div>';
+  // 3. Weekly venue reports — management PDFs (sales, labour, functions), budget roles only.
+  if(rolePermissions().canViewBudget&&!isPreviewMode){
+    h+=`<div class="mr-sec"><div class="mr-h">Weekly venue reports${venue?' · '+escapeAttr(venue):''}</div>`;
+    if(WEEKLY_REPORTS_STATE.status==='loading'||WEEKLY_REPORTS_STATE.status==='idle')h+='<div class="loading"><div class="spinner"></div></div>';
+    else if(WEEKLY_REPORTS_STATE.status==='error')h+=`<div class="mr-note">Couldn't read the Weekly Venue Reports folder: ${escapeAttr(WEEKLY_REPORTS_STATE.error)}</div>`;
+    else{
+      const list=WEEKLY_REPORT_FILES.filter(f=>!venue||f.venue===venue);
+      const latestByVenue=[];const seenV=new Set();list.forEach(f=>{const k=f.venue||f.name;if(!seenV.has(k)){seenV.add(k);latestByVenue.push(f);}});
+      h+=list.length?`<div style="overflow-x:auto"><table class="tbl" style="min-width:420px"><thead><tr><th>Venue</th><th>Week</th><th>Received</th><th>Report</th></tr></thead><tbody>${latestByVenue.map(f=>`<tr><td>${escapeAttr(f.venue||'—')}</td><td>${f.week?'Week '+escapeAttr(f.week):'—'}</td><td>${f.received?fmtDate(f.received):''}</td><td><a href="${escapeAttr(f.url)}" target="_blank" rel="noopener">${escapeAttr(f.name)}</a></td></tr>`).join('')}</tbody></table></div>
+        <div class="mr-note">Latest report per venue. ${list.length} report${list.length===1?'':'s'} in <a href="${escapeAttr(WEEKLY_REPORTS.url)}" target="_blank" rel="noopener">Weekly Venue Reports</a>. Management only: these include sales and wages.</div>`
+        :`<div class="mr-note">No weekly reports yet. They appear here once the weekly report emails are saved to <a href="${escapeAttr(WEEKLY_REPORTS.url)}" target="_blank" rel="noopener">Weekly Venue Reports</a> (see the Power Automate steps in docs/REVIEWS_AND_REPORTS_AUTOMATION.md).</div>`;
+    }
+    h+='</div>';
+  }
+  body.innerHTML=h;
+}
+
+// ═══════════════════════════════════════
 // POST-CAMPAIGN REPORTING
 // ═══════════════════════════════════════
 let _reportingEventId=null;
@@ -8517,17 +9158,114 @@ function openPostCampaign(evId){
   document.querySelectorAll('#postCampaignOv .report-financial').forEach(el=>el.style.display=canSeeFinancials?'':'none');
   const title=document.getElementById('reportCampaignTitle');
   if(title)title.textContent=ev.title+' · '+ev.venue;
-  // Pre-fill existing actuals
-  const fields=['rActualSpend','rSupplierContrib','rTicketsSold','rRedemptions'];
-  fields.forEach(f=>{ const el=document.getElementById(f);if(el)el.value=''; });
-  if(ev.actualSpend)document.getElementById('rActualSpend').value=ev.actualSpend;
-  if(ev.supplierContrib)document.getElementById('rSupplierContrib').value=ev.supplierContrib;
-  if(ev.ticketsSold)document.getElementById('rTicketsSold').value=ev.ticketsSold;
+  // Reset every input, then pre-fill this activity's saved actuals. Previously only four inputs
+  // were cleared, so Ticket Revenue, Covers and the two notes carried over from the last report
+  // opened, and saving would write them onto this activity (the notes into its Description).
+  const prefill={rActualSpend:ev.actualSpend,rSupplierContrib:ev.supplierContrib,rTicketsSold:ev.ticketsSold,rTicketRevenue:ev.ticketRevenue,rRedemptions:ev.redemptions,rCovers:ev.covers,rWorked:ev.reportWorked||legacyReportNotes(ev.description).worked,rImprove:ev.reportImprove||legacyReportNotes(ev.description).improve};
+  // Only ask what fits this activity: ticket fields for ticketed activities, redemptions for Loaded
+  // ones. A field that already holds a saved figure always shows, so nothing saved is hidden.
+  const showTickets=ev.ticketed||!!ev.ticketsSold||!!ev.ticketRevenue;
+  const showLoaded=ev.loadedRewards||!!ev.redemptions;
+  document.querySelectorAll('#postCampaignOv .report-ticketed').forEach(el=>el.style.display=showTickets?'':'none');
+  document.querySelectorAll('#postCampaignOv .report-loaded').forEach(el=>el.style.display=showLoaded?'':'none');
+  document.querySelectorAll('#postCampaignOv .report-financial.report-ticketed').forEach(el=>el.style.display=showTickets&&canSeeFinancials?'':'none');
+  renderReportChannelFields(ev);
+  Object.entries(prefill).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v||'';});
+  const msg=document.getElementById('reportFormMsg');if(msg){msg.textContent='';msg.className='form-msg';}
+  const roiDiv=document.getElementById('roiCalc');if(roiDiv)roiDiv.style.display='none';
   document.getElementById('postCampaignOv').classList.add('show');
-  // Live ROI calc
+  // Live ROI calc. Bound once: the old code added another listener every time the form opened.
   ['rActualSpend','rSupplierContrib','rTicketsSold','rTicketRevenue','rRedemptions','rCovers'].forEach(id=>{
-    const el=document.getElementById(id);if(el)el.addEventListener('input',calcROI);
+    const el=document.getElementById(id);if(el&&!el.dataset.roiBound){el.addEventListener('input',calcROI);el.dataset.roiBound='1';}
   });
+  calcROI();
+}
+
+// Columns the Post-Campaign Report writes that may not exist on older lists. Created on an
+// admin's first save (see savePostCampaign) or from Admin & Schema.
+const REPORT_COLUMN_DEFS={
+  ReportSubmittedAt:{name:'ReportSubmittedAt',displayName:'Report Submitted',dateTime:{format:'dateOnly'}},
+  ReportWorked:{name:'ReportWorked',displayName:'Report: What Worked',text:{allowMultipleLines:true}},
+  ReportImprove:{name:'ReportImprove',displayName:'Report: To Improve',text:{allowMultipleLines:true}},
+  ChannelResults:{name:'ChannelResults',displayName:'Channel Results',text:{allowMultipleLines:true}},
+};
+// Creates one report column on Marketing & Activations 2026. "Already exists" counts as success.
+async function ensureReportColumn(token,name){
+  const def=REPORT_COLUMN_DEFS[name];if(!def)return{ok:false,error:'Unknown column '+name};
+  try{
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/columns`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(def)});
+    if(res.ok)return{ok:true};
+    const text=await res.text();
+    if(res.status===409||/already exists|duplicate/i.test(text))return{ok:true};
+    return{ok:false,error:`HTTP ${res.status}: ${text}`};
+  }catch(e){return{ok:false,error:e.message};}
+}
+
+// Channel results: which numbers to ask for, per channel. Keys match the Channels values set on
+// Submit. Channels not listed here (In-venue, Radio, Loaded) have no platform numbers to type in.
+const CHANNEL_RESULT_METRICS={
+  'Meta':[['reach','Reach'],['clicks','Link clicks']],
+  'Google Ads':[['impressions','Impressions'],['clicks','Clicks']],
+  'Newsletter':[['sent','Sent'],['opens','Opens'],['clicks','Clicks']],
+  'Website':[['visits','Page visits']],
+  'SMS':[['sent','Sent'],['clicks','Clicks']],
+  'Google Business Profile':[['views','Views']],
+};
+function reportChannelsFor(ev){
+  const used=(ev.channels||[]).filter(c=>CHANNEL_RESULT_METRICS[c]);
+  Object.keys(ev.channelResults||{}).forEach(c=>{if(CHANNEL_RESULT_METRICS[c]&&!used.includes(c))used.push(c);});
+  return used;
+}
+function renderReportChannelFields(ev){
+  const box=document.getElementById('rChannelFields');if(!box)return;
+  const chans=reportChannelsFor(ev);
+  box.innerHTML=chans.length?chans.map(c=>`<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:var(--ink-brand);margin-bottom:4px">${escapeAttr(c)}</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px">${CHANNEL_RESULT_METRICS[c].map(([k,l])=>{const v=ev.channelResults?.[c]?.[k];return`<label style="font-size:11px;color:var(--ink-muted)">${l}<input class="form-input" type="number" min="0" data-chan="${escapeAttr(c)}" data-metric="${k}" value="${v!=null?v:''}" placeholder="—"></label>`;}).join('')}</div></div>`).join('')
+    :'<div class="u-meta">No digital channels are recorded on this activity. Add them under Channels on the activity to report on them here.</div>';
+}
+function readReportChannelFields(){
+  const out={};
+  document.querySelectorAll('#rChannelFields input[data-chan]').forEach(el=>{
+    if(el.value==='')return;const n=Number(el.value);if(!Number.isFinite(n))return;
+    (out[el.dataset.chan]=out[el.dataset.chan]||{})[el.dataset.metric]=n;
+  });
+  return out;
+}
+function parseChannelResults(raw){
+  if(!raw)return{};
+  try{const o=JSON.parse(raw);return o&&typeof o==='object'&&!Array.isArray(o)?o:{};}catch{return{};}
+}
+// Older reports kept their notes inside Description after a marker. Used only when the
+// ReportWorked / ReportImprove columns are empty.
+function legacyReportNotes(description){
+  const i=String(description||'').lastIndexOf('--- POST-CAMPAIGN REPORT ---');
+  if(i<0)return{worked:'',improve:''};
+  const block=description.slice(i+28);
+  const w=block.match(/✓ What worked:\n([\s\S]*?)(?:\n\n↻ To improve:|$)/);
+  const m=block.match(/↻ To improve:\n([\s\S]*)$/);
+  return{worked:(w?.[1]||'').trim(),improve:(m?.[1]||'').trim()};
+}
+
+// Read-only summary of a saved report, shown on the activity (popup and page).
+function renderReportSummary(ev){
+  if(!isActivityReported(ev))return'';
+  const canMoney=!!rolePermissions().canViewBudget;
+  const fig=[];
+  if(canMoney&&ev.actualSpend)fig.push(['Actual spend',kpiMoney(ev.actualSpend)]);
+  if(canMoney&&ev.supplierContrib)fig.push(['Supplier contribution',kpiMoney(ev.supplierContrib)]);
+  if(ev.ticketsSold)fig.push(['Tickets sold',ev.ticketsSold.toLocaleString()+(ev.capacity?` of ${ev.capacity.toLocaleString()} (${Math.round(ev.ticketsSold/ev.capacity*100)}%)`:'')]);
+  if(canMoney&&activityTicketRevenue(ev))fig.push(['Ticket revenue',kpiMoney(activityTicketRevenue(ev))]);
+  if(ev.redemptions)fig.push(['Loaded redemptions',ev.redemptions.toLocaleString()]);
+  if(ev.covers)fig.push(['Covers (est.)',ev.covers.toLocaleString()]);
+  const chans=Object.entries(ev.channelResults||{}).filter(([c])=>CHANNEL_RESULT_METRICS[c]);
+  const notes=ev.reportWorked||ev.reportImprove?{worked:ev.reportWorked,improve:ev.reportImprove}:legacyReportNotes(ev.description);
+  const row=(l,v)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid var(--line);font-size:12px"><span style="color:var(--ink-muted)">${l}</span><span style="font-weight:700;color:var(--ink-brand);text-align:right">${v}</span></div>`;
+  return`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:var(--text3);text-transform:uppercase">Post-campaign report</div><div class="u-meta">${ev.reportSubmittedAt?'Saved '+fmtShort(ev.reportSubmittedAt):''}</div></div>
+    ${fig.map(([l,v])=>row(l,v)).join('')}
+    ${chans.map(([c,m])=>row(escapeAttr(c),CHANNEL_RESULT_METRICS[c].filter(([k])=>m[k]!=null).map(([k,l])=>`${Number(m[k]).toLocaleString()} ${l.toLowerCase()}`).join(' · ')||'—')).join('')}
+    ${notes.worked?`<div style="margin-top:10px;font-size:12px"><div style="font-weight:700;color:var(--ink-brand);margin-bottom:2px">What worked</div><div style="white-space:pre-wrap;color:var(--ink)">${escapeAttr(notes.worked)}</div></div>`:''}
+    ${notes.improve?`<div style="margin-top:8px;font-size:12px"><div style="font-weight:700;color:var(--ink-brand);margin-bottom:2px">To improve next time</div><div style="white-space:pre-wrap;color:var(--ink)">${escapeAttr(notes.improve)}</div></div>`:''}
+  </div>`;
 }
 
 function closePostCampaign(){document.getElementById('postCampaignOv').classList.remove('show');_reportingEventId=null;}
@@ -8587,7 +9325,13 @@ async function savePostCampaign(btn){
     // that included either of these notes was silently failing the entire save (WorkflowStage and
     // every other field in the same PATCH included), not just the notes. Fixed to the real
     // Description field, appended rather than overwritten.
-    if(worked||improve)fields.Description=(ev.description||'')+'\n\n--- POST-CAMPAIGN REPORT ---\n'+(worked?'✓ What worked:\n'+worked+'\n\n':'')+(improve?'↻ To improve:\n'+improve:'');
+    // Notes now live in their own columns (ReportWorked / ReportImprove), so re-saving a report
+    // replaces them instead of appending another copy into Description. If those columns can't be
+    // written, the notes fall back to the old Description append below so they're never lost.
+    if(worked||ev.reportWorked)fields.ReportWorked=worked;
+    if(improve||ev.reportImprove)fields.ReportImprove=improve;
+    const channelResults=readReportChannelFields();
+    if(Object.keys(channelResults).length||ev.channelResults)fields.ChannelResults=JSON.stringify(channelResults);
     // WorkflowStage is the one field this save must never lose — sent on its own first so an
     // unconfirmed report column (TicketRevenue/Redemptions/Covers are new) can never block marking
     // the campaign Done. The rest retries field-by-field on a group failure, same resilience as
@@ -8595,8 +9339,29 @@ async function savePostCampaign(btn){
     const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`;
     const stageRes=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{WorkflowStage:'Done'}})});
     if(!stageRes.ok)throw new Error('HTTP '+stageRes.status);
+    fields.ReportSubmittedAt=toLocalISODate(new Date());
     const{WorkflowStage,...reportFields}=fields;
-    const{failed}=await patchImportOptionalFields(url,token,reportFields);
+    let{failed}=await patchImportOptionalFields(url,token,reportFields);
+    // Self-setup: the first time an admin saves a report and the report columns don't exist yet,
+    // create them (additive, no existing records change) and write those fields again.
+    // Non-admins just see them listed as skipped, same as any other missing column.
+    const missingReportCols=failed.map(f=>f.field).filter(n=>REPORT_COLUMN_DEFS[n]);
+    if(missingReportCols.length&&currentRole==='admin'){
+      for(const name of missingReportCols){
+        const created=await ensureReportColumn(token,name);
+        if(!created.ok){console.warn(`Report column ${name} could not be created:`,created.error);continue;}
+        const retry=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{[name]:fields[name]}})});
+        if(retry.ok)failed=failed.filter(f=>f.field!==name);
+      }
+    }
+    // Notes couldn't go into their own columns: keep them in Description as before.
+    const legacy=legacyReportNotes(ev.description);
+    const notesChanged=worked!==legacy.worked||improve!==legacy.improve;
+    if((worked||improve)&&notesChanged&&failed.some(f=>f.field==='ReportWorked'||f.field==='ReportImprove')){
+      const desc=(ev.description||'')+'\n\n--- POST-CAMPAIGN REPORT ---\n'+(worked?'✓ What worked:\n'+worked+'\n\n':'')+(improve?'↻ To improve:\n'+improve:'');
+      const dres=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Description:desc}})});
+      if(dres.ok)failed=failed.filter(f=>f.field!=='ReportWorked'&&f.field!=='ReportImprove');
+    }
     document.getElementById('reportFormMsg').textContent=failed.length
       ?`✓ Report saved. Campaign marked Complete. ${failed.length} field${failed.length===1?'':'s'} skipped (not set up in SharePoint yet): ${failed.map(f=>f.field).join(', ')}.`
       :'✓ Report saved. Campaign marked Complete.';
@@ -8891,16 +9656,28 @@ const VENUE_LOGOS={
   'Hotel Darwin':'https://www.loadedrewards.com.au/wp-content/uploads/2025/01/HD_Rebrand_Logo_Narrow_Black.png',
   'The Ravenswood':'https://www.loadedrewards.com.au/wp-content/uploads/2025/05/Ravenswood-Logo-Mono_Black.png'
 };
+// "Loaded as the main branding": Primary Brand or Department is Loaded Rewards, or the title is
+// one of the "LOADED REWARDS_<supplier> [MONTH]" jobs (those are often saved with no Primary Brand).
+// Venue activities that merely also run through the Loaded app (loadedRewards flag) keep their venue logo.
+function isLoadedBranded(ev){
+  if(!ev)return false;
+  return ev.brand==='Loaded Rewards'||(ev.department||'')==='Loaded Rewards'||/^\s*loaded\s*rewards(?![a-z])/i.test(ev.title||'');
+}
+// The logo that identifies an activity: the Loaded Rewards logo for Loaded-branded jobs, else the venue's.
+function activityBrandLogo(ev){
+  return isLoadedBranded(ev)?LR_LOGO:(VENUE_LOGOS[ev.venue]||'');
+}
 function eventLogo(ev){
-  // Loaded department -> Loaded logo; else own image; else venue logo
-  if((ev.department||'')==='Loaded Rewards')return LR_LOGO;
+  // Loaded-branded -> Loaded logo; else own image; else venue logo
+  if(isLoadedBranded(ev))return LR_LOGO;
   if(ev.eventImageUrl)return ev.eventImageUrl;
   return VENUE_LOGOS[ev.venue]||'';
 }
 
 function venueLogoBox(ev,loaded=false){
-  const logo=VENUE_LOGOS[ev.venue]||(loaded?LR_LOGO:'');
-  if(logo)return`<div class="${loaded?'lr-logo-box':'activity-logo-box'}"><img src="${escapeAttr(logo)}" alt="${escapeAttr(shortVenue(ev.venue))}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="activity-logo-fallback" style="display:none;background:${vColor(ev.venue).c}">${escapeAttr(shortVenue(ev.venue).slice(0,2).toUpperCase())}</div></div>`;
+  const lb=isLoadedBranded(ev);
+  const logo=lb?LR_LOGO:(VENUE_LOGOS[ev.venue]||(loaded?LR_LOGO:''));
+  if(logo)return`<div class="${loaded?'lr-logo-box':'activity-logo-box'+(lb?' is-wide':'')}"><img src="${escapeAttr(logo)}" alt="${escapeAttr(loaded||lb?'Loaded Rewards logo':shortVenue(ev.venue))}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="activity-logo-fallback" style="display:none;background:${vColor(ev.venue).c}">${escapeAttr(shortVenue(ev.venue).slice(0,2).toUpperCase())}</div></div>`;
   return`<div class="${loaded?'lr-logo-box':'activity-logo-box'}"><div class="activity-logo-fallback" style="background:${vColor(ev.venue).c}">${escapeAttr(shortVenue(ev.venue).slice(0,2).toUpperCase())}</div></div>`;
 }
 
@@ -9933,10 +10710,11 @@ function renderCampaigns(){
         const sc=stageColors[ev.stage]||'#5f6b7a';
         const posWarn=['Required','Pending','To Do','In Progress'].includes(ev.posStatus)?'<span title="POS update outstanding" style="color:#9c732b">⚠︎︎</span>':'';
         const posText=ev.posStatus||(ev.posRequired?'Required':'');
-        const vLogo=VENUE_LOGOS[ev.venue];
+        const vLogo=activityBrandLogo(ev);
+        const vLogoLoaded=isLoadedBranded(ev);
         return`<tr onclick="showActivityPage(${ev.id})" style="cursor:pointer">
           <td onclick="event.stopPropagation()"><input type="checkbox" class="camp-select" data-id="${ev.id}" ${campSelected.has(String(ev.id))?'checked':''} onclick="event.stopPropagation();toggleCampRowSelect('${ev.id}')"></td>
-          <td><div class="tbl-name" style="display:flex;align-items:center;gap:7px">${vLogo?`<img src="${vLogo}" alt="" style="height:16px;width:16px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">`:''}<span>${ev.title}${posWarn}</span></div>${ev.brand?`<div class="tbl-sub">${ev.brand}</div>`:''}</td>
+          <td><div class="tbl-name" style="display:flex;align-items:center;gap:7px">${vLogo?`<img src="${escapeAttr(vLogo)}" alt="${vLogoLoaded?'Loaded Rewards':''}" title="${vLogoLoaded?'Loaded Rewards':escapeAttr(shortVenue(ev.venue))}" style="height:${vLogoLoaded?'22px':'16px'};width:${vLogoLoaded?'40px':'16px'};object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">`:''}<span>${ev.title}${posWarn}</span></div>${ev.brand?`<div class="tbl-sub">${ev.brand}</div>`:''}</td>
           <td><span style="font-size:10px;font-weight:600;color:#fff;background:${vc.c};padding:2px 8px;border-radius:var(--radius-sm);white-space:nowrap;display:inline-block">${shortVenue(ev.venue)}</span></td>
           <td>${ev.activityType||ev.eventFormat?`<span class="tag t-gr" style="font-size:10px">${ev.activityType||ev.eventFormat}</span>`:'-'}</td>
           <td style="font-size:12px;white-space:nowrap">${fmtShort(ev.start)}</td>
@@ -10630,24 +11408,17 @@ function renderBudget(){
   // savePostCampaign() actually persists them instead of silently dropping three of the four.
   // Completed activities only, since these numbers are only final once a Post-Campaign Report has
   // been saved.
-  const completed=EVENTS.filter(e=>e.stage==='Done'||e.status==='Complete'||e.status==='Archive'||e.status==='Archived');
-  const totalTickets=completed.reduce((a,e)=>a+(e.ticketsSold||0),0);
-  const totalRevenue=completed.reduce((a,e)=>a+(e.ticketRevenue||0),0);
-  const totalRedemptions=completed.reduce((a,e)=>a+(e.redemptions||0),0);
-  const totalCovers=completed.reduce((a,e)=>a+(e.covers||0),0);
-  document.getElementById('perfStats').innerHTML=`
-    <div class="stat"><div class="stat-n">${completed.length}</div><div class="stat-l">Completed</div></div>
-    <div class="stat"><div class="stat-n">${totalTickets.toLocaleString()}</div><div class="stat-l">Tickets Sold</div></div>
-    <div class="stat"><div class="stat-n">${totalRevenue>0?'$'+Math.round(totalRevenue).toLocaleString():'—'}</div><div class="stat-l">Ticket Revenue</div></div>
-    <div class="stat"><div class="stat-n">${totalRedemptions.toLocaleString()}</div><div class="stat-l">Loaded Redemptions</div></div>
-    <div class="stat"><div class="stat-n">${totalCovers.toLocaleString()}</div><div class="stat-l">Covers / Pax</div></div>
-  `;
+  // Same definitions as the dashboard card: computeMarketingKpis() (MKT-02).
+  const completed=EVENTS.filter(isActivityDelivered);
+  const perfKpis=computeMarketingKpis(EVENTS,{withMoney:!!rolePermissions().canViewBudget});
+  document.getElementById('perfStats').innerHTML=renderKpiTiles(perfKpis,!!rolePermissions().canViewBudget);
+  const perfFresh=document.getElementById('perfFreshness');if(perfFresh)perfFresh.textContent=kpiFreshnessLabel(perfKpis);
   const perfDim=document.getElementById('perfRollupDim')?.value||'venue';
-  const perfRollup=groupRollup(completed,perfDim,()=>0,e=>({tickets:e.ticketsSold||0,revenue:e.ticketRevenue||0,redemptions:e.redemptions||0,covers:e.covers||0}));
+  const perfRollup=groupRollup(completed,perfDim,()=>0,e=>({tickets:e.ticketsSold||0,revenue:activityTicketRevenue(e),redemptions:e.redemptions||0,covers:e.covers||0}));
   const perfRows=perfRollup.sort((a,b)=>b[1].sums.revenue-a[1].sums.revenue||b[1].sums.tickets-a[1].sums.tickets);
   document.getElementById('bPerfRollup').innerHTML=perfRows.length
     ?`<div style="overflow-x:auto"><table class="tbl" style="min-width:520px">
-        <thead><tr><th>${ROLLUP_DIM_LABELS[perfDim]||'Group'}</th><th style="text-align:right">Activities</th><th style="text-align:right">Tickets</th><th style="text-align:right">Revenue</th><th style="text-align:right">Redemptions</th><th style="text-align:right">Covers</th></tr></thead>
+        <thead><tr><th>${ROLLUP_DIM_LABELS[perfDim]||'Group'}</th><th style="text-align:right">Activities</th><th style="text-align:right">Tickets</th><th style="text-align:right">Revenue</th><th style="text-align:right">Redemptions</th><th style="text-align:right">Covers (est.)</th></tr></thead>
         <tbody>${perfRows.map(([name,g])=>`<tr><td>${escapeAttr(name)}</td><td style="text-align:right">${g.count}</td><td style="text-align:right">${g.sums.tickets||'—'}</td><td style="text-align:right">${g.sums.revenue?'$'+Math.round(g.sums.revenue).toLocaleString():'—'}</td><td style="text-align:right">${g.sums.redemptions||'—'}</td><td style="text-align:right">${g.sums.covers||'—'}</td></tr>`).join('')}</tbody>
       </table></div>`
     :'<div style="padding:12px;color:var(--text3);font-size:12px;text-align:center">No completed activities with performance data yet</div>';
@@ -10837,7 +11608,7 @@ function myWorkItems(includeUnassigned){
   const mapShared=t=>{
     const ev=t.campaignLookupId?eventById(t.campaignLookupId):eventByTitle(t.campaignLookup);
     const project=projectById(ev?.projectId);
-    return{...t,kind:'shared',key:'shared:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:ev?.venue||''};
+    return{...t,kind:'shared',key:'shared:'+t.id,projectId:String(project?.id||''),project:project?.title||'',activityId:ev?.id||'',activity:ev?.title||t.campaignLookup||'',venue:t.venue||ev?.venue||''};
   };
   const personal=canSeePersonal?PERSONAL_TASKS.map(t=>{
     const ev=t.linkedActivityId?eventById(t.linkedActivityId):null;
@@ -10883,7 +11654,7 @@ function renderMyWork(){
   const badge=document.getElementById('myWorkBadge');if(badge){badge.textContent=open.length;badge.style.display=open.length?'':'none';}
 
   const configNotes=[];
-  if(!LIST_IDS.myTasks&&!isPreviewMode)configNotes.push('<strong>Shared Work Items are not connected yet.</strong> Your private tasks still work normally. Shared assignments will appear here once their own SharePoint list is approved and connected.');
+  if(!LIST_IDS.myTasks&&!isPreviewMode)configNotes.push('<strong>The Tasks & Job Tickets list is not connected yet.</strong> Your private tasks still work normally. Shared assignments will appear here once their own SharePoint list is approved and connected.');
   if(canSeePersonal&&PERSONAL_TASKS_ERROR)configNotes.push('<strong>Personal Tasks could not be loaded.</strong> '+escapeAttr(PERSONAL_TASKS_ERROR));
   if(!LIST_IDS.hubUserPrefs&&!isPreviewMode)configNotes.push('This board\'s layout (buckets, order, Today\'s 3) is saved in this browser only for now — it won\'t follow you to another device until Hub User Prefs is set up.');
   if(configEl)configEl.innerHTML=configNotes.length?`<div style="background:var(--gold-bg);border:1px solid #dccea5;border-radius:var(--r);padding:11px 13px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.5">${configNotes.join('<br>')}</div>`:'';
@@ -11303,7 +12074,7 @@ function renderMyTasks(){
     function inQueueScope(t){
       if(queue==='design')return t.category==='Design Asset';
       if(queue==='web')return t.category==='Web Update';
-      if(queue==='mine')return isMyTask(t);
+      if(queue==='mine')return isCurrentUserAssignment(t.assignedTo);
       return true;
     }
     const doneList=MY_TASKS.filter(t=>t.title&&t.title.trim()&&t.status==='Done'&&inQueueScope(t))
@@ -11332,6 +12103,42 @@ function renderMyTasks(){
   document.getElementById('tasksList').innerHTML=mainListHtml+completedHtml;
 }
 
+// Creates one item in the shared Tasks & Job Tickets list. Venue is written to its own Venue
+// column. If that column doesn't exist yet (Graph 400 naming Venue, or a 400 when the column is
+// known to be missing), this retries once without it and keeps "Venue: X" at the top of Notes, so
+// a job ticket never fails over the venue and the venue is never silently lost. Once a fallback
+// happens, later saves in the same session skip straight to the Notes form.
+// Returns the Response, with .venueFallback=true when the Notes fallback was used.
+let SHARED_TASK_VENUE_COLUMN=true;
+function withVenueInNotes(fields){
+  const {Venue,...rest}=fields;
+  if(!Venue)return rest;
+  const notes=rest.Notes||'';
+  if(!/^Venue:/m.test(notes))rest.Notes=[`Venue: ${Venue}`,notes].filter(Boolean).join('\n\n');
+  return rest;
+}
+async function postSharedTask(token,fields){
+  const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`;
+  const post=f=>fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:f})});
+  if(!fields.Venue)return post(fields);
+  if(!SHARED_TASK_VENUE_COLUMN){const r=await post(withVenueInNotes(fields));r.venueFallback=true;return r;}
+  const res=await post(fields);
+  if(res.ok||res.status!==400)return res;
+  const body=await res.clone().text();
+  if(!/Venue/i.test(body))return res;
+  console.warn('Tasks & Job Tickets has no usable Venue column yet — saving Venue in Notes instead.',body.substring(0,200));
+  SHARED_TASK_VENUE_COLUMN=false;
+  const retry=await post(withVenueInNotes(fields));
+  retry.venueFallback=true;
+  return retry;
+}
+// Venue for a job ticket: the Venue column when present, otherwise the "Venue: X" line that
+// tickets saved before the column existed (or during a fallback) carry in Notes.
+function sharedTaskVenue(f){
+  if(f.Venue)return String(f.Venue);
+  const m=String(f.Notes||'').match(/^Venue:\s*(.+)$/m);
+  return m?m[1].trim():'';
+}
 async function loadTasks(){
   if(!isAuthed)return;
   if(!LIST_IDS.myTasks&&!isPreviewMode)MY_TASKS=[];
@@ -11347,7 +12154,7 @@ async function loadTasks(){
           title:f.Title||'',
           status:f.Status||'Not Started',
           priority:f.Priority||'',
-          venue:'', // Tasks list doesn't have Venue — use Campaign lookup
+          venue:sharedTaskVenue(f), // Venue column, or the legacy "Venue: X" line in Notes
           category:f.TaskType||'',
           due:f.DueDate?f.DueDate.split('T')[0]:'',
           notes:f.Notes||'',
@@ -11443,7 +12250,7 @@ async function saveTask(){
   const title=document.getElementById('tTitle').value.trim();
   if(!title){document.getElementById('taskFormMsg').textContent='Please enter a title.';document.getElementById('taskFormMsg').className='form-msg err';return;}
   if(!LIST_IDS.myTasks&&!isPreviewMode){
-    document.getElementById('taskFormMsg').textContent='Shared Work Items are not connected to a SharePoint list yet. Nothing was saved.';
+    document.getElementById('taskFormMsg').textContent='The Tasks & Job Tickets list is not connected to a SharePoint list yet. Nothing was saved.';
     document.getElementById('taskFormMsg').className='form-msg err';
     return;
   }
@@ -11529,7 +12336,7 @@ async function saveTask(){
             tokenError:taskMailTokenError,
             subject:`New task assigned: ${title}`,
             link:taskLink,
-            content:`Hi ${assigneeName},\n\n${taskDetails}\n\nOpen My Tasks: ${taskLink}`
+            content:`Hi ${assigneeName},\n\n${taskDetails}\n\nOpen Tasks & Job Tickets: ${taskLink}`
           });
           if(emailResult.failed?.length)alert('Task saved, but the assignment email could not be sent to '+assigneeName+'.');
         }
@@ -11628,7 +12435,7 @@ function renderPersonalTasks(){
   }
   const today=toLocalISODate(new Date());
   // Converted tasks are closed (not "Open") but are intentionally left out of "Completed" too — they
-  // didn't get done here, they became a shared task, which is tracked as its own item in My Tasks.
+  // didn't get done here, they became a shared task, which is tracked as its own item in Tasks & Job Tickets.
   const open=PERSONAL_TASKS.filter(task=>task.status!=='Done'&&task.status!=='Converted');
   const overdue=open.filter(task=>task.due&&task.due<today);
   const done=PERSONAL_TASKS.filter(task=>task.status==='Done');
@@ -11701,7 +12508,7 @@ function renderPersonalTasks(){
     // of that, read as 'Hub' so nothing changes for existing rows.
     const emailHtml=task.source==='Outlook'?`<span title="${escapeAttr(task.emailSender?'From: '+task.emailSender:'From Outlook')}" style="color:#396998">✉︎${task.emailLink?` <a href="${escapeAttr(task.emailLink)}" target="_blank" onclick="event.stopPropagation()" style="color:#396998">Open email</a>`:''}</span>`:'';
     const convertBtn=(!isSubtask&&!isClosed)?`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();convertPersonalTaskToShared('${task.id}')" title="Create a linked Shared Task, keep this one as a record">→ Shared</button>`:'';
-    const cbAttrs=isConverted?`title="Converted to a shared task — see My Tasks"`:`onclick="togglePersonalTask('${task.id}')"`;
+    const cbAttrs=isConverted?`title="Converted to a shared task — see Tasks & Job Tickets"`:`onclick="togglePersonalTask('${task.id}')"`;
     let row=`<div class="task-item ${task.priority==='Critical'&&!isClosed?'critical':''}" ${dragAttrs}>${dragHandle}<input type="checkbox" class="pt-select" ${isSelected?'checked':''} onclick="event.stopPropagation();togglePersonalTaskSelect('${task.id}')"><div class="task-cb ${isClosed?'done':''}" ${cbAttrs}>${isDone?'✓':isConverted?'↗':''}</div><div class="task-info" onclick="openEditPersonalTask('${task.id}')" style="cursor:pointer"><div class="task-name ${isClosed?'done':''}">${escapeAttr(task.title)}</div><div class="task-meta">${emailHtml}${linkedHtml}${projectHtml}${task.due?`<span style="color:${isOverdue?'var(--red)':'var(--text3)'}">Due ${fmtDate(task.due)}${isOverdue?' · OVERDUE':''}</span>`:''}${subtaskToggleHtml}${task.notes?`<span>${escapeAttr(task.notes)}</span>`:''}</div></div><div class="task-right">${task.priority?`<span class="tag ${task.priority==='Critical'?'t-r':task.priority==='High'?'t-o':'t-gr'}">${escapeAttr(task.priority)}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}${convertBtn}${isSubtask?'':`<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openAddPersonalTask('${task.id}')">+ Sub</button>`}<button class="tb-btn" style="font-size:10px;padding:2px 7px" onclick="openEditPersonalTask('${task.id}')">Edit</button><button class="tb-btn" style="font-size:10px;padding:2px 7px;color:var(--red)" onclick="deletePersonalTask('${task.id}')">Delete</button></div></div>`;
     if(!isSubtask&&subtasks.length&&expanded){
       row+=`<div class="pt-subtasks">${subtasks.map(child=>{shownChildIds.add(child.id);return personalTaskRowHtml(child,true);}).join('')}</div>`;
@@ -11866,7 +12673,7 @@ async function savePersonalTask(){
 // exists). Idempotent: see the ConvertedFromPersonalTaskId check below.
 async function convertPersonalTaskToShared(taskId){
   const task=PERSONAL_TASKS.find(t=>String(t.id)===String(taskId));if(!task)return;
-  if(!LIST_IDS.myTasks&&!isPreviewMode){alert('Shared Work Items list isn\'t connected yet.');return;}
+  if(!LIST_IDS.myTasks&&!isPreviewMode){alert('The Tasks & Job Tickets list isn\'t connected yet.');return;}
   // Idempotency: the Shared Task created below always carries ConvertedFromPersonalTaskId, written in
   // the SAME create call as the task itself. That's the authoritative check — not this Personal Task's
   // own Status — because Status is exactly the field whose later patch-back can fail while the shared
@@ -11875,7 +12682,7 @@ async function convertPersonalTaskToShared(taskId){
   const existingShared=MY_TASKS.find(t=>String(t.convertedFromPersonalTaskId||'')===String(task.id));
   if(existingShared){
     if(task.status==='Converted'){
-      const msg=`Already converted — see "${existingShared.title}" in My Tasks.`;
+      const msg=`Already converted — see "${existingShared.title}" in Tasks & Job Tickets.`;
       if(typeof showToast==='function')showToast(msg);else alert(msg);
       return;
     }
@@ -11884,7 +12691,7 @@ async function convertPersonalTaskToShared(taskId){
     await finishPersonalTaskConversion(task,existingShared,token);
     return;
   }
-  if(!confirm(`Convert "${task.title}" into a shared task? It will appear in the team's My Tasks. This record stays here, marked as converted.`))return;
+  if(!confirm(`Convert "${task.title}" into a shared task? It will appear in the team's Tasks & Job Tickets list. This record stays here, marked as converted.`))return;
   try{
     const linkedEvent=task.linkedActivityId?EVENTS.find(e=>String(e.id)===String(task.linkedActivityId)):null;
     let created={id:'T-'+Date.now()},token=null;
@@ -11911,7 +12718,7 @@ async function convertPersonalTaskToShared(taskId){
 // shared task has no assignee. Split out so a retry (existingShared found above) can call just this
 // half without re-creating the shared task.
 async function finishPersonalTaskConversion(task,sharedTask,token){
-  const tag=`[Converted to shared task — see My Tasks: "${sharedTask.title}"]`;
+  const tag=`[Converted to shared task — see Tasks & Job Tickets: "${sharedTask.title}"]`;
   const newNotes=task.notes&&task.notes.includes(tag)?task.notes:(task.notes?`${task.notes}\n\n${tag}`:tag);
   try{
     // Preview Mode, and a Personal Task never synced to SharePoint (local-only "PT-" id), have
@@ -11942,7 +12749,7 @@ async function finishPersonalTaskConversion(task,sharedTask,token){
     alert(`The shared task "${sharedTask.title}" exists, but marking this record as converted failed: ${e.message}. Clicking "→ Shared" again is safe and will reuse this same shared task.`);
   }
   if(!sharedTask.assignedTo){
-    const warn=`Heads up: the shared task "${sharedTask.title}" has no assignee yet — open My Tasks to assign someone.`;
+    const warn=`Heads up: the shared task "${sharedTask.title}" has no assignee yet — open Tasks & Job Tickets to assign someone.`;
     if(typeof showToast==='function')showToast(warn);else alert(warn);
   }
 }
@@ -12116,7 +12923,7 @@ async function bulkDeletePersonalTasks(){
 // ═══════════════════════════════════════
 const SCHEMA_TOOL_LISTS={
   campaigns:{label:'Marketing & Activations 2026',listIdKey:'campaigns'},
-  myTasks:{label:'Shared Work Items (My Tasks)',listIdKey:'myTasks'},
+  myTasks:{label:'Tasks & Job Tickets (shared)',listIdKey:'myTasks'},
   personalTasks:{label:'My Tasks (personal)',listIdKey:'personalTasks'},
   projects:{label:'Marketing Projects',listIdKey:'projects'},
   ideas:{label:'Idea Bank',listIdKey:'ideas'},
@@ -12185,6 +12992,10 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'campaigns',name:'TicketRevenue',displayName:'Ticket Revenue',type:'number',purpose:'Post-Campaign Report — captured on the form since before this session but never actually saved until now (confirmed bug fix).'},
   {listKey:'campaigns',name:'Redemptions',displayName:'Redemptions',type:'number',purpose:'Post-Campaign Report — Loaded Rewards redemptions. Same confirmed bug fix as Ticket Revenue.'},
   {listKey:'campaigns',name:'Covers',displayName:'Covers',type:'number',purpose:'Post-Campaign Report — estimated covers/pax. Same confirmed bug fix as Ticket Revenue.'},
+  {listKey:'campaigns',name:'ReportSubmittedAt',displayName:'Report Submitted',type:'date',purpose:'Post-Campaign Report — the date the report was saved. Tells reported activities from unreported ones (KPI K2, "Wrap report needed" alerts).'},
+  {listKey:'campaigns',name:'ReportWorked',displayName:'Report: What Worked',type:'text',purpose:'Post-Campaign Report — "What worked?" notes. Replaces appending them into Description.'},
+  {listKey:'campaigns',name:'ReportImprove',displayName:'Report: To Improve',type:'text',purpose:'Post-Campaign Report — "What to improve next time?" notes.'},
+  {listKey:'campaigns',name:'ChannelResults',displayName:'Channel Results',type:'text',purpose:'Post-Campaign Report — per-channel numbers typed in from Meta, Google Ads, newsletter, website, SMS and Google Business Profile, stored as JSON.'},
   {listKey:'campaigns',name:'LoadedRewards',displayName:'Loaded Rewards',type:'choice',choices:'Yes',purpose:'Independent Yes/No flag for whether Loaded Rewards is involved — separate from Brand/Business Stream so an activity under a different brand can still have a Loaded component. Only needed if none of LoadedRewards/Loaded Rewards/LoadedRewardsPromo/IsLoaded already exist.'},
   {listKey:'campaigns',name:'EventSeating',displayName:'Event Seating',type:'choice',choices:'Seated, Standing, Table Service, Mixed',purpose:'The seating/setup breakdown for the event.'},
   {listKey:'campaigns',name:'SeriesId',displayName:'Series Id',type:'number',purpose:'Groups Activities that belong to one recurring series.'},
@@ -12201,6 +13012,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'personalTasks',name:'EmailSender',displayName:'Email Sender',type:'text',purpose:'Outlook email-to-task — the original email\'s sender, for a Source=Outlook task.'},
   {listKey:'personalTasks',name:'EmailLink',displayName:'Email Link',type:'text',purpose:'Outlook email-to-task — a link back to the original email in Outlook.'},
   {listKey:'personalTasks',name:'EmailMessageId',displayName:'Email Message Id',type:'text',purpose:'Outlook email-to-task — the email\'s stable internet message id, used by the Power Automate flow to detect duplicates (including when a flagged email is later edited).'},
+  {listKey:'myTasks',name:'Venue',displayName:'Venue',type:'text',purpose:'Venue a job ticket is for. Written by manual Job submission, approval-created job tickets and design briefs. Text, not Choice, so a new venue added to the Hub never makes ticket saves fail. Until it exists, saves fall back to a "Venue: X" line in Notes.'},
   {listKey:'myTasks',name:'ConvertedFromPersonalTaskId',displayName:'Converted From Personal Task Id',type:'number',purpose:'Back-reference to the private Personal Task this shared task was converted from, written at creation time. The authoritative idempotency check for convertPersonalTaskToShared — a retry after a failed patch-back on the Personal Task side reuses this record instead of creating a duplicate.'},
   {listKey:'ideas',name:'ActivityType',displayName:'Activity Type',type:'choice',choices:ACTIVITY_TYPE_OPTIONS.join(', '),purpose:'Captured at idea stage so "Continue Brief" can prefill it on the Activity submission form.'},
   {listKey:'ideas',name:'PromotedActivityId',displayName:'Promoted Activity Id',type:'number',purpose:'Links an idea to the real Activity created from it via "Continue Brief", so reopening a promoted idea opens that Activity instead of letting it be promoted twice.'},
@@ -12670,7 +13482,7 @@ function renderOperationsMap(){
       <div class="ops-flow">
         <div class="ops-stage"><h3>1. Inputs</h3><ul><li>Flagged emails and direct task emails</li><li>Venue submissions and activity briefs</li><li>Supplier, offer and product information</li><li>Leadership decisions and deadlines</li></ul></div>
         <div class="ops-arrow">→</div>
-        <div class="ops-stage core"><h3>2. SharePoint source of truth</h3><ul><li>My Tasks, four-person work register</li><li>Marketing &amp; Activations master list</li><li>Loaded Rewards and reference lists</li><li>Mailing CRM, consent and import history</li></ul></div>
+        <div class="ops-stage core"><h3>2. SharePoint source of truth</h3><ul><li>Tasks &amp; Job Tickets, shared team work register</li><li>Marketing &amp; Activations master list</li><li>Loaded Rewards and reference lists</li><li>Mailing CRM, consent and import history</li></ul></div>
         <div class="ops-arrow">→</div>
         <div class="ops-stage"><h3>3. Marlin OS workflow</h3><ul><li>Priority, owner and due-date control</li><li>Dependencies and approval gates</li><li>Activity, task and CRM dashboards</li><li>Inbox, comments and exception review</li></ul></div>
         <div class="ops-arrow">→</div>
@@ -13232,7 +14044,10 @@ function generateNotifications(){
     .forEach(e=>{const key=`appr-${e.id}`;NOTIFS.push({key,icon:'◔',text:`Awaiting approval: ${e.title} · ${e.venue}`,time:'Needs review',color:'var(--blue-bg)',category:'action',unread:!readKeys.includes(key),eventId:e.id});});
 
   // Reporting required
-  EVENTS.filter(e=>isAssignedToMe(e)&&e.stage==='Done'&&e.status!=='Archive'&&e.status!=='Cancelled')
+  // Only activities that ended in the last 60 days: delivered now includes auto-completed ones
+  // (P3-D2), and alerting on every unreported activity from earlier in the year would bury the rest.
+  const reportCutoff=new Date(today);reportCutoff.setDate(reportCutoff.getDate()-60);
+  EVENTS.filter(e=>isAssignedToMe(e)&&isActivityDelivered(e)&&!isActivityReported(e)&&e.status!=='Archive'&&new Date((e.end||e.start)+'T00:00:00')>=reportCutoff)
     .forEach(e=>{const key=`report-${e.id}`;NOTIFS.push({key,icon:'▥',text:`Wrap report needed: ${e.title}`,time:'Post-campaign',color:'var(--purple-bg)',category:'action',unread:!readKeys.includes(key),eventId:e.id});});
 
   // POS pending on upcoming campaigns
@@ -13628,7 +14443,7 @@ async function submitIdeaNew(){
 async function submitJob(){
   const title=document.getElementById('fJobTitle').value.trim();
   if(!title){const m=document.getElementById('fJobMsg');m.textContent='Please enter a title.';m.className='form-msg err';return;}
-  if(!LIST_IDS.myTasks&&!isPreviewMode){const m=document.getElementById('fJobMsg');m.textContent='Shared Work Items are not connected yet. Nothing was saved.';m.className='form-msg err';return;}
+  if(!LIST_IDS.myTasks&&!isPreviewMode){const m=document.getElementById('fJobMsg');m.textContent='The Tasks & Job Tickets list is not connected yet. Nothing was saved.';m.className='form-msg err';return;}
   const btn=document.querySelector('#submitFormJob .btn-p');
   if(btn){btn.disabled=true;btn.textContent='Submitting…';}
   const fields={
@@ -13638,12 +14453,13 @@ async function submitJob(){
     TaskType:document.getElementById('fJobType').value,
   };
   const due=document.getElementById('fJobDue').value;if(due)fields.DueDate=due+'T12:00:00Z';
-  // The My Tasks list does not currently have a Venue column. Preserve the selection in Notes
-  // until that schema debt is fixed, instead of silently throwing the user's venue away.
+  // Venue goes to the list's own Venue column; postSharedTask() falls back to a "Venue: X" line
+  // in Notes if that column hasn't been created yet.
   const venue=document.getElementById('fJobVenue').value;
+  if(venue)fields.Venue=venue;
   const rawNotes=document.getElementById('fJobNotes').value.trim();
-  const notes=[venue?`Venue: ${venue}`:'',rawNotes].filter(Boolean).join('\n\n');
-  if(notes)fields.Notes=notes;
+  const notes=[venue?`Venue: ${venue}`:'',rawNotes].filter(Boolean).join('\n\n'); // email body only
+  if(rawNotes)fields.Notes=rawNotes;
   const assign=document.getElementById('fJobAssign').value;if(assign)fields.AssignedTo=assign;
   // Campaign & digital linkage — writes the real "Campaign" Lookup column (CampaignLookupId is
   // the standard Graph write key for a Lookup column named "Campaign"). Previously this wrote
@@ -13674,7 +14490,7 @@ async function submitJob(){
   }
   try{
     const token=await getToken(true);
-    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
+    const res=await postSharedTask(token,fields);
     if(res.ok){
       const created=await res.json();
       let emailDelivered=false;
@@ -13689,14 +14505,14 @@ async function submitJob(){
           mailToken:jobMailToken,tokenError:jobMailTokenError,
           subject:`New job assigned: ${title}`,
           link:taskLink,
-          content:`Hi ${assigneeName},\n\n${detail}\n\nOpen My Tasks: ${taskLink}`
+          content:`Hi ${assigneeName},\n\n${detail}\n\nOpen Tasks & Job Tickets: ${taskLink}`
         });
         emailDelivered=!emailResult.failed.length&&!emailResult.missing.length&&emailResult.sent>0;
       }
       const m=document.getElementById('fJobMsg');
       m.textContent=emailNeeded&&!emailDelivered
-        ?'⚠︎︎ Job submitted, but the assignment email was not delivered. It is still visible in My Tasks.'
-        :`✓ Job submitted${emailDelivered?' and '+assigneeName+' was emailed.':' to the task list!'}`;
+        ?'⚠︎︎ Job submitted, but the assignment email was not delivered. It is still visible in Tasks & Job Tickets.'
+        :`✓ Job submitted${emailDelivered?' and '+assigneeName+' was emailed.':' to the task list!'}${res.venueFallback?' Venue was saved in Notes because the Venue column is missing. Add it in Schema Tools.':''}`;
       m.className=emailNeeded&&!emailDelivered?'form-msg err':'form-msg ok';
       ['fJobTitle','fJobNotes','fJobDue','fJobMetaNotes','fJobGoogleNotes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
       ['fJobCampaign'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -15370,13 +16186,16 @@ function renderActivityDetail(id,mode){
       ${linkedTasks.length?linkedTasks.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><div class="task-cb ${t.status==='Done'?'done':''}" onclick="togglePersonalTask('${t.id}')">${t.status==='Done'?'✓':''}</div><div style="flex:1;font-size:13px;cursor:pointer;${t.status==='Done'?'text-decoration:line-through;color:var(--text3)':''}" onclick="navTo('personaltasks')" title="Open in Personal Tasks">${escapeAttr(t.title)}</div>${t.due?`<span class="u-meta">${fmtDate(t.due)}</span>`:''}</div>`).join(''):'<div style="font-size:12px;color:var(--text3);padding:6px 0">No personal tasks linked to this activity yet.</div>'}
     </div>`;
   }
+  h+=renderReportSummary(ev);
   // Action buttons
   h+=`<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">`;
   if(ev.stage==='Review'&&canApprove){
     h+=`<button id="approveBtn-${ev.id}" class="btn btn-p" onclick="approveCampaign(${ev.id},this)">✓ Approve</button>`;
   }
-  if(canEdit&&(ev.autoCompleted||ev.stage==='Reporting Required'||ev.stage==='Complete')){
-    h+=`<button class="btn btn-p" onclick="closePop();openPostCampaign(${ev.spId})">Post-Campaign Report</button>`;
+  // Any delivered activity can be reported on, and a saved report can be edited. Previously the
+  // button vanished once the report moved the activity to Done, so a report couldn't be corrected.
+  if(canEdit&&(isActivityDelivered(ev)||ev.stage==='Reporting Required')){
+    h+=`<button class="btn ${isActivityReported(ev)?'btn-s':'btn-p'}" onclick="closePop();openPostCampaign(${ev.spId})">${isActivityReported(ev)?'Edit report':'Post-Campaign Report'}</button>`;
   }
   if(canEdit&&['Intake','In Design','Review'].includes(ev.stage)){
     h+=`<button class="btn btn-s" onclick="closePop();openDesignBrief(${ev.spId})">✎ Submit Design Brief</button>`;
