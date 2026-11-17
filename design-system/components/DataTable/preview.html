@@ -1,0 +1,12 @@
+<!-- @dsCard group="Report" height=190 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><style>body{padding:16px} .row{display:grid;gap:12px} .g4{grid-template-columns:repeat(4,minmax(0,1fr))} .g2{grid-template-columns:repeat(2,minmax(0,1fr))} .flex{display:flex;gap:8px;flex-wrap:wrap;align-items:center}</style></head>
+<body>
+<div id="root"></div>
+<script>
+  var M = window.Marlin, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h(M.DataTable,{columns:[{key:'k',label:'$'},{key:'mon',label:'Mon',align:'right'},{key:'tue',label:'Tue',align:'right'},{key:'wed',label:'Wed',align:'right'},{key:'tot',label:'Total',align:'right'},{key:'ly',label:'LY total',align:'right'}],rows:[{k:'Food sales',mon:'3,743',tue:'5,823',wed:'5,577',tot:'65,377',ly:'68,444'},{k:'Beverage sales',mon:'4,481',tue:'5,905',wed:'5,999',tot:'107,679',ly:'121,700'},{k:'Discounts',mon:'(611)',tue:'(1,287)',wed:'(1,354)',tot:'(12,781)',ly:'(8,702)'},{k:'Total sales',mon:'7,795',tue:'10,690',wed:'10,466',tot:'164,101',ly:'186,536',total:true}]}));
+</script>
+</body>
+</html>

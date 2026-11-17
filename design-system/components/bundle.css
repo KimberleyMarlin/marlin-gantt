@@ -1,0 +1,73 @@
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800;900&family=Poppins:wght@400;700;900&display=swap');
+
+body { margin: 0; background: var(--surface); color: var(--ink); font-family: var(--font-sans); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Report header — navy band, white venue name, white logo right */
+.mh-report-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-6);
+  background: var(--navy-900); color: var(--white); padding: var(--space-4) var(--space-8); }
+.mh-report-header__text { display: flex; align-items: baseline; gap: var(--space-6); flex-wrap: wrap; }
+.mh-report-header__title { margin: 0; font: 900 34px/1 var(--font-sans); text-transform: uppercase; letter-spacing: 0; }
+.mh-report-header__subtitle { margin: 0; font: 700 15px/1.3 var(--font-sans); }
+.mh-report-header__logo { height: 52px; width: auto; display: block; }
+
+/* Section title — condensed numeral + uppercase heavy title */
+.mh-section { color: var(--ink-brand); }
+.mh-section__row { display: flex; align-items: baseline; gap: var(--space-3); }
+.mh-section__num { font: 400 40px/1 var(--font-numeral); letter-spacing: -0.04em; }
+.mh-section__title { margin: 0; font: 900 40px/1.05 var(--font-sans); text-transform: uppercase; }
+.mh-section__lead { margin: var(--space-3) 0 0; font: 800 18px/1.35 var(--font-sans); }
+
+/* Pill — delta and status chips; always carries a word or sign, never colour alone */
+.mh-pill { display: inline-block; padding: 2px var(--space-2); border-radius: var(--radius-sm);
+  font: 800 12px/1.4 var(--font-sans); white-space: nowrap; }
+.mh-pill--positive { background: var(--positive); color: var(--on-positive); }
+.mh-pill--attention { background: var(--attention); color: var(--on-attention); }
+.mh-pill--brand { background: var(--accent); color: var(--on-accent); }
+.mh-pill--neutral { background: var(--surface-alt); color: var(--ink-brand); box-shadow: inset 0 0 0 1px var(--line); }
+
+/* Compare bars — TY vs LY */
+.mh-bars { display: grid; gap: 6px; }
+.mh-bars__row { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: var(--space-2); }
+.mh-bars__label { font: 700 11px/1 var(--font-sans); color: var(--ink-muted); }
+.mh-bars__track { height: 12px; }
+.mh-bars__bar { display: block; height: 100%; }
+.mh-bars__bar--ty { background: var(--series-ty); }
+.mh-bars__bar--ly { background: var(--series-ly); }
+.mh-bars__bar--s3 { background: var(--series-3); }
+.mh-bars__value { font: 500 11px/1 var(--font-sans); color: var(--ink-muted); min-width: 44px; }
+
+/* KPI card */
+.mh-kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: var(--space-3); display: grid; gap: var(--space-2); min-width: 0; }
+.mh-kpi--positive { border: 1.5px solid var(--positive-line); }
+.mh-kpi--attention { border: 1.5px solid var(--attention-line); }
+.mh-kpi__label { font: 600 13px/1.3 var(--font-sans); color: var(--ink); }
+.mh-kpi__row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.mh-kpi__value { font: 800 28px/1.1 var(--font-sans); color: var(--ink-brand); }
+.mh-kpi__note { font: 500 12px/1.3 var(--font-sans); color: var(--ink-muted); }
+
+/* Data table */
+.mh-table { width: 100%; border-collapse: collapse; font: 500 13px/1.3 var(--font-sans); color: var(--ink); }
+.mh-table th { background: var(--accent); color: var(--on-accent); font-weight: 800; text-align: left; padding: 6px var(--space-2); }
+.mh-table td { padding: 6px var(--space-2); border-bottom: 1px solid var(--line); }
+.mh-table .is-num { text-align: right; font-variant-numeric: tabular-nums; }
+.mh-table tr.is-total td { font-weight: 800; border-top: 1.5px solid var(--line-strong); }
+
+/* Callout — "What's working" / "What needs attention" */
+.mh-callout { border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); color: var(--ink); }
+.mh-callout--positive { background: var(--positive-tint); }
+.mh-callout--attention { background: var(--attention-tint); }
+.mh-callout__title { margin: 0 0 var(--space-2); font: 800 16px/1.25 var(--font-sans); color: var(--ink-brand); }
+.mh-callout__list { margin: 0; padding-left: 18px; font: 500 13px/1.45 var(--font-sans); }
+.mh-callout__list li + li { margin-top: 4px; }
+
+/* Brand frame — rounded outline with labels set into the rule (cover and divider pages) */
+.mh-frame { background: var(--navy-900); color: var(--white); padding: var(--space-8); }
+.mh-frame__box { position: relative; border: 2px solid var(--white); border-radius: var(--radius-frame);
+  min-height: 160px; display: grid; place-items: center; padding: var(--space-12) var(--space-8); text-align: center; }
+.mh-frame__tab { position: absolute; left: 50%; transform: translateX(-50%); background: var(--navy-900);
+  padding: 0 var(--space-3); font: 800 12px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+.mh-frame__tab--top { top: -7px; }
+.mh-frame__tab--bottom { bottom: -7px; }
+.mh-frame__body { font: 900 48px/0.95 var(--font-sans); text-transform: uppercase; }
