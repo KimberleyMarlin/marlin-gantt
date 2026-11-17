@@ -1587,7 +1587,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
   <div class="panel" id="p-mywork">
     <div class="ph">
       <div><div class="ph-eye">Today and upcoming</div><div class="ph-title">My <em>Work</em></div><div class="ph-sub">Shared assignments and private tasks stay separate in SharePoint. Dragging a Shared item only saves your own view of it — never anyone else's priority, due date or stage. <a href="#" id="myWorkManagePersonalLink" onclick="event.preventDefault();navTo('personaltasks')" style="display:none">Manage personal tasks →</a></div></div>
-      <div class="ph-right"><span id="myWorkSyncStatus" style="font-size:11px;color:var(--text3);white-space:nowrap"></span><button class="tb-btn p" id="myWorkAddPersonal" onclick="openAddPersonalTask()">+ Personal task</button><button class="tb-btn" onclick="refreshMyWork()">↻</button></div>
+      <div class="ph-right"><span id="myWorkSyncStatus" style="font-size:11px;color:var(--ink-muted);white-space:nowrap"></span><button class="tb-btn p" id="myWorkAddPersonal" onclick="openAddPersonalTask()">+ Personal task</button><button class="tb-btn" onclick="refreshMyWork()">↻</button></div>
     </div>
     <div class="ca">
       <div class="stats" id="myWorkStats" style="margin-bottom:12px"></div>
@@ -11542,14 +11542,14 @@ function renderHubPrefsSyncStatus(){
   el.onclick=null;el.style.cursor='';el.title='';
   if(isPreviewMode){el.textContent='';return;}
   if(!LIST_IDS.hubUserPrefs){
-    el.textContent='Saved on this device only';el.style.color='var(--text3)';
+    el.textContent='Saved on this device only';el.style.color='var(--ink-muted)';
     el.title='Hub User Prefs isn\'t connected yet, so this layout stays in this browser.';
     return;
   }
-  if(_hubPrefsSyncState==='syncing'){el.textContent='Syncing layout…';el.style.color='var(--text3)';}
-  else if(_hubPrefsSyncState==='synced'){el.textContent='Layout synced ✓';el.style.color='var(--text3)';el.title='Your My Work layout is saved to SharePoint and follows you to other devices.';}
+  if(_hubPrefsSyncState==='syncing'){el.textContent='Syncing layout…';el.style.color='var(--ink-muted)';}
+  else if(_hubPrefsSyncState==='synced'){el.textContent='Layout synced ✓';el.style.color='var(--ink-muted)';el.title='Your My Work layout is saved to SharePoint and follows you to other devices.';}
   else if(_hubPrefsSyncState==='failed'){
-    el.textContent='Not synced — saved on this device only';el.style.color='var(--gold)';el.style.cursor='pointer';
+    el.textContent='Not synced — saved on this device only';el.style.color='var(--attention)';el.style.cursor='pointer';
     el.title=`Couldn't save your layout to SharePoint, so it's only in this browser for now. Click to try again.${_hubPrefsSyncError?'\n\n'+_hubPrefsSyncError:''}`;
     el.onclick=retryHubUserPrefsSync;
   }else el.textContent='';
