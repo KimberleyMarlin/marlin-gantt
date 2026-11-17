@@ -16,7 +16,7 @@ Decisions made on 17 Nov 2026:
 
 - **No sample data anywhere in the OS.** Until the first sync, the Paid media section says "Meta isn't connected yet". The sample snapshot from the first draft has been removed.
 - **No separate Paid Media page.** It's a section of the Marketing Report, next to campaign results and guest reviews.
-- **Linking.** A campaign links to an activity through the activity's `MetaCampaignID` (several IDs can be comma-separated). Failing that, it links by the naming rule `CODE | Activity name | MonYY` (codes WBC, TLB, RAV, HD, MB, NBC) with the same venue and overlapping dates. Unlinked campaigns can be linked from the Marketing Report in one click (editors only).
+- **Linking.** A campaign links to an activity through the activity's `MetaCampaignID` (several IDs can be comma-separated). Failing that, it links by the naming rule `CODE | Activity name | MonYY` (codes WBC, TLB, RAV, HD, MB, NBC, BB for Beerland Brewing, LR for Loaded Rewards) with the same venue and overlapping dates. Unlinked campaigns can be linked from the Marketing Report in one click (editors only).
 - **Access, as confirmed 21 Oct:** finance roles and venue managers (own venue only) see spend, cost per lead or sale, and ROAS. Other roles see reach, clicks, leads and sales. The `general` role sees no paid media at all.
 - The Power Automate approach that was briefly drafted (`docs/META_SETUP.md`) is dropped. The GitHub schedule is free and needs no premium licence.
 
@@ -153,7 +153,7 @@ Each file is overwritten on every run. Optionally, a dated copy is kept monthly 
 4. **Generate token** for that system user with `ads_read` (plus `business_management` so the sync can read pixel health, see §9). A system user token doesn't expire, so the dashboard won't stop working after 60 days.
 5. Paste the token and the ad account IDs into **GitHub → the marlin-gantt repo → Settings → Secrets and variables → Actions → New repository secret**. Don't put them anywhere else.
    - `META_TOKEN`: the system user token.
-   - `META_ACCOUNTS`: each ad account ID with its venue name exactly as the OS spells it, for example:
+   - `META_ACCOUNTS`: each ad account ID with its venue name exactly as the OS spells it. The group-wide Loaded account is named `Loaded Rewards`; its campaigns link to Loaded activities at any venue. For example:
      `{"act_1234567890":"Whitfords Brewing Co","act_2345678901":"The Left Bank","act_3456789012":"The Ravenswood","act_4567890123":"Hotel Darwin","act_5678901234":"Mustang Bar"}`
 
 Standard Marketing API access is enough for reading your own accounts, so no Meta App Review is needed.

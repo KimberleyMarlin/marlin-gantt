@@ -8660,7 +8660,7 @@ const WEEKLY_REPORTS={
   url:'https://marlingroupaus.sharepoint.com/sites/MarlinHospitalityMarketing/Shared Documents/WORKING_Marketing Dashboard/Weekly Venue Reports',
 };
 // Short codes used in report file names, e.g. "WBC - Week 19 Report.pdf".
-const REPORT_VENUE_CODES={WBC:'Whitfords Brewing Co',TLB:'The Left Bank',LB:'The Left Bank',RAV:'The Ravenswood',HD:'Hotel Darwin',MB:'Mustang Bar',NBC:'Northbridge Brewing Co'};
+const REPORT_VENUE_CODES={WBC:'Whitfords Brewing Co',TLB:'The Left Bank',LB:'The Left Bank',RAV:'The Ravenswood',HD:'Hotel Darwin',MB:'Mustang Bar',NBC:'Northbridge Brewing Co',BB:'Beerland Brewing',LR:'Loaded Rewards'};
 let WEEKLY_REPORT_FILES=[],WEEKLY_REPORTS_STATE={status:'idle',error:''};
 // Spreadsheet venue names → the OS's venue names.
 const REVIEW_VENUE_MAP={
@@ -9043,7 +9043,9 @@ function pmLinkedEvent(c){
   const act=normTitle(parts[1]);if(!act)return null;
   const shift=(d,n)=>{const x=new Date(d+'T00:00:00');x.setDate(x.getDate()+n);return toLocalISODate(x);};
   const cs=c.start||'',ce=c.end||toLocalISODate(new Date());
-  return EVENTS.filter(e=>e.venue===c.venue&&e.start&&!['Cancelled','Canceled'].includes(e.status)).filter(e=>{
+  // The Loaded Rewards ad account is group-wide: its campaigns match Loaded activities at any venue.
+  const venueOk=e=>e.venue===c.venue||(c.venue==='Loaded Rewards'&&e.loadedRewards);
+  return EVENTS.filter(e=>venueOk(e)&&e.start&&!['Cancelled','Canceled'].includes(e.status)).filter(e=>{
     const t=normTitle(e.title);return t&&(t===act||t.includes(act)||act.includes(t));
   }).filter(e=>!cs||(cs<=shift(e.end||e.start,7)&&ce>=shift(e.start,-60)))
     .sort((a,b)=>Math.abs(new Date(a.start)-new Date(cs||a.start))-Math.abs(new Date(b.start)-new Date(cs||b.start)))[0]||null;
@@ -9139,7 +9141,7 @@ function renderPaidMediaSection(venue){
     <div class="mr-key"><span><i style="background:var(--ink-brand)"></i>${lab} (left)</span><span><i style="background:var(--gold-300,var(--line))"></i>Leads + sales (right)</span></div>`;
   const unlinked=all.filter(c=>c.status!=='COMPLETED'&&!pmLinkedEvent(c));
   if(unlinked.length&&canEditCampaigns()){
-    const opts=v=>EVENTS.filter(e=>e.venue===v&&!['Cancelled','Canceled'].includes(e.status)&&String(e.end||e.start||'')>=toLocalISODate(new Date(Date.now()-90*864e5))).sort((a,b)=>String(b.start).localeCompare(String(a.start))).slice(0,40);
+    const opts=v=>EVENTS.filter(e=>(e.venue===v||(v==='Loaded Rewards'&&e.loadedRewards))&&!['Cancelled','Canceled'].includes(e.status)&&String(e.end||e.start||'')>=toLocalISODate(new Date(Date.now()-90*864e5))).sort((a,b)=>String(b.start).localeCompare(String(a.start))).slice(0,40);
     h+=`<details class="mr-noprint"><summary class="mr-sub" style="cursor:pointer">${unlinked.length} campaign${unlinked.length===1?'':'s'} not linked to an activity</summary>
       <div class="mr-note" style="margin:6px 0">Linking shows the campaign's results on the activity. Name new campaigns "CODE | Activity name | MonYY" and they link themselves.</div>
       ${unlinked.map(c=>`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--line);font-size:12px"><span style="flex:1;min-width:200px">${escapeAttr(c.name)} <span class="u-meta">· ${escapeAttr(shortVenue(c.venue))}</span></span>
@@ -9153,7 +9155,7 @@ function renderPaidMediaSection(venue){
 // On an activity: lifetime totals for its linked Meta campaigns.
 function renderActivityMeta(ev){
   if(!META_SNAPSHOT||!pmCanSeePaidMedia())return'';
-  const camps=metaVisibleCampaigns().filter(c=>c.venue===ev.venue&&pmLinkedEvent(c)?.id===ev.id);
+  const camps=metaVisibleCampaigns().filter(c=>pmLinkedEvent(c)?.id===ev.id);
   if(!camps.length)return'';
   const canMoney=pmCanSeeSpend();const t=pmTotals(camps,'lifetime');
   const row=(l,v)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid var(--line);font-size:12px"><span style="color:var(--ink-muted)">${l}</span><span style="font-weight:700;color:var(--ink-brand);text-align:right">${v}</span></div>`;
