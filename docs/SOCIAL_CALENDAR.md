@@ -38,6 +38,14 @@ On the Marlin Hospitality Marketing SharePoint site, create a list called **Soci
 
 Then copy the list's ID (List settings: the `List=` part of the address, without the braces) into `LIST_IDS.socialPosts` in `index.html`.
 
+## Where posts go
+
+The OS doesn't publish. Business Suite posts to whichever Page and Instagram account is selected in it. To make that hard to get wrong, every post shows a **Posts to** line, and approved posts have **Open in Business Suite**, which opens the composer on that venue's Page (`?asset_id=<Page ID>`).
+
+Both come from `SOCIAL_ACCOUNTS` in `index.html`: one entry per venue, plus `All Venues` for group-wide posts, each with the Page name, Page ID and Instagram handle. These are public details (each Page's About tab), so they live in the code, not in GitHub secrets. The `META_ACCOUNTS` secret used by the Meta reporting sync holds ad account IDs, which are different, and the OS can't read secrets anyway.
+
+Find them in Business Suite → Settings → Accounts → Pages (name and Page ID) and Accounts → Instagram accounts (handle and linked Page). Until a venue is filled in, its posts warn to check the selected account in Business Suite by hand.
+
 ## Default posting rhythm
 
 One post per Activity per day. Steps whose date has already passed are skipped. "Marketing start" falls back to 21 days before the start date when it isn't set.

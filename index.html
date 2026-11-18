@@ -11471,6 +11471,35 @@ const SOCIAL_POST_TYPES=['Feed','Story','Reel'];
 const SOCIAL_STEP_LABELS={announce:'Announcement',tickets:'Tickets on sale',reminder:'Reminder',lastchance:'Last chance',onday:'On the day',launch:'Launch',midrun:'Mid-run reminder',weekly1:'Weekly reminder',weekly2:'Weekly reminder',weekly3:'Weekly reminder',final:'Final push',update:'Update'};
 // Default posting times (local). Feed posts around lunch, stories in the afternoon.
 const SOCIAL_DEFAULT_TIME={Feed:'11:30',Story:'16:00',Reel:'11:30'};
+// Where each venue's posts go. Business Suite publishes to whichever Page is selected, so every post
+// shows its destination and "Open in Business Suite" opens the composer on that Page (asset_id).
+// Page IDs and handles are public (shown on each Page's About tab), so they live here, not in
+// GitHub secrets. Business Settings → Accounts → Pages / Instagram accounts lists them.
+// Empty means not set up yet: the post then warns to check the Page by hand.
+const SOCIAL_ACCOUNTS={
+  'The Left Bank':        {page:'',pageId:'',instagram:''},
+  'The Ravenswood':       {page:'',pageId:'',instagram:''},
+  'Whitfords Brewing Co': {page:'',pageId:'',instagram:''},
+  'Hotel Darwin':         {page:'',pageId:'',instagram:''},
+  'Mustang Bar':          {page:'',pageId:'',instagram:''},
+  'Beerland Brewing':     {page:'',pageId:'',instagram:''},
+  // Group-wide ("All Venues") posts
+  'All Venues':           {page:'',pageId:'',instagram:''},
+};
+function socAccount(venue){return SOCIAL_ACCOUNTS[venue]||{page:'',pageId:'',instagram:''};}
+function socBusinessSuiteUrl(venue){
+  const id=socAccount(venue).pageId;
+  return'https://business.facebook.com/latest/composer'+(id?`?asset_id=${encodeURIComponent(id)}`:'');
+}
+// "Posts to" line for a post: the Page and Instagram account for its venue and platforms.
+function socDestinationHtml(p){
+  const a=socAccount(p.venue),parts=[],missing=[];
+  if(p.platforms.includes('Facebook')){if(a.page)parts.push(`<strong>${escapeAttr(a.page)}</strong> (Facebook)`);else missing.push('Facebook Page');}
+  if(p.platforms.includes('Instagram')){if(a.instagram)parts.push(`<strong>@${escapeAttr(a.instagram.replace(/^@/,''))}</strong> (Instagram)`);else missing.push('Instagram account');}
+  if(p.platforms.includes('Google'))parts.push('Google Business Profile, posted by hand in Google');
+  return`<div style="font-size:12px;color:var(--ink);margin-bottom:6px">Posts to: ${parts.join(' · ')||'<span style="color:var(--ink-muted)">not set up yet</span>'}</div>`
+    +(missing.length?`<div style="font-size:12px;color:var(--attention);font-weight:600;margin-bottom:6px">⊘ The ${missing.join(' and ')} for ${escapeAttr(shortVenue(p.venue)||'this venue')} isn't set in the OS yet. Check which account is selected in Business Suite before scheduling.</div>`:'');
+}
 let SOCIAL_POSTS=[],SOCIAL_STATE={status:'idle',error:''},_socEditId=null;
 
 function socCanEdit(){return !!rolePermissions().canEdit;}
@@ -11698,6 +11727,10 @@ function socCardHtml(p){
     actions.push(btn('Copy caption',`copySocialCaption('${p.id}',this)`));
     if(p.imageRef)actions.push(btn('Download image',`downloadSocialImage('${p.id}',this)`));
   }
+  if(p.status==='Approved'&&(p.platforms.includes('Facebook')||p.platforms.includes('Instagram'))){
+    const a=socAccount(p.venue);
+    actions.push(`<a class="tb-btn" href="${socBusinessSuiteUrl(p.venue)}" target="_blank" rel="noopener" style="text-decoration:none" title="${escapeAttr(a.pageId?`Opens the composer on ${a.page||'this venue\'s Page'}. Check the account at the top before scheduling.`:'This venue\'s Page isn\'t set in the OS, so Business Suite opens on whichever Page you used last. Switch to the right one first.')}">Open in Business Suite ↗</a>`);
+  }
   if(p.status==='Approved'&&socCanEdit())actions.push(btn('Mark scheduled',`setSocialStatus('${p.id}','Scheduled')`,true,'Do this once the post is scheduled in Meta Business Suite'));
   if(p.status==='Scheduled'&&socCanEdit())actions.push(btn('Mark posted',`setSocialStatus('${p.id}','Posted')`));
   const change=socActivityChange(p);
@@ -11714,6 +11747,7 @@ function socCardHtml(p){
         <span style="font-size:11px;color:var(--ink-muted)">${escapeAttr(SOCIAL_STEP_LABELS[p.step]||p.step||'')}</span>
       </div>
       <div style="font-size:11px;color:var(--ink-muted);margin-bottom:6px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${vColor(p.venue).c};margin-right:5px"></span>${escapeAttr(shortVenue(p.venue)||'No venue')}${ev?` · <a href="#" onclick="event.preventDefault();showPop(${ev.id})" style="color:var(--accent)">${escapeAttr(ev.title)} ↗</a>`:''}${p.approvedBy&&p.status!=='Draft'?` · approved by ${escapeAttr(p.approvedBy)}`:''}</div>
+      ${p.status!=='Posted'?socDestinationHtml(p):''}
       <div style="font-size:13px;color:var(--ink);white-space:pre-wrap;line-height:1.5;max-height:7.5em;overflow:hidden">${escapeAttr(p.caption||'No caption yet')}</div>
       ${p.status==='Rejected'&&p.notes?`<div style="font-size:12px;margin-top:6px;padding:6px 10px;background:var(--attention-tint);border-radius:var(--radius-sm)"><strong style="color:var(--attention)">Sent back:</strong> ${escapeAttr(p.notes)}</div>`:''}
       ${flags.map(f=>`<div style="font-size:12px;margin-top:6px;color:var(--attention);font-weight:600">⊘ ${escapeAttr(f)}</div>`).join('')}
