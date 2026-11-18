@@ -1247,9 +1247,10 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
         <span id="calLabel" style="font-size:20px;font-weight:700;min-width:160px;font-family:var(--font-sans);font-weight:800;text-align:center;white-space:nowrap"></span>
         <button class="tb-btn" id="calNextBtn" onclick="calNext()">→</button>
         <div class="chips" id="calViewChips">
+          <div class="chip on" data-v="overview" onclick="setScheduleView(this)">This Month</div>
           <div class="chip" data-v="day" onclick="setScheduleView(this)">Day</div>
           <div class="chip" data-v="week" onclick="setScheduleView(this)">Week</div>
-          <div class="chip on" data-v="month" onclick="setScheduleView(this)">Month</div>
+          <div class="chip" data-v="month" onclick="setScheduleView(this)">Month</div>
           <div class="chip" data-v="year" onclick="setScheduleView(this)">Year</div>
           <div class="chip" data-v="gantt" onclick="setScheduleView(this)">Gantt</div>
           <div class="chip" data-v="venuemonth" onclick="setScheduleView(this)">Venue Monthly</div>
@@ -6004,8 +6005,7 @@ function renderVenueMonth(){
 
   const getMonthEvts=(v)=>EVENTS.filter(e=>{
     if(e.venue!==v&&e.venue!=='All Venues')return false;
-    const s=new Date(e.start+'T00:00:00'),en=new Date(e.end+'T00:00:00');
-    return s<=monthEnd&&en>=monthStart&&!isArchived(e);
+    return activityOverlapsRange(e,monthStart,monthEnd)&&!isArchived(e);
   });
   const isLoaded=(e)=>e.loadedRewards;
 
@@ -8121,11 +8121,11 @@ function renderDashThisMonth(){
   if(label)label.textContent=viewedMonth.toLocaleDateString('en-AU',{month:'long',year:'numeric'})+(_dashMonthOffset===0?' (this month)':'');
   const allEvts=EVENTS.filter(e=>!venue||e.venue===venue).filter(e=>!isArchived(e));
   const thisMonthEvts=allEvts.filter(e=>{
-    const s=new Date(e.start+'T00:00:00'),en=new Date((e.end||e.start)+'T00:00:00');
-    if(!(s<=monthEnd&&en>=monthStart))return false; // must overlap the viewed month
+    if(!activityOverlapsRange(e,monthStart,monthEnd))return false;
     // Long-running/standing items (e.g. an ongoing Loaded Rewards deal spanning several months)
     // aren't a specific month's news — they'd just clutter a snapshot meant to be a quick read
     // of what's actually happening in the viewed month.
+    const s=new Date(e.start+'T00:00:00'),en=new Date((e.end||e.start)+'T00:00:00');
     const durationDays=(en-s)/864e5;
     if(durationDays>45)return false;
     return true;
@@ -8341,10 +8341,7 @@ function renderOverview(){
         </div>`;
   };
   // Next 14 days — imminent items (starting within 14 days, not yet ended)
-  const next14=active.filter(e=>{
-    const s=new Date(e.start+'T00:00:00'),en=new Date((e.end||e.start)+'T00:00:00');
-    return en>=today && s<=in14; // hasn't ended, starts within 14 days (or already running into window)
-  }).sort((a,b)=>a.start.localeCompare(b.start));
+  const next14=active.filter(e=>activityOverlapsRange(e,today,in14)).sort((a,b)=>a.start.localeCompare(b.start));
   document.getElementById('ovNext14days').innerHTML=next14.length
     ?next14.map(ovRow).join('')
     :'<div class="u-empty">Nothing in the next 14 days</div>';
@@ -9888,7 +9885,7 @@ function navToActivitiesView(view){
 }
 const SCHEDULE_SUBPANELS={gantt:'p-gantt',venuemonth:'p-venuemonth',crossvenue:'p-crossvenue'};
 const SCHEDULE_TITLES={gantt:'Event <em>Timeline</em>',venuemonth:'Venue <em>Monthly</em>',crossvenue:'Overview'};
-let scheduleView='month';
+let scheduleView='overview';
 function setScheduleView(el){
   if(!el||!canAccessPanel(el.dataset.v)){
     console.warn('Blocked schedule view for role',currentRole,':',el?.dataset?.v||'unknown');
@@ -9903,7 +9900,7 @@ function setScheduleView(el){
   const calPanel=document.getElementById('p-calendar');
   // Hide all consolidated sub-view panels first — only one is ever shown at a time
   Object.values(SCHEDULE_SUBPANELS).forEach(pid=>{const p=document.getElementById(pid);if(p)p.style.display='none';});
-  if(scheduleView==='month'||scheduleView==='week'||scheduleView==='day'||scheduleView==='year'){
+  if(scheduleView==='overview'||scheduleView==='month'||scheduleView==='week'||scheduleView==='day'||scheduleView==='year'){
     calViewMode=scheduleView;
     if(calViewMode==='week'&&!calWeekStart){
       calWeekStart=new Date();calWeekStart.setHours(0,0,0,0);
@@ -9947,7 +9944,7 @@ function setScheduleView(el){
 // Backward-compat alias — older references to setCalView still work
 function setCalView(el){setScheduleView(el);}
 function initScheduleView(){
-  const chip=document.querySelector(`#calViewChips .chip[data-v="${scheduleView}"]`)||document.querySelector('#calViewChips .chip[data-v="month"]');
+  const chip=document.querySelector(`#calViewChips .chip[data-v="${scheduleView}"]`)||document.querySelector('#calViewChips .chip[data-v="overview"]');
   if(chip)setScheduleView(chip);
 }
 function navToScheduleView(view){
@@ -10187,7 +10184,7 @@ function renderMonthlyDealsLoadedCard(ev){
 }
 function renderCalMonthlyFeatures(){
   const monthStart=new Date(calYear,calMonth,1),monthEnd=new Date(calYear,calMonth+1,0);
-  const inMonth=e=>new Date(e.start+'T00:00:00')<=monthEnd&&new Date((e.end||e.start)+'T00:00:00')>=monthStart;
+  const inMonth=e=>activityOverlapsRange(e,monthStart,monthEnd);
   const candidates=EVENTS.filter(e=>!isArchived(e)&&(/of the month$/i.test(e.activitySubtype||'')||e.activitySubtype==="Chef's Special")&&inMonth(e));
   // Food Special is day-specific (Taco Tuesday, Steak Night Wednesday, etc.) rather than one value
   // per venue per month — the day comes from the Activity's own Recurring Schedule, same mechanism
@@ -10258,6 +10255,22 @@ function renderCalMonthlyFeatures(){
 // A multi-day Activity appears as one continuous bar per calendar week, including month-long
 // promotions. Recurring events (weekly quizzes, Wednesday specials, etc.) stay as dated
 // occurrences: their Start/End bounds do NOT make them run continuously.
+// Single source of truth for every Calendar/Dashboard date-window check (per
+// docs/CALENDAR_DASHBOARD_AUDIT.md item 4 — this exact comparison was duplicated across ~9 call
+// sites): does this Activity's own [start,end] range overlap the given [rangeStart,rangeEnd]
+// window (inclusive)? Pass the same Date for both rangeStart and rangeEnd to check whether a single
+// day falls within the activity's run (month/week/day grid cells all reduce to this). ev.end is
+// always populated by loadCampaigns() — defaults to Start for a one-off with no explicit End, or
+// ~5 years out for a recurring one — so this never needs its own "missing end" guesswork.
+// Deliberately NOT used by Gantt (_renderGanttInner caches parsed Start/End once per event for
+// performance and would otherwise re-parse them every call) or Cross-Venue (shows every activity
+// by default, no month/day window to overlap).
+function activityOverlapsRange(ev,rangeStart,rangeEnd){
+  if(!ev||!ev.start)return false;
+  const s=new Date(ev.start+'T00:00:00');
+  const en=new Date((ev.end||ev.start)+'T00:00:00');
+  return s<=rangeEnd&&en>=rangeStart;
+}
 function isCalendarContinuousActivity(ev){
   return !!(ev.start&&ev.end&&ev.end>ev.start&&!(ev.recurringDay&&ev.recurringDay.length));
 }
@@ -10285,6 +10298,9 @@ function renderCalendar(){
   const archiveBtn=document.getElementById('calArchiveToggle');
   if(archiveBtn)archiveBtn.textContent=ganttShowArchive?'Hide Completed':'Show Completed';
 
+  if(calViewMode==='overview'){
+    renderCalendarMonthOverview();return;
+  }
   if(calViewMode==='week'){
     renderCalendarWeek();return;
   }
@@ -10333,12 +10349,11 @@ function renderCalendar(){
     const inSelectedRange=calendarDateInRange(dateStr);
     let dayEvts=inSelectedRange?EVENTS.filter(e=>{
       if(!ganttShowArchive&&isArchived(e))return false;
-      const s=new Date(e.start+'T00:00:00'),en=new Date((e.end||e.start)+'T00:00:00');
       // Recurring parent events only count on days matching their RecurringDay + RecurringFrequency
       if(e.recurringDay&&e.recurringDay.length){
-        return recurringMatchesDate(e,realDate)&&realDate>=s&&realDate<=en;
+        return recurringMatchesDate(e,realDate)&&activityOverlapsRange(e,realDate,realDate);
       }
-      return realDate>=s&&realDate<=en;
+      return activityOverlapsRange(e,realDate,realDate);
     }):[];
     if(calVenueFilter)dayEvts=dayEvts.filter(e=>e.venue===calVenueFilter||e.venue==='All Venues');
     if(calCatFilter){
@@ -10428,11 +10443,11 @@ function showCalDayPopup(evt,y,m,day){
   const realDate=new Date(y,m,day);
   const realDateKey=toLocalISODate(realDate);
   let dayEvts=calendarDateInRange(realDateKey)?EVENTS.filter(e=>{
-    const s=new Date(e.start+'T00:00:00'),en=new Date(e.end+'T00:00:00');
+    if(isArchived(e))return false;
     if(e.recurringDay&&e.recurringDay.length){
-      return recurringMatchesDate(e,realDate)&&realDate>=s&&realDate<=en&&!isArchived(e);
+      return recurringMatchesDate(e,realDate)&&activityOverlapsRange(e,realDate,realDate);
     }
-    return realDate>=s&&realDate<=en&&!isArchived(e);
+    return activityOverlapsRange(e,realDate,realDate);
   }):[];
   if(calVenueFilter)dayEvts=dayEvts.filter(e=>e.venue===calVenueFilter||e.venue==='All Venues');
   dayEvts.sort(calDayChipSort);
@@ -10471,8 +10486,8 @@ function showCalDayPopup(evt,y,m,day){
 const WEEKLY_SPECIALS_VENUES=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
 const WEEKLY_SPECIALS_DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 function renderVenueWeeklySpecials(){
-  const today=toLocalISODate(new Date());
-  const active=EVENTS.filter(e=>!isArchived(e)&&e.recurringDay&&e.recurringDay.length&&e.start<=today&&(e.end||e.start)>=today);
+  const todayDate=new Date();todayDate.setHours(0,0,0,0);
+  const active=EVENTS.filter(e=>!isArchived(e)&&e.recurringDay&&e.recurringDay.length&&activityOverlapsRange(e,todayDate,todayDate));
   const findSpecial=(venue,day)=>active.filter(e=>e.venue===venue&&e.recurringDay.includes(day))
     .sort((a,b)=>b.start.localeCompare(a.start))[0]||null;
   if(!WEEKLY_SPECIALS_VENUES.some(v=>WEEKLY_SPECIALS_DAYS.some(d=>findSpecial(v,d))))return'';
@@ -10493,6 +10508,125 @@ function renderVenueWeeklySpecials(){
     </div>
     </div>
   </div>`;
+}
+// ── Month Overview — the Calendar's default landing view (docs/CALENDAR_DASHBOARD_AUDIT.md §6) ──
+// Answers "what's running at each venue this month, and what needs attention" directly: one record
+// set (EVENTS), one shared overlap rule (activityOverlapsRange), activities grouped by venue with
+// cross-venue ones shown once instead of duplicated per venue, and a plain-language status drawn
+// from the corrected lifecycle rules (healthCheck()) rather than a vague "overdue". Day/Week/Month
+// grid/Year/Gantt/Venue Monthly/Cross-Venue all stay reachable as secondary views.
+let calOverviewDense=false;
+function toggleCalOverviewDensity(){calOverviewDense=!calOverviewDense;renderCalendarMonthOverview();}
+const CAL_OVERVIEW_VENUE_ORDER=['All Venues','The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
+// One status per activity, priority-ordered: a health problem always outranks pure scheduling info,
+// so an activity that's technically "starting this month" but already flagged at-risk shows the
+// risk, not a falsely-calm "Starting this month".
+function calOverviewStatus(ev,monthStart,monthEnd,today){
+  const health=healthCheck(ev);
+  if(health.level!=='green')return{key:'action',label:health.label,order:0};
+  const s=new Date(ev.start+'T00:00:00');
+  const e=new Date((ev.end||ev.start)+'T00:00:00');
+  const startsInMonth=s>=monthStart&&s<=monthEnd;
+  const isLiveNow=s<=today&&e>=today;
+  const daysToEnd=Math.round((e-today)/864e5);
+  if(startsInMonth&&s>today)return{key:'starting',label:'Starting this month',order:1};
+  // "Ending" means wrapping up soon, not merely "the end date happens to fall in this
+  // calendar month" — a month-long campaign that just started shouldn't read as ending.
+  if(isLiveNow&&daysToEnd<=7)return{key:'ending',label:'Ending soon',order:2};
+  if(isLiveNow)return{key:'live',label:'Live this month',order:3};
+  if(s>today)return{key:'upcoming',label:'Upcoming',order:4};
+  return{key:'ended',label:'Ended',order:5};
+}
+function calOverviewCard(ev,status){
+  const artworkUrl=ev.eventImageUrl||ev.artworkFile||'';
+  const icon=ev.loadedRewards?'★':ev.businessStream==='Functions'?'◆':ev.ticketed?'▣':ev.supplierInvolved?'⇄':ev.eventFormat==='Sporting Screening'?'◎':calTypeIcon(ev);
+  const colors={action:'var(--attention)',starting:'var(--positive)',ending:'var(--gold)',live:'var(--accent)',upcoming:'var(--text3)',ended:'var(--text3)'};
+  const color=colors[status.key]||'var(--text3)';
+  const dateRange=ev.end&&ev.end!==ev.start?`${fmtShort(ev.start)} – ${fmtShort(ev.end)}`:fmtShort(ev.start);
+  if(calOverviewDense){
+    return`<div onclick="showPop(${ev.id})" style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-left:3px solid ${color};cursor:pointer;border-bottom:1px solid var(--border)">
+      <span style="font-size:12px;flex-shrink:0">${icon}</span>
+      <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(ev.title)}</span>
+      <span class="u-meta-sm" style="flex-shrink:0">${escapeAttr(dateRange)}</span>
+      <span style="font-size:10px;font-weight:700;color:${color};flex-shrink:0;white-space:nowrap">${escapeAttr(status.label)}</span>
+    </div>`;
+  }
+  return`<div onclick="showPop(${ev.id})" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--border);border-left:3px solid ${color};border-radius:var(--radius-sm);cursor:pointer;background:var(--surface);margin-bottom:6px">
+    <div style="width:38px;height:38px;border-radius:var(--radius-sm);flex-shrink:0;overflow:hidden;${artworkUrl?`background-image:url('${escapeAttr(artworkUrl)}');background-size:cover;background-position:center`:`background:${vColor(ev.venue).c}`};display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff">${artworkUrl?'':icon}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(ev.title)}</div>
+      <div class="u-meta-sm" style="margin-top:2px">${escapeAttr(dateRange)}</div>
+    </div>
+    <span style="font-size:10px;font-weight:700;color:${color};white-space:nowrap;flex-shrink:0;text-align:right">${escapeAttr(status.label)}</span>
+  </div>`;
+}
+function renderCalendarMonthOverview(){
+  document.getElementById('calLabel').textContent=new Date(calYear,calMonth,1).toLocaleDateString('en-AU',{month:'long',year:'numeric'});
+  const busDiv=document.getElementById('calBusyness');if(busDiv)busDiv.innerHTML='';
+  const projStripDiv=document.getElementById('calMonthlyFeatures');if(projStripDiv)projStripDiv.innerHTML='';
+  const grid=document.getElementById('calGrid');
+  grid.style.display='block';grid.style.gridTemplateColumns='';
+
+  const today=new Date();today.setHours(0,0,0,0);
+  let monthStart=new Date(calYear,calMonth,1);
+  let monthEnd=new Date(calYear,calMonth+1,0,23,59,59);
+  // Respect a manually-set date range (From/To above), narrowing the month window rather than
+  // ignoring it, same as the other views' own calendarDateInRange check.
+  if(calRangeFrom){const rf=new Date(calRangeFrom+'T00:00:00');if(rf>monthStart)monthStart=rf;}
+  if(calRangeTo){const rt=new Date(calRangeTo+'T23:59:59');if(rt<monthEnd)monthEnd=rt;}
+
+  let items=EVENTS.filter(e=>{
+    if(!ganttShowArchive&&isArchived(e))return false;
+    if(!activityOverlapsRange(e,monthStart,monthEnd))return false;
+    if(calVenueFilter&&!(e.venue===calVenueFilter||e.venue==='All Venues'))return false;
+    if(calCatFilter){
+      if(calCatFilter==='holiday'){if(!['Public Holiday','National Calendar Event','School Holidays'].includes(e.activityType||e.eventFormat||e.businessStream))return false;}
+      else if(!(e.activityType===calCatFilter||e.eventFormat===calCatFilter||e.businessStream===calCatFilter))return false;
+    }
+    return true;
+  }).map(e=>({ev:e,status:calOverviewStatus(e,monthStart,monthEnd,today)}));
+
+  const counts={action:0,starting:0,ending:0,live:0,upcoming:0,ended:0};
+  items.forEach(i=>counts[i.status.key]++);
+  const statsHtml=`<div class="stats" style="margin-bottom:14px">
+    <div class="stat ${counts.action?'hi':''}"><div class="stat-n">${counts.action}</div><div class="stat-l">Needs attention</div></div>
+    <div class="stat"><div class="stat-n">${counts.starting}</div><div class="stat-l">Starting</div></div>
+    <div class="stat"><div class="stat-n">${counts.live}</div><div class="stat-l">Live</div></div>
+    <div class="stat"><div class="stat-n">${counts.ending}</div><div class="stat-l">Ending</div></div>
+    <div class="stat"><div class="stat-n">${counts.upcoming}</div><div class="stat-l">Upcoming</div></div>
+  </div>`;
+
+  const byVenue={};
+  items.forEach(i=>{const v=i.ev.venue||'No venue';(byVenue[v]=byVenue[v]||[]).push(i);});
+  const venueKeys=Object.keys(byVenue).sort((a,b)=>{
+    const ia=CAL_OVERVIEW_VENUE_ORDER.indexOf(a),ib=CAL_OVERVIEW_VENUE_ORDER.indexOf(b);
+    if(ia===-1&&ib===-1)return a.localeCompare(b);
+    if(ia===-1)return 1;if(ib===-1)return-1;
+    return ia-ib;
+  });
+  venueKeys.forEach(v=>byVenue[v].sort((a,b)=>a.status.order-b.status.order||a.ev.start.localeCompare(b.ev.start)));
+
+  const densityToggleHtml=`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="tb-btn" onclick="toggleCalOverviewDensity()">${calOverviewDense?'Cards':'Compact list'}</button></div>`;
+
+  if(!venueKeys.length){
+    grid.innerHTML=statsHtml+densityToggleHtml+'<div style="padding:50px 20px;text-align:center;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm)">Nothing matches this month and your current filters.</div>';
+    return;
+  }
+
+  grid.innerHTML=statsHtml+densityToggleHtml+venueKeys.map(v=>{
+    const vc=vColor(v);
+    const rows=byVenue[v];
+    return`<div style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid var(--border)">
+        <span style="width:8px;height:8px;border-radius:50%;background:${vc.c};flex-shrink:0"></span>
+        <span style="font-size:13px;font-weight:700">${escapeAttr(v==='All Venues'?'All venues':shortVenue(v))}</span>
+        <span class="u-meta">${rows.length} item${rows.length===1?'':'s'}</span>
+      </div>
+      <div style="${calOverviewDense?'border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden':''}">
+        ${rows.map(r=>calOverviewCard(r.ev,r.status)).join('')}
+      </div>
+    </div>`;
+  }).join('');
 }
 function renderCalendarWeek(){
   if(!calWeekStart)return;
@@ -10516,11 +10650,10 @@ function renderCalendarWeek(){
     const inSelectedRange=calendarDateInRange(dateKey);
     let dayEvts=inSelectedRange?EVENTS.filter(e=>{
       if(!ganttShowArchive&&isArchived(e))return false;
-      const s=new Date(e.start+'T00:00:00'),en=new Date(e.end+'T00:00:00');
       if(e.recurringDay&&e.recurringDay.length){
-        return recurringMatchesDate(e,d)&&d>=s&&d<=en;
+        return recurringMatchesDate(e,d)&&activityOverlapsRange(e,d,d);
       }
-      return d>=s&&d<=en;
+      return activityOverlapsRange(e,d,d);
     }):[];
     if(calVenueFilter)dayEvts=dayEvts.filter(e=>e.venue===calVenueFilter||e.venue==='All Venues');
     if(calCatFilter){
@@ -10601,11 +10734,10 @@ function calEventsForDate(realDate,dateStr){
   if(!calendarDateInRange(dateStr))return[];
   let dayEvts=EVENTS.filter(e=>{
     if(!ganttShowArchive&&isArchived(e))return false;
-    const s=new Date(e.start+'T00:00:00'),en=new Date(e.end+'T00:00:00');
     if(e.recurringDay&&e.recurringDay.length){
-      return recurringMatchesDate(e,realDate)&&realDate>=s&&realDate<=en;
+      return recurringMatchesDate(e,realDate)&&activityOverlapsRange(e,realDate,realDate);
     }
-    return realDate>=s&&realDate<=en;
+    return activityOverlapsRange(e,realDate,realDate);
   });
   if(calVenueFilter)dayEvts=dayEvts.filter(e=>e.venue===calVenueFilter||e.venue==='All Venues');
   if(calCatFilter){
