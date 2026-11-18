@@ -7496,8 +7496,16 @@ function healthCheck(ev){
   const daysOut=Math.round((new Date(ev.start+'T00:00:00')-new Date())/864e5);
   // Live stage: fine if event is near/now
   if(stageIdx===liveIdx)return{level:'green',label:'Live'};
-  // Past event but not done = red
-  if(daysOut<0)return{level:'red',label:'Overdue — event passed'};
+  // A past start date alone doesn't mean the activity is over — loadCampaigns() already gives
+  // every activity a real end date (today for a one-off with no explicit End, or ~5 years out for
+  // a recurring one), so check that before calling it overdue. Without this, a standing/recurring
+  // promotion whose WorkflowStage was never manually bumped to Live (e.g. a weekly special that
+  // just keeps running) got wrongly flagged "Overdue — event passed" forever.
+  if(daysOut<0){
+    const hasEnded=new Date((ev.end||ev.start)+'T00:00:00')<new Date();
+    if(!hasEnded)return{level:'amber',label:'Live, but stage not updated'};
+    return{level:'red',label:'Overdue — event passed'};
+  }
   // Expected stage given time remaining: the closer the event, the further along it should be.
   // Rough model: need ~1 week per remaining stage.
   const stagesLeft=liveIdx-stageIdx;
@@ -8150,10 +8158,17 @@ function renderDashThisMonth(){
   // picked manually, or defaulted to a venue manager's own venue) just shows its one flat grid.
   if(!venue){
     const venues5=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
+    // Cross-venue activities get their own card, once — previously repeated under every venue
+    // card below (confirmed duplication bug), so each venue's own card now only shows its own.
+    const crossVenueEvts=thisMonthEvts.filter(e=>e.venue==='All Venues');
     el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
+      ${crossVenueEvts.length?`<div style="border:1px solid var(--border);border-top:3px solid var(--text3);border-radius:var(--radius-sm);padding:10px">
+        <div style="font-size:11px;font-weight:700;margin-bottom:8px">All venues <span style="color:var(--text3);font-weight:500">· ${crossVenueEvts.length}</span></div>
+        <div style="display:flex;flex-direction:column;gap:6px">${crossVenueEvts.map(ovCard).join('')}</div>
+      </div>`:''}
       ${venues5.map(v=>{
         const vc=vColor(v);
-        const vEvts=thisMonthEvts.filter(e=>e.venue===v||e.venue==='All Venues');
+        const vEvts=thisMonthEvts.filter(e=>e.venue===v);
         return`<div style="border:1px solid var(--border);border-top:3px solid ${vc.c};border-radius:var(--radius-sm);padding:10px">
           <div style="font-size:11px;font-weight:700;margin-bottom:8px">${shortVenue(v)} <span style="color:var(--text3);font-weight:500">· ${vEvts.length}</span></div>
           ${vEvts.length?`<div style="display:flex;flex-direction:column;gap:6px">${vEvts.map(ovCard).join('')}</div>`:'<div style="font-size:12px;color:var(--text3);text-align:center;padding:10px 0">Nothing this month</div>'}
@@ -8256,7 +8271,9 @@ function renderDashLoadedCampaigns(){
   if(!widgetAllowed('loadedcampaigns')){el.innerHTML='';return;}
   const venue=document.getElementById('ovVenue')?.value||'';
   const today=new Date();today.setHours(0,0,0,0);
-  const items=EVENTS.filter(e=>e.loadedRewards&&(!venue||e.venue===venue)&&!isArchived(e))
+  // A venue filter should still surface cross-venue Loaded Rewards campaigns, not hide them —
+  // same single-selection pattern used by Calendar's own venue filter elsewhere in this file.
+  const items=EVENTS.filter(e=>e.loadedRewards&&(!venue||e.venue===venue||e.venue==='All Venues')&&!isArchived(e))
     .filter(e=>!['Done','Archive','Archived','Cancelled'].includes(e.status)&&new Date((e.end||e.start)+'T00:00:00')>=today)
     .sort((a,b)=>a.start.localeCompare(b.start)).slice(0,8);
   el.innerHTML=items.length?items.map(ev=>`<div onclick="showPop(${ev.id})" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:0.5px solid var(--border);cursor:pointer">
@@ -8381,7 +8398,26 @@ function renderOverview(){
   // Venue activity snapshot
   const VENUES=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
   const VCODES=['LB','RAV','WBC','HD','MB','BL'];
+  // Cross-venue activities (venue:'All Venues') previously weren't counted in any tile here at
+  // all — not duplicated, just silently absent from the snapshot. Give them their own tile,
+  // same as the "This Month" widget and Gantt's day mode above.
+  const crossVenueSnapEvts=active.filter(e=>e.venue==='All Venues');
+  const crossVenueTile=crossVenueSnapEvts.length?(()=>{
+    const liveNow=crossVenueSnapEvts.filter(e=>e.stage==='Live').length;
+    const upcoming7=crossVenueSnapEvts.filter(e=>new Date(e.start+'T00:00:00')>=today&&new Date(e.start+'T00:00:00')<=in14).length;
+    const inDesign=crossVenueSnapEvts.filter(e=>['In Design'].includes(e.stage)).length;
+    const needsReport=EVENTS.filter(e=>e.venue==='All Venues'&&e.autoCompleted&&!isActivityReported(e)&&!['Archive','Archived','Cancelled'].includes(e.status)).length;
+    return`<div onclick="navToScheduleView('venuemonth')" style="border:1px solid var(--border);border-top:3px solid var(--text3);border-radius:var(--radius-sm);padding:12px;cursor:pointer" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+      <div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">All</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:3px">${crossVenueSnapEvts.length} total</div>
+      ${liveNow?`<div style="font-size:11px;color:var(--accent);font-weight:600">● ${liveNow} live</div>`:''}
+      ${upcoming7?`<div style="font-size:11px;color:var(--text2)">▦ ${upcoming7} next 14d</div>`:''}
+      ${inDesign?`<div style="font-size:11px;color:#1e578e">✦ ${inDesign} in design</div>`:''}
+      ${needsReport?`<div style="font-size:11px;color:var(--gold)">▥ ${needsReport} to report</div>`:''}
+    </div>`;
+  })():'';
   document.getElementById('ovVenueSnap').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;padding:10px 0">
+    ${crossVenueTile}
     ${VENUES.map((v,i)=>{
       const vEvts=active.filter(e=>e.venue===v);
       const liveNow=vEvts.filter(e=>e.stage==='Live').length;
@@ -9589,17 +9625,23 @@ function _renderGanttInner(){
 
   if(ganttViewMode==='day'){
     const venueOrder=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
-    venueOrder.forEach(vn=>{
-      const vEvts=evts.filter(e=>e.venue===vn||e.venue==='All Venues');
-      if(!vEvts.length)return;
-      const vc=vColor(vn);
-      h+=`<div class="g-row" style="background:${vc.c}20;border-left:3px solid ${vc.c}"><div class="g-row-name" style="font-weight:600;color:${vc.c}">${vn.replace('The ','').replace('Whitfords Brewing Co','WBC')}</div><div class="g-tl"></div></div>`;
+    const renderVenueRow=(label,vEvts,color)=>{
+      h+=`<div class="g-row" style="background:${color}20;border-left:3px solid ${color}"><div class="g-row-name" style="font-weight:600;color:${color}">${label}</div><div class="g-tl"></div></div>`;
       vEvts.forEach(ev=>{
         const s=new Date(ev.start+'T00:00:00'),e=new Date(ev.end+'T00:00:00');
         const left=Math.max(0,((s-minD)/totalMs)*100);
         const width=Math.max(((Math.min(e,maxD)-Math.max(s,minD))/totalMs)*100,.8);
         h+=`<div class="g-row" onclick="showPop(${ev.id})"><div class="g-row-name" style="padding-left:20px;font-size:11px">${ev.title}</div><div class="g-tl"><div class="g-bar" style="left:${left}%;width:${width}%;background:${calEvtColor(ev)}">${ev.title}</div></div></div>`;
       });
+    };
+    // Cross-venue activities get their own row, once — not re-included in every venue's row
+    // below (that was the confirmed "All Venues shows under every venue" duplication bug).
+    const crossVenueEvts=evts.filter(e=>e.venue==='All Venues');
+    if(crossVenueEvts.length)renderVenueRow('All venues',crossVenueEvts,'#5f6b7a');
+    venueOrder.forEach(vn=>{
+      const vEvts=evts.filter(e=>e.venue===vn);
+      if(!vEvts.length)return;
+      renderVenueRow(vn.replace('The ','').replace('Whitfords Brewing Co','WBC'),vEvts,vColor(vn).c);
     });
   } else {
     // Recurring events show as ONE continuous bar (not exploded into occurrences) —
@@ -10011,6 +10053,19 @@ function calEvtOpacity(ev){
 // Small venue-colour dot so venue stays visible at a glance even though the chip's main colour
 // now signals ActivityType instead.
 function calVenueDot(ev){return`<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${vColor(ev.venue).c};margin-right:3px;flex-shrink:0"></span>`;}
+// Base icon for the Activity's top-level type (ACTIVITY_TYPE_OPTIONS) — shown wherever a more
+// specific icon (Loaded Rewards, Ticketed, Functions, Sporting Screening, etc.) doesn't already
+// apply, so every calendar item shows at a glance what kind of activity it is, not just the few
+// with a special-case icon. Uses only the approved single-colour glyph set from
+// docs/DESIGN_SYSTEM.md (no colour emoji) — Event and Promotion/Campaign already have a meaning
+// in that legend; Maintenance/Update has no meaningful glyph there, so it stays blank rather than
+// inventing a new one.
+function calTypeIcon(ev){
+  const t=ev.activityType||'';
+  if(t==='Event')return'▦';
+  if(t==='Promotion / Offer'||t==='Campaign')return'▸';
+  return'';
+}
 
 // Calculate relative luminance of a hex colour and return black or white for contrast
 function contrastText(hex){
@@ -10320,7 +10375,7 @@ function renderCalendar(){
       ${dayMarketingStarts.map(ev=>`<div class="cal-ev" style="color:#14416d;background:#fff6dc" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">▸ Marketing: ${ev.title}</div>`).join('')}
       ${shown.map(ev=>{
         const style=calEvtStyle(ev);
-        const icon=ev.loadedRewards?'★':ev.businessStream==='Functions'?'◆':ev.ticketed?'▣':ev.supplierInvolved?'⇄':ev.eventFormat==='Sporting Screening'?'◎':'';
+        const icon=ev.loadedRewards?'★':ev.businessStream==='Functions'?'◆':ev.ticketed?'▣':ev.supplierInvolved?'⇄':ev.eventFormat==='Sporting Screening'?'◎':calTypeIcon(ev);
         // A continuous multi-day Activity (not a Recurring one) gets a continuation arrow on
         // whichever side(s) it runs past this day — same small chip as everything else, just with
         // a hint that it keeps going, instead of a separate oversized bar overlay.
@@ -10396,7 +10451,7 @@ function showCalDayPopup(evt,y,m,day){
     </div>
     ${dayEvts.map(ev=>{
       const style=calEvtStyle(ev);
-      const icon=ev.loadedRewards?'★':ev.ticketed||ev.eventFormat==='Live Music / Entertainment'?'▣':ev.businessStream==='Functions'?'◆':ev.supplierInvolved?'⇄':'';
+      const icon=ev.loadedRewards?'★':ev.ticketed||ev.eventFormat==='Live Music / Entertainment'?'▣':ev.businessStream==='Functions'?'◆':ev.supplierInvolved?'⇄':calTypeIcon(ev);
       return`<div onclick="document.getElementById('calDayOv').remove();showPop(${ev.id})" title="#${escapeAttr(String(ev.spId||ev.id))}" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);margin-bottom:6px;cursor:pointer;${style}">
         <span>${icon}</span>
         <div><div style="font-weight:500;font-size:13px">${ev.title}</div><div style="font-size:11px;opacity:.7">${shortVenue(ev.venue)}</div></div>
@@ -10493,7 +10548,7 @@ function renderCalendarWeek(){
       ${dayMarketingStarts.map(ev=>`<div class="cal-ev" style="color:#14416d;background:#fff6dc" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">▸ Marketing: ${ev.title}</div>`).join('')}
       ${dayEvts.length?dayEvts.map(ev=>{
         const style=calEvtStyle(ev);
-        const icon=ev.loadedRewards?'★':ev.businessStream==='Functions'?'◆':ev.ticketed||ev.eventFormat==='Live Music / Entertainment'?'▣':ev.supplierInvolved?'⇄':ev.eventFormat==='Sporting Screening'?'◎':'';
+        const icon=ev.loadedRewards?'★':ev.businessStream==='Functions'?'◆':ev.ticketed||ev.eventFormat==='Live Music / Entertainment'?'▣':ev.supplierInvolved?'⇄':ev.eventFormat==='Sporting Screening'?'◎':calTypeIcon(ev);
         return`<div class="wk-ev" style="${style}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">
           <div class="wk-ev-title">${icon?icon+' ':''}${ev.title}</div>
           <div class="wk-ev-sub"><span style="width:6px;height:6px;border-radius:50%;background:${vColor(ev.venue).c};display:inline-block;flex-shrink:0"></span>${shortVenue(ev.venue)}${ev.eventFormat||ev.activityType?' · '+(ev.eventFormat||ev.activityType):''}</div>
@@ -10596,7 +10651,7 @@ function renderCalendarDay(){
     return`<div style="margin-bottom:22px">
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)"><span style="width:8px;height:8px;border-radius:50%;background:${vc.c};flex-shrink:0"></span><span style="font-size:13px;font-weight:700">${escapeAttr(shortVenue(venue)||venue)}</span><span class="u-meta">${vEvts.length} item${vEvts.length===1?'':'s'}</span></div>
       <div style="display:flex;flex-direction:column;gap:10px">${vEvts.map(ev=>{
-        const icon=ev.loadedRewards?'★':ev.businessStream==='Functions'?'◆':ev.ticketed?'▣':ev.supplierInvolved?'⇄':ev.eventFormat==='Sporting Screening'?'◎':'▦';
+        const icon=ev.loadedRewards?'★':ev.businessStream==='Functions'?'◆':ev.ticketed?'▣':ev.supplierInvolved?'⇄':ev.eventFormat==='Sporting Screening'?'◎':(calTypeIcon(ev)||'▦');
         const health=healthCheck(ev);
         const color=calEvtColor(ev);
         const artworkUrl=ev.eventImageUrl||ev.artworkFile||'';
