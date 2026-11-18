@@ -1481,9 +1481,45 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
   </div>
 
   <!-- SOCIAL -->
+  <!-- SOCIAL CALENDAR — suggested posts from Activities, approved here, copied into Meta Business
+       Suite. Rows live in the Social Posts list; see docs/SOCIAL_CALENDAR.md. -->
   <div class="panel" id="p-social">
-    <div class="ph"><div><div class="ph-eye">Social Media</div><div class="ph-title">Social <em>Calendar</em></div></div><div class="ph-right"><button class="tb-btn p">+ Post</button></div></div>
-    <div class="ca" id="socialCal"></div>
+    <div class="ph">
+      <div><div class="ph-eye">Social media</div><div class="ph-title">Social <em>Calendar</em></div><div class="ph-sub" id="socSub"></div></div>
+      <div class="ph-right">
+        <select class="form-select" id="socVenue" style="width:auto;font-size:12px" onchange="renderSocial()" aria-label="Venue"></select>
+        <select class="form-select" id="socStatus" style="width:auto;font-size:12px" onchange="renderSocial()" aria-label="Status">
+          <option value="">All statuses</option><option>Draft</option><option>Approved</option><option>Scheduled</option><option>Posted</option><option>Rejected</option>
+        </select>
+        <button class="tb-btn" onclick="loadSocialPosts(true).then(renderSocial)" title="Reload posts">↻</button>
+      </div>
+    </div>
+    <div class="ca">
+      <div id="socSetup"></div>
+      <div class="stats" id="socStats" style="margin-bottom:12px"></div>
+      <div id="socSuggest"></div>
+      <div id="socCal"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="socEditOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closeSocialEdit()">
+    <div class="popup" style="max-width:600px">
+      <div class="pop-h"><div class="pop-title">Edit post</div><button class="pop-close" onclick="closeSocialEdit()">✕</button></div>
+      <div class="pop-body">
+        <div id="socEditMsg" class="field-help" style="margin-bottom:10px;color:var(--attention)"></div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Publish date</label><input class="form-input" id="socEditDate" type="date"></div>
+          <div class="form-group"><label class="form-label">Time</label><input class="form-input" id="socEditTime" type="time"></div>
+          <div class="form-group"><label class="form-label">Post type</label><select class="form-select" id="socEditType"><option>Feed</option><option>Story</option><option>Reel</option></select></div>
+          <div class="form-group"><label class="form-label">Platforms</label><div id="socEditPlatforms" style="display:flex;gap:12px;flex-wrap:wrap;padding-top:6px;font-size:13px">
+            <label><input type="checkbox" value="Facebook"> Facebook</label><label><input type="checkbox" value="Instagram"> Instagram</label><label><input type="checkbox" value="Google"> Google</label>
+          </div></div>
+          <div class="form-group full"><label class="form-label">Caption</label><textarea class="form-textarea" id="socEditCaption" style="min-height:180px" oninput="socEditCount()"></textarea><div class="field-help" id="socEditCount"></div></div>
+        </div>
+        <div class="field-help" style="margin:6px 0 12px">The image is the activity's featured photo. To change it, pick a different photo on the activity and suggest posts again.</div>
+        <div style="display:flex;gap:8px"><button class="btn btn-p" onclick="saveSocialEdit(this)">Save</button><button class="btn btn-s" onclick="closeSocialEdit()">Cancel</button></div>
+      </div>
+    </div>
   </div>
 
   <!-- VENUES -->
@@ -2661,6 +2697,9 @@ const LIST_IDS={
   // null until Kimberley creates "Hub User Prefs" via Schema Tools; everything using it falls back
   // to localStorage-only (today's behaviour) while it's unset.
   hubUserPrefs:null,
+  // Social Calendar — one row per planned post (Facebook / Instagram / Google). Created by hand in
+  // SharePoint; columns are listed in docs/SOCIAL_CALENDAR.md. GUID supplied by Kimberley, 18 Nov 2026.
+  socialPosts:'0e78c896-ee5b-4936-9e27-8081432370d4',
 };
 
 // Canonical taxonomy lists — single source of truth for the Submit form, the Activity detail
@@ -3018,7 +3057,7 @@ const ROLE_CONFIG={
   },
   venue:{
     canEdit:false, canApprove:false, canViewBudget:false, canViewAll:false,
-    hidePanels:['crossvenue','pipeline','loaded','ticketing','workload','social','budget','venues','sponsorships','specials','projects','approvals','crm'], defaultPanel:'venuemonth'
+    hidePanels:['crossvenue','pipeline','loaded','ticketing','workload','budget','venues','sponsorships','specials','projects','approvals','crm'], defaultPanel:'venuemonth'
   },
   // Default for any signed-in Marlin M365 account that isn't in ROLE_MAP and doesn't match a
   // job-title keyword. Everyone who can complete Microsoft sign-in against our tenant can submit
@@ -11418,12 +11457,404 @@ function renderDesign(){
 }
 
 // ═══════════════════════════════════════
-// SOCIAL
+// SOCIAL CALENDAR
+// Suggested Facebook / Instagram posts built from Activity fields, edited and approved here, then
+// copied into Meta Business Suite by hand (caption + image buttons) and marked Scheduled / Posted.
+// Nothing is published from the OS — it can't hold a publishing token (public static page). The
+// rows live in the Social Posts list (see LIST_IDS.socialPosts and docs/SOCIAL_CALENDAR.md), so a
+// later sync job can push Approved rows to Meta or a scheduler without changing this screen.
 // ═══════════════════════════════════════
-function renderSocial(){
-  if(!isAuthed)return;
-  document.getElementById('socialCal').innerHTML=`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:var(--surface2);border-radius:var(--radius-sm);font-size:12px;color:var(--text2)"><span style="font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:10px;color:var(--text3)">Platforms:</span><span>Instagram</span><span>✓ Facebook</span><span>𝕏 X / Twitter</span><span>TikTok</span><span>LinkedIn</span></div>`+`<div style="padding:40px;text-align:center;color:var(--text3)"><div style="font-weight:500">No social posts yet</div><div style="font-size:12px;margin-top:6px">This page isn't connected to a live data source yet — ask Kim about wiring it to a SharePoint list or Meta Business Suite</div></div>`;
+const SOCIAL_STATUSES=['Draft','Approved','Scheduled','Posted','Rejected'];
+const SOCIAL_STATUS_TAG={Draft:'t-gr',Approved:'t-b',Scheduled:'t-p',Posted:'t-g',Rejected:'t-o'};
+const SOCIAL_PLATFORMS=['Facebook','Instagram','Google'];
+const SOCIAL_POST_TYPES=['Feed','Story','Reel'];
+const SOCIAL_STEP_LABELS={announce:'Announcement',tickets:'Tickets on sale',reminder:'Reminder',lastchance:'Last chance',onday:'On the day',launch:'Launch',midrun:'Mid-run reminder',weekly1:'Weekly reminder',weekly2:'Weekly reminder',weekly3:'Weekly reminder',final:'Final push',update:'Update'};
+// Default posting times (local). Feed posts around lunch, stories in the afternoon.
+const SOCIAL_DEFAULT_TIME={Feed:'11:30',Story:'16:00',Reel:'11:30'};
+let SOCIAL_POSTS=[],SOCIAL_STATE={status:'idle',error:''},_socEditId=null;
+
+function socCanEdit(){return !!rolePermissions().canEdit;}
+// Marketing approves every venue's posts (Kimberley's default, Nov 2026) — the approver roles.
+function socCanApprove(){return !!rolePermissions().canApprove;}
+function socListUrl(){return`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.socialPosts}/items`;}
+function socIso(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function socAddDays(iso,n){const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);return socIso(d);}
+function socToday(){return socIso(new Date());}
+function socLocalParts(value){
+  const d=value?new Date(value):null;
+  if(!d||isNaN(d))return{date:'',time:''};
+  return{date:socIso(d),time:`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`};
 }
+function socColumnHint(error){
+  const m=String(error||'').match(/Field '([^']+)' is not recognized/i);
+  return m?`The ${m[1]} column doesn't exist on the Social Posts list yet. Add it (see docs/SOCIAL_CALENDAR.md).`:'';
+}
+
+// The posting rhythm for one Activity: [{step,date,postType,platforms}], dates as YYYY-MM-DD.
+// Steps already in the past are dropped by the caller, not here, so the same function also tells
+// a saved post what its date *should* be now (see socActivityChange).
+function socialRhythm(ev){
+  const start=ev.start,end=ev.end||ev.start;
+  if(!start)return[];
+  const type=ev.activityType||'';
+  const mkt=ev.marketingStartDate&&ev.marketingStartDate<start?ev.marketingStartDate:socAddDays(start,-21);
+  const base=type==='Maintenance / Update'?['Facebook','Instagram','Google']:['Facebook','Instagram'];
+  const steps=[];
+  const add=(step,date,postType)=>{if(date)steps.push({step,date,postType,platforms:base.slice()});};
+  if(type==='Promotion / Offer'){
+    add('launch',start,'Feed');
+    const days=(new Date(end+'T00:00:00')-new Date(start+'T00:00:00'))/864e5;
+    if(days>=14)add('midrun',socAddDays(start,Math.round(days/2)),'Feed');
+    if(days>=4)add('lastchance',socAddDays(end,-2),'Story');
+  }else if(type==='Campaign'){
+    const launch=ev.marketingStartDate&&ev.marketingStartDate<=start?ev.marketingStartDate:start;
+    add('launch',launch,'Feed');
+    for(let w=1;w<=3;w++){const d=socAddDays(launch,7*w);if(d<socAddDays(end,-2))add('weekly'+w,d,'Story');}
+    if(end>launch)add('final',socAddDays(end,-2)>launch?socAddDays(end,-2):end,'Feed');
+  }else if(type==='Maintenance / Update'){
+    add('update',start,'Feed');
+  }else if(ev.ticketed){
+    add('announce',mkt,'Feed');
+    if(ev.ticketLaunchDate&&ev.ticketLaunchDate>mkt&&ev.ticketLaunchDate<start)add('tickets',ev.ticketLaunchDate,'Feed');
+    if(socAddDays(start,-7)>mkt)add('reminder',socAddDays(start,-7),'Feed');
+    add('lastchance',socAddDays(start,-1),'Story');
+    add('onday',start,'Story');
+  }else{
+    // Walk-in events and anything untyped. Recurring activities get the announcement and the next
+    // on-the-day story only — a weekly feed post for every occurrence would flood the calendar.
+    add('announce',mkt,'Feed');
+    if(!ev.recurring&&socAddDays(start,-2)>mkt)add('reminder',socAddDays(start,-2),'Feed');
+    add('onday',start,'Story');
+  }
+  // One post per day per activity: keep the first step on any date.
+  const seen=new Set();
+  return steps.filter(s=>{if(seen.has(s.date))return false;seen.add(s.date);return true;});
+}
+
+// Caption from the Activity's own copy fields. Plain, no exclamation marks or emoji (brand rules);
+// it's a starting point that gets edited before approval.
+function socialCaption(ev,step){
+  const long=d=>d?new Date(d+'T00:00:00').toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'}):'';
+  const when=long(ev.start),until=long(ev.end||ev.start);
+  const venue=ev.venue&&ev.venue!=='All Venues'?ev.venue:'our venues';
+  const core=(ev.keyMessage||ev.tagline||ev.description||'').trim();
+  const short=(ev.tagline||ev.keyMessage||'').trim();
+  const link=ev.ticketUrl||ev.bookingUrl||ev.landingPageUrl||'';
+  const cta=(ev.cta||(ev.ticketed?'Tickets at the link.':link?'Book at the link.':'')).trim();
+  const tail=[cta,link].filter(Boolean).join('\n');
+  const lines={
+    announce:[`${ev.title}`,`${when} at ${venue}.`,core,tail],
+    tickets:[`Tickets are on sale now for ${ev.title}, ${when}.`,core,tail],
+    reminder:[`One week to go: ${ev.title}, ${when}.`,short,tail],
+    lastchance:ev.activityType==='Promotion / Offer'?[`Last chance: ${ev.title} ends ${until}.`,short,tail]:[`Tomorrow: ${ev.title} at ${venue}.`,ev.ticketed?'Last tickets at the link.':short,link],
+    onday:[`Today: ${ev.title} at ${venue}.`,short],
+    launch:[`${ev.title}`,short,`${when}${ev.end&&ev.end!==ev.start?` to ${until}`:''} at ${venue}.`,tail],
+    midrun:[`Still on: ${ev.title}, until ${until}.`,short,tail],
+    weekly1:[`${ev.title}`,short,tail],weekly2:[`${ev.title}`,short,tail],weekly3:[`${ev.title}`,short,tail],
+    final:[`Final days: ${ev.title}, until ${until}.`,short,tail],
+    update:[`${ev.title}`,core||short]
+  }[step]||[ev.title,core,tail];
+  return lines.filter(l=>l&&String(l).trim()).join('\n\n');
+}
+
+function mapSocialPost(item){
+  const f=item.fields||{};
+  const plats=String(f.Platforms||'').split(/[;,]/).map(s=>s.trim()).filter(Boolean);
+  return{
+    id:String(item.id),
+    activityId:f.ActivityId!=null&&f.ActivityId!==''?String(f.ActivityId):'',
+    venue:f.Venue||'',
+    platforms:plats,
+    postType:f.PostType||'Feed',
+    step:f.Step||'',
+    publishAt:f.PublishAt||'',
+    caption:f.Caption||'',
+    imageRef:parseEventImageRef(f.ImageRef),
+    status:SOCIAL_STATUSES.includes(f.Status)?f.Status:'Draft',
+    captionEdited:f.CaptionEdited===true||f.CaptionEdited==='Yes',
+    sourceDate:f.SourceDate?String(f.SourceDate).split('T')[0]:'',
+    activityDate:f.ActivityDate?String(f.ActivityDate).split('T')[0]:'',
+    approvedBy:f.ApprovedBy||'',
+    approvedAt:f.ApprovedAt||'',
+    notes:f.Notes||'',
+    externalPostId:f.ExternalPostId||''
+  };
+}
+
+async function loadSocialPosts(force){
+  if(!LIST_IDS.socialPosts){SOCIAL_STATE={status:'unconfigured',error:''};return;}
+  if(SOCIAL_STATE.status==='loaded'&&!force)return;
+  SOCIAL_STATE={status:'loading',error:''};
+  try{
+    const token=await getToken();
+    const items=await fetchGraphItems(`${socListUrl()}?expand=fields&$top=500`,token);
+    SOCIAL_POSTS=items.map(mapSocialPost);
+    SOCIAL_STATE={status:'loaded',error:''};
+  }catch(e){
+    console.warn('Could not load Social Posts:',e);
+    SOCIAL_STATE={status:'error',error:e.message||String(e)};
+  }
+}
+
+function socEventFor(p){return p.activityId?EVENTS.find(e=>String(e.id)===p.activityId||String(e.spId)===p.activityId):null;}
+function socVisible(p){
+  if(currentVenueAccess)return p.venue===currentVenueAccess||p.venue==='All Venues';
+  return rolePermissions().canViewAll;
+}
+// What changed on the Activity since this post was drafted: cancelled, or the step's date moved.
+function socActivityChange(p){
+  const ev=socEventFor(p);
+  if(!p.activityId)return null;
+  if(!ev)return{kind:'missing',text:'Activity no longer found'};
+  if(isArchived(ev))return{kind:'cancelled',text:'Activity cancelled or archived'};
+  const now=socialRhythm(ev).find(s=>s.step===p.step);
+  if(p.sourceDate&&now&&now.date!==p.sourceDate)return{kind:'moved',text:`Activity dates changed: this post now belongs on ${fmtShort(now.date)}`,date:now.date};
+  // The post's own date can stay put (an announcement at marketing start) while the Activity moves,
+  // which leaves the old date in the caption.
+  if(p.activityDate&&ev.start!==p.activityDate)return{kind:'retimed',text:p.captionEdited?`Activity now starts ${fmtShort(ev.start)}: check the caption`:`Activity now starts ${fmtShort(ev.start)}: the caption still has the old date`};
+  return null;
+}
+function socFlags(p){
+  const flags=[];
+  if(p.platforms.includes('Instagram')&&!p.imageRef)flags.push('Needs an image for Instagram');
+  const change=socActivityChange(p);if(change)flags.push(change.text);
+  if(['Draft','Approved'].includes(p.status)&&p.publishAt&&new Date(p.publishAt)<new Date())flags.push('Publish time has passed');
+  return flags;
+}
+
+async function renderSocial(){
+  if(!isAuthed)return;
+  const setup=document.getElementById('socSetup'),cal=document.getElementById('socCal'),stats=document.getElementById('socStats'),sugg=document.getElementById('socSuggest'),sub=document.getElementById('socSub');
+  if(!cal)return;
+  // Venue picker, filled once. Venue managers only ever see their own venue.
+  const vSel=document.getElementById('socVenue');
+  if(vSel&&!vSel.dataset.filled){
+    vSel.dataset.filled='1';
+    vSel.innerHTML='<option value="">All venues</option>'+[...VENUES_DATA.map(v=>v.name),'All Venues'].map(v=>`<option value="${escapeAttr(v)}">${escapeAttr(v==='All Venues'?'Group-wide (All Venues)':v)}</option>`).join('');
+    if(currentVenueAccess){vSel.value=currentVenueAccess;vSel.disabled=true;}
+  }
+  if(!LIST_IDS.socialPosts){
+    sub.textContent='Not set up yet';stats.innerHTML='';sugg.innerHTML='';cal.innerHTML='';
+    setup.innerHTML=`<div class="card" style="padding:16px 18px;max-width:720px;background:var(--surface-warm,var(--surface))"><div style="font-weight:800;color:var(--ink-brand);margin-bottom:6px">Create the Social Posts list to start planning posts</div>
+      <div style="font-size:13px;color:var(--ink);line-height:1.6">Posts are stored in a SharePoint list called <strong>Social Posts</strong> on the Marlin Hospitality Marketing site. Create it with the columns in <code>docs/SOCIAL_CALENDAR.md</code>, then paste the list's ID into <code>LIST_IDS.socialPosts</code>. Until then nothing can be saved, so this page stays empty.</div></div>`;
+    return;
+  }
+  setup.innerHTML='';
+  if(SOCIAL_STATE.status!=='loaded'&&SOCIAL_STATE.status!=='loading'){cal.innerHTML='<div class="loading"><div class="spinner"></div></div>';await loadSocialPosts();}
+  if(SOCIAL_STATE.status==='error'){
+    sub.textContent='Could not load';
+    cal.innerHTML=`<div class="card" style="padding:14px 16px;background:var(--attention-tint);color:var(--ink)"><strong style="color:var(--attention)">Could not load Social Posts.</strong> ${escapeAttr(SOCIAL_STATE.error)} <button class="tb-btn" style="margin-left:8px" onclick="loadSocialPosts(true).then(renderSocial)">↻ Try again</button></div>`;
+    return;
+  }
+  const venue=vSel?.value||'';
+  const status=document.getElementById('socStatus')?.value||'';
+  const today=socToday();
+  const from=socAddDays(today,-7);
+  const visible=SOCIAL_POSTS.filter(socVisible).filter(p=>!venue||p.venue===venue);
+  const posts=visible.filter(p=>!status||p.status===status)
+    .filter(p=>status||p.status!=='Posted'||socLocalParts(p.publishAt).date>=from)
+    .sort((a,b)=>String(a.publishAt).localeCompare(String(b.publishAt)));
+
+  const count=s=>visible.filter(p=>p.status===s).length;
+  const needImage=visible.filter(p=>!['Posted','Rejected'].includes(p.status)&&p.platforms.includes('Instagram')&&!p.imageRef).length;
+  sub.textContent=`${visible.length} post${visible.length===1?'':'s'} · approved posts are copied into Meta Business Suite to schedule`;
+  const stat=(n,l,v,attn)=>`<div class="stat" onclick="const s=document.getElementById('socStatus');s.value='${v}';renderSocial()"><div class="stat-n"${attn&&n?' style="color:var(--attention)"':''}>${n}</div><div class="stat-l">${l}</div></div>`;
+  stats.innerHTML=stat(count('Draft'),'Awaiting approval','Draft')+stat(count('Approved'),'Approved, to schedule','Approved')+stat(count('Scheduled'),'Scheduled in Business Suite','Scheduled')+stat(count('Posted'),'Posted','Posted')+`<div class="stat" style="cursor:default"><div class="stat-n"${needImage?' style="color:var(--attention)"':''}>${needImage}</div><div class="stat-l">Need an image</div></div>`;
+
+  // Upcoming Activities with no posts yet — editors can generate drafts for them.
+  if(socCanEdit()){
+    const horizon=socAddDays(today,60);
+    const withPosts=new Set(SOCIAL_POSTS.map(p=>p.activityId));
+    const todo=EVENTS.filter(e=>!isArchived(e)&&e.start&&(e.end||e.start)>=today&&e.start<=horizon&&(!venue||e.venue===venue)&&(!currentVenueAccess||e.venue===currentVenueAccess)&&!withPosts.has(String(e.id)))
+      .sort((a,b)=>a.start.localeCompare(b.start));
+    sugg.innerHTML=todo.length?`<details class="card" style="margin-bottom:14px"${posts.length?'':' open'}><summary class="card-h" style="cursor:pointer"><span class="card-title">Activities in the next 60 days with no posts (${todo.length})</span></summary>
+      ${todo.map(e=>{const steps=socialRhythm(e).filter(s=>s.date>=today);return`<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--line);flex-wrap:wrap">
+        <span style="width:7px;height:7px;border-radius:50%;background:${vColor(e.venue).c};flex-shrink:0"></span>
+        <div style="flex:1;min-width:180px"><div style="font-size:13px;font-weight:600;cursor:pointer" onclick="showPop(${e.id})">${escapeAttr(e.title)}</div><div style="font-size:11px;color:var(--ink-muted)">${escapeAttr(shortVenue(e.venue))} · ${escapeAttr(e.activityType||'No type')} · ${fmtShort(e.start)}${e.eventImageRef?'':' · <span style="color:var(--attention)">no featured image</span>'}</div></div>
+        <span style="font-size:11px;color:var(--ink-muted)">${steps.length} post${steps.length===1?'':'s'}</span>
+        <button class="tb-btn" ${steps.length?'':'disabled title="All of this activity\'s post dates have passed"'} onclick="suggestSocialPosts(${e.id},this)">Suggest posts</button>
+      </div>`;}).join('')}</details>`:'';
+  }else sugg.innerHTML='';
+
+  if(!posts.length){cal.innerHTML=`<div style="padding:30px;text-align:center;color:var(--ink-muted);font-size:13px">${status?`No ${status.toLowerCase()} posts`:'No posts yet'}${socCanEdit()&&!status?'. Use Suggest posts on an activity above to draft some.':'.'}</div>`;return;}
+  const byDay={};
+  posts.forEach(p=>{const d=socLocalParts(p.publishAt).date||'Unscheduled';(byDay[d]=byDay[d]||[]).push(p);});
+  cal.innerHTML=Object.entries(byDay).map(([d,list])=>`<div style="margin-bottom:16px">
+    <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${d===today?'var(--ink-brand)':'var(--ink-muted)'};margin-bottom:6px">${d==='Unscheduled'?d:new Date(d+'T00:00:00').toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'})}${d===today?' · Today':''}</div>
+    ${list.map(socCardHtml).join('')}</div>`).join('');
+  socHydrateImages();
+}
+
+function socCardHtml(p){
+  const ev=socEventFor(p);
+  const{time}=socLocalParts(p.publishAt);
+  const flags=socFlags(p);
+  const canEdit=socCanEdit()&&!['Posted'].includes(p.status);
+  const btn=(label,fn,primary,title)=>`<button class="tb-btn${primary?' p':''}" onclick="${fn}"${title?` title="${escapeAttr(title)}"`:''}>${label}</button>`;
+  const actions=[];
+  if(canEdit)actions.push(btn('✎ Edit',`openSocialEdit('${p.id}')`));
+  if(p.status==='Draft'&&socCanApprove())actions.push(btn('✓ Approve',`approveSocialPost('${p.id}')`,true),btn('Send back',`rejectSocialPost('${p.id}')`));
+  if(['Approved','Scheduled','Posted'].includes(p.status)){
+    actions.push(btn('Copy caption',`copySocialCaption('${p.id}',this)`));
+    if(p.imageRef)actions.push(btn('Download image',`downloadSocialImage('${p.id}',this)`));
+  }
+  if(p.status==='Approved'&&socCanEdit())actions.push(btn('Mark scheduled',`setSocialStatus('${p.id}','Scheduled')`,true,'Do this once the post is scheduled in Meta Business Suite'));
+  if(p.status==='Scheduled'&&socCanEdit())actions.push(btn('Mark posted',`setSocialStatus('${p.id}','Posted')`));
+  const change=socActivityChange(p);
+  if(change?.kind==='moved'&&canEdit)actions.push(btn('Move to new date',`moveSocialPost('${p.id}')`));
+  if(change?.kind==='retimed'&&canEdit&&!p.captionEdited)actions.push(btn('Refresh caption',`refreshSocialCaption('${p.id}')`));
+  if(['Draft','Rejected'].includes(p.status)&&socCanEdit())actions.push(btn('✕ Delete',`deleteSocialPost('${p.id}')`));
+  return`<div class="card" style="display:flex;gap:12px;padding:12px 14px;margin-bottom:8px;align-items:flex-start;flex-wrap:wrap">
+    <div style="width:72px;height:90px;flex-shrink:0;background:var(--surface-alt);border:1px solid var(--line);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ink-muted);text-align:center;overflow:hidden">${p.imageRef?`<img data-soc-img="${p.id}" alt="" style="width:100%;height:100%;object-fit:cover">`:'No image'}</div>
+    <div style="flex:1;min-width:220px">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
+        <span class="tag ${SOCIAL_STATUS_TAG[p.status]||'t-gr'}">${escapeAttr(p.status)}</span>
+        <span style="font-size:12px;font-weight:700;color:var(--ink-brand)">${escapeAttr(time||'')}</span>
+        <span style="font-size:12px;color:var(--ink)">${escapeAttr(p.platforms.join(' + ')||'No platform')} · ${escapeAttr(p.postType)}</span>
+        <span style="font-size:11px;color:var(--ink-muted)">${escapeAttr(SOCIAL_STEP_LABELS[p.step]||p.step||'')}</span>
+      </div>
+      <div style="font-size:11px;color:var(--ink-muted);margin-bottom:6px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${vColor(p.venue).c};margin-right:5px"></span>${escapeAttr(shortVenue(p.venue)||'No venue')}${ev?` · <a href="#" onclick="event.preventDefault();showPop(${ev.id})" style="color:var(--accent)">${escapeAttr(ev.title)} ↗</a>`:''}${p.approvedBy&&p.status!=='Draft'?` · approved by ${escapeAttr(p.approvedBy)}`:''}</div>
+      <div style="font-size:13px;color:var(--ink);white-space:pre-wrap;line-height:1.5;max-height:7.5em;overflow:hidden">${escapeAttr(p.caption||'No caption yet')}</div>
+      ${p.status==='Rejected'&&p.notes?`<div style="font-size:12px;margin-top:6px;padding:6px 10px;background:var(--attention-tint);border-radius:var(--radius-sm)"><strong style="color:var(--attention)">Sent back:</strong> ${escapeAttr(p.notes)}</div>`:''}
+      ${flags.map(f=>`<div style="font-size:12px;margin-top:6px;color:var(--attention);font-weight:600">⊘ ${escapeAttr(f)}</div>`).join('')}
+      ${actions.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${actions.join('')}</div>`:''}
+    </div>
+  </div>`;
+}
+
+async function socHydrateImages(){
+  for(const img of document.querySelectorAll('img[data-soc-img]')){
+    const p=SOCIAL_POSTS.find(x=>x.id===img.dataset.socImg);
+    if(!p?.imageRef)continue;
+    resolveFeaturedImageUrl({eventImageRef:p.imageRef}).then(url=>{if(url)img.src=url;}).catch(()=>{});
+  }
+}
+
+async function socWrite(method,url,fields){
+  const token=await getToken(true);
+  const res=await fetch(url,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:fields?JSON.stringify({fields}):undefined});
+  if(!res.ok){const err=graphErrorText(res.status,await res.text().catch(()=>''));throw new Error(socColumnHint(err)||err);}
+  return method==='DELETE'?null:res.json();
+}
+// Every write reports its result — a failed save is never left looking saved.
+async function patchSocialPost(id,fields){
+  try{
+    await socWrite('PATCH',`${socListUrl()}/${id}`,fields);
+    await loadSocialPosts(true);renderSocial();
+    return true;
+  }catch(e){alert('Could not save this post: '+e.message);return false;}
+}
+
+async function suggestSocialPosts(evId,btn){
+  const ev=EVENTS.find(e=>String(e.id)===String(evId));if(!ev)return;
+  const today=socToday();
+  const existing=new Set(SOCIAL_POSTS.filter(p=>p.activityId===String(ev.id)).map(p=>p.step));
+  const future=socialRhythm(ev).filter(s=>s.date>=today);
+  const steps=future.filter(s=>!existing.has(s.step));
+  if(!steps.length){alert(future.length?'This activity already has a post for every remaining date.':'There are no future post dates left for this activity.');return;}
+  if(btn){btn.disabled=true;btn.textContent='Drafting…';}
+  const ref=ev.eventImageRef?JSON.stringify(ev.eventImageRef):'';
+  let made=0,failed='';
+  for(const s of steps){
+    const publishAt=new Date(`${s.date}T${SOCIAL_DEFAULT_TIME[s.postType]||'11:30'}:00`).toISOString();
+    try{
+      await socWrite('POST',socListUrl(),{Title:`${ev.title} · ${SOCIAL_STEP_LABELS[s.step]||s.step}`.slice(0,255),ActivityId:String(ev.id),Venue:ev.venue||'',Platforms:s.platforms.join(';'),PostType:s.postType,Step:s.step,PublishAt:publishAt,SourceDate:s.date,ActivityDate:ev.start,Caption:socialCaption(ev,s.step),...(ref?{ImageRef:ref}:{}),Status:'Draft',CaptionEdited:false});
+      made++;
+    }catch(e){failed=e.message;break;}
+  }
+  await loadSocialPosts(true);renderSocial();
+  if(failed)alert(`Drafted ${made} of ${steps.length} posts, then saving failed: ${failed}`);
+}
+
+function openSocialEdit(id){
+  const p=SOCIAL_POSTS.find(x=>x.id===id);if(!p)return;
+  _socEditId=id;
+  const{date,time}=socLocalParts(p.publishAt);
+  document.getElementById('socEditDate').value=date;
+  document.getElementById('socEditTime').value=time||'11:30';
+  document.getElementById('socEditType').value=p.postType;
+  document.getElementById('socEditCaption').value=p.caption;
+  document.querySelectorAll('#socEditPlatforms input').forEach(cb=>{cb.checked=p.platforms.includes(cb.value);});
+  document.getElementById('socEditMsg').textContent=p.status==='Approved'?'This post is approved. Saving changes sends it back for approval.':p.status==='Scheduled'?'This post is already scheduled in Business Suite. Change it there too.':'';
+  document.getElementById('socEditOv').classList.add('show');
+  socEditCount();
+}
+function closeSocialEdit(){document.getElementById('socEditOv').classList.remove('show');_socEditId=null;}
+function socEditCount(){
+  const n=document.getElementById('socEditCaption').value.length;
+  // Instagram cuts captions at 2,200 characters; Facebook allows far more.
+  document.getElementById('socEditCount').textContent=`${n.toLocaleString()} characters${n>2200?' · too long for Instagram (2,200 max)':''}`;
+}
+async function saveSocialEdit(btn){
+  const p=SOCIAL_POSTS.find(x=>x.id===_socEditId);if(!p)return;
+  const date=document.getElementById('socEditDate').value,time=document.getElementById('socEditTime').value||'11:30';
+  const platforms=[...document.querySelectorAll('#socEditPlatforms input:checked')].map(cb=>cb.value);
+  const caption=document.getElementById('socEditCaption').value;
+  if(!date){alert('Pick a publish date.');return;}
+  if(!platforms.length){alert('Pick at least one platform.');return;}
+  const fields={PublishAt:new Date(`${date}T${time}:00`).toISOString(),PostType:document.getElementById('socEditType').value,Platforms:platforms.join(';'),Caption:caption};
+  if(caption!==p.caption)fields.CaptionEdited=true;
+  if(p.status==='Approved'||p.status==='Rejected')fields.Status='Draft';
+  btn.disabled=true;
+  const ok=await patchSocialPost(p.id,fields);
+  btn.disabled=false;
+  if(ok)closeSocialEdit();
+}
+async function approveSocialPost(id){
+  const p=SOCIAL_POSTS.find(x=>x.id===id);if(!p)return;
+  if(p.platforms.includes('Instagram')&&!p.imageRef){alert('Instagram posts need an image. Pick a featured photo on the activity, or remove Instagram from this post.');return;}
+  await patchSocialPost(id,{Status:'Approved',ApprovedBy:currentUser?.name||currentUserEmail||'',ApprovedAt:new Date().toISOString(),Notes:''});
+}
+async function rejectSocialPost(id){
+  const note=prompt('What needs changing? This note is shown on the post.');
+  if(note===null)return;
+  await patchSocialPost(id,{Status:'Rejected',Notes:note.trim()});
+}
+async function setSocialStatus(id,status){await patchSocialPost(id,{Status:status});}
+async function moveSocialPost(id){
+  const p=SOCIAL_POSTS.find(x=>x.id===id);const change=p&&socActivityChange(p);if(change?.kind!=='moved')return;
+  const time=socLocalParts(p.publishAt).time||SOCIAL_DEFAULT_TIME[p.postType]||'11:30';
+  const ev=socEventFor(p);
+  const fields={PublishAt:new Date(`${change.date}T${time}:00`).toISOString(),SourceDate:change.date,ActivityDate:ev.start};
+  if(!p.captionEdited)fields.Caption=socialCaption(ev,p.step);
+  if(p.status==='Approved')fields.Status='Draft';
+  if(p.status==='Scheduled')alert('This post is already scheduled in Business Suite. Move it there as well.');
+  await patchSocialPost(id,fields);
+}
+async function refreshSocialCaption(id){
+  const p=SOCIAL_POSTS.find(x=>x.id===id);const ev=p&&socEventFor(p);if(!ev||p.captionEdited)return;
+  const fields={Caption:socialCaption(ev,p.step),ActivityDate:ev.start};
+  if(p.status==='Approved')fields.Status='Draft';
+  if(p.status==='Scheduled')alert('This post is already scheduled in Business Suite. Update the caption there as well.');
+  await patchSocialPost(id,fields);
+}
+async function deleteSocialPost(id){
+  if(!confirm('Delete this draft post? This cannot be undone.'))return;
+  try{await socWrite('DELETE',`${socListUrl()}/${id}`);}catch(e){alert('Could not delete this post: '+e.message);return;}
+  await loadSocialPosts(true);renderSocial();
+}
+async function copySocialCaption(id,btn){
+  const p=SOCIAL_POSTS.find(x=>x.id===id);if(!p)return;
+  try{await navigator.clipboard.writeText(p.caption);}
+  catch(e){
+    const ta=document.createElement('textarea');ta.value=p.caption;document.body.appendChild(ta);ta.select();
+    const ok=document.execCommand('copy');ta.remove();
+    if(!ok){alert('Could not copy the caption. Select it in Edit and copy it by hand.');return;}
+  }
+  if(btn){const t=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>{btn.textContent=t;},1500);}
+}
+async function downloadSocialImage(id,btn){
+  const p=SOCIAL_POSTS.find(x=>x.id===id);if(!p?.imageRef)return;
+  try{
+    const token=await getToken();
+    const res=await fetch(`https://graph.microsoft.com/v1.0/drives/${p.imageRef.driveId}/items/${p.imageRef.itemId}?$select=name,@microsoft.graph.downloadUrl`,{headers:{Authorization:'Bearer '+token}});
+    if(!res.ok)throw new Error(graphErrorText(res.status,await res.text().catch(()=>'')));
+    const url=(await res.json())['@microsoft.graph.downloadUrl'];
+    if(!url)throw new Error('SharePoint did not return a download link for this photo.');
+    window.open(url,'_blank','noopener');
+  }catch(e){alert('Could not download the image: '+e.message);}
+}
+
 
 // ═══════════════════════════════════════
 // BUDGET
