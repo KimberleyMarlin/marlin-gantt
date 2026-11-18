@@ -1,6 +1,6 @@
 # Social Calendar
 
-**Status:** Built 18 November 2026 (option 1: approve in the OS, schedule in Meta Business Suite). Needs the Social Posts list before it can be used.
+**Status:** Built 18 November 2026 (option 1: approve in the OS, schedule in Meta Business Suite). Social Posts list created and wired in (`LIST_IDS.socialPosts`, 18 November 2026).
 
 The Social page plans Facebook, Instagram and Google posts from Activities. The flow is:
 
