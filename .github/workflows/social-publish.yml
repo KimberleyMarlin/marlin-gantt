@@ -1,0 +1,36 @@
+name: Social publish
+
+# Publishes Approved, automatic posts from the Social Posts list to Facebook and Instagram at their
+# time, and reads their results back. See docs/SOCIAL_CALENDAR.md ("Automatic publishing") for
+# setup. Until the secrets exist, each run just says "not configured" and finishes green.
+on:
+  schedule:
+    # Every 15 minutes. GitHub can start scheduled runs a few minutes late.
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: social-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Publish due posts
+        run: node scripts/social-publish.mjs
+        env:
+          META_PUBLISH_TOKEN: ${{ secrets.META_PUBLISH_TOKEN }}
+          MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
+          MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+          MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+          SOCIAL_LIST_ID: ${{ vars.SOCIAL_LIST_ID }}
+          META_API_VERSION: ${{ vars.META_API_VERSION }}

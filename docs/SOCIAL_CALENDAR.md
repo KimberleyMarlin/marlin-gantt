@@ -1,16 +1,27 @@
 # Social Calendar
 
-**Status:** Built 18 November 2026 (option 1: approve in the OS, schedule in Meta Business Suite). Social Posts list created and wired in (`LIST_IDS.socialPosts`, 18 November 2026).
+**Status:** Built 18 November 2026. Social Posts list wired in (`LIST_IDS.socialPosts`). Reels and automatic publishing added 19 November 2026; automatic publishing is switched off (`SOCIAL_AUTOPUBLISH_READY = false`) until the Meta setup below is done.
 
 The Social page plans Facebook, Instagram and Google posts from Activities. The flow is:
 
 1. **Suggest.** For each upcoming Activity with no posts yet, *Suggest posts* drafts one post per step of the posting rhythm below. Captions are built from the Activity's own copy fields (title, key message, tagline, description, call to action, ticket or booking link), and the image is the Activity's featured photo.
 2. **Edit and approve.** Anyone who can edit Activities can edit drafts. Approvers (the `admin` role, i.e. marketing) approve or send a post back with a note. Nothing can be approved for Instagram without an image. Editing an approved post sends it back for approval.
-3. **Schedule.** On an approved post, *Copy caption* and *Download image*, schedule it in Meta Business Suite, then *Mark scheduled*. After it goes out, *Mark posted*.
+3. **Publish**, one of two ways, chosen per post in *Edit* ("How it's published"):
+   - **By hand in Business Suite** (the default). On an approved post, *Copy caption*, *Download image* or *Save video to phone*, *Open in Business Suite*, schedule it there, then *Mark scheduled*. After it goes out, *Mark posted*.
+   - **Automatically.** Once approved, the Social publish job posts it to Facebook and Instagram at the publish time and marks it *Posted* with links to the live posts. If something goes wrong it's marked *Failed* with Meta's reason, and *Try again* or *Post by hand instead*.
+4. **Results.** For automatically published posts, reach, views, likes, comments, shares and saves are read back every 6 hours for 30 days and shown on the post.
 
 Venue managers see their own venue's posts, read-only.
 
-Nothing is published from the OS. It is a public static page, so it can't hold a publishing token. Because every post is a row in the list, a later sync job (direct Meta publishing or a scheduler such as Postiz) can pick up Approved rows without changing this screen. Use the empty `ExternalPostId` column for that.
+The OS itself never holds a Meta token: it is a public static page. Automatic publishing is done by a scheduled GitHub Action that holds the token as a secret (see *Automatic publishing*).
+
+## Reels
+
+The *Reels* tab lists the videos in **00 OS/Reels** on the Marlin Hospitality Marketing site (and one level of subfolders, shown as groups), newest first, with length, size and a 9:16 check. `REELS_FOLDER_PATH` in `index.html` sets the folder; the default library is tried first, then every other library on the site.
+
+- **Save to phone** gets the original file, not SharePoint's compressed preview. On an iPhone it's two taps: the first downloads the original (with progress), the second opens the share sheet, where *Save Video* puts it in Photos at full quality. iOS only allows the share sheet straight from a tap, hence the two steps. On a computer it simply downloads. Files over about 600 MB are downloaded in the browser instead, and are better done on a computer.
+- **Attach to a post** adds the video to an upcoming post (a feed post becomes a reel), or starts a new reel post for a venue and date. From a post's *Edit*, *Choose from Reels* does the same the other way round.
+- Instagram and Facebook recompress every upload. Starting from the original gives them the best copy to work from.
 
 ## Create the Social Posts list
 
@@ -34,7 +45,14 @@ On the Marlin Hospitality Marketing SharePoint site, create a list called **Soci
 | `ApprovedBy` | Single line of text | |
 | `ApprovedAt` | Date and time | |
 | `Notes` | Multiple lines of text (plain text) | The note when a post is sent back |
-| `ExternalPostId` | Single line of text | Empty for now. For a future publishing sync. |
+| `ExternalPostId` | Single line of text | Written by the publish job: the Facebook and Instagram post IDs (JSON). Lets *Try again* skip a platform that already posted. |
+| `VideoRef` | Single line of text | The attached reel, same `{driveId,itemId}` format as `ImageRef` |
+| `PublishMode` | Choice: Manual, Auto | Default: Manual |
+| `PublishedAt` | Date and time | Written by the publish job |
+| `PostUrl` | Single line of text | Links to the live posts (JSON), written by the publish job |
+| `Insights` | Multiple lines of text (plain text) | Results (JSON), written by the publish job |
+
+`Status` also needs the choices **Publishing** and **Failed** (used by automatic publishing).
 
 Then copy the list's ID (List settings: the `List=` part of the address, without the braces) into `LIST_IDS.socialPosts` in `index.html`.
 
@@ -45,6 +63,25 @@ The OS doesn't publish. Business Suite posts to whichever Page and Instagram acc
 Both come from `SOCIAL_ACCOUNTS` in `index.html`: one entry per venue, plus `All Venues` for group-wide posts, each with the Page name, Page ID and Instagram handle. These are public details (each Page's About tab), so they live in the code, not in GitHub secrets. The `META_ACCOUNTS` secret used by the Meta reporting sync holds ad account IDs, which are different, and the OS can't read secrets anyway.
 
 Find them in Business Suite → Settings → Accounts → Pages (name and Page ID) and Accounts → Instagram accounts (handle and linked Page). Until a venue is filled in, its posts warn to check the selected account in Business Suite by hand.
+
+## Automatic publishing
+
+`.github/workflows/social-publish.yml` runs `scripts/social-publish.mjs` every 15 minutes (GitHub can start it a few minutes late). Each run:
+
+1. Publishes Approved posts with `PublishMode = Auto` whose time has come (up to 10 a run), to the Page in `SOCIAL_ACCOUNTS` for the post's venue and that Page's linked Instagram account. Photos post as feed photos, videos as reels, and stories as photo or video stories. Meta downloads the media straight from SharePoint through a short-lived link, so nothing is made public. Google Business Profile isn't supported and is noted on the post.
+2. Marks a post *Failed* if it has been stuck in *Publishing* for 30 minutes (an interrupted run), rather than risk posting it twice.
+3. Refreshes results on posts published in the last 30 days, every 6 hours.
+
+It costs nothing: GitHub Actions is free for this public repository, and Meta's API and SharePoint are already paid for. The Action logs are public, so the script only logs counts, row numbers and Meta's error messages, never captions or tokens. GitHub pauses scheduled workflows in a public repository after 60 days with no commits, which the OS's normal activity prevents.
+
+### Setup (once)
+
+1. **Page IDs.** Fill in `SOCIAL_ACCOUNTS` in `index.html` for every venue and for `All Venues`.
+2. **Meta publishing token.** In Business Settings → Users → System users, use the existing System User or add one for publishing. *Assign assets*: every venue Page (full control, or at least content and insights) and each linked Instagram account. *Generate new token* for the Marlin app with `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, `instagram_basic`, `instagram_content_publish`, `instagram_manage_insights`, `read_insights` (and `business_management` if Meta asks). Keep it separate from the read-only reporting token. Save it as the GitHub secret **`META_PUBLISH_TOKEN`**. Because the app only publishes to Marlin's own Pages, Meta App Review shouldn't be needed, but Meta may ask for Business Verification.
+3. **SharePoint access.** The job uses the same Entra app as the Meta reporting sync (`MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, with `Sites.Selected` write on the Marketing site). If those secrets aren't in the repository yet, add them.
+4. **Columns.** Add the new Social Posts columns and Status choices listed above.
+5. **Test.** Actions → Social publish → *Run workflow*. The log should say how many posts it published. Then set one post to *Automatically*, approve it for a few minutes from now on a low-stakes Page, and check it goes out.
+6. **Switch it on in the OS.** Set `SOCIAL_AUTOPUBLISH_READY = true` in `index.html`. Until then the OS doesn't offer *Automatically*, so nothing is queued for a job that can't run.
 
 ## Default posting rhythm
 
