@@ -2,11 +2,11 @@
 
 Covers SUB-03 / FLOW-01 and the shared-task write checks for SAFE-02 in `OS_RESET_MASTER.md`. Run it against the live SharePoint lists, signed in to the Hub with a real account.
 
-- **Time:** about an hour.
-- **Who:** Kimberley, because Part A uses Schema Tools, which only Kimberley can use. Parts B to G can be run by anyone with approve rights, with a second person available to receive an assignment email.
+- **Time:** about 75 minutes.
+- **Who:** Kimberley, because Part A uses Schema Tools, which only Kimberley can use. Parts B to H can be run by anyone with approve rights, with a second person available to receive an assignment email.
 - **Record:** fill in the Result column (Pass / Fail plus a note) as you go. For any Fail, copy the exact on-screen message and take a screenshot.
 
-Use `TEST` at the start of every title so the test records are easy to find and delete in Part H.
+Use `TEST` at the start of every title so the test records are easy to find and delete in Part I.
 
 ## Before you start
 
@@ -16,6 +16,7 @@ Use `TEST` at the start of every title so the test records are easy to find and 
 | 0.2 | Open **Admin & Schema** | Page loads with the list of proposed SharePoint columns. | |
 | 0.3 | In **Proposed SharePoint columns**, find **Design Job Created** (Marketing & Activations 2026) | Shows as ready. If it shows Missing, add it first (see A.2 for how **Add missing** works). Duplicate protection (Part E) depends on it. | |
 | 0.4 | Find **Activity Group** and **Activity Subtype** (Marketing & Activations 2026) | Both ready. If missing, add them the same way. Ticket selection in Part C depends on them. | |
+| 0.5 | Find **Sent Back Note** (Marketing & Activations 2026) | Ready. If missing, add it the same way. Part H's "Send back" status depends on it. | |
 
 ## Part A: create the Venue column
 
@@ -101,7 +102,22 @@ This needs a ticket to fail on purpose. The simplest way is for someone with Sha
 | G.2 | Select **Create job tickets** | Toast "job tickets created". In SharePoint the tickets are linked to the **new** activity (not C1), and the new activity has Design Job Created = Yes. The submitter gets no "approved" message. | |
 | G.3 | Duplicate C1 again and select **Skip, no job tickets** | Toast "with no job tickets". No tickets in SharePoint for that new activity. | |
 
-## Part H: clean up
+## Part H: activity view, submit form and Send back
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| H.1 | Open C1 (`TEST ticketed gig`) from the Calendar or Activities list | A **Job tickets** section, above Design, lists every ticket created in Part C with owner, venue, due date and status, plus "*x* of *y* done". | |
+| H.2 | In that section, tick one ticket done | The tick shows straight away and "of *y* done" goes up by one. After a reload it's still done. | |
+| H.3 | Click a ticket's title | The ticket editor opens on top of the activity. Change the due date and save: the section shows the new date. | |
+| H.4 | **Activities** table, find C1 | Under its stage, a "*x*/*y* tickets" chip matching H.2. | |
+| H.5 | Set C2 back to Review (edit its stage) and open **Submissions** | Its card under **In review** shows its "*x*/*y* tickets" chip. | |
+| H.6 | **＋ Submit something → Submit Activity, Event, Offer**. Fill in everything except Activity Group, and submit. | It stops with "Please choose an Activity Group and Activity Subtype…". Nothing is created. | |
+| H.7 | Submit `TEST send back` properly. On **Submissions**, select **↩ Send back** and give the reason "Please add the ticket price". | Toast "sent back to *you*". The card stays under Submissions with "Sent back — waiting on submitter. Please add the ticket price (*name*, *date*)". After a reload it's still shown. | |
+| H.8 | Check the **Inbox** as the submitter | A tag on `TEST send back`: "sent back for changes by *name*: Please add the ticket price. Please edit the activity to resubmit." | |
+| H.9 | Open `TEST send back`, edit any field and save | Back on **Submissions**, the "Sent back" message has gone and the card is still at Intake, ready to approve. | |
+| H.10 | **＋ Submit something → "Admin: Bulk import activities from a reviewed CSV"**: preflight a CSV with one row that has an "Activity Group" column filled in and one that doesn't | The log starts with "1 row has no Activity Group", naming the second row. After importing, the first row's activity has its Group set. | |
+
+## Part I: clean up
 
 1. In Tasks & Job Tickets, delete every item whose title contains `TEST`.
 2. In Marketing & Activations 2026, delete or archive every `TEST` activity.
@@ -119,6 +135,7 @@ This needs a ticket to fail on purpose. The simplest way is for someone with Sha
 | E: No duplicates | | |
 | F: Failure handling | | |
 | G: Duplicate as next month | | |
+| H: Activity view, form, Send back | | |
 
 Tested by: ________ Date: ________
 

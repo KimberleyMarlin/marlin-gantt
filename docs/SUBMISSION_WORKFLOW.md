@@ -14,8 +14,10 @@ Tasks & Job Tickets has a text `Venue` column (added through Admin & Schema). Ma
 
 ## Current behaviour
 
-1. **Submit:** Activity submission creates a row at `WorkflowStage = Intake`. Bulk import also lands at Intake, with no per-row emails.
-2. **Triage:** The activity appears in Submissions for the reviewer.
+1. **Submit:** Activity submission creates a row at `WorkflowStage = Intake`. Activity Group and Activity Subtype are required on the form, because they decide the job tickets. Bulk import also lands at Intake, with no per-row emails. Its CSV can carry optional "Activity Group" and "Activity Subtype" columns, and the preflight log lists rows without a Group.
+2. **Triage:** The activity appears in Submissions for the reviewer, who can Approve, **Send back** or Deny.
+   - **Send back** (`sendBackCampaign`) asks for a reason, keeps the activity at Intake, writes the reason to `SentBackNote`, and tags the submitter (or the owner, if no submitter is recorded) in the Inbox. The card shows "Sent back — waiting on submitter" until the activity is next edited, which clears `SentBackNote`. Without the column, the tag still goes out but the card status only lasts until reload, and the approver is told.
+   - **Deny** archives the activity.
 3. **Preview:** The first approval (Intake → In Design) opens a preview of proposed job tickets (`openApprovalPreview`). Each row shows why it was proposed, plus any detail carried from the submission. Owner and due date are editable, and any row can be unticked.
 4. **Create:** Only ticked rows are created (`confirmApprovalTasks`), each linked via `CampaignLookupId` and with the activity's venue in the `Venue` column. Submission detail (asset formats, POS notes, brief notes) goes into the ticket Notes.
 5. **Advance:** The activity moves to In Design (shown as Planning) only after every ticked ticket saves. Then `DesignJobCreated` is set so a second approval never creates a second set. On any failure the activity stays at Intake and the failed tickets are listed. Retry only creates the ones that failed.
@@ -25,6 +27,12 @@ Tasks & Job Tickets has a text `Venue` column (added through Admin & Schema). Ma
 9. **Go live:** Review → Live is a plain one-click approval with no new tickets.
 
 Not yet verified against live SharePoint (SUB-03 / FLOW-01 in `OS_RESET_MASTER.md`).
+
+## Seeing an activity's job tickets
+
+- The activity detail view has a **Job tickets** section (`jobTicketsSectionHtml`), above Design. It lists every linked ticket with owner, venue, due date and status, plus "*x* of *y* done". Anyone who can see the activity sees it. People who can edit a ticket can tick it done or open it to edit, and the section redraws.
+- Submissions cards and the Activities table show a "*x*/*y* tickets" chip.
+- Tickets are matched to an activity by `CampaignLookupId`, or by title for older tickets (`jobTicketsForActivity`, the same rule as My Work).
 
 ## Other ways job tickets are created
 
