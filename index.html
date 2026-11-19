@@ -3293,7 +3293,7 @@ function calcComplexity(ev){
 
 function calcSubmissionTiming(ev){
   if(!ev.start||!ev.marketingSilo)return'';
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const weeksUntil=(new Date(ev.start+'T00:00:00')-today)/(7*864e5);
   const required=ev.mktLeadWeeks||calcLeadWeeks(ev);
   if(weeksUntil>=required)return'On Time';
@@ -4944,7 +4944,7 @@ let PERSONAL_TASKS_ERROR='';
 let personalTaskSelected=new Set(),personalTaskExpanded=new Set();
 const TASK_SHARING_ENABLED=true;
 let PROJECTS_ERROR='';
-let calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calTypeFilter='';
+let calYear=todayDate().getFullYear(),calMonth=todayDate().getMonth(),calTypeFilter='';
 let NOTIFS=[];
 let globalShowArchive=false; // single toggle that controls ALL views
 
@@ -5951,7 +5951,7 @@ async function loadCampaigns(){
       // without separately remembering to push End years out. Default an unset End on a recurring
       // Activity several years out instead, so it keeps recurring until a real End is actually set.
       const endDate=f.End?f.End.split('T')[0]:(recurringDay.length?`${new Date().getFullYear()+5}-12-31`:f.Start.split('T')[0]);
-      const today=new Date();today.setHours(0,0,0,0);
+      const today=todayDate();
       const isPast=new Date(endDate+'T00:00:00')<today;
       const descriptionParts=splitActivityDescription(f.Description||'');
       const loadedRewards=isLoadedRewardsFields(f);
@@ -6185,7 +6185,7 @@ function showError(msg){
 // ═══════════════════════════════════════
 // VENUE MONTHLY
 // ═══════════════════════════════════════
-let vmYear=new Date().getFullYear(),vmMonth=new Date().getMonth(),vmVenue='';
+let vmYear=todayDate().getFullYear(),vmMonth=todayDate().getMonth(),vmVenue='';
 function vmPrev(){vmMonth--;if(vmMonth<0){vmMonth=11;vmYear--;}renderVenueMonth();}
 function vmNext(){vmMonth++;if(vmMonth>11){vmMonth=0;vmYear++;}renderVenueMonth();}
 function pickVmVenue(el){document.querySelectorAll('#vmVenueChips .chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');vmVenue=el.dataset.v;renderVenueMonth();}
@@ -7672,6 +7672,25 @@ function upgradeFeaturedImages(scopeSelector){
 // HELPERS
 // ═══════════════════════════════════════
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+// ── Dates: Perth time for everyone, Darwin time for Darwin users ─────────────────────────────
+// "Today" comes from the business's clock, not the device's: Australia/Perth, or Australia/Darwin
+// for Hotel Darwin staff (venue access) and anyone whose device is set to Darwin time. Date-only
+// values are compared as YYYY-MM-DD strings. Never fix a date by adding or subtracting a day.
+function userTimeZone(){
+  let device='';try{device=Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch(e){}
+  return (typeof currentVenueAccess!=='undefined'&&currentVenueAccess==='Hotel Darwin')||device==='Australia/Darwin'
+    ?'Australia/Darwin':'Australia/Perth';
+}
+// Today's date in the user's business time zone, as YYYY-MM-DD.
+function todayYMD(){
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:userTimeZone(),year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());}
+  catch(e){return toLocalISODate(new Date());}
+}
+// Today as a Date at local midnight, built from todayYMD() so it lines up with how activity dates
+// are parsed elsewhere (new Date(ymd+'T00:00:00')).
+function todayDate(){return new Date(todayYMD()+'T00:00:00');}
+// A locally built Date -> YYYY-MM-DD (never toISOString, which shifts to UTC).
+function ymd(d){return toLocalISODate(d);}
 function toLocalISODate(d){
   if(!(d instanceof Date)||Number.isNaN(d.getTime()))return'';
   return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -7831,7 +7850,7 @@ let _cvStatFilter=null; // null | 'live' | 'next14' | 'atrisk'
 function cvGetData(includeStatFilter=true){
   const silo=document.getElementById('cvSilo')?.value||'';
   const health=document.getElementById('cvHealth')?.value||'';
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   return EVENTS.filter(e=>{
     if(isArchived(e))return false;
     if(_cvVenues&&!_cvVenues.has(e.venue))return false;
@@ -7864,7 +7883,7 @@ function cvEventMatchesActiveFilters(ev){
   if(health&&healthCheck(ev).level!==health)return false;
   if(_cvStatFilter==='live'&&ev.stage!=='Live')return false;
   if(_cvStatFilter==='next14'){
-    const today=new Date();today.setHours(0,0,0,0);
+    const today=todayDate();
     const daysOut=Math.round((new Date(ev.start+'T00:00:00')-today)/864e5);
     if(!(daysOut>=0&&daysOut<=14))return false;
   }
@@ -7875,7 +7894,7 @@ function cvEventMatchesActiveFilters(ev){
 function cvCard(ev){
   const vc=vColor(ev.venue);
   const h=healthCheck(ev);
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const dOut=Math.round((new Date(ev.start+'T00:00:00')-today)/864e5);
   const cdColor=dOut<0?'var(--text3)':dOut<=7?'#a64a24':dOut<=21?'#9c732b':'var(--text3)';
   const cdText=dOut<0?`${Math.abs(dOut)}d ago`:dOut===0?'Today':`${dOut} days`;
@@ -7910,7 +7929,7 @@ function cvCard(ev){
 }
 
 function cvRenderStats(data){
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const atRisk=data.filter(e=>healthCheck(e).level==='red').length;
   const tight=data.filter(e=>healthCheck(e).level==='amber').length;
   const live=data.filter(e=>e.stage==='Live').length;
@@ -8025,7 +8044,7 @@ function cvRenderVenue(data){
 let _cvLabelWidth=240; // resizable Timeline label column width, persists for the session
 function cvRenderTimeline(data){
   // Range: from earliest marketing-start (or 30 days ago) to latest event (or +120 days)
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   let minD=new Date(today.getTime()-14*864e5), maxD=new Date(today.getTime()+120*864e5);
   data.forEach(e=>{
     const s=new Date((e.marketingStartDate||e.start)+'T00:00:00'), en=new Date(e.start+'T00:00:00');
@@ -8312,7 +8331,7 @@ function changeDashMonth(delta){_dashMonthOffset+=delta;renderDashThisMonth();}
 function renderDashThisMonth(){
   const el=document.getElementById('ovNext14');if(!el)return;
   const venue=document.getElementById('ovVenue')?.value||'';
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const viewedMonth=new Date(today.getFullYear(),today.getMonth()+_dashMonthOffset,1);
   const monthStart=new Date(viewedMonth.getFullYear(),viewedMonth.getMonth(),1);
   const monthEnd=new Date(viewedMonth.getFullYear(),viewedMonth.getMonth()+1,0,23,59,59);
@@ -8391,7 +8410,7 @@ function openEditPersonalTaskOrTask(t){
 
 function renderDashMyPriorities(){
   const el=document.getElementById('ovMyPriorities');if(!el)return;
-  const todayStr=toLocalISODate(new Date());
+  const todayStr=todayYMD();
   const open=myWorkItems().filter(t=>!['Done','Complete','Completed'].includes(t.status));
   const scored=open.map(t=>{
     const overdue=!!(t.due&&t.due<todayStr);
@@ -8415,7 +8434,7 @@ function renderDashMyPriorities(){
 
 function renderDashOverdueBlocked(){
   const el=document.getElementById('ovOverdueBlocked');if(!el)return;
-  const todayStr=toLocalISODate(new Date());
+  const todayStr=todayYMD();
   const open=myWorkItems().filter(t=>!['Done','Complete','Completed'].includes(t.status));
   const items=open.filter(t=>(t.due&&t.due<todayStr)||t.status==='Blocked')
     .sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))).slice(0,8);
@@ -8431,7 +8450,7 @@ function renderDashOverdueBlocked(){
 function renderDashUpcomingLaunches(){
   const el=document.getElementById('ovUpcomingLaunches');if(!el)return;
   const venue=document.getElementById('ovVenue')?.value||'';
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const in30=new Date(today.getTime()+30*864e5);
   const items=EVENTS.filter(e=>!venue||e.venue===venue).filter(e=>!isArchived(e))
     .filter(e=>e.stage==='Ready for Live'||(e.stage==='Live'&&new Date(e.start+'T00:00:00')>=today&&new Date(e.start+'T00:00:00')<=in30))
@@ -8451,7 +8470,7 @@ function renderDashProjectProgress(){
   const el=document.getElementById('ovProjectProgress');if(!el)return;
   if(!widgetAllowed('projectprogress')){el.innerHTML='';return;}
   if(!PROJECTS.length){el.innerHTML='<div class="u-empty">No projects found</div>';return;}
-  const today=toLocalISODate(new Date());
+  const today=todayYMD();
   const active=PROJECTS.filter(p=>p.status!=='Done').sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999')).slice(0,6);
   el.innerHTML=active.length?active.map(p=>{
     const overdue=!!(p.due&&p.due<today&&p.status!=='Done');
@@ -8469,7 +8488,7 @@ function renderDashLoadedCampaigns(){
   const el=document.getElementById('ovLoadedCampaigns');if(!el)return;
   if(!widgetAllowed('loadedcampaigns')){el.innerHTML='';return;}
   const venue=document.getElementById('ovVenue')?.value||'';
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   // A venue filter should still surface cross-venue Loaded Rewards campaigns, not hide them —
   // same single-selection pattern used by Calendar's own venue filter elsewhere in this file.
   const items=EVENTS.filter(e=>e.loadedRewards&&(!venue||e.venue===venue||e.venue==='All Venues')&&!isArchived(e))
@@ -8496,7 +8515,7 @@ function renderOverview(){
   }
   const venue=ovSel.value;
   const allEvts=EVENTS.filter(e=>!venue||e.venue===venue);
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const in14=new Date(today.getTime()+14*864e5);
   const active=allEvts.filter(e=>!isArchived(e));
   const live=active.filter(e=>e.stage==='Live').length;
@@ -8908,7 +8927,7 @@ async function saveDesignBrief(btn){
 // data as the full Team Workload page, just a shorter list.
 function renderWorkload(targetId='workloadBody',limit=0){
   if(!isAuthed)return;
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const week=new Date(today);week.setDate(week.getDate()+7);
   const twoWeeks=new Date(today);twoWeeks.setDate(twoWeeks.getDate()+14);
 
@@ -9214,7 +9233,7 @@ async function uploadReviewsFile(input){
   const btn=document.getElementById('mrUploadBtn');if(btn){btn.disabled=true;btn.textContent='Uploading…';}
   try{
     const token=await getToken(true);
-    const name=`${toLocalISODate(new Date())} ${file.name}`;
+    const name=`${todayYMD()} ${file.name}`;
     const res=await fetch(`${graphDrive()}/root:/${graphPath(REVIEWS_SOURCE.importsPath+'/'+name)}:/content?@microsoft.graph.conflictBehavior=rename`,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':file.type||'application/octet-stream'},body:file});
     if(!res.ok)throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,200)}`);
     await loadReviewsData(true);
@@ -9312,7 +9331,7 @@ function renderMarketingReport(){
 
   // 1. Campaign results
   const canMoney=!!rolePermissions().canViewBudget;
-  const evs=EVENTS.filter(e=>(!venue||e.venue===venue)&&String(e.end||e.start||'')>=from&&String(e.start||'')<=toLocalISODate(new Date()));
+  const evs=EVENTS.filter(e=>(!venue||e.venue===venue)&&String(e.end||e.start||'')>=from&&String(e.start||'')<=todayYMD());
   const k=computeMarketingKpis(evs,{withMoney:canMoney});
   const chanTotals={};evs.filter(isActivityDelivered).forEach(e=>Object.entries(e.channelResults||{}).forEach(([c,m])=>{const t=chanTotals[c]=chanTotals[c]||{n:0};t.n++;Object.entries(m).forEach(([kk,v])=>t[kk]=(t[kk]||0)+Number(v||0));}));
   const chanRows=Object.entries(chanTotals).filter(([c])=>CHANNEL_RESULT_METRICS[c]);
@@ -9797,7 +9816,7 @@ async function savePostCampaign(btn){
     const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`;
     const stageRes=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{WorkflowStage:'Done'}})});
     if(!stageRes.ok)throw new Error('HTTP '+stageRes.status);
-    fields.ReportSubmittedAt=toLocalISODate(new Date());
+    fields.ReportSubmittedAt=todayYMD();
     const{WorkflowStage,...reportFields}=fields;
     let{failed}=await patchImportOptionalFields(url,token,reportFields);
     // Self-setup: the first time an admin saves a report and the report columns don't exist yet,
@@ -9936,7 +9955,7 @@ function toggleCalArchive(){
 }
 
 function initGanttDates(){
-  const today=new Date();
+  const today=todayDate();
   const threeMonths=new Date(today);threeMonths.setMonth(threeMonths.getMonth()+3);
   const gFrom=document.getElementById('gFrom');
   const gTo=document.getElementById('gTo');
@@ -9979,7 +9998,7 @@ function _renderGanttInner(){
   // it should sit in the top row rather than wherever EVENTS happened to list it.
   evts=[...ganttRows.values()].sort((a,b)=>Number(!!b.loadedRewards)-Number(!!a.loadedRewards));
 
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
 
   // Date range: use pickers if set, else default today → today+3mo
   let minD=fromVal?new Date(fromVal+'T00:00:00'):new Date(today);
@@ -10734,7 +10753,7 @@ function renderCalendar(){
   const firstDay=new Date(calYear,calMonth,1).getDay();
   const dim=new Date(calYear,calMonth+1,0).getDate();
   const dip=new Date(calYear,calMonth,0).getDate();
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   let h=`<div class="cal-month-header">${dayNames.map(d=>`<div class="cal-dn">${d}</div>`).join('')}</div>`;
   const total=Math.ceil((firstDay+dim)/7)*7;
@@ -10893,7 +10912,7 @@ function showCalDayPopup(evt,y,m,day){
 const WEEKLY_SPECIALS_VENUES=['The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing'];
 const WEEKLY_SPECIALS_DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 function renderVenueWeeklySpecials(){
-  const today=toLocalISODate(new Date());
+  const today=todayYMD();
   const active=EVENTS.filter(e=>!isArchived(e)&&e.recurringDay&&e.recurringDay.length&&e.start<=today&&(e.end||e.start)>=today);
   const findSpecial=(venue,day)=>active.filter(e=>e.venue===venue&&e.recurringDay.includes(day))
     .sort((a,b)=>b.start.localeCompare(a.start))[0]||null;
@@ -10925,7 +10944,7 @@ function renderCalendarWeek(){
 
   const busDiv=document.getElementById('calBusyness');if(busDiv)busDiv.innerHTML='';
   const projStripDiv=document.getElementById('calMonthlyFeatures');if(projStripDiv)projStripDiv.innerHTML=renderVenueWeeklySpecials();
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
   // 7 day columns — same grid as month view but just 7 cells
@@ -11106,7 +11125,7 @@ function renderCalendarYear(){
   grid.style.display='block';grid.style.gridTemplateColumns='';
 
   const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   grid.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px">${monthNames.map((mName,mIdx)=>{
     const firstDay=new Date(calYear,mIdx,1).getDay();
     const dim=new Date(calYear,mIdx+1,0).getDate();
@@ -11830,7 +11849,7 @@ async function updateTicketsSold(evId){
 function renderDesign(){
   if(!isAuthed)return;
   const filter=document.querySelector('#dChips .chip.on')?.dataset.s||'';
-  const today=new Date();today.setHours(0,0,0,0);const week=new Date(Date.now()+7*864e5);
+  const today=todayDate();const week=new Date(Date.now()+7*864e5);
   let items=EVENTS.filter(e=>['In Design'].includes(e.stage)||e.designBriefDue);
   if(filter==='urgent')items=items.filter(e=>e.designBriefDue&&new Date(e.designBriefDue+'T00:00:00')<=week);
   if(filter==='indesign')items=items.filter(e=>['In Design','Design Review'].includes(e.stage));
@@ -12901,7 +12920,7 @@ function renderMyWork(){
   const canSeePersonal=canAccessPanel('personaltasks');
   const addPersonal=document.getElementById('myWorkAddPersonal');if(addPersonal)addPersonal.style.display=canSeePersonal?'':'none';
   const managePersonalLink=document.getElementById('myWorkManagePersonalLink');if(managePersonalLink)managePersonalLink.style.display=canSeePersonal?'':'none';
-  const today=toLocalISODate(new Date());
+  const today=todayYMD();
   // "Unassigned team tasks" is its own bucket, visible only to admin/management (canEditTeamTask on
   // an unassigned task resolves to exactly that) — never mixed into a person's own stats below.
   const canSeeUnassigned=canEditTeamTask({assignedTo:''});
@@ -13257,7 +13276,7 @@ function renderMyTasks(){
     ['tBadge'].forEach(id=>{const badge=document.getElementById(id);if(badge)badge.style.display='none';});
     return;
   }
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const todayStr=toLocalISODate(today);
   const weekStr=toLocalISODate(new Date(today.getTime()+7*864e5));
 
@@ -13719,7 +13738,7 @@ function renderPersonalTasks(){
     list.innerHTML=`<div class="card"><div class="card-body" style="padding:22px"><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:7px">Private SharePoint list not connected yet</div><div style="font-size:12px;color:var(--text2);line-height:1.55">Create a list named <b>Kimberley Personal Tasks</b>, restrict it to Kimberley only, then add its list GUID to <code>LIST_IDS.personalTasks</code>. Required columns: Title, Status, Priority, DueDate and Notes.</div></div></div>`;
     return;
   }
-  const today=toLocalISODate(new Date());
+  const today=todayYMD();
   // Converted tasks are closed (not "Open") but are intentionally left out of "Completed" too — they
   // didn't get done here, they became a shared task, which is tracked as its own item in Tasks & Job Tickets.
   const open=PERSONAL_TASKS.filter(task=>task.status!=='Done'&&task.status!=='Converted');
@@ -14725,7 +14744,7 @@ function renderOperationsMap(){
   const el=document.getElementById('operationsMapBody');if(!el)return;
   const tasks=MY_TASKS.filter(task=>task.title&&task.title.trim());
   const open=tasks.filter(task=>task.status!=='Done');
-  const today=toLocalISODate(new Date());
+  const today=todayYMD();
   const overdue=open.filter(task=>task.due&&task.due<today);
   const blocked=open.filter(task=>task.status==='Blocked'||task.blocker);
   const critical=open.filter(task=>task.priority==='Critical');
@@ -15044,7 +15063,7 @@ function renderProjects(){
     list.innerHTML='<div style="padding:36px;text-align:center;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:var(--r)">No projects found in the connected SharePoint Projects list.</div>';
     return;
   }
-  const today=toLocalISODate(new Date());
+  const today=todayYMD();
   const linkedFor=p=>EVENTS.filter(ev=>String(ev.projectId)===String(p.id));
   const risksFor=(p,linked)=>{
     const reasons=[];
@@ -15261,7 +15280,7 @@ function isAssignedToMe(ev){
 
 function generateNotifications(){
   NOTIFS=[];
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const week=new Date(Date.now()+7*864e5);
   const twoWeeks=new Date(Date.now()+14*864e5);
   const fourWeeks=new Date(Date.now()+28*864e5);
@@ -16142,7 +16161,7 @@ function exportCRMSegment(kind='mail'){
   const rows=CRM_CUSTOMERS.filter(customer=>crmMailingState(customer)===kind);if(!rows.length){alert('There are no customers in this segment.');return;}
   const quote=value=>`"${String(value??'').replace(/"/g,'""')}"`;const headers=['Customer ID','First Name','Last Name','Email','Phone','Preferred Venue','Consent Status','Source Count'];
   const csv=[headers.map(quote).join(','),...rows.map(c=>[c.spId,c.firstName,c.lastName,c.email,c.phone,c.venue,c.consent,c.sourceCount].map(quote).join(','))].join('\r\n');
-  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`Marlin_CRM_${kind}_${toLocalISODate(new Date())}.csv`;link.click();URL.revokeObjectURL(link.href);
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`Marlin_CRM_${kind}_${todayYMD()}.csv`;link.click();URL.revokeObjectURL(link.href);
 }
 
 function populateCRMVenueSelect(){
@@ -16426,7 +16445,7 @@ async function runCRMImport(){
   const button=document.getElementById('crmRunBtn');
   if(isPreviewMode){
     if(!confirm(`Simulate importing ${actionable.length} confident rows? This changes demo data only.`))return;
-    let created=0,updated=0;actionable.forEach((item,index)=>{const priorStatus=item.status;if(priorStatus==='update'){item.status='updated';updated++;}else{item.status='created';created++;if(priorStatus!=='consolidate'){const data=item.data;CRM_CUSTOMERS.push({spId:`SIM-${Date.now()}-${index}`,title:data.fullName||data.email||'Unnamed customer',firstName:data.firstName,lastName:data.lastName,email:data.email,emailNorm:data.emailNorm,phone:data.phone,phoneNorm:data.phoneNorm,status:crmMarketingSuppressed(data)?'Needs Review':'Active',sourceCount:1,venue:data.venue,source:document.getElementById('crmSourceSystem').value.trim(),consent:data.emailConsent||'Unknown',suppressed:crmMarketingSuppressed(data),lastSeen:toLocalISODate(new Date())});}item.reason='Simulated safe write, no SharePoint record created';}});
+    let created=0,updated=0;actionable.forEach((item,index)=>{const priorStatus=item.status;if(priorStatus==='update'){item.status='updated';updated++;}else{item.status='created';created++;if(priorStatus!=='consolidate'){const data=item.data;CRM_CUSTOMERS.push({spId:`SIM-${Date.now()}-${index}`,title:data.fullName||data.email||'Unnamed customer',firstName:data.firstName,lastName:data.lastName,email:data.email,emailNorm:data.emailNorm,phone:data.phone,phoneNorm:data.phoneNorm,status:crmMarketingSuppressed(data)?'Needs Review':'Active',sourceCount:1,venue:data.venue,source:document.getElementById('crmSourceSystem').value.trim(),consent:data.emailConsent||'Unknown',suppressed:crmMarketingSuppressed(data),lastSeen:todayYMD()});}item.reason='Simulated safe write, no SharePoint record created';}});
     CRM_IMPORTS.unshift({demo:true,title:`Simulation · ${CRM_FILE_NAME||'customer export'}`,status:'Simulation complete',source:document.getElementById('crmSourceSystem').value.trim(),date:new Date().toLocaleString('en-AU'),rows:CRM_PREFLIGHT.length});
     renderCRMPreflight();renderCRMSegments();renderCRMReview();crmSetMessage(`Simulation complete: ${created} would be created, ${updated} would be updated. SharePoint remains untouched.`,'ok');button.disabled=true;return;
   }
