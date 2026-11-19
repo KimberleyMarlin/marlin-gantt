@@ -19,10 +19,21 @@ Tasks & Job Tickets has a text `Venue` column (added through Admin & Schema). Ma
 3. **Preview:** The first approval (Intake → In Design) opens a preview of proposed job tickets (`openApprovalPreview`). Each row shows why it was proposed, plus any detail carried from the submission. Owner and due date are editable, and any row can be unticked.
 4. **Create:** Only ticked rows are created (`confirmApprovalTasks`), each linked via `CampaignLookupId` and with the activity's venue in the `Venue` column. Submission detail (asset formats, POS notes, brief notes) goes into the ticket Notes.
 5. **Advance:** The activity moves to In Design (shown as Planning) only after every ticked ticket saves. Then `DesignJobCreated` is set so a second approval never creates a second set. On any failure the activity stays at Intake and the failed tickets are listed. Retry only creates the ones that failed.
-6. **Skip:** "Skip tasks, just approve" advances without creating tickets.
-7. **Go live:** Review → Live is a plain one-click approval with no new tickets.
+6. **Email:** once every ticked ticket has saved, each owner (except the approver) gets one email listing their new tickets for that activity (`emailNewJobTicketOwners`). Mail permission is requested on the button click. Email failures are named in the toast and never block approval.
+7. **Duplicate flag check:** if SharePoint rejects `DesignJobCreated`, the stage still advances, but the approver is told the marker didn't save and the column needs adding in Admin & Schema.
+8. **Skip:** "Skip tasks, just approve" advances without creating tickets.
+9. **Go live:** Review → Live is a plain one-click approval with no new tickets.
 
 Not yet verified against live SharePoint (SUB-03 / FLOW-01 in `OS_RESET_MASTER.md`).
+
+## Other ways job tickets are created
+
+- **Manual job** (Submit → Maintenance / Update Ticket, `submitJob`): writes `CampaignLookupId` and `Venue`; emails the assignee.
+- **Team Work Register** add/edit (`saveTask`): writes `CampaignLookupId` and the activity's `Venue` when an activity is picked. On edit the link is only rewritten when it changes, and "Not linked" clears it.
+- **Design brief** (`saveDesignBrief`): writes `CampaignLookupId` for the chosen activity, plus `Venue`; emails the assignee.
+- **Duplicate as next month** (`duplicateAsNextMonth`): the new month is created at In Design with no approval, then the job ticket preview opens for it (`openApprovalPreview` in `duplicate` mode). Tickets are chosen from the original activity's answers with the new month's dates. **Skip, no job tickets** is available. Creating tickets sets `DesignJobCreated` without notifying the submitter.
+
+Default owners in the preview: design → the first design-role user (Luca), web → Didier (`DEFAULT_WEB_OWNER_EMAIL`), marketing → the approver, ops → the first ops-role user. Defaults are only filled in when the approver is admin or management.
 
 ## How the proposed tickets are chosen
 

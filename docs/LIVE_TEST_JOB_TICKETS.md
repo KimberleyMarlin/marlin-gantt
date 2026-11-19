@@ -2,11 +2,11 @@
 
 Covers SUB-03 / FLOW-01 and the shared-task write checks for SAFE-02 in `OS_RESET_MASTER.md`. Run it against the live SharePoint lists, signed in to the Hub with a real account.
 
-- **Time:** about 45 minutes.
-- **Who:** Kimberley, because Part A uses Schema Tools, which only Kimberley can use. Parts B to F can be run by anyone with approve rights, with a second person available to receive an assignment email.
+- **Time:** about an hour.
+- **Who:** Kimberley, because Part A uses Schema Tools, which only Kimberley can use. Parts B to G can be run by anyone with approve rights, with a second person available to receive an assignment email.
 - **Record:** fill in the Result column (Pass / Fail plus a note) as you go. For any Fail, copy the exact on-screen message and take a screenshot.
 
-Use `TEST` at the start of every title so the test records are easy to find and delete in Part G.
+Use `TEST` at the start of every title so the test records are easy to find and delete in Part H.
 
 ## Before you start
 
@@ -39,6 +39,10 @@ If A.1 shows Venue as ready before you've added it, the list already has a colum
 | B.5 | Tick the ticket complete, then untick it | Status changes both ways and persists after a reload. | |
 | B.6 | Edit the ticket's title and save | Saves and persists after a reload. | |
 | B.7 | Delete the ticket | It disappears and is gone from SharePoint after a reload. | |
+| B.8 | **Team Work Register → ＋ New task**. Title `TEST register task`, pick any activity under **Linked campaign**. Save. | In SharePoint the item's Campaign = that activity and Venue = that activity's venue. | |
+| B.9 | Open `TEST register task` to edit | The Linked campaign dropdown shows the activity you picked (not "Not linked"). | |
+| B.10 | Change Linked campaign to **Not linked to a campaign** and save | Saves. In SharePoint, Campaign is now empty. If the Hub shows "clearing the activity link was rejected", note it as a Fail: SharePoint refused to blank the lookup. | |
+| B.11 | **Design → ＋ Submit Brief**. Title `TEST brief`, pick an activity, venue and job type. Submit. | In SharePoint the new item's Campaign = that activity, and Venue = the venue you picked. | |
 
 ## Part C: approval creates the right tickets
 
@@ -55,11 +59,12 @@ Then, for each one, open **Submissions** and select **✓ Approve**.
 | # | Check | Expected | Result |
 |---|---|---|---|
 | C.1 | C1 preview header | "Playbook: Ticketed Event · chosen from Activity Group: Events & Entertainment › Themed Event". | |
-| C.2 | C1 rows | Design brief (notes list Meta, TVs and the TV detail), ticket platform (notes show the platform), website page, social launch and reminder, in-venue signage: all **ticked**. EDM row present but **unticked**, with "unticked: Newsletter not selected". | |
+| C.2 | C1 rows | Web tickets (ticket platform, website page) default to **Didier**; design and signage to Luca. Design brief (notes list Meta, TVs and the TV detail), ticket platform (notes show the platform), website page, social launch and reminder, in-venue signage: all **ticked**. EDM row present but **unticked**, with "unticked: Newsletter not selected". | |
 | C.3 | C2 preview header | "Playbook: Loaded Rewards · chosen from Activity Group: Campaigns & Marketing › Loaded Rewards Campaign". | |
 | C.4 | C2 rows | Push notification row **unticked** ("App not required"). POS pricing update ticked, with your POS notes. EDM ticked. | |
 | C.5 | C3 preview | "Playbook: Request: POS". A single POS update ticket with your POS notes. | |
-| C.6 | In C1, change one owner to yourself and one due date, tick EDM back on, untick in-venue signage. Select **Create tasks & Approve**. | Toast "approved → In Design, tasks created", with no Venue-in-Notes warning. Activity leaves Submissions and shows as Planning. | |
+| C.6 | In C1, change one owner to yourself and one due date, tick EDM back on, untick in-venue signage. Select **Create tasks & Approve**. | Toast "approved → In Design, tasks created — *n* owners emailed", with no Venue-in-Notes warning. Activity leaves Submissions and shows as Planning. | |
+| C.6a | Each owner other than you checks their inbox | Exactly **one** email each, "*n* new job tickets: TEST ticketed gig", listing only their own tickets with due dates. You get no email for the ticket you assigned to yourself. If the toast says "email not sent to …", note who. | |
 | C.7 | In SharePoint, check C1's tickets | Exactly the ticked rows exist: EDM present, signage absent. Each has Campaign = C1, **Venue = The Left Bank**, your changed owner and due date, and the submission details in Notes. | |
 | C.8 | Approve C2 and C3 with the defaults | Same as C.6 and C.7 for their rows. Venue = Whitfords Brewing Co and Mustang Bar. | |
 | C.9 | In **My Work** (which shows tickets assigned to you), search for `TEST ticketed gig`. If C1 belongs to a Project, open **Projects**. | Search finds C1's tickets by activity name (this proves the Campaign link is read back). The project card's open-work count includes them. | |
@@ -76,6 +81,7 @@ Then, for each one, open **Submissions** and select **✓ Approve**.
 |---|---|---|---|
 | E.1 | In SharePoint, open C1 in Marketing & Activations 2026 | Design Job Created = Yes. | |
 | E.2 | Set C1's stage back to Intake in the Hub (or WorkflowStage in SharePoint) and approve it again | No preview opens. It goes straight to In Design and no new tickets are created. | |
+| E.3a | Only if Design Job Created was **missing** at step 0.3 and you chose not to add it: approve a new `TEST no flag` activity with tickets | After the toast, a red message says the "Design Job Created" marker did not save and approving again could create a second set. Otherwise mark Not run. | |
 | E.3 | Submit `TEST double click`. In the preview, double-click **Create tasks & Approve**. | Each ticket is created once (check the count in SharePoint). | |
 
 ## Part F: failure handling
@@ -87,7 +93,15 @@ This needs a ticket to fail on purpose. The simplest way is for someone with Sha
 | F.1 | Submit `TEST failure`, approve it, and select Create with a ticket that will fail | Message "*n* task(s) could not be created — the activity stays at Intake", naming the failed ticket and the HTTP status. Activity is still in Submissions at Intake. | |
 | F.2 | Undo the list change and select **Retry remaining & Approve** | Only the failed ticket is created (no duplicates of the ones that already saved). Activity then moves to In Design. | |
 
-## Part G: clean up
+## Part G: recurring "Duplicate as next month"
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| G.1 | Open C1 (`TEST ticketed gig`, now In Design) and select **↻ Duplicate as next month** | The confirmation says you'll see its proposed job tickets next. After it's created, the job ticket preview opens with **Create job tickets** and **Skip, no job tickets**, and due dates based on next month's start date. | |
+| G.2 | Select **Create job tickets** | Toast "job tickets created". In SharePoint the tickets are linked to the **new** activity (not C1), and the new activity has Design Job Created = Yes. The submitter gets no "approved" message. | |
+| G.3 | Duplicate C1 again and select **Skip, no job tickets** | Toast "with no job tickets". No tickets in SharePoint for that new activity. | |
+
+## Part H: clean up
 
 1. In Tasks & Job Tickets, delete every item whose title contains `TEST`.
 2. In Marketing & Activations 2026, delete or archive every `TEST` activity.
@@ -104,6 +118,7 @@ This needs a ticket to fail on purpose. The simplest way is for someone with Sha
 | D: Skip | | |
 | E: No duplicates | | |
 | F: Failure handling | | |
+| G: Duplicate as next month | | |
 
 Tested by: ________ Date: ________
 

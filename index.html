@@ -2633,13 +2633,13 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
   <div class="popup" style="max-width:640px">
     <div class="pop-h"><div class="pop-title" id="approvalPreviewTitle">Proposed work</div><button class="pop-close" onclick="closeApprovalPreview()">✕</button></div>
     <div class="pop-body">
-      <div class="form-notice">Approving moves this to Planning. Untick anything not needed, or adjust owner / due date — these are suggestions based on the activity's group and the submission answers, not fixed.</div>
+      <div class="form-notice" id="approvalPreviewNotice">Approving moves this to Planning. Untick anything not needed, or adjust owner / due date — these are suggestions based on the activity's group and the submission answers, not fixed.</div>
       <div id="approvalPreviewSource" style="font-size:11px;color:var(--text3);margin:4px 0 8px"></div>
       <div id="approvalPreviewMsg" class="form-msg"></div>
       <div id="approvalPreviewRows"></div>
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
         <button class="btn btn-p" id="approvalPreviewCreateBtn" onclick="confirmApprovalTasks()">Create tasks &amp; Approve</button>
-        <button class="btn btn-s" onclick="skipApprovalTasks()">Skip tasks, just approve</button>
+        <button class="btn btn-s" id="approvalPreviewSkipBtn" onclick="skipApprovalTasks()">Skip tasks, just approve</button>
         <button class="btn btn-s" onclick="closeApprovalPreview()">Cancel</button>
       </div>
     </div>
@@ -3174,6 +3174,9 @@ async function resolveRole(email){
     ROLE_EMAILS.designer=Object.entries(ROLE_MAP).find(([,v])=>v.role==='design')?.[0]||'';
     ROLE_EMAILS.ops=Object.entries(ROLE_MAP).find(([,v])=>v.role==='ops')?.[0]||'';
     ROLE_EMAILS.marketing=email;
+    // No Hub role marks the web owner (Didier signs in with the design role, like Luca), so the
+    // default for Web Update job tickets is named here. Still editable per ticket in the preview.
+    ROLE_EMAILS.web=DEFAULT_WEB_OWNER_EMAIL;
   }
 }
 
@@ -3573,6 +3576,7 @@ const PLAYBOOK_TEMPLATES={
 
 // Role → default assignee email (populated once M365 users load or roles are set)
 let ROLE_EMAILS={designer:'',web:'',marketing:'',ops:''};
+const DEFAULT_WEB_OWNER_EMAIL='didier.bertrand@marlingroup.com.au';
 
 // ARCHIVED 2026-10-14, not deleted — kept in case the preview/confirm approval flow below needs
 // rolling back. Was never actually wired up (TECH_DEBT.md: "Approval playbook exists but is not
@@ -3662,7 +3666,7 @@ async function approveCampaign(evId,btn){
 // (and DesignJobCreated when given) and only updates local state / notifies once SharePoint confirms.
 // If DesignJobCreated turns out not to be a real column, retries with just the stage change so an
 // unconfirmed extra field can never block the approval itself.
-async function advanceCampaignStage(ev,nextStage,extraFields={}){
+async function advanceCampaignStage(ev,nextStage,extraFields={},opts={}){
   const token=await getToken(true);
   const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`;
   let res=await fetch(url,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{WorkflowStage:nextStage,...extraFields}})});
@@ -3674,19 +3678,35 @@ async function advanceCampaignStage(ev,nextStage,extraFields={}){
   if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
   ev.stage=nextStage;
   if(appliedExtra&&'DesignJobCreated' in extraFields)ev.designJobCreated=!!extraFields.DesignJobCreated;
+  // Returned so callers can warn: if DesignJobCreated didn't save, nothing stops a later approval
+  // of this activity from proposing (and creating) a second set of job tickets.
+  const designJobFlagDropped='DesignJobCreated' in extraFields&&!appliedExtra;
+  if(opts.notify===false){
+    generateNotifications&&generateNotifications();renderPipeline&&renderPipeline();renderOverview&&renderOverview();renderApprovals&&renderApprovals();
+    return{designJobFlagDropped};
+  }
   notifySubmitter(ev,nextStage==='Live'?'Your event is approved and now live.':'Your submission has been approved and moved to Planning.');
   generateNotifications&&generateNotifications();
   renderPipeline&&renderPipeline();
   renderOverview&&renderOverview();
   renderApprovals&&renderApprovals();
+  return{designJobFlagDropped};
 }
+const DESIGN_JOB_FLAG_WARNING='The job tickets were created, but the "Design Job Created" marker did not save on this activity, so approving it again could create a second set of tickets. Add the Design Job Created column in Admin & Schema, then tick it on this activity.';
 
 let APPROVAL_PREVIEW_EV_ID=null;
-function openApprovalPreview(evId){
+// 'approve' (Intake → In Design from Submissions) or 'duplicate' (a new month of a recurring
+// series, already created at In Design by duplicateAsNextMonth()).
+let APPROVAL_PREVIEW_MODE='approve';
+function openApprovalPreview(evId,opts={}){
   const ev=EVENTS.find(e=>e.id===evId);
   if(!ev)return;
   APPROVAL_PREVIEW_EV_ID=evId;
-  const {templateKey,sourceLabel,tickets}=buildProposedTickets(ev);
+  APPROVAL_PREVIEW_MODE=opts.mode||'approve';
+  // A duplicated month only copies some fields, so its job tickets are chosen from the original
+  // activity's answers (Group, channels, assets, POS…), with the new month's dates.
+  const basis=opts.basis?{...opts.basis,start:ev.start,end:ev.end}:ev;
+  const {templateKey,sourceLabel,tickets}=buildProposedTickets(basis);
   const startDate=new Date(ev.start+'T00:00:00');
   const people=M365_USERS.length?M365_USERS:[];
   document.getElementById('approvalPreviewTitle').textContent=`Proposed job tickets — "${ev.title}"`;
@@ -3704,17 +3724,30 @@ function openApprovalPreview(evId){
       <input type="date" class="form-input" style="max-width:135px;font-size:12px" value="${toLocalISODate(dueDate)}">
     </div>`;
   }).join('');
-  document.getElementById('approvalPreviewCreateBtn').textContent='Create tasks & Approve';
+  const isDup=APPROVAL_PREVIEW_MODE==='duplicate';
+  document.getElementById('approvalPreviewCreateBtn').textContent=isDup?'Create job tickets':'Create tasks & Approve';
   document.getElementById('approvalPreviewCreateBtn').disabled=false;
+  const skipBtn=document.getElementById('approvalPreviewSkipBtn');
+  if(skipBtn)skipBtn.textContent=isDup?'Skip, no job tickets':'Skip tasks, just approve';
+  const notice=document.getElementById('approvalPreviewNotice');
+  if(notice)notice.textContent=isDup
+    ?'Next month\'s activity is created and already in Planning. Untick anything not needed, or adjust owner / due date. Owners are emailed their new job tickets.'
+    :'Approving moves this to Planning. Untick anything not needed, or adjust owner / due date — these are suggestions based on the activity\'s group and the submission answers, not fixed. Owners are emailed their new job tickets.';
   document.getElementById('approvalPreviewOv').classList.add('show');
 }
 function closeApprovalPreview(){
   document.getElementById('approvalPreviewOv').classList.remove('show');
   APPROVAL_PREVIEW_EV_ID=null;
+  APPROVAL_PREVIEW_MODE='approve';
 }
 async function skipApprovalTasks(){
   const ev=EVENTS.find(e=>e.id===APPROVAL_PREVIEW_EV_ID);
   if(!ev)return;
+  if(APPROVAL_PREVIEW_MODE==='duplicate'){
+    closeApprovalPreview();
+    if(typeof showToast==='function')showToast(`Created "${ev.title}" for next month, with no job tickets.`);
+    return;
+  }
   try{
     await advanceCampaignStage(ev,'In Design');
     closeApprovalPreview();
@@ -3723,6 +3756,40 @@ async function skipApprovalTasks(){
     const msg=document.getElementById('approvalPreviewMsg');
     msg.textContent='Could not approve: '+e.message;msg.className='form-msg err';
   }
+}
+// One email per owner listing the job tickets just created for them on this activity. Skips the
+// approver (sendMentionEmails() drops the current user) and rows already emailed on an earlier
+// attempt. Returns a short summary for the toast — '' when there is nothing worth saying.
+async function emailNewJobTicketOwners(ev,rows,{mailToken,tokenError}){
+  const byOwner=new Map();
+  rows.forEach(row=>{
+    if(row.dataset.created!=='1'||row.dataset.emailed==='1')return;
+    const sel=row.querySelector('select');const email=(sel.value||'').trim();
+    if(!email)return;
+    const key=email.toLowerCase();
+    if(!byOwner.has(key))byOwner.set(key,{email,name:(sel.options[sel.selectedIndex]?.text||email).replace(/\s*\([^)]*\)\s*/g,'').trim(),rows:[]});
+    byOwner.get(key).rows.push(row);
+  });
+  const me=(currentUserEmail||'').toLowerCase();
+  const who=currentUser?.name||currentUserEmail||'Someone';
+  const link=window.location.origin+window.location.pathname+'?panel=mytasks';
+  let sent=0;const failed=[];
+  for(const [key,owner] of byOwner){
+    if(key===me){owner.rows.forEach(r=>r.dataset.emailed='1');continue;}
+    const lines=owner.rows.map(r=>{const due=r.querySelector('input[type=date]').value;return`• ${r.dataset.taskTitle}${due?' — due '+fmtDate(due):''}`;}).join('\n');
+    const count=owner.rows.length;
+    try{
+      const res=await sendMentionEmails([{name:owner.name,email:owner.email}],ev.title,'',ev.spId,{
+        mailToken,tokenError,link,
+        subject:`${count} new job ticket${count===1?'':'s'}: ${ev.title}`,
+        content:`Hi ${owner.name},\n\n${who} created ${count===1?'a job ticket':count+' job tickets'} for you on "${ev.title}" (${ev.venue||'no venue'}, starts ${ev.start?fmtDate(ev.start):'TBC'}):\n\n${lines}\n\nOpen Tasks & Job Tickets: ${link}`
+      });
+      if(res.sent>0){sent++;owner.rows.forEach(r=>r.dataset.emailed='1');}
+      else failed.push(owner.name);
+    }catch(e){console.error('Job ticket email failed for',owner.email,e);failed.push(owner.name);}
+  }
+  if(failed.length)return`email not sent to ${failed.join(', ')}`;
+  return sent?`${sent} owner${sent===1?'':'s'} emailed`:'';
 }
 // Creates only the rows still ticked, skipping any this call has already created (tracked via
 // data-created, so a retry after a partial failure doesn't duplicate the ones that already landed).
@@ -3733,8 +3800,15 @@ async function confirmApprovalTasks(){
   if(!ev)return;
   const msg=document.getElementById('approvalPreviewMsg');
   const createBtn=document.getElementById('approvalPreviewCreateBtn');
+  const isDup=APPROVAL_PREVIEW_MODE==='duplicate';
   createBtn.disabled=true;createBtn.textContent='Creating…';
   const rows=[...document.querySelectorAll('#approvalPreviewRows [data-approval-row]')];
+  // Ask for Mail.Send first, while this is still the user's click — a consent popup opened after
+  // another await can be blocked. Only needed if someone other than the approver gets a ticket.
+  const me=(currentUserEmail||'').toLowerCase();
+  const needsMail=rows.some(r=>r.dataset.emailed!=='1'&&r.querySelector('input[type=checkbox]').checked&&(r.querySelector('select').value||'').toLowerCase()&&r.querySelector('select').value.toLowerCase()!==me);
+  let mailToken=null,mailTokenError=null;
+  if(needsMail){try{mailToken=await getMailToken();}catch(e){mailTokenError=e;console.warn('Job ticket email permission unavailable:',e);}}
   const token=await getToken(true);
   const failures=[];
   for(const row of rows){
@@ -3761,15 +3835,24 @@ async function confirmApprovalTasks(){
     }catch(e){failures.push(`${row.dataset.taskTitle}: ${e.message}`);}
   }
   if(failures.length){
-    msg.textContent=`${failures.length} task${failures.length===1?'':'s'} could not be created — the activity stays at Intake. ${failures.join('; ')}`;
+    msg.textContent=`${failures.length} task${failures.length===1?'':'s'} could not be created${isDup?'':' — the activity stays at Intake'}. ${failures.join('; ')}`;
     msg.className='form-msg err';
-    createBtn.disabled=false;createBtn.textContent='Retry remaining & Approve';
+    createBtn.disabled=false;createBtn.textContent=isDup?'Retry remaining':'Retry remaining & Approve';
     return;
   }
+  // Every ticked ticket saved: email each owner once. Never blocks the approval.
+  const emailSummary=await emailNewJobTicketOwners(ev,rows,{mailToken,tokenError:mailTokenError});
   try{
-    await advanceCampaignStage(ev,'In Design',{DesignJobCreated:true});
+    // Duplicate mode: the activity is already In Design — this only sets DesignJobCreated, and
+    // doesn't tell the submitter it was "approved".
+    const result=await advanceCampaignStage(ev,'In Design',{DesignJobCreated:true},isDup?{notify:false}:{});
     closeApprovalPreview();
-    if(typeof showToast==='function')showToast(`"${ev.title}" approved → In Design, tasks created${SHARED_TASK_VENUE_COLUMN?'':' (Venue saved in Notes: the Venue column is missing, add it in Schema Tools)'}`);
+    const notes=[
+      SHARED_TASK_VENUE_COLUMN?'':'Venue saved in Notes: the Venue column is missing, add it in Admin & Schema',
+      emailSummary
+    ].filter(Boolean).join(' · ');
+    if(typeof showToast==='function')showToast(`"${ev.title}" ${isDup?'job tickets created':'approved → In Design, tasks created'}${notes?' — '+notes:''}`);
+    if(result?.designJobFlagDropped)showApprovalError(DESIGN_JOB_FLAG_WARNING);
   }catch(e){
     msg.textContent='Tasks were created, but the activity could not be moved to In Design: '+e.message;
     msg.className='form-msg err';
@@ -3907,7 +3990,7 @@ async function duplicateAsNextMonth(evId,btn){
   const ev=EVENTS.find(e=>e.id===evId);
   if(!ev)return;
   if(!canEditCampaigns()){alert('You do not have permission to create activities.');return;}
-  if(!confirm(`Create next month's "${ev.title}"? It goes straight to In Design — no approval step, since this is a recurring series.`))return;
+  if(!confirm(`Create next month's "${ev.title}"? It goes straight to In Design with no approval step, since this is a recurring series. You'll then see its proposed job tickets, and can skip them.`))return;
   if(btn){btn.disabled=true;btn.textContent='Creating…';}
   try{
     const token=await getToken(true);
@@ -3961,7 +4044,8 @@ async function duplicateAsNextMonth(evId,btn){
     if(newEv)showActivityPage(newEv.id);
     if(seriesColumnMissing)alert('Created next month\'s activity, but "SeriesId" isn\'t a column yet so it isn\'t linked as a series. Add a Number column named SeriesId via Schema Tools, then it\'ll link up on the next duplicate.');
     else if(seriesLinkError)alert(`Created next month's activity, but couldn't link the original into the series (${seriesLinkError}).`);
-    else if(typeof showToast==='function')showToast(`Created "${ev.title}" for next month — update the details, no approval needed.`);
+    // A recurring month skips approval, so offer its job tickets here instead (Skip is available).
+    if(newEv)openApprovalPreview(newEv.id,{mode:'duplicate',basis:ev});
   }catch(e){
     alert("Could not create next month's instance: "+e.message);
   }
@@ -8693,6 +8777,7 @@ async function saveDesignBrief(btn){
     AssetSpec:(document.getElementById('bSpecs').value||'')+(platforms?' | '+platforms:''),
     Notes:briefNotes,
     Venue:venue,
+    CampaignLookupId:Number(campaign), // bCampaign's value is the activity's SharePoint id
     CopyRequired:!!document.getElementById('bCopy').value
   };
   const briefDue=document.getElementById('bBriefDue').value;if(briefDue)fields.DueDate=briefDue+'T12:00:00Z';
@@ -12643,9 +12728,10 @@ function withVenueInNotes(fields){
   if(!/^Venue:/m.test(notes))rest.Notes=[`Venue: ${Venue}`,notes].filter(Boolean).join('\n\n');
   return rest;
 }
-async function postSharedTask(token,fields){
-  const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`;
-  const post=f=>fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:f})});
+// Pass itemId to update an existing item (PATCH) instead of creating one; same Venue fallback.
+async function postSharedTask(token,fields,itemId){
+  const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items${itemId?'/'+itemId:''}`;
+  const post=f=>fetch(url,{method:itemId?'PATCH':'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:f})});
   if(!fields.Venue)return post(fields);
   if(!SHARED_TASK_VENUE_COLUMN){const r=await post(withVenueInNotes(fields));r.venueFallback=true;return r;}
   const res=await post(fields);
@@ -12721,6 +12807,7 @@ function openAddTask(campaignId){
     if(campaignId&&String(e.spId)===String(campaignId))opt.selected=true;
     campSel.appendChild(opt);
   });
+  campSel.dataset.original='';
 
   // Assignable to anyone in the Marlin directory (authorisedAssignableUsers falls back to the
   // four head-office names only while the tenant directory hasn't loaded yet).
@@ -12749,14 +12836,18 @@ function openEditTask(taskId){
   document.getElementById('tCategory').value=t.category||'General';
   document.getElementById('taskFormMsg').textContent='';
 
-  // Populate campaign dropdown
+  // Populate campaign dropdown, preselecting the task's current activity (by id, or by title for
+  // older tasks saved before CampaignLookupId was written).
   const campSel=document.getElementById('tCampaignLink');
   campSel.innerHTML='<option value="">Not linked to a campaign</option>';
-  EVENTS.filter(e=>!isArchived(e)).sort((a,b)=>a.title.localeCompare(b.title)).forEach(e=>{
+  const linkedEv=t.campaignLookupId?EVENTS.find(e=>String(e.spId)===String(t.campaignLookupId)):(t.campaignLookup?EVENTS.find(e=>(e.title||'').toLowerCase()===t.campaignLookup.toLowerCase()):null);
+  EVENTS.filter(e=>!isArchived(e)||e===linkedEv).sort((a,b)=>a.title.localeCompare(b.title)).forEach(e=>{
     const opt=document.createElement('option');
     opt.value=e.spId;opt.textContent=e.title+' ('+shortVenue(e.venue).replace('Whitfords Brewing Co','WBC')+')';
+    if(linkedEv&&e===linkedEv)opt.selected=true;
     campSel.appendChild(opt);
   });
+  campSel.dataset.original=linkedEv?String(linkedEv.spId):'';
 
   if(!canEditTeamTask(t)){alert('You can view this task, but only its owner, management or Kimberley can edit it.');return;}
   // Assignable to anyone in the Marlin directory.
@@ -12809,6 +12900,16 @@ async function saveTask(){
   if(due)fields.DueDate=due+'T12:00:00Z';
   if(notes)fields.Notes=notes;
   if(assignTo)fields.AssignedTo=assignTo;
+  // Activity link (the Campaign lookup) and that activity's venue. On edit, only sent when the
+  // link changed, so editing an older task never rewrites a link it didn't touch; choosing "Not
+  // linked" clears it. Venue is left as-is when the link is cleared.
+  const linkedEv=campaignSpId?EVENTS.find(e=>String(e.spId)===String(campaignSpId)):null;
+  const originalLink=document.getElementById('tCampaignLink').dataset.original||'';
+  const linkChanged=isEdit?String(campaignSpId||'')!==originalLink:!!campaignSpId;
+  if(linkChanged){
+    fields.CampaignLookupId=campaignSpId?Number(campaignSpId):null;
+    if(linkedEv?.venue)fields.Venue=linkedEv.venue;
+  }
 
   console.log('Saving task fields:',JSON.stringify(fields));
 
@@ -12817,11 +12918,14 @@ async function saveTask(){
       const token=await getToken(true);
       let savedId=editId;
       if(isEdit){
-        const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items/${editId}`,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})});
-        if(!res.ok){const errBody=await res.text();console.error('Task PATCH failed:',res.status,errBody);throw new Error('PATCH failed: '+res.status+' — '+errBody.substring(0,120));}
+        const res=await postSharedTask(token,fields,editId);
+        if(!res.ok){const errBody=await res.text();console.error('Task PATCH failed:',res.status,errBody);throw new Error('PATCH failed: '+res.status+' — '+errBody.substring(0,120)+(linkChanged&&!campaignSpId?' (clearing the activity link was rejected — pick an activity or leave the link as it was)':''));}
         // Update local
         const t=MY_TASKS.find(t=>String(t.id)===String(editId));
-        if(t){t.title=title;t.priority=fields.Priority;t.category=fields.TaskType;t.due=due;t.notes=notes;t.assignedTo=assignTo;}
+        if(t){
+          t.title=title;t.priority=fields.Priority;t.category=fields.TaskType;t.due=due;t.notes=res.venueFallback&&fields.Venue?withVenueInNotes({Venue:fields.Venue,Notes:notes}).Notes:notes;t.assignedTo=assignTo;
+          if(linkChanged){t.campaignLookupId=campaignSpId?String(campaignSpId):'';t.campaignLookup=linkedEv?.title||'';if(linkedEv?.venue)t.venue=linkedEv.venue;}
+        }
       } else {
         // Resilient create — if a field name here doesn't match SharePoint exactly (most likely
         // AssignedTo, if it's ever recreated as a Person column instead of text), drop just that
@@ -12831,7 +12935,7 @@ async function saveTask(){
         const removable=[['AssignedTo'],['TaskType'],['DueDate'],['Notes']];
         let res,ok=false,dropped=[];
         for(let attempt=0;attempt<=removable.length;attempt++){
-          res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items`,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:payload})});
+          res=await postSharedTask(token,payload);
           if(res.ok){ok=true;break;}
           const errBody=await res.text();
           console.error('Task POST attempt',attempt,'failed:',res.status,errBody);
@@ -12849,7 +12953,7 @@ async function saveTask(){
           document.getElementById('taskFormMsg').textContent=`⚠︎︎ Task saved, but "AssignedTo" isn't a valid column right now — the assignment didn't stick. Run dumpCols() on the Tasks list to check the real field name.`;
           document.getElementById('taskFormMsg').className='form-msg err';
         }
-        MY_TASKS.push({id:savedId,title,status:'Not Started',priority:fields.Priority,category:fields.TaskType,due,notes,assignedTo:dropped.includes('AssignedTo')?'':assignTo,campaignLookup:''});
+        MY_TASKS.push({id:savedId,title,status:'Not Started',priority:fields.Priority,category:fields.TaskType,due,notes,assignedTo:dropped.includes('AssignedTo')?'':assignTo,campaignLookup:linkedEv?.title||'',campaignLookupId:linkedEv?String(linkedEv.spId):'',venue:linkedEv?.venue||''});
         // Notify whoever this was assigned to (only if the assignment actually saved)
         if(TASK_SHARING_ENABLED&&assignTo&&!dropped.includes('AssignedTo')){
           const person=M365_USERS.find(u=>u.email&&u.email.toLowerCase()===assignTo.toLowerCase());
