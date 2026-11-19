@@ -12320,9 +12320,13 @@ async function refreshSocialCaption(id){
 }
 // ── Reels (videos in SharePoint) ─────────────────────────────────────────────────────────────
 // SharePoint's phone view streams a compressed copy, so reels can't be saved at full quality from
-// there. This lists the 00 OS/Reels folder on the Marketing site, fetches the ORIGINAL file via
+// there. This lists the Reels folder on the Marketing site, fetches the ORIGINAL file via
 // Graph's pre-authenticated downloadUrl, and hands it to the iPhone share sheet ("Save Video").
 // iOS only lets navigator.share run straight from a tap, so it's two taps: prepare, then save.
+// The Reels folder is found from its SharePoint sharing link (Share → Copy link on the folder), so
+// it keeps working wherever the folder sits. If the link stops resolving, REELS_FOLDER_PATH is
+// tried in each library on the Marketing site as a fallback.
+const REELS_SHARE_LINK='https://marlingroupaus.sharepoint.com/:f:/s/MarlinHospitalityMarketing/IgALHVZ9bLuISbb90wnzN3f3AVeM6cf6WKDd8139QEIkhWs?e=2hkNAc';
 const REELS_FOLDER_PATH='00 OS/Reels';
 let _reelsLoc=null,REELS=[],REELS_STATE={status:'idle',error:''},_socView='calendar',_socAttachTarget=null;
 const _reelFiles={};
@@ -12345,13 +12349,29 @@ async function socLocateReels(token){
     const j=await res.json();
     return{driveId:j.parentReference?.driveId,folderId:j.id,webUrl:j.webUrl};
   };
-  // The site's default library first, then every other library on the site.
-  let loc=await tryDrive(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/drive`);
+  // 1. The sharing link: Graph's /shares endpoint takes the link as "u!" + unpadded base64url.
+  let loc=null,linkError='';
+  if(REELS_SHARE_LINK){
+    const shareId='u!'+btoa(unescape(encodeURIComponent(REELS_SHARE_LINK))).replace(/=+$/,'').replace(/\//g,'_').replace(/\+/g,'-');
+    const res=await fetch(`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem?$select=id,name,webUrl,folder,parentReference,remoteItem`,{headers:{Authorization:'Bearer '+token,Prefer:'redirect=none'}});
+    if(res.ok){
+      const j=await res.json();
+      const item=j.remoteItem||j;
+      const driveId=item.parentReference?.driveId||j.parentReference?.driveId;
+      if(driveId&&item.id)loc={driveId,folderId:item.id,webUrl:item.webUrl||j.webUrl};
+      else linkError='the link opened, but SharePoint didn\'t say which library the folder is in';
+    }else linkError=graphErrorText(res.status,await res.text().catch(()=>''));
+  }
+  // 2. The fixed path: the site's default library first, then every other library on the site.
+  if(!loc)loc=await tryDrive(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/drive`);
   if(!loc){
     const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/drives?$select=id,name`,{headers:{Authorization:'Bearer '+token}});
     if(res.ok)for(const d of (await res.json()).value||[]){loc=await tryDrive(`https://graph.microsoft.com/v1.0/drives/${d.id}`);if(loc)break;}
   }
-  if(!loc)throw new Error(`Couldn't find a "${REELS_FOLDER_PATH}" folder in any library on the Marketing site.`);
+  if(!loc){
+    if(linkError)console.warn('Reels sharing link did not resolve:',linkError);
+    throw new Error(`Couldn't open the Reels folder. Check that you can open the Reels folder link in SharePoint while signed in to the OS with the same account${linkError?` (SharePoint said: ${linkError})`:''}. If the folder has moved, copy its new link (Share → Copy link on the folder) and ask for the OS's Reels link to be updated.`);
+  }
   return(_reelsLoc=loc);
 }
 function socIsVideo(it){return !!it.file&&(/^video\//.test(it.file.mimeType||'')||/\.(mp4|mov|m4v)$/i.test(it.name||''));}
@@ -12399,9 +12419,9 @@ function renderReels(){
   const banner=target?`<div class="card" style="padding:10px 14px;margin-bottom:12px;background:var(--surface-alt);font-size:13px">Choosing a reel for <strong>${escapeAttr(target.caption.split('\n')[0]||'this post')}</strong> (${escapeAttr(shortVenue(target.venue))}, ${fmtShort(socLocalParts(target.publishAt).date)}). <button class="tb-btn" style="margin-left:8px" onclick="_socAttachTarget=null;socShowView('calendar');renderSocial()">Cancel</button></div>`:'';
   if(REELS_STATE.status==='error'){el.innerHTML=banner+`<div class="card" style="padding:14px 16px;background:var(--attention-tint)"><strong style="color:var(--attention)">Could not load reels.</strong> ${escapeAttr(REELS_STATE.error)} <button class="tb-btn" style="margin-left:8px" onclick="loadReels(true).then(renderReels)">↻ Try again</button></div>`;return;}
   if(REELS_STATE.status!=='loaded'){el.innerHTML='<div class="loading"><div class="spinner"></div></div>';return;}
-  if(!REELS.length){el.innerHTML=banner+`<div style="padding:30px;text-align:center;color:var(--ink-muted);font-size:13px">No videos in ${escapeAttr(REELS_FOLDER_PATH)} yet${_reelsLoc?.webUrl?` · <a href="${escapeAttr(_reelsLoc.webUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">Open the folder ↗</a>`:''}</div>`;return;}
+  if(!REELS.length){el.innerHTML=banner+`<div style="padding:30px;text-align:center;color:var(--ink-muted);font-size:13px">No videos in the Reels folder yet${_reelsLoc?.webUrl?` · <a href="${escapeAttr(_reelsLoc.webUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">Open the folder ↗</a>`:''}</div>`;return;}
   const used={};SOCIAL_POSTS.forEach(p=>{const k=socReelKey(p.videoRef);if(k)(used[k]=used[k]||[]).push(p);});
-  el.innerHTML=banner+`<div style="font-size:12px;color:var(--ink-muted);margin-bottom:10px">${REELS.length} video${REELS.length===1?'':'s'} in ${escapeAttr(REELS_FOLDER_PATH)}${_reelsLoc?.webUrl?` · <a href="${escapeAttr(_reelsLoc.webUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">Open the folder ↗</a>`:''} · newest first</div>
+  el.innerHTML=banner+`<div style="font-size:12px;color:var(--ink-muted);margin-bottom:10px">${REELS.length} video${REELS.length===1?'':'s'} in the Reels folder${_reelsLoc?.webUrl?` · <a href="${escapeAttr(_reelsLoc.webUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">Open the folder ↗</a>`:''} · newest first</div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px">${REELS.map(r=>{
     const shape=socReelShape(r),key=socReelKey(r),posts=used[key]||[];
     return`<div class="card" style="padding:0;overflow:hidden;display:flex;flex-direction:column">
