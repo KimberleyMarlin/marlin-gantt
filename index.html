@@ -1487,6 +1487,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
     <div class="ph">
       <div><div class="ph-eye">Social media</div><div class="ph-title">Social <em>Calendar</em></div><div class="ph-sub" id="socSub"></div></div>
       <div class="ph-right">
+        <div class="chips" id="socTabs"><div class="chip on" data-v="calendar" onclick="pickSocTab(this)">Calendar</div><div class="chip" data-v="reels" onclick="pickSocTab(this)">Reels</div></div>
         <select class="form-select" id="socVenue" style="width:auto;font-size:12px" onchange="renderSocial()" aria-label="Venue"></select>
         <select class="form-select" id="socStatus" style="width:auto;font-size:12px" onchange="renderSocial()" aria-label="Status">
           <option value="">All statuses</option><option>Draft</option><option>Approved</option><option>Scheduled</option><option>Posted</option><option>Rejected</option>
@@ -1499,6 +1500,24 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
       <div class="stats" id="socStats" style="margin-bottom:12px"></div>
       <div id="socSuggest"></div>
       <div id="socCal"></div>
+      <div id="socReels" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="socAttachOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closeReelAttach()">
+    <div class="popup" style="max-width:560px">
+      <div class="pop-h"><div class="pop-title">Attach reel</div><button class="pop-close" onclick="closeReelAttach()">✕</button></div>
+      <div class="pop-body">
+        <div id="socAttachTitle" style="font-size:13px;font-weight:700;color:var(--ink-brand);margin-bottom:10px;word-break:break-word"></div>
+        <div class="form-section-head">Add it to an upcoming post</div>
+        <div id="socAttachList" style="max-height:300px;overflow:auto;margin-bottom:14px"></div>
+        <div class="form-section-head">Or start a new reel post</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Venue</label><select class="form-select" id="socAttachVenue"></select></div>
+          <div class="form-group"><label class="form-label">Publish date</label><input class="form-input" id="socAttachDate" type="date"></div>
+        </div>
+        <button class="btn btn-p" style="margin-top:10px" onclick="createReelPost(this)">Create reel post</button>
+      </div>
     </div>
   </div>
 
@@ -1514,9 +1533,14 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
           <div class="form-group"><label class="form-label">Platforms</label><div id="socEditPlatforms" style="display:flex;gap:12px;flex-wrap:wrap;padding-top:6px;font-size:13px">
             <label><input type="checkbox" value="Facebook"> Facebook</label><label><input type="checkbox" value="Instagram"> Instagram</label><label><input type="checkbox" value="Google"> Google</label>
           </div></div>
+          <div class="form-group full"><label class="form-label">Video</label><div id="socEditVideo" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px"></div></div>
+          <div class="form-group full" id="socEditModeGroup"><label class="form-label">How it's published</label><div style="display:flex;gap:16px;flex-wrap:wrap;padding-top:4px;font-size:13px">
+            <label><input type="radio" name="socEditMode" value="Manual"> By hand in Business Suite</label>
+            <label><input type="radio" name="socEditMode" value="Auto"> Automatically at the publish time</label>
+          </div><div class="field-help" id="socEditModeHelp"></div></div>
           <div class="form-group full"><label class="form-label">Caption</label><textarea class="form-textarea" id="socEditCaption" style="min-height:180px" oninput="socEditCount()"></textarea><div class="field-help" id="socEditCount"></div></div>
         </div>
-        <div class="field-help" style="margin:6px 0 12px">The image is the activity's featured photo. To change it, pick a different photo on the activity and suggest posts again.</div>
+        <div class="field-help" style="margin:6px 0 12px">The image is the activity's featured photo. To change it, pick a different photo on the activity and suggest posts again. A video, if attached, is used instead of the image.</div>
         <div style="display:flex;gap:8px"><button class="btn btn-p" onclick="saveSocialEdit(this)">Save</button><button class="btn btn-s" onclick="closeSocialEdit()">Cancel</button></div>
       </div>
     </div>
@@ -11464,11 +11488,16 @@ function renderDesign(){
 // rows live in the Social Posts list (see LIST_IDS.socialPosts and docs/SOCIAL_CALENDAR.md), so a
 // later sync job can push Approved rows to Meta or a scheduler without changing this screen.
 // ═══════════════════════════════════════
-const SOCIAL_STATUSES=['Draft','Approved','Scheduled','Posted','Rejected'];
-const SOCIAL_STATUS_TAG={Draft:'t-gr',Approved:'t-b',Scheduled:'t-p',Posted:'t-g',Rejected:'t-o'};
+const SOCIAL_STATUSES=['Draft','Approved','Scheduled','Publishing','Posted','Failed','Rejected'];
+const SOCIAL_STATUS_TAG={Draft:'t-gr',Approved:'t-b',Scheduled:'t-p',Publishing:'t-p',Posted:'t-g',Failed:'t-r',Rejected:'t-o'};
+// Automatic publishing: Approved posts with PublishMode=Auto are published at their time by the
+// Social publish job (.github/workflows/social-publish.yml → scripts/social-publish.mjs), which holds
+// the Meta publishing token. Leave false until that job's secrets are in and a test post has gone
+// out; while false the OS doesn't offer Auto, so nothing is queued for a job that can't run.
+const SOCIAL_AUTOPUBLISH_READY=false;
 const SOCIAL_PLATFORMS=['Facebook','Instagram','Google'];
 const SOCIAL_POST_TYPES=['Feed','Story','Reel'];
-const SOCIAL_STEP_LABELS={announce:'Announcement',tickets:'Tickets on sale',reminder:'Reminder',lastchance:'Last chance',onday:'On the day',launch:'Launch',midrun:'Mid-run reminder',weekly1:'Weekly reminder',weekly2:'Weekly reminder',weekly3:'Weekly reminder',final:'Final push',update:'Update'};
+const SOCIAL_STEP_LABELS={announce:'Announcement',tickets:'Tickets on sale',reminder:'Reminder',lastchance:'Last chance',onday:'On the day',launch:'Launch',midrun:'Mid-run reminder',weekly1:'Weekly reminder',weekly2:'Weekly reminder',weekly3:'Weekly reminder',final:'Final push',update:'Update',reel:'Reel'};
 // Default posting times (local). Feed posts around lunch, stories in the afternoon.
 const SOCIAL_DEFAULT_TIME={Feed:'11:30',Story:'16:00',Reel:'11:30'};
 // Where each venue's posts go. Business Suite publishes to whichever Page is selected, so every post
@@ -11476,16 +11505,17 @@ const SOCIAL_DEFAULT_TIME={Feed:'11:30',Story:'16:00',Reel:'11:30'};
 // Page IDs and handles are public (shown on each Page's About tab), so they live here, not in
 // GitHub secrets. Business Settings → Accounts → Pages / Instagram accounts lists them.
 // Empty means not set up yet: the post then warns to check the Page by hand.
-const SOCIAL_ACCOUNTS={
-  'The Left Bank':        {page:'',pageId:'',instagram:''},
-  'The Ravenswood':       {page:'',pageId:'',instagram:''},
-  'Whitfords Brewing Co': {page:'',pageId:'',instagram:''},
-  'Hotel Darwin':         {page:'',pageId:'',instagram:''},
-  'Mustang Bar':          {page:'',pageId:'',instagram:''},
-  'Beerland Brewing':     {page:'',pageId:'',instagram:''},
-  // Group-wide ("All Venues") posts
-  'All Venues':           {page:'',pageId:'',instagram:''},
-};
+// The publish job reads this same block (between the markers, as JSON), so keep it valid JSON:
+// double quotes, no comments, no trailing commas. "All Venues" is where group-wide posts go.
+const SOCIAL_ACCOUNTS=/*social-accounts:start*/{
+  "The Left Bank":        {"page":"","pageId":"","instagram":""},
+  "The Ravenswood":       {"page":"","pageId":"","instagram":""},
+  "Whitfords Brewing Co": {"page":"","pageId":"","instagram":""},
+  "Hotel Darwin":         {"page":"","pageId":"","instagram":""},
+  "Mustang Bar":          {"page":"","pageId":"","instagram":""},
+  "Beerland Brewing":     {"page":"","pageId":"","instagram":""},
+  "All Venues":           {"page":"","pageId":"","instagram":""}
+}/*social-accounts:end*/;
 function socAccount(venue){return SOCIAL_ACCOUNTS[venue]||{page:'',pageId:'',instagram:''};}
 function socBusinessSuiteUrl(venue){
   const id=socAccount(venue).pageId;
@@ -11586,6 +11616,7 @@ function socialCaption(ev,step){
   return lines.filter(l=>l&&String(l).trim()).join('\n\n');
 }
 
+function socJson(v){try{const j=JSON.parse(v||'');return j&&typeof j==='object'?j:{};}catch{return{};}}
 function mapSocialPost(item){
   const f=item.fields||{};
   const plats=String(f.Platforms||'').split(/[;,]/).map(s=>s.trim()).filter(Boolean);
@@ -11606,7 +11637,12 @@ function mapSocialPost(item){
     approvedBy:f.ApprovedBy||'',
     approvedAt:f.ApprovedAt||'',
     notes:f.Notes||'',
-    externalPostId:f.ExternalPostId||''
+    externalPostId:f.ExternalPostId||'',
+    videoRef:parseEventImageRef(f.VideoRef),
+    publishMode:f.PublishMode==='Auto'?'Auto':'Manual',
+    publishedAt:f.PublishedAt||'',
+    postUrls:socJson(f.PostUrl),
+    insights:socJson(f.Insights)
   };
 }
 
@@ -11643,11 +11679,18 @@ function socActivityChange(p){
   if(p.activityDate&&ev.start!==p.activityDate)return{kind:'retimed',text:p.captionEdited?`Activity now starts ${fmtShort(ev.start)}: check the caption`:`Activity now starts ${fmtShort(ev.start)}: the caption still has the old date`};
   return null;
 }
+// Reels need a video; Instagram needs an image or a video on everything.
+function socMediaProblem(p){
+  if(p.postType==='Reel'&&!p.videoRef)return'Reels need a video. Attach one from the Reels tab.';
+  if(p.platforms.includes('Instagram')&&!p.imageRef&&!p.videoRef)return'Needs an image for Instagram';
+  return'';
+}
 function socFlags(p){
   const flags=[];
-  if(p.platforms.includes('Instagram')&&!p.imageRef)flags.push('Needs an image for Instagram');
+  const m=socMediaProblem(p);if(m)flags.push(m);
   const change=socActivityChange(p);if(change)flags.push(change.text);
-  if(['Draft','Approved'].includes(p.status)&&p.publishAt&&new Date(p.publishAt)<new Date())flags.push('Publish time has passed');
+  if(p.status==='Draft'&&p.publishAt&&new Date(p.publishAt)<new Date())flags.push('Publish time has passed');
+  if(p.status==='Approved'&&p.publishAt&&new Date(p.publishAt)<new Date(Date.now()-(p.publishMode==='Auto'?45*60000:0)))flags.push(p.publishMode==='Auto'?'Publish time has passed and it hasn\'t gone out. Check the Social publish job.':'Publish time has passed');
   return flags;
 }
 
@@ -11669,7 +11712,17 @@ async function renderSocial(){
     return;
   }
   setup.innerHTML='';
+  const reelsEl=document.getElementById('socReels'),onReels=_socView==='reels';
+  reelsEl.style.display=onReels?'':'none';
+  [cal,stats,sugg].forEach(e=>{e.style.display=onReels?'none':'';});
+  ['socVenue','socStatus'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=onReels?'none':'';});
   if(SOCIAL_STATE.status!=='loaded'&&SOCIAL_STATE.status!=='loading'){cal.innerHTML='<div class="loading"><div class="spinner"></div></div>';await loadSocialPosts();}
+  if(onReels){
+    sub.textContent='Videos from SharePoint, at full quality';
+    renderReels();
+    if(REELS_STATE.status!=='loaded'){await loadReels();renderReels();}
+    return;
+  }
   if(SOCIAL_STATE.status==='error'){
     sub.textContent='Could not load';
     cal.innerHTML=`<div class="card" style="padding:14px 16px;background:var(--attention-tint);color:var(--ink)"><strong style="color:var(--attention)">Could not load Social Posts.</strong> ${escapeAttr(SOCIAL_STATE.error)} <button class="tb-btn" style="margin-left:8px" onclick="loadSocialPosts(true).then(renderSocial)">↻ Try again</button></div>`;
@@ -11685,10 +11738,10 @@ async function renderSocial(){
     .sort((a,b)=>String(a.publishAt).localeCompare(String(b.publishAt)));
 
   const count=s=>visible.filter(p=>p.status===s).length;
-  const needImage=visible.filter(p=>!['Posted','Rejected'].includes(p.status)&&p.platforms.includes('Instagram')&&!p.imageRef).length;
-  sub.textContent=`${visible.length} post${visible.length===1?'':'s'} · approved posts are copied into Meta Business Suite to schedule`;
+  const needImage=visible.filter(p=>!['Posted','Rejected'].includes(p.status)&&socMediaProblem(p)).length;
+  sub.textContent=`${visible.length} post${visible.length===1?'':'s'} · ${SOCIAL_AUTOPUBLISH_READY?'approved posts publish automatically or are scheduled in Business Suite':'approved posts are copied into Meta Business Suite to schedule'}`;
   const stat=(n,l,v,attn)=>`<div class="stat" onclick="const s=document.getElementById('socStatus');s.value='${v}';renderSocial()"><div class="stat-n"${attn&&n?' style="color:var(--attention)"':''}>${n}</div><div class="stat-l">${l}</div></div>`;
-  stats.innerHTML=stat(count('Draft'),'Awaiting approval','Draft')+stat(count('Approved'),'Approved, to schedule','Approved')+stat(count('Scheduled'),'Scheduled in Business Suite','Scheduled')+stat(count('Posted'),'Posted','Posted')+`<div class="stat" style="cursor:default"><div class="stat-n"${needImage?' style="color:var(--attention)"':''}>${needImage}</div><div class="stat-l">Need an image</div></div>`;
+  stats.innerHTML=stat(count('Draft'),'Awaiting approval','Draft')+stat(count('Approved'),'Approved, to schedule','Approved')+stat(count('Scheduled'),'Scheduled in Business Suite','Scheduled')+stat(count('Posted'),'Posted','Posted')+(count('Failed')?stat(count('Failed'),'Failed to publish','Failed',true):'')+`<div class="stat" style="cursor:default"><div class="stat-n"${needImage?' style="color:var(--attention)"':''}>${needImage}</div><div class="stat-l">Need an image or video</div></div>`;
 
   // Upcoming Activities with no posts yet — editors can generate drafts for them.
   if(socCanEdit()){
@@ -11712,33 +11765,63 @@ async function renderSocial(){
     <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${d===today?'var(--ink-brand)':'var(--ink-muted)'};margin-bottom:6px">${d==='Unscheduled'?d:new Date(d+'T00:00:00').toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'})}${d===today?' · Today':''}</div>
     ${list.map(socCardHtml).join('')}</div>`).join('');
   socHydrateImages();
+  // Reel posts show the video's name and length once the Reels list is loaded.
+  if(posts.some(p=>p.videoRef)&&REELS_STATE.status==='idle')loadReels().then(()=>{if(_socView==='calendar')socHydrateImages();});
 }
 
+// How and when this post goes out, and which video it carries.
+function socPublishLineHtml(p){
+  const bits=[];
+  if(p.videoRef){const r=socReelFor(p.videoRef);bits.push(`Video: ${r?`<strong>${escapeAttr(r.name)}</strong>${r.duration?' ('+socFmtDuration(r.duration)+')':''}`:'attached'}`);}
+  if(p.publishMode==='Auto'&&['Draft','Approved'].includes(p.status)){
+    const{date,time}=socLocalParts(p.publishAt);
+    bits.push(p.status==='Approved'?`<strong style="color:var(--ink-brand)">Publishes automatically</strong> ${fmtShort(date)} at ${time}`:'Set to publish automatically once approved');
+  }
+  if(p.status==='Publishing')bits.push('<strong style="color:var(--ink-brand)">Publishing now</strong>');
+  if(p.status==='Posted'&&p.publishedAt)bits.push(`Published ${new Date(p.publishedAt).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}`);
+  return bits.length?`<div style="font-size:12px;color:var(--ink);margin-bottom:6px">${bits.join(' · ')}</div>`:'';
+}
+// Results the publish job reads back from Meta: reach, views, likes, comments, shares, saves.
+function socInsightsHtml(p){
+  const ins=p.insights||{},parts=[];
+  [['facebook','Facebook'],['instagram','Instagram']].forEach(([k,label])=>{
+    const m=ins[k];if(!m||typeof m!=='object')return;
+    const vals=[['reach','reach'],['views','views'],['likes','likes'],['comments','comments'],['shares','shares'],['saves','saves']].filter(([f])=>m[f]!=null).map(([f,l])=>`${Number(m[f]).toLocaleString('en-AU')} ${l}`);
+    if(vals.length)parts.push(`<strong>${label}:</strong> ${vals.join(' · ')}`);
+  });
+  if(!parts.length)return'';
+  return`<div style="font-size:12px;color:var(--ink);margin-top:6px;padding:6px 10px;background:var(--surface-alt);border-radius:var(--radius-sm)">${parts.join('<br>')}${ins.at?`<div style="font-size:11px;color:var(--ink-muted);margin-top:2px">Updated ${new Date(ins.at).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</div>`:''}</div>`;
+}
 function socCardHtml(p){
   const ev=socEventFor(p);
   const{time}=socLocalParts(p.publishAt);
   const flags=socFlags(p);
-  const canEdit=socCanEdit()&&!['Posted'].includes(p.status);
+  const canEdit=socCanEdit()&&!['Posted','Publishing'].includes(p.status);
   const btn=(label,fn,primary,title)=>`<button class="tb-btn${primary?' p':''}" onclick="${fn}"${title?` title="${escapeAttr(title)}"`:''}>${label}</button>`;
   const actions=[];
   if(canEdit)actions.push(btn('✎ Edit',`openSocialEdit('${p.id}')`));
   if(p.status==='Draft'&&socCanApprove())actions.push(btn('✓ Approve',`approveSocialPost('${p.id}')`,true),btn('Send back',`rejectSocialPost('${p.id}')`));
-  if(['Approved','Scheduled','Posted'].includes(p.status)){
+  const manual=p.publishMode!=='Auto';
+  if(['Approved','Scheduled','Posted','Failed'].includes(p.status)){
     actions.push(btn('Copy caption',`copySocialCaption('${p.id}',this)`));
-    if(p.imageRef)actions.push(btn('Download image',`downloadSocialImage('${p.id}',this)`));
+    if(p.videoRef)actions.push(`<button class="tb-btn${_reelFiles[socReelKey(p.videoRef)]?' p':''}" data-reel-btn="${escapeAttr(socReelKey(p.videoRef))}" onclick="saveReelToPhone('${p.videoRef.driveId}','${p.videoRef.itemId}',this)">${_reelFiles[socReelKey(p.videoRef)]?'Save to Photos':'Save video to phone'}</button>`);
+    else if(p.imageRef)actions.push(btn('Download image',`downloadSocialImage('${p.id}',this)`));
   }
-  if(p.status==='Approved'&&(p.platforms.includes('Facebook')||p.platforms.includes('Instagram'))){
+  if(p.status==='Failed'&&socCanEdit())actions.push(btn('↻ Try again',`retrySocialPost('${p.id}')`,true,'Publishes again at the next run. Platforms that already posted are skipped.'),btn('Post by hand instead',`setSocialManual('${p.id}')`));
+  if(p.status==='Approved'&&manual&&(p.platforms.includes('Facebook')||p.platforms.includes('Instagram'))){
     const a=socAccount(p.venue);
     actions.push(`<a class="tb-btn" href="${socBusinessSuiteUrl(p.venue)}" target="_blank" rel="noopener" style="text-decoration:none" title="${escapeAttr(a.pageId?`Opens the composer on ${a.page||'this venue\'s Page'}. Check the account at the top before scheduling.`:'This venue\'s Page isn\'t set in the OS, so Business Suite opens on whichever Page you used last. Switch to the right one first.')}">Open in Business Suite ↗</a>`);
   }
-  if(p.status==='Approved'&&socCanEdit())actions.push(btn('Mark scheduled',`setSocialStatus('${p.id}','Scheduled')`,true,'Do this once the post is scheduled in Meta Business Suite'));
+  if(p.status==='Approved'&&manual&&socCanEdit())actions.push(btn('Mark scheduled',`setSocialStatus('${p.id}','Scheduled')`,true,'Do this once the post is scheduled in Meta Business Suite'));
   if(p.status==='Scheduled'&&socCanEdit())actions.push(btn('Mark posted',`setSocialStatus('${p.id}','Posted')`));
+  const links=Object.entries(p.postUrls||{}).filter(([,u])=>/^https:\/\//.test(String(u)));
+  links.forEach(([k,u])=>actions.push(`<a class="tb-btn" href="${escapeAttr(u)}" target="_blank" rel="noopener" style="text-decoration:none">View on ${k==='instagram'?'Instagram':'Facebook'} ↗</a>`));
   const change=socActivityChange(p);
   if(change?.kind==='moved'&&canEdit)actions.push(btn('Move to new date',`moveSocialPost('${p.id}')`));
   if(change?.kind==='retimed'&&canEdit&&!p.captionEdited)actions.push(btn('Refresh caption',`refreshSocialCaption('${p.id}')`));
   if(['Draft','Rejected'].includes(p.status)&&socCanEdit())actions.push(btn('✕ Delete',`deleteSocialPost('${p.id}')`));
   return`<div class="card" style="display:flex;gap:12px;padding:12px 14px;margin-bottom:8px;align-items:flex-start;flex-wrap:wrap">
-    <div style="width:72px;height:90px;flex-shrink:0;background:var(--surface-alt);border:1px solid var(--line);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ink-muted);text-align:center;overflow:hidden">${p.imageRef?`<img data-soc-img="${p.id}" alt="" style="width:100%;height:100%;object-fit:cover">`:'No image'}</div>
+    <div style="width:72px;height:${p.videoRef?128:90}px;flex-shrink:0;background:var(--surface-alt);border:1px solid var(--line);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ink-muted);text-align:center;overflow:hidden;position:relative">${p.videoRef||p.imageRef?`<img data-soc-img="${p.id}" alt="" style="width:100%;height:100%;object-fit:cover">`:'No image'}${p.videoRef?'<span style="position:absolute;left:4px;bottom:4px;background:var(--navy-900,#14416d);color:#fff;font-size:10px;font-weight:800;padding:1px 5px;border-radius:var(--radius-sm)">VIDEO</span>':''}</div>
     <div style="flex:1;min-width:220px">
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
         <span class="tag ${SOCIAL_STATUS_TAG[p.status]||'t-gr'}">${escapeAttr(p.status)}</span>
@@ -11748,7 +11831,10 @@ function socCardHtml(p){
       </div>
       <div style="font-size:11px;color:var(--ink-muted);margin-bottom:6px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${vColor(p.venue).c};margin-right:5px"></span>${escapeAttr(shortVenue(p.venue)||'No venue')}${ev?` · <a href="#" onclick="event.preventDefault();showPop(${ev.id})" style="color:var(--accent)">${escapeAttr(ev.title)} ↗</a>`:''}${p.approvedBy&&p.status!=='Draft'?` · approved by ${escapeAttr(p.approvedBy)}`:''}</div>
       ${p.status!=='Posted'?socDestinationHtml(p):''}
+      ${socPublishLineHtml(p)}
       <div style="font-size:13px;color:var(--ink);white-space:pre-wrap;line-height:1.5;max-height:7.5em;overflow:hidden">${escapeAttr(p.caption||'No caption yet')}</div>
+      ${p.status==='Failed'&&p.notes?`<div style="font-size:12px;margin-top:6px;padding:6px 10px;background:var(--attention-tint);border-radius:var(--radius-sm)"><strong style="color:var(--attention)">Didn't publish:</strong> ${escapeAttr(p.notes)}</div>`:''}
+      ${p.status==='Posted'?socInsightsHtml(p):''}
       ${p.status==='Rejected'&&p.notes?`<div style="font-size:12px;margin-top:6px;padding:6px 10px;background:var(--attention-tint);border-radius:var(--radius-sm)"><strong style="color:var(--attention)">Sent back:</strong> ${escapeAttr(p.notes)}</div>`:''}
       ${flags.map(f=>`<div style="font-size:12px;margin-top:6px;color:var(--attention);font-weight:600">⊘ ${escapeAttr(f)}</div>`).join('')}
       ${actions.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${actions.join('')}</div>`:''}
@@ -11759,8 +11845,9 @@ function socCardHtml(p){
 async function socHydrateImages(){
   for(const img of document.querySelectorAll('img[data-soc-img]')){
     const p=SOCIAL_POSTS.find(x=>x.id===img.dataset.socImg);
-    if(!p?.imageRef)continue;
-    resolveFeaturedImageUrl({eventImageRef:p.imageRef}).then(url=>{if(url)img.src=url;}).catch(()=>{});
+    const ref=p?.videoRef||p?.imageRef;
+    if(!ref)continue;
+    resolveFeaturedImageUrl({eventImageRef:ref}).then(url=>{if(url)img.src=url;}).catch(()=>{});
   }
 }
 
@@ -11809,6 +11896,10 @@ function openSocialEdit(id){
   document.getElementById('socEditType').value=p.postType;
   document.getElementById('socEditCaption').value=p.caption;
   document.querySelectorAll('#socEditPlatforms input').forEach(cb=>{cb.checked=p.platforms.includes(cb.value);});
+  const r=p.videoRef&&socReelFor(p.videoRef);
+  document.getElementById('socEditVideo').innerHTML=(p.videoRef?`<span>${r?escapeAttr(r.name):'Video attached'}</span><button class="tb-btn" onclick="chooseReelForPost()">Change</button><button class="tb-btn" onclick="removeReelFromPost()">✕ Remove</button>`:`<span style="color:var(--ink-muted)">None</span><button class="tb-btn" onclick="chooseReelForPost()">Choose from Reels</button>`);
+  document.querySelectorAll('input[name="socEditMode"]').forEach(rb=>{rb.checked=rb.value===p.publishMode;rb.disabled=rb.value==='Auto'&&!SOCIAL_AUTOPUBLISH_READY;});
+  document.getElementById('socEditModeHelp').textContent=SOCIAL_AUTOPUBLISH_READY?'Automatic posts publish to the Page and Instagram account shown on the post, at the publish time, once approved.':'Automatic publishing switches on once the Meta publishing setup is done (docs/SOCIAL_CALENDAR.md).';
   document.getElementById('socEditMsg').textContent=p.status==='Approved'?'This post is approved. Saving changes sends it back for approval.':p.status==='Scheduled'?'This post is already scheduled in Business Suite. Change it there too.':'';
   document.getElementById('socEditOv').classList.add('show');
   socEditCount();
@@ -11826,9 +11917,11 @@ async function saveSocialEdit(btn){
   const caption=document.getElementById('socEditCaption').value;
   if(!date){alert('Pick a publish date.');return;}
   if(!platforms.length){alert('Pick at least one platform.');return;}
+  const mode=document.querySelector('input[name="socEditMode"]:checked')?.value||p.publishMode;
   const fields={PublishAt:new Date(`${date}T${time}:00`).toISOString(),PostType:document.getElementById('socEditType').value,Platforms:platforms.join(';'),Caption:caption};
+  if(mode!==p.publishMode)fields.PublishMode=mode;
   if(caption!==p.caption)fields.CaptionEdited=true;
-  if(p.status==='Approved'||p.status==='Rejected')fields.Status='Draft';
+  if(['Approved','Rejected','Failed'].includes(p.status))fields.Status='Draft';
   btn.disabled=true;
   const ok=await patchSocialPost(p.id,fields);
   btn.disabled=false;
@@ -11836,7 +11929,9 @@ async function saveSocialEdit(btn){
 }
 async function approveSocialPost(id){
   const p=SOCIAL_POSTS.find(x=>x.id===id);if(!p)return;
-  if(p.platforms.includes('Instagram')&&!p.imageRef){alert('Instagram posts need an image. Pick a featured photo on the activity, or remove Instagram from this post.');return;}
+  const m=socMediaProblem(p);
+  if(m){alert(p.postType==='Reel'?'This reel has no video yet. Attach one from the Reels tab first.':'Instagram posts need an image. Pick a featured photo on the activity, or remove Instagram from this post.');return;}
+  if(p.publishMode==='Auto'&&!SOCIAL_AUTOPUBLISH_READY){alert('Automatic publishing isn\'t switched on yet. Set this post to "By hand in Business Suite" first.');return;}
   await patchSocialPost(id,{Status:'Approved',ApprovedBy:currentUser?.name||currentUserEmail||'',ApprovedAt:new Date().toISOString(),Notes:''});
 }
 async function rejectSocialPost(id){
@@ -11855,6 +11950,8 @@ async function moveSocialPost(id){
   if(p.status==='Scheduled')alert('This post is already scheduled in Business Suite. Move it there as well.');
   await patchSocialPost(id,fields);
 }
+async function retrySocialPost(id){await patchSocialPost(id,{Status:'Approved',Notes:''});}
+async function setSocialManual(id){await patchSocialPost(id,{Status:'Approved',PublishMode:'Manual',Notes:''});}
 async function refreshSocialCaption(id){
   const p=SOCIAL_POSTS.find(x=>x.id===id);const ev=p&&socEventFor(p);if(!ev||p.captionEdited)return;
   const fields={Caption:socialCaption(ev,p.step),ActivityDate:ev.start};
@@ -11862,6 +11959,215 @@ async function refreshSocialCaption(id){
   if(p.status==='Scheduled')alert('This post is already scheduled in Business Suite. Update the caption there as well.');
   await patchSocialPost(id,fields);
 }
+// ── Reels (videos in SharePoint) ─────────────────────────────────────────────────────────────
+// SharePoint's phone view streams a compressed copy, so reels can't be saved at full quality from
+// there. This lists the 00 OS/Reels folder on the Marketing site, fetches the ORIGINAL file via
+// Graph's pre-authenticated downloadUrl, and hands it to the iPhone share sheet ("Save Video").
+// iOS only lets navigator.share run straight from a tap, so it's two taps: prepare, then save.
+const REELS_FOLDER_PATH='00 OS/Reels';
+let _reelsLoc=null,REELS=[],REELS_STATE={status:'idle',error:''},_socView='calendar',_socAttachTarget=null;
+const _reelFiles={};
+
+function pickSocTab(el){
+  document.querySelectorAll('#socTabs .chip').forEach(c=>c.classList.toggle('on',c===el));
+  _socView=el.dataset.v;
+  renderSocial();
+}
+function socShowView(view){
+  _socView=view;
+  document.querySelectorAll('#socTabs .chip').forEach(c=>c.classList.toggle('on',c.dataset.v===view));
+}
+async function socLocateReels(token){
+  if(_reelsLoc)return _reelsLoc;
+  const path=REELS_FOLDER_PATH.split('/').map(encodeURIComponent).join('/');
+  const tryDrive=async base=>{
+    const res=await fetch(`${base}/root:/${path}?$select=id,webUrl,parentReference`,{headers:{Authorization:'Bearer '+token}});
+    if(!res.ok)return null;
+    const j=await res.json();
+    return{driveId:j.parentReference?.driveId,folderId:j.id,webUrl:j.webUrl};
+  };
+  // The site's default library first, then every other library on the site.
+  let loc=await tryDrive(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/drive`);
+  if(!loc){
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/drives?$select=id,name`,{headers:{Authorization:'Bearer '+token}});
+    if(res.ok)for(const d of (await res.json()).value||[]){loc=await tryDrive(`https://graph.microsoft.com/v1.0/drives/${d.id}`);if(loc)break;}
+  }
+  if(!loc)throw new Error(`Couldn't find a "${REELS_FOLDER_PATH}" folder in any library on the Marketing site.`);
+  return(_reelsLoc=loc);
+}
+function socIsVideo(it){return !!it.file&&(/^video\//.test(it.file.mimeType||'')||/\.(mp4|mov|m4v)$/i.test(it.name||''));}
+async function loadReels(force){
+  if(REELS_STATE.status==='loaded'&&!force)return;
+  REELS_STATE={status:'loading',error:''};
+  try{
+    const token=await getToken();
+    const loc=await socLocateReels(token);
+    const sel='$select=id,name,size,file,video,webUrl,createdDateTime,lastModifiedDateTime,parentReference,folder&$expand=thumbnails&$top=200';
+    const list=async(folderId)=>fetchGraphItems(`https://graph.microsoft.com/v1.0/drives/${loc.driveId}/items/${folderId}/children?${sel}`,token);
+    const top=await list(loc.folderId);
+    const out=top.filter(socIsVideo).map(it=>({...it,group:''}));
+    // One level of subfolders (e.g. one per venue), shown as groups.
+    for(const f of top.filter(it=>it.folder)){
+      (await list(f.id)).filter(socIsVideo).forEach(it=>out.push({...it,group:f.name}));
+    }
+    REELS=out.map(it=>({
+      driveId:loc.driveId,itemId:it.id,name:it.name,size:it.size||0,mime:it.file?.mimeType||'video/mp4',
+      width:it.video?.width||0,height:it.video?.height||0,duration:it.video?.duration||0,
+      thumb:it.thumbnails?.[0]?.large?.url||it.thumbnails?.[0]?.medium?.url||'',webUrl:it.webUrl,
+      modified:it.lastModifiedDateTime||'',group:it.group
+    })).sort((a,b)=>String(b.modified).localeCompare(String(a.modified)));
+    REELS_STATE={status:'loaded',error:''};
+  }catch(e){
+    console.warn('Could not load reels:',e);
+    REELS_STATE={status:'error',error:e.message||String(e)};
+  }
+}
+function socFmtSize(b){return b>=1e9?(b/1e9).toFixed(1)+' GB':b>=1e6?Math.round(b/1e6)+' MB':Math.max(1,Math.round(b/1e3))+' KB';}
+function socFmtDuration(ms){if(!ms)return'';const s=Math.round(ms/1000);return`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;}
+// Reels are 9:16. Anything else gets cropped or letterboxed by Instagram.
+function socReelShape(r){
+  if(!r.width||!r.height)return{ok:null,text:'Size not known yet'};
+  const ratio=r.height/r.width;
+  if(Math.abs(ratio-16/9)<0.04)return{ok:true,text:`Vertical 9:16 · ${r.width}×${r.height}`};
+  return{ok:false,text:`Not 9:16 (${r.width}×${r.height}): Instagram will crop it`};
+}
+function socReelKey(ref){return ref?`${ref.driveId}/${ref.itemId}`:'';}
+function socReelFor(ref){return REELS.find(r=>r.driveId===ref?.driveId&&r.itemId===ref?.itemId)||null;}
+
+function renderReels(){
+  const el=document.getElementById('socReels');if(!el)return;
+  const target=_socAttachTarget&&SOCIAL_POSTS.find(p=>p.id===_socAttachTarget);
+  const banner=target?`<div class="card" style="padding:10px 14px;margin-bottom:12px;background:var(--surface-alt);font-size:13px">Choosing a reel for <strong>${escapeAttr(target.caption.split('\n')[0]||'this post')}</strong> (${escapeAttr(shortVenue(target.venue))}, ${fmtShort(socLocalParts(target.publishAt).date)}). <button class="tb-btn" style="margin-left:8px" onclick="_socAttachTarget=null;socShowView('calendar');renderSocial()">Cancel</button></div>`:'';
+  if(REELS_STATE.status==='error'){el.innerHTML=banner+`<div class="card" style="padding:14px 16px;background:var(--attention-tint)"><strong style="color:var(--attention)">Could not load reels.</strong> ${escapeAttr(REELS_STATE.error)} <button class="tb-btn" style="margin-left:8px" onclick="loadReels(true).then(renderReels)">↻ Try again</button></div>`;return;}
+  if(REELS_STATE.status!=='loaded'){el.innerHTML='<div class="loading"><div class="spinner"></div></div>';return;}
+  if(!REELS.length){el.innerHTML=banner+`<div style="padding:30px;text-align:center;color:var(--ink-muted);font-size:13px">No videos in ${escapeAttr(REELS_FOLDER_PATH)} yet${_reelsLoc?.webUrl?` · <a href="${escapeAttr(_reelsLoc.webUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">Open the folder ↗</a>`:''}</div>`;return;}
+  const used={};SOCIAL_POSTS.forEach(p=>{const k=socReelKey(p.videoRef);if(k)(used[k]=used[k]||[]).push(p);});
+  el.innerHTML=banner+`<div style="font-size:12px;color:var(--ink-muted);margin-bottom:10px">${REELS.length} video${REELS.length===1?'':'s'} in ${escapeAttr(REELS_FOLDER_PATH)}${_reelsLoc?.webUrl?` · <a href="${escapeAttr(_reelsLoc.webUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">Open the folder ↗</a>`:''} · newest first</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px">${REELS.map(r=>{
+    const shape=socReelShape(r),key=socReelKey(r),posts=used[key]||[];
+    return`<div class="card" style="padding:0;overflow:hidden;display:flex;flex-direction:column">
+      <div style="aspect-ratio:9/16;background:var(--surface-alt) ${r.thumb?`url('${r.thumb.replace(/'/g,'%27')}') center/cover`:''};position:relative">
+        ${r.duration?`<span style="position:absolute;right:6px;bottom:6px;background:var(--navy-900,#14416d);color:#fff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:var(--radius-sm)">${socFmtDuration(r.duration)}</span>`:''}
+      </div>
+      <div style="padding:8px 10px;display:flex;flex-direction:column;gap:4px;flex:1">
+        <div style="font-size:12px;font-weight:700;color:var(--ink-brand);word-break:break-word">${escapeAttr(r.name)}</div>
+        <div style="font-size:11px;color:var(--ink-muted)">${r.group?escapeAttr(r.group)+' · ':''}${socFmtSize(r.size)}${r.modified?' · '+fmtShort(r.modified.slice(0,10)):''}</div>
+        <div style="font-size:11px;color:${shape.ok===false?'var(--attention)':'var(--ink-muted)'};font-weight:${shape.ok===false?700:500}">${shape.ok===false?'⊘ ':''}${escapeAttr(shape.text)}</div>
+        ${posts.length?`<div style="font-size:11px;color:var(--ink)">On ${posts.length} post${posts.length===1?'':'s'}: ${posts.map(p=>fmtShort(socLocalParts(p.publishAt).date)).join(', ')}</div>`:''}
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:6px">
+          ${target?`<button class="tb-btn p" onclick="attachReelToPost('${target.id}','${r.driveId}','${r.itemId}')">Use this reel</button>`:''}
+          <button class="tb-btn${target?'':' p'}" data-reel-btn="${escapeAttr(key)}" onclick="saveReelToPhone('${r.driveId}','${r.itemId}',this)">${_reelFiles[key]?'Save to Photos':'Save to phone'}</button>
+          ${!target&&socCanEdit()?`<button class="tb-btn" onclick="openReelAttach('${r.driveId}','${r.itemId}')">Attach to a post</button>`:''}
+          <a class="tb-btn" href="${escapeAttr(r.webUrl)}" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">Open in SharePoint ↗</a>
+        </div>
+      </div>
+    </div>`;}).join('')}</div>`;
+}
+
+async function socDownloadUrl(ref){
+  const token=await getToken();
+  const res=await fetch(`https://graph.microsoft.com/v1.0/drives/${ref.driveId}/items/${ref.itemId}?$select=name,size,file,@microsoft.graph.downloadUrl`,{headers:{Authorization:'Bearer '+token}});
+  if(!res.ok)throw new Error(graphErrorText(res.status,await res.text().catch(()=>'')));
+  const j=await res.json();
+  if(!j['@microsoft.graph.downloadUrl'])throw new Error('SharePoint did not return a download link for this file.');
+  return{url:j['@microsoft.graph.downloadUrl'],name:j.name||'reel.mp4',size:j.size||0,mime:j.file?.mimeType||'video/mp4'};
+}
+// Tap 1 downloads the original into memory (with progress); tap 2 opens the share sheet, where
+// "Save Video" puts it in Photos at full quality. Without the share sheet (a computer, or a file too
+// big to hold in memory) the original just downloads.
+async function saveReelToPhone(driveId,itemId,btn){
+  const ref={driveId,itemId},key=socReelKey(ref);
+  const ready=_reelFiles[key];
+  if(ready){
+    try{await navigator.share({files:[ready]});}
+    catch(e){if(e.name!=='AbortError')alert('Could not open the share sheet: '+e.message);}
+    return;
+  }
+  const label=btn?.textContent;
+  try{
+    if(btn){btn.disabled=true;btn.textContent='Getting the original…';}
+    const info=await socDownloadUrl(ref);
+    const canShareFiles=typeof navigator.canShare==='function'&&navigator.canShare({files:[new File([''],'test.mp4',{type:'video/mp4'})]});
+    if(!canShareFiles||info.size>600e6){
+      if(canShareFiles&&!confirm(`This video is ${socFmtSize(info.size)}, which is too big to prepare on a phone. Download it in the browser instead? A computer is more reliable for files this size.`)){return;}
+      const a=document.createElement('a');a.href=info.url;a.download=info.name;a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
+      return;
+    }
+    const res=await fetch(info.url);
+    if(!res.ok||!res.body)throw new Error('Download failed (HTTP '+res.status+')');
+    const total=info.size||Number(res.headers.get('content-length'))||0;
+    const reader=res.body.getReader(),chunks=[];let got=0;
+    for(;;){
+      const{done,value}=await reader.read();if(done)break;
+      chunks.push(value);got+=value.length;
+      if(btn&&total)btn.textContent=`Preparing… ${Math.round(got/total*100)}%`;
+    }
+    const file=new File(chunks,info.name,{type:info.mime});
+    if(!navigator.canShare({files:[file]}))throw new Error('This phone can\'t share this video type.');
+    _reelFiles[key]=file;
+    document.querySelectorAll(`[data-reel-btn="${CSS.escape(key)}"]`).forEach(b=>{b.textContent='Save to Photos';b.classList.add('p');});
+    if(btn)btn.textContent='Save to Photos';
+  }catch(e){
+    alert('Could not get the video: '+e.message);
+    if(btn)btn.textContent=label;
+  }finally{if(btn)btn.disabled=false;}
+}
+
+// Attach from the Reels tab: pick an upcoming post, or start a new reel post.
+let _reelAttachRef=null;
+function openReelAttach(driveId,itemId){
+  _reelAttachRef={driveId,itemId};
+  const r=socReelFor(_reelAttachRef);
+  const posts=SOCIAL_POSTS.filter(socVisible).filter(p=>['Draft','Approved','Rejected','Failed'].includes(p.status)&&socLocalParts(p.publishAt).date>=socToday())
+    .sort((a,b)=>String(a.publishAt).localeCompare(String(b.publishAt)));
+  document.getElementById('socAttachTitle').textContent=r?r.name:'Reel';
+  const vSel=document.getElementById('socAttachVenue');
+  vSel.innerHTML=[...VENUES_DATA.map(v=>v.name),'All Venues'].map(v=>`<option value="${escapeAttr(v)}">${escapeAttr(v==='All Venues'?'Group-wide (All Venues)':v)}</option>`).join('');
+  if(currentVenueAccess)vSel.value=currentVenueAccess;
+  document.getElementById('socAttachDate').value=socAddDays(socToday(),1);
+  document.getElementById('socAttachList').innerHTML=posts.length?posts.map(p=>`<button class="tb-btn" style="display:flex;gap:8px;width:100%;text-align:left;margin-bottom:6px;white-space:normal" onclick="attachReelToPost('${p.id}')">
+      <span style="font-weight:700;color:var(--ink-brand);min-width:70px">${fmtShort(socLocalParts(p.publishAt).date)}</span>
+      <span style="flex:1">${escapeAttr(shortVenue(p.venue))} · ${escapeAttr(p.postType)} · ${escapeAttr((p.caption||'').split('\n')[0].slice(0,70)||'No caption')}${p.videoRef?' <em style="color:var(--attention)">(replaces its video)</em>':''}</span>
+    </button>`).join(''):'<div class="field-help">No upcoming posts to attach to. Start a new reel post below.</div>';
+  document.getElementById('socAttachOv').classList.add('show');
+}
+function closeReelAttach(){document.getElementById('socAttachOv').classList.remove('show');_reelAttachRef=null;}
+async function attachReelToPost(postId,driveId,itemId){
+  const ref=driveId?{driveId,itemId}:_reelAttachRef;if(!ref)return;
+  const p=SOCIAL_POSTS.find(x=>x.id===postId);if(!p)return;
+  const fields={VideoRef:JSON.stringify(ref)};
+  if(p.postType==='Feed')fields.PostType='Reel';
+  if(p.status==='Approved'||p.status==='Failed')fields.Status='Draft';
+  const ok=await patchSocialPost(postId,fields);
+  if(!ok)return;
+  closeReelAttach();
+  _socAttachTarget=null;socShowView('calendar');renderSocial();
+}
+async function createReelPost(btn){
+  const ref=_reelAttachRef;if(!ref)return;
+  const venue=document.getElementById('socAttachVenue').value,date=document.getElementById('socAttachDate').value;
+  if(!date){alert('Pick a publish date.');return;}
+  btn.disabled=true;
+  try{
+    await socWrite('POST',socListUrl(),{Title:`Reel · ${socReelFor(ref)?.name||''}`.slice(0,255),Venue:venue,Platforms:'Facebook;Instagram',PostType:'Reel',Step:'reel',PublishAt:new Date(`${date}T${SOCIAL_DEFAULT_TIME.Reel}:00`).toISOString(),Caption:'',VideoRef:JSON.stringify(ref),Status:'Draft',CaptionEdited:false,PublishMode:'Manual'});
+  }catch(e){alert('Could not create the post: '+e.message);btn.disabled=false;return;}
+  btn.disabled=false;
+  closeReelAttach();
+  await loadSocialPosts(true);socShowView('calendar');renderSocial();
+}
+function chooseReelForPost(){
+  const id=_socEditId;if(!id)return;
+  closeSocialEdit();
+  _socAttachTarget=id;socShowView('reels');renderSocial();
+}
+async function removeReelFromPost(){
+  const p=SOCIAL_POSTS.find(x=>x.id===_socEditId);if(!p?.videoRef)return;
+  if(!confirm('Remove the video from this post?'))return;
+  const fields={VideoRef:''};
+  if(p.status==='Approved')fields.Status='Draft';
+  if(await patchSocialPost(p.id,fields))closeSocialEdit();
+}
+
 async function deleteSocialPost(id){
   if(!confirm('Delete this draft post? This cannot be undone.'))return;
   try{await socWrite('DELETE',`${socListUrl()}/${id}`);}catch(e){alert('Could not delete this post: '+e.message);return;}
