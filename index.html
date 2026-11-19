@@ -1055,6 +1055,16 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
       </div>
 
       <!-- 8. VENUE ACTIVITY SNAPSHOT (collapsed by default) -->
+      <!-- LIVE META CAMPAIGNS — compact read of the Meta sync snapshot. Hidden by default; not shown to
+           the general role. Nothing renders until the sync has run (no sample data). -->
+      <div class="dash-widget" data-widget="paidmedia" style="margin-bottom:12px">
+        <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
+        <details class="dash-card">
+          <summary class="card-h"><span class="card-title">Live Meta Campaigns</span><span class="card-act" onclick="event.preventDefault();navTo('mktreport')">Full view →</span></summary>
+          <div id="ovPaidMedia"><div class="loading"><div class="spinner"></div></div></div>
+        </details>
+      </div>
+
       <div class="dash-widget" data-widget="venuesnap" style="margin-bottom:12px">
         <div class="dash-drag-handle" style="display:none;padding:4px 10px;font-size:10px;color:var(--text3);cursor:grab;user-select:none">⠿ Drag to reorder</div>
         <details class="dash-card">
@@ -1584,7 +1594,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
           <option value="all">All time</option>
         </select>
         <select class="form-select" id="mrVenue" style="width:auto;font-size:12px" onchange="renderMarketingReport()" aria-label="Venue"></select>
-        <button class="btn btn-s" onclick="loadReviewsData(true);loadWeeklyReports(true)">Refresh</button>
+        <button class="btn btn-s" onclick="loadReviewsData(true);loadWeeklyReports(true);loadMetaSnapshot(true)">Refresh</button>
         <button class="btn btn-s" onclick="window.print()">Print</button>
       </div>
     </div>
@@ -5380,6 +5390,7 @@ async function loadAll(){
   await loadAllComments();
   await loadHubUserPrefs();
   ACTIVITIES_LOADED_AT=new Date();
+  if(!isPreviewMode)loadMetaSnapshot(true); // not awaited: activity pages show Meta totals once it lands
   SPONSORSHIPS=[...STATIC_SPONSORSHIPS];
   updateAdminImportVisibility();
   generateNotifications();
@@ -8102,18 +8113,18 @@ function renderCrossVenue(){
 
 // ── Dashboard widget order (localStorage persisted, per signed-in user) ──
 // Recommended layout for a brand-new user with no saved preferences yet.
-const DEFAULT_WIDGET_ORDER=['needsaction','mypriorities','next14days','thismonth','newsubmissions','mytasks','upcominglaunches','overdueblocked','reportrequired','keydates','teamworkload','projectprogress','projectsmonth','loadedcampaigns','venuesnap','charts'];
+const DEFAULT_WIDGET_ORDER=['needsaction','mypriorities','next14days','thismonth','newsubmissions','mytasks','upcominglaunches','overdueblocked','reportrequired','keydates','teamworkload','projectprogress','projectsmonth','loadedcampaigns','paidmedia','venuesnap','charts'];
 // Widgets added in this round that start hidden even in the recommended layout — available any
 // time from the Widget Library, but don't crowd the default view uninvited.
-const DEFAULT_HIDDEN_WIDGETS=['upcominglaunches','overdueblocked','teamworkload','projectprogress','loadedcampaigns'];
+const DEFAULT_HIDDEN_WIDGETS=['upcominglaunches','overdueblocked','teamworkload','projectprogress','loadedcampaigns','paidmedia'];
 const ALL_WIDGET_IDS=[...new Set([...DEFAULT_WIDGET_ORDER,...DEFAULT_HIDDEN_WIDGETS])];
 // Human-readable names for the Widget Library "add section" picker in Customize mode.
-const WIDGET_TITLES={needsaction:'Needs Action',mypriorities:'My Priorities',next14days:'Next 14 Days',thismonth:"This Month's Overview",newsubmissions:'New Submissions',mytasks:'My Tasks',overdueblocked:'Overdue / Blocked Work',upcominglaunches:'Upcoming Launches',reportrequired:'Reporting & Performance',keydates:'Key Dates Ahead',teamworkload:'Team Workload',projectprogress:'◧ Project Progress',projectsmonth:'Projects This Month',loadedcampaigns:'Loaded Rewards Campaigns',venuesnap:'Venue Activity Snapshot',charts:'Existing Charts & Graphs'};
+const WIDGET_TITLES={needsaction:'Needs Action',mypriorities:'My Priorities',next14days:'Next 14 Days',thismonth:"This Month's Overview",newsubmissions:'New Submissions',mytasks:'My Tasks',overdueblocked:'Overdue / Blocked Work',upcominglaunches:'Upcoming Launches',reportrequired:'Reporting & Performance',keydates:'Key Dates Ahead',teamworkload:'Team Workload',projectprogress:'◧ Project Progress',projectsmonth:'Projects This Month',loadedcampaigns:'Loaded Rewards Campaigns',paidmedia:'Live Meta Campaigns',venuesnap:'Venue Activity Snapshot',charts:'Existing Charts & Graphs'};
 // Widgets that surface data gated behind a specific panel permission — stays hidden for any role
 // that couldn't open that panel directly, even if the id is sitting in a saved order/hidden list
 // (e.g. from before a role change). This is the real security boundary, not just UI tidiness.
 const WIDGET_PERMISSIONS={teamworkload:'workload',projectprogress:'projects',projectsmonth:'projects',loadedcampaigns:'loaded'};
-function widgetAllowed(id){const panel=WIDGET_PERMISSIONS[id];return !panel||canAccessPanel(panel);}
+function widgetAllowed(id){if(id==='paidmedia')return pmCanSeePaidMedia();const panel=WIDGET_PERMISSIONS[id];return !panel||canAccessPanel(panel);}
 function dashStorageKey(){return 'marlin_dash_layout_'+(currentUserEmail||'anon');}
 function getWidgetOrder(){
   try{
@@ -8655,6 +8666,7 @@ function renderOverview(){
   renderDashProjectProgress();
   renderDashProjectsMonthStrip();
   renderDashLoadedCampaigns();
+  renderDashPaidMedia();
 
   setTimeout(()=>renderDashboardCharts(allEvts),50);
   applyDashboardLayout();
@@ -9067,7 +9079,7 @@ const WEEKLY_REPORTS={
   url:'https://marlingroupaus.sharepoint.com/sites/MarlinHospitalityMarketing/Shared Documents/WORKING_Marketing Dashboard/Weekly Venue Reports',
 };
 // Short codes used in report file names, e.g. "WBC - Week 19 Report.pdf".
-const REPORT_VENUE_CODES={WBC:'Whitfords Brewing Co',TLB:'The Left Bank',LB:'The Left Bank',RAV:'The Ravenswood',HD:'Hotel Darwin',MB:'Mustang Bar',NBC:'Northbridge Brewing Co'};
+const REPORT_VENUE_CODES={WBC:'Whitfords Brewing Co',TLB:'The Left Bank',LB:'The Left Bank',RAV:'The Ravenswood',HD:'Hotel Darwin',MB:'Mustang Bar',NBC:'Northbridge Brewing Co',BB:'Beerland Brewing',LR:'Loaded Rewards'};
 let WEEKLY_REPORT_FILES=[],WEEKLY_REPORTS_STATE={status:'idle',error:''};
 // Spreadsheet venue names → the OS's venue names.
 const REVIEW_VENUE_MAP={
@@ -9288,6 +9300,7 @@ function renderMarketingReport(){
   const body=document.getElementById('mrBody');if(!body)return;
   if(REVIEWS_STATE.status==='idle'){loadReviewsData();return;}
   if(WEEKLY_REPORTS_STATE.status==='idle')loadWeeklyReports();
+  if(META_STATE.status==='idle')loadMetaSnapshot();
   // Venue picker, filled once from the venues the OS knows plus any in the reviews.
   const vSel=document.getElementById('mrVenue');
   const venues=[...new Set([...VENUES_DATA.map(v=>v.name).filter(Boolean),...REVIEWS.map(r=>r.venue)])].sort();
@@ -9309,6 +9322,9 @@ function renderMarketingReport(){
     <div class="mr-note">${escapeAttr(kpiFreshnessLabel(k))}. Activities that ended in the period. ${k.unreported.length?`${k.unreported.length} delivered activit${k.unreported.length===1?'y still needs':'ies still need'} a post-campaign report, so these figures will grow as reports are filed.`:''}</div>
     ${chanRows.length?`<div class="mr-sub">Channel results</div><div style="overflow-x:auto"><table class="tbl" style="min-width:420px"><thead><tr><th>Channel</th><th class="n">Campaigns</th><th>Totals</th></tr></thead><tbody>${chanRows.map(([c,t])=>`<tr><td>${escapeAttr(c)}</td><td class="n">${t.n}</td><td>${CHANNEL_RESULT_METRICS[c].filter(([kk])=>t[kk]!=null).map(([kk,l])=>`${Math.round(t[kk]).toLocaleString()} ${l.toLowerCase()}`).join(' · ')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="mr-note">No channel results recorded yet. They appear here once post-campaign reports include Meta, newsletter or other channel numbers.</div>'}
   </div>`;
+
+  // 1b. Paid media (Meta ads), from the Meta sync snapshot.
+  h+=renderPaidMediaSection(venue);
 
   // 2. Guest reviews
   h+=`<div class="mr-sec"><div class="mr-h">Guest reviews · ${escapeAttr(periodLabel)}${venue?' · '+escapeAttr(venue):''}</div>`;
@@ -9368,6 +9384,223 @@ function renderMarketingReport(){
     h+='</div>';
   }
   body.innerHTML=h;
+}
+
+
+// ═══════════════════════════════════════
+// PAID MEDIA: META ADS (P03, combined with the Paid Media Hub plan in docs/META_CAMPAIGNS_PLAN.md)
+// A scheduled GitHub Action (scripts/meta-sync.mjs) reads the Meta Marketing API with a System
+// User token and writes snapshots into SharePoint: Integrations/Meta/_all.json (head office) and
+// Integrations/Meta/venues/<venue-slug>.json (one per venue, shared with that venue's managers).
+// The OS only reads those files with the viewer's own Microsoft sign-in, so SharePoint permissions
+// decide who sees what. No sample or placeholder data: until the sync runs, the section says so.
+// ═══════════════════════════════════════
+const META_SNAPSHOT_PATH={folder:'Integrations/Meta',all:'_all.json',venues:'venues'};
+const META_SNAPSHOT_URL='https://marlingroupaus.sharepoint.com/sites/MarlinHospitalityMarketing/Shared Documents/Integrations/Meta';
+let META_SNAPSHOT=null,META_STATE={status:'idle',error:''};
+let pmSortKey='',pmSortDir='desc',pmWindow='last30',pmStatus='ACTIVE';
+const PM_OBJECTIVES={OUTCOME_SALES:'Sales',OUTCOME_LEADS:'Leads',OUTCOME_TRAFFIC:'Traffic',OUTCOME_AWARENESS:'Awareness',OUTCOME_ENGAGEMENT:'Engagement',OUTCOME_APP_PROMOTION:'App promotion'};
+const PM_STATUS={ACTIVE:{t:'Active',cls:'t-g'},PAUSED:{t:'Paused',cls:'t-a'},COMPLETED:{t:'Ended',cls:'t-gr'},IN_REVIEW:{t:'In review',cls:'t-b'}};
+const PM_WINDOW_LABELS={last7:'Last 7 days',last30:'Last 30 days',mtd:'Month to date',lifetime:'Lifetime'};
+const normTitle=t=>String(t||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,' ').trim();
+// Same rule as scripts/meta-sync.mjs, so file names line up.
+const venueSlug=v=>String(v||'').toLowerCase().replace(/^the\s+/,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+
+async function loadMetaSnapshot(force=false){
+  if(isPreviewMode||META_STATE.status==='loading'||(META_STATE.status!=='idle'&&!force))return;
+  META_STATE={status:'loading',error:''};
+  try{
+    const token=await getToken();
+    const get=async path=>{
+      const r=await fetchWithRetry(`${graphDrive()}/root:/${graphPath(META_SNAPSHOT_PATH.folder+'/'+path)}:/content`,{headers:{Authorization:'Bearer '+token}});
+      if(r.status===404||r.status===403)return null;
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    };
+    // Head office reads the all-venues file; a venue manager can't open it and falls back to
+    // their own venue's file.
+    let snap=await get(META_SNAPSHOT_PATH.all);
+    if(!snap&&currentVenueAccess)snap=await get(`${META_SNAPSHOT_PATH.venues}/${venueSlug(currentVenueAccess)}.json`);
+    META_SNAPSHOT=snap&&Array.isArray(snap.campaigns)?snap:null;
+    META_STATE={status:META_SNAPSHOT?'ok':'none',error:''};
+  }catch(e){META_SNAPSHOT=null;META_STATE={status:'error',error:e.message||String(e)};}
+  if(document.getElementById('p-mktreport')?.classList.contains('active'))renderMarketingReport();
+  if(document.getElementById('p-overview')?.classList.contains('active'))renderDashPaidMedia();
+}
+// Venue scoping on every read, mirroring what SharePoint already enforces on the files.
+function metaVisibleCampaigns(){
+  if(!META_SNAPSHOT)return[];
+  return META_SNAPSHOT.campaigns.filter(c=>currentVenueAccess?c.venue===currentVenueAccess:!!rolePermissions().canViewAll);
+}
+// Finance roles see spend; venue managers also see spend, because their data only ever holds
+// their own venue (confirmed 21 Oct 2026). Everyone else sees reach, clicks, leads and sales only.
+function pmCanSeeSpend(){return !!rolePermissions().canViewBudget||!!currentVenueAccess;}
+function pmCanSeePaidMedia(){return currentRole!=='general';}
+function pmMoney(n,cents){if(n==null||!isFinite(n))return'—';return'$'+Number(n).toLocaleString('en-AU',{minimumFractionDigits:cents?2:0,maximumFractionDigits:cents?2:0});}
+function pmInt(n){return n==null||!isFinite(n)?'—':Math.round(n).toLocaleString('en-AU');}
+function pmAgo(iso){const mins=Math.max(0,Math.round((Date.now()-new Date(iso).getTime())/60000));if(mins<60)return`${mins} min ago`;const h=Math.round(mins/60);return h<48?`${h}h ago`:`${Math.round(h/24)} days ago`;}
+function pmDerive(m){m=m||{};return{...m,ctr:m.impressions?(m.clicks||0)/m.impressions*100:null,cpc:m.clicks?(m.spend||0)/m.clicks:null,cpl:m.leads?m.spend/m.leads:null,cps:m.purchases?m.spend/m.purchases:null,roas:m.spend&&m.purchaseValue?m.purchaseValue/m.spend:null};}
+// Totals' cost per lead / sale / ROAS only count spend from campaigns that produced leads or
+// sales, so awareness spend doesn't make every lead look dearer.
+function pmTotals(campaigns,win){
+  const t=campaigns.reduce((a,c)=>{const m=c.metrics?.[win]||{};
+    ['spend','impressions','reach','clicks','leads','purchases','purchaseValue'].forEach(k=>a[k]+=m[k]||0);
+    if(m.leads)a.leadSpend+=m.spend||0;if(m.purchases)a.saleSpend+=m.spend||0;return a;},
+    {spend:0,impressions:0,reach:0,clicks:0,leads:0,purchases:0,purchaseValue:0,leadSpend:0,saleSpend:0});
+  t.ctr=t.impressions?t.clicks/t.impressions*100:null;t.cpc=t.clicks?t.spend/t.clicks:null;
+  t.cpl=t.leads?t.leadSpend/t.leads:null;t.cps=t.purchases?t.saleSpend/t.purchases:null;
+  t.roas=t.saleSpend&&t.purchaseValue?t.purchaseValue/t.saleSpend:null;
+  return t;
+}
+// Campaign → activity: the activity's MetaCampaignID first; otherwise the naming rule
+// "CODE | Activity name | MonYY" with the same venue and overlapping dates.
+function pmLinkedEvent(c){
+  const byId=EVENTS.find(e=>e.metaCampaignId&&String(e.metaCampaignId).split(/[,\s]+/).includes(String(c.id)));
+  if(byId)return byId;
+  const parts=String(c.name||'').split(/[|–-]/).map(x=>x.trim()).filter(Boolean);
+  if(parts.length<2)return null;
+  const act=normTitle(parts[1]);if(!act)return null;
+  const shift=(d,n)=>{const x=new Date(d+'T00:00:00');x.setDate(x.getDate()+n);return toLocalISODate(x);};
+  const cs=c.start||'',ce=c.end||toLocalISODate(new Date());
+  // The Loaded Rewards ad account is group-wide: its campaigns match Loaded activities at any venue.
+  const venueOk=e=>e.venue===c.venue||(c.venue==='Loaded Rewards'&&e.loadedRewards);
+  return EVENTS.filter(e=>venueOk(e)&&e.start&&!['Cancelled','Canceled'].includes(e.status)).filter(e=>{
+    const t=normTitle(e.title);return t&&(t===act||t.includes(act)||act.includes(t));
+  }).filter(e=>!cs||(cs<=shift(e.end||e.start,7)&&ce>=shift(e.start,-60)))
+    .sort((a,b)=>Math.abs(new Date(a.start)-new Date(cs||a.start))-Math.abs(new Date(b.start)-new Date(cs||b.start)))[0]||null;
+}
+async function linkMetaCampaign(campaignId,evId){
+  if(!canEditCampaigns()){alert('You do not have permission to edit activities.');return;}
+  const ev=EVENTS.find(e=>String(e.id)===String(evId));if(!ev?.spId)return;
+  const ids=[...new Set([...String(ev.metaCampaignId||'').split(/[,\s]+/).filter(Boolean),String(campaignId)])].join(',');
+  try{
+    const token=await getToken(true);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}/fields`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({MetaCampaignID:ids})});
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,200)}`);
+    ev.metaCampaignId=ids;renderMarketingReport();
+  }catch(e){alert('Could not link the campaign: '+e.message);}
+}
+function sortPaidMedia(key){
+  if(pmSortKey===key)pmSortDir=pmSortDir==='asc'?'desc':'asc';
+  else{pmSortKey=key;pmSortDir=['name','venue','status','end'].includes(key)?'asc':'desc';}
+  renderMarketingReport();
+}
+function pmTrendSvg(campaigns,key,label,canMoney){
+  const today=new Date();today.setHours(0,0,0,0);const dates=[];
+  for(let o=30;o>=1;o--){const d=new Date(today);d.setDate(d.getDate()-o);dates.push(toLocalISODate(d));}
+  const mv=Object.fromEntries(dates.map(d=>[d,0])),rv=Object.fromEntries(dates.map(d=>[d,0]));
+  campaigns.forEach(c=>(c.daily||[]).forEach(r=>{if(r.date in mv){mv[r.date]+=r[key]||0;rv[r.date]+=(r.leads||0)+(r.purchases||0);}}));
+  const maxM=Math.max(1,...Object.values(mv)),maxR=Math.max(1,...Object.values(rv));
+  const W=900,H=220,L=48,R=36,T=16,B=28,pw=W-L-R,ph=H-T-B,bw=pw/dates.length;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${escapeAttr(label)} and leads plus sales by day">`;
+  [0,.5,1].forEach(f=>{const y=T+ph-f*ph;s+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L-6}" y="${y+4}" text-anchor="end" font-size="10" fill="var(--ink-muted)">${canMoney&&key==='spend'?'$':''}${Math.round(maxM*f).toLocaleString('en-AU')}</text><text x="${W-R+6}" y="${y+4}" font-size="10" fill="var(--ink-muted)">${Math.round(maxR*f)}</text>`;});
+  dates.forEach((d,i)=>{const h=rv[d]/maxR*ph;s+=`<rect x="${L+i*bw+bw*.2}" y="${T+ph-h}" width="${bw*.6}" height="${h}" fill="var(--gold-300,var(--line))"><title>${fmtShort(d)}: ${rv[d]} leads + sales</title></rect>`;if(i%5===0)s+=`<text x="${L+i*bw+bw/2}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--ink-muted)">${fmtShort(d)}</text>`;});
+  s+=`<polyline fill="none" stroke="var(--ink-brand)" stroke-width="2.5" points="${dates.map((d,i)=>`${L+i*bw+bw/2},${T+ph-mv[d]/maxM*ph}`).join(' ')}"/></svg>`;
+  return s;
+}
+function renderPaidMediaSection(venue){
+  if(!pmCanSeePaidMedia())return'';
+  let h=`<div class="mr-sec"><div class="mr-h">Paid media · Meta ads${venue?' · '+escapeAttr(venue):''}</div>`;
+  if(isPreviewMode)return h+'<div class="mr-note">UI preview has no live data.</div></div>';
+  if(META_STATE.status==='idle'||META_STATE.status==='loading')return h+'<div class="loading"><div class="spinner"></div></div></div>';
+  if(META_STATE.status==='error')return h+`<div class="mr-note">Couldn't read the Meta snapshot: ${escapeAttr(META_STATE.error)}</div></div>`;
+  if(!META_SNAPSHOT)return h+`<div class="mr-call att"><h4>Meta isn't connected yet</h4><div>Live Meta results appear here once the Meta sync is set up and has run (docs/META_CAMPAIGNS_PLAN.md §5). Until then nothing is shown.</div></div></div>`;
+  const canMoney=pmCanSeeSpend();
+  if(!pmSortKey)pmSortKey=canMoney?'spend':'clicks';
+  const all=metaVisibleCampaigns().filter(c=>!venue||c.venue===venue);
+  const rows=all.filter(c=>!pmStatus||c.status===pmStatus);
+  const win=pmWindow,t=pmTotals(rows,win);
+  const stale=Date.now()-new Date(META_SNAPSHOT.generatedAt).getTime()>24*3600000;
+  const chip=(grp,v,l,cur)=>`<button type="button" class="chip${cur===v?' on':''}" onclick="${grp}='${v}';renderMarketingReport()">${l}</button>`;
+  h+=`<div class="mr-noprint" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+    <div class="chips">${Object.entries(PM_WINDOW_LABELS).map(([v,l])=>chip('pmWindow',v,l,pmWindow)).join('')}</div>
+    <div class="chips">${chip('pmStatus','ACTIVE','Active',pmStatus)}${chip('pmStatus','PAUSED','Paused',pmStatus)}${chip('pmStatus','COMPLETED','Ended',pmStatus)}${chip('pmStatus','','All',pmStatus)}</div>
+  </div>`;
+  if(stale)h+=`<div class="mr-call att"><h4>Meta numbers are out of date</h4><div>The last sync from Meta was ${pmAgo(META_SNAPSHOT.generatedAt)}. Check the Meta sync in GitHub Actions before relying on these figures.</div></div>`;
+  h+=`<div class="stats" style="margin-bottom:0">
+    ${kpiTile(all.filter(c=>c.status==='ACTIVE').length,'Active campaigns')}
+    ${canMoney?kpiTile(pmMoney(t.spend),'Spend',PM_WINDOW_LABELS[win]):''}
+    ${kpiTile(pmInt(t.reach),'Reach','Summed per campaign')}
+    ${kpiTile(pmInt(t.clicks),'Link clicks',t.ctr==null?'':`${t.ctr.toFixed(2)}% click-through`)}
+    ${kpiTile(pmInt(t.leads),'Leads','Lead forms + website Lead events')}
+    ${canMoney?kpiTile(pmMoney(t.cpl,true),'Cost per lead'):''}
+    ${kpiTile(pmInt(t.purchases),'Sales','Purchase events from the Meta Pixel')}
+    ${canMoney?kpiTile(pmMoney(t.cps,true),'Cost per sale'):''}
+    ${canMoney?kpiTile(t.roas?t.roas.toFixed(1)+'×':'—','ROAS','Purchase value ÷ spend'):''}
+  </div>`;
+  const cols=[{k:'name',l:'Campaign'},{k:'venue',l:'Venue'},{k:'status',l:'Status'},{k:'spend',l:'Spend',fin:true,num:true},{k:'clicks',l:'Link clicks',num:true},{k:'ctr',l:'CTR',num:true},
+    {k:'leads',l:'Leads',num:true},{k:'cpl',l:'Cost / lead',fin:true,num:true},{k:'purchases',l:'Sales',num:true},{k:'cps',l:'Cost / sale',fin:true,num:true},{k:'roas',l:'ROAS',fin:true,num:true},{k:'end',l:'Ends'},{k:'activity',l:'Activity in the OS',nosort:true}]
+    .filter(c=>canMoney||!c.fin).filter(c=>!(venue&&c.k==='venue'));
+  const enriched=rows.map(c=>({c,m:pmDerive(c.metrics?.[win]),ev:pmLinkedEvent(c)}));
+  const sv=({c,m},k)=>({name:c.name,venue:c.venue,status:c.status,end:c.end||'9999'})[k]??m[k];
+  enriched.sort((a,b)=>{const va=sv(a,pmSortKey),vb=sv(b,pmSortKey);if(va==null&&vb==null)return 0;if(va==null)return 1;if(vb==null)return -1;const r=typeof va==='string'?va.localeCompare(vb):va-vb;return pmSortDir==='asc'?r:-r;});
+  const dash='<span class="u-meta">—</span>';
+  const cell=({c,m,ev},k)=>{switch(k){
+    case'name':return`<td style="min-width:220px"><div style="font-weight:600">${escapeAttr(c.name)}</div><div class="u-meta">${escapeAttr(PM_OBJECTIVES[c.objective]||c.objective||'')}</div></td>`;
+    case'venue':return`<td>${escapeAttr(shortVenue(c.venue))}</td>`;
+    case'status':{const s=PM_STATUS[c.status]||{t:c.status,cls:'t-gr'};return`<td><span class="tag ${s.cls}">${escapeAttr(s.t)}</span></td>`;}
+    case'spend':return`<td class="n">${pmMoney(m.spend)}</td>`;
+    case'clicks':return`<td class="n">${pmInt(m.clicks)}</td>`;
+    case'ctr':return`<td class="n">${m.ctr==null?dash:m.ctr.toFixed(2)+'%'}</td>`;
+    case'leads':return`<td class="n">${m.leads?pmInt(m.leads):dash}</td>`;
+    case'cpl':return`<td class="n">${m.cpl!=null?pmMoney(m.cpl,true):dash}</td>`;
+    case'purchases':return`<td class="n">${m.purchases?pmInt(m.purchases):dash}</td>`;
+    case'cps':return`<td class="n">${m.cps!=null?pmMoney(m.cps,true):dash}</td>`;
+    case'roas':return`<td class="n">${m.roas!=null?m.roas.toFixed(1)+'×':dash}</td>`;
+    case'end':return`<td>${c.end?fmtShort(c.end):'Ongoing'}</td>`;
+    case'activity':return`<td>${ev?`<a href="#" onclick="event.preventDefault();showPop(${Number(ev.id)})">${escapeAttr(ev.title)}</a>`:'<span class="u-meta">Not linked</span>'}</td>`;}};
+  h+=`<div style="overflow-x:auto"><table class="tbl"><thead><tr>${cols.map(c=>c.nosort?`<th>${c.l}</th>`:`<th class="sortable${c.num?' n':''}" tabindex="0" onclick="sortPaidMedia('${c.k}')" onkeydown="if(event.key==='Enter'){sortPaidMedia('${c.k}')}">${c.l}${pmSortKey===c.k?(pmSortDir==='asc'?' ▲':' ▼'):''}</th>`).join('')}</tr></thead>
+    <tbody>${enriched.length?enriched.map(e=>`<tr>${cols.map(c=>cell(e,c.k)).join('')}</tr>`).join(''):`<tr><td colspan="${cols.length}" class="u-meta" style="text-align:center;padding:16px">No ${pmStatus?(PM_STATUS[pmStatus]?.t||'').toLowerCase()+' ':''}campaigns${venue?' for '+escapeAttr(shortVenue(venue)):''}</td></tr>`}</tbody></table></div>`;
+  if(!venue&&!currentVenueAccess){
+    const vs=[...new Set(rows.map(c=>c.venue))].map(v=>({v,t:pmTotals(rows.filter(c=>c.venue===v),win)})).sort((a,b)=>(canMoney?b.t.spend-a.t.spend:b.t.clicks-a.t.clicks));
+    if(vs.length>1)h+=`<div class="mr-sub">By venue · ${PM_WINDOW_LABELS[win].toLowerCase()}</div><div style="overflow-x:auto"><table class="tbl" style="min-width:480px"><thead><tr><th>Venue</th>${canMoney?'<th class="n">Spend</th>':''}<th class="n">Link clicks</th><th class="n">Leads</th><th class="n">Sales</th>${canMoney?'<th class="n">ROAS</th>':''}</tr></thead><tbody>${vs.map(({v,t})=>`<tr><td>${escapeAttr(v)}</td>${canMoney?`<td class="n">${pmMoney(t.spend)}</td>`:''}<td class="n">${pmInt(t.clicks)}</td><td class="n">${pmInt(t.leads)}</td><td class="n">${pmInt(t.purchases)}</td>${canMoney?`<td class="n">${t.roas?t.roas.toFixed(1)+'×':'—'}</td>`:''}</tr>`).join('')}</tbody></table></div>`;
+  }
+  const key=canMoney?'spend':'clicks',lab=canMoney?'Daily spend':'Daily link clicks';
+  h+=`<div class="mr-sub">${lab} and leads + sales · last 30 days</div><div class="mr-chart">${pmTrendSvg(rows,key,lab,canMoney)}</div>
+    <div class="mr-key"><span><i style="background:var(--ink-brand)"></i>${lab} (left)</span><span><i style="background:var(--gold-300,var(--line))"></i>Leads + sales (right)</span></div>`;
+  const unlinked=all.filter(c=>c.status!=='COMPLETED'&&!pmLinkedEvent(c));
+  if(unlinked.length&&canEditCampaigns()){
+    const opts=v=>EVENTS.filter(e=>(e.venue===v||(v==='Loaded Rewards'&&e.loadedRewards))&&!['Cancelled','Canceled'].includes(e.status)&&String(e.end||e.start||'')>=toLocalISODate(new Date(Date.now()-90*864e5))).sort((a,b)=>String(b.start).localeCompare(String(a.start))).slice(0,40);
+    h+=`<details class="mr-noprint"><summary class="mr-sub" style="cursor:pointer">${unlinked.length} campaign${unlinked.length===1?'':'s'} not linked to an activity</summary>
+      <div class="mr-note" style="margin:6px 0">Linking shows the campaign's results on the activity. Name new campaigns "CODE | Activity name | MonYY" and they link themselves.</div>
+      ${unlinked.map(c=>`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--line);font-size:12px"><span style="flex:1;min-width:200px">${escapeAttr(c.name)} <span class="u-meta">· ${escapeAttr(shortVenue(c.venue))}</span></span>
+        <select class="form-select" style="width:auto;font-size:12px" id="pmLink-${escapeAttr(c.id)}" aria-label="Activity for ${escapeAttr(c.name)}"><option value="">Choose activity…</option>${opts(c.venue).map(e=>`<option value="${e.id}">${escapeAttr(e.title)} · ${fmtShort(e.start)}</option>`).join('')}</select>
+        <button class="btn btn-s" onclick="const s=document.getElementById('pmLink-${escapeAttr(c.id)}');if(s.value)linkMetaCampaign('${escapeAttr(c.id)}',s.value)">Link</button></div>`).join('')}
+    </details>`;
+  }
+  h+=`<div class="mr-note">From Meta, updated ${pmAgo(META_SNAPSHOT.generatedAt)}. Reach is summed across campaigns, so people reached by two campaigns count twice. Leads and sales depend on the Meta Pixel being set up on each booking and ticketing site (pixel audit, plan §9).</div>`;
+  return h+'</div>';
+}
+// On an activity: lifetime totals for its linked Meta campaigns.
+function renderActivityMeta(ev){
+  if(!META_SNAPSHOT||!pmCanSeePaidMedia())return'';
+  const camps=metaVisibleCampaigns().filter(c=>pmLinkedEvent(c)?.id===ev.id);
+  if(!camps.length)return'';
+  const canMoney=pmCanSeeSpend();const t=pmTotals(camps,'lifetime');
+  const row=(l,v)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid var(--line);font-size:12px"><span style="color:var(--ink-muted)">${l}</span><span style="font-weight:700;color:var(--ink-brand);text-align:right">${v}</span></div>`;
+  return`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:var(--text3);text-transform:uppercase">Meta ads</div><div class="u-meta">${camps.length} campaign${camps.length===1?'':'s'} · updated ${pmAgo(META_SNAPSHOT.generatedAt)}</div></div>
+    ${canMoney?row('Spend',pmMoney(t.spend)):''}
+    ${row('Reach',pmInt(t.reach))}
+    ${row('Link clicks',`${pmInt(t.clicks)}${t.ctr!=null?` (${t.ctr.toFixed(2)}% CTR)`:''}`)}
+    ${t.leads?row('Leads',pmInt(t.leads)+(canMoney&&t.cpl!=null?` · ${pmMoney(t.cpl,true)} each`:'')):''}
+    ${t.purchases?row('Sales',pmInt(t.purchases)+(canMoney&&t.cps!=null?` · ${pmMoney(t.cps,true)} each`:'')):''}
+    ${canMoney&&t.roas?row('ROAS',t.roas.toFixed(1)+'×'):''}
+  </div>`;
+}
+// Dashboard widget "Live Meta Campaigns" (hidden by default; add it from the widget library).
+function renderDashPaidMedia(){
+  const el=document.getElementById('ovPaidMedia');if(!el)return;
+  if(!widgetAllowed('paidmedia')){el.innerHTML='';return;}
+  if(META_STATE.status==='idle'){loadMetaSnapshot();}
+  if(!META_SNAPSHOT){el.innerHTML=`<div class="u-empty">${META_STATE.status==='loading'||META_STATE.status==='idle'?'Loading…':'Meta isn\'t connected yet'}</div>`;return;}
+  const canMoney=pmCanSeeSpend();const venue=document.getElementById('ovVenue')?.value||'';
+  const active=metaVisibleCampaigns().filter(c=>c.status==='ACTIVE'&&(!venue||c.venue===venue));
+  const mtd=pmTotals(active,'mtd');const key=canMoney?'spend':'clicks';
+  const top=active.slice().sort((a,b)=>(b.metrics?.last7?.[key]||0)-(a.metrics?.last7?.[key]||0)).slice(0,5);
+  el.innerHTML=`<div class="stats" style="padding:10px;margin-bottom:0;grid-template-columns:repeat(auto-fill,minmax(100px,1fr))">${kpiTile(active.length,'Active')}${canMoney?kpiTile(pmMoney(mtd.spend),'Spend MTD'):kpiTile(pmInt(mtd.clicks),'Clicks MTD')}${kpiTile(pmInt(mtd.leads),'Leads MTD')}${kpiTile(pmInt(mtd.purchases),'Sales MTD')}</div>
+    ${top.length?top.map(c=>{const m=c.metrics?.last7||{};return`<div onclick="navTo('mktreport')" style="display:flex;gap:10px;padding:8px 12px;border-top:1px solid var(--line);cursor:pointer"><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(c.name)}</div><div class="u-meta">${escapeAttr(shortVenue(c.venue))}</div></div><div style="font-size:11px;text-align:right">${canMoney?pmMoney(m.spend):pmInt(m.clicks)+' clicks'}<div class="u-meta">7 days</div></div></div>`;}).join(''):'<div class="u-empty">No active Meta campaigns</div>'}
+    <div class="u-meta" style="padding:6px 12px">Updated ${pmAgo(META_SNAPSHOT.generatedAt)}</div>`;
 }
 
 // ═══════════════════════════════════════
@@ -17262,6 +17495,7 @@ function renderActivityDetail(id,mode){
       ${linkedTasks.length?linkedTasks.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><div class="task-cb ${t.status==='Done'?'done':''}" onclick="togglePersonalTask('${t.id}')">${t.status==='Done'?'✓':''}</div><div style="flex:1;font-size:13px;cursor:pointer;${t.status==='Done'?'text-decoration:line-through;color:var(--text3)':''}" onclick="navTo('personaltasks')" title="Open in Personal Tasks">${escapeAttr(t.title)}</div>${t.due?`<span class="u-meta">${fmtDate(t.due)}</span>`:''}</div>`).join(''):'<div style="font-size:12px;color:var(--text3);padding:6px 0">No personal tasks linked to this activity yet.</div>'}
     </div>`;
   }
+  h+=renderActivityMeta(ev);
   h+=renderReportSummary(ev);
   // Action buttons
   h+=`<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">`;

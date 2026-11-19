@@ -1,5 +1,7 @@
 # P03 · Reviews & Marketing Intelligence
 
+> **Ownership change, 19 Nov 2026 (Kimberley).** Marketing intelligence now belongs to chat **04 · Campaign Planning & Content**: campaign results and KPIs, paid media (Meta), ticketing data, weekly venue reports and post performance. This workstream (chat 03) now covers **guest reviews only**: the Reviews master, the Imports folder and upload, the reviews email flow, the Google Business Profile feed, reply tracking, and review↔campaign linking. The Marketing Report page is shared: 03 edits only its Guest reviews block. The sections below are kept as history.
+
 **Scope:** guest reviews, the marketing dashboard, campaign reporting and performance metrics.
 **Register items owned here:** REV-01, MKT-01 (P03·00), REV-02 (P03·01), MKT-02 (P03·02), Finance (P03·03). See `docs/OS_RESET_MASTER.md` §2, §4 and §7.
 **Opened:** 10 Nov 2026, from `main` @ `0a68252`.
@@ -221,3 +223,6 @@ Before starting step 4, confirm whether Power Automate in the tenant has a ready
 - 2026-11-12: Post-Campaign Report second slice: fields fit the activity, channel results, notes in their own columns, saved report view, Edit report.
 - 2026-11-17: Marketing Report page added (campaign results + live reviews from Reviews – Master), at Kim's request.
 - 2026-11-17: Option A built: Upload reviews file + Imports folder merged with the master (duplicates counted once); Weekly venue reports section (budget roles). Email automation and Google API steps in `docs/REVIEWS_AND_REPORTS_AUTOMATION.md`.
+- 2026-11-17: Meta ads built (OS side): reads daily CSVs from `Meta Imports`, Meta section in the Marketing Report, Meta block on matched activities, naming rule `CODE | Activity | MonYY`. Setup and flow in `docs/META_SETUP.md`.
+- 2026-11-17: Paid Media Hub (PR #136, handed over from chat 04) combined with the Meta work: GitHub Action sync (`scripts/meta-sync.mjs`, `.github/workflows/meta-sync.yml`) writes SharePoint snapshots; the Marketing Report shows them. No sample data. Power Automate Meta approach dropped. Plan and setup: `docs/META_CAMPAIGNS_PLAN.md`.
+- 2026-11-19: Marketing intelligence handed over to chat 04 (full handover sent). Chat 03 is now Reviews only.

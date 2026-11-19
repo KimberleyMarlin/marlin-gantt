@@ -1,0 +1,37 @@
+name: Meta sync
+
+# Reads Meta ad results and writes snapshots into SharePoint for the Marketing OS.
+# See docs/META_CAMPAIGNS_PLAN.md §5 for setup. Until the secrets exist, each run just says
+# "not configured" and finishes green.
+on:
+  schedule:
+    # About 7am, 12pm and 5pm Perth time (cron is UTC).
+    - cron: '52 22,3,8 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meta-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Sync Meta to SharePoint
+        run: node scripts/meta-sync.mjs
+        env:
+          META_TOKEN: ${{ secrets.META_TOKEN }}
+          META_ACCOUNTS: ${{ secrets.META_ACCOUNTS }}
+          MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
+          MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+          MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+          SP_DRIVE_ID: ${{ vars.SP_DRIVE_ID }}
+          META_API_VERSION: ${{ vars.META_API_VERSION }}
