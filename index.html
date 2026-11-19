@@ -2188,13 +2188,13 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
                 <option value="">Select…</option>
               </select>
             </div>
-            <div class="form-group"><label class="form-label">Activity Group</label>
+            <div class="form-group"><label class="form-label">Activity Group <span class="req">*</span></label>
               <select class="form-select" id="fActGroup" onchange="populateActivitySubtypeSelect('fActGroup','fActSubtype');composeAutoActivityTitle();updateActivityConditionalSections()">
                 <option value="">Select…</option>
               </select>
               <div style="font-size:11px;color:var(--text3);margin-top:3px">What kind of thing this actually is — separate from Activity Type above, which only distinguishes Event/Promotion/Campaign/Maintenance</div>
             </div>
-            <div class="form-group"><label class="form-label">Activity Subtype</label>
+            <div class="form-group"><label class="form-label">Activity Subtype <span class="req">*</span></label>
               <select class="form-select" id="fActSubtype" onchange="composeAutoActivityTitle()">
                 <option value="">Select a Group first…</option>
               </select>
@@ -3977,6 +3977,45 @@ async function denyCampaign(evId,btn){
     showApprovalError(`Could not deny "${ev.title}": ${e.message}`);
   }
   if(btn){btn.disabled=false;btn.textContent='✕ Deny';}
+}
+
+// "Send back" on Submissions: keeps the activity at Intake, records why (SentBackNote), and tags
+// the submitter in the Inbox so they can fix it. The note clears the next time it's edited.
+async function sendBackCampaign(evId,btn){
+  if(!canApproveCampaigns()){alert('You do not have permission to send submissions back.');return;}
+  const ev=EVENTS.find(e=>e.id===evId||e.spId==evId);
+  if(!ev||!ev.spId)return;
+  const reason=prompt(`Send "${ev.title}" back to the submitter?\n\nIt stays in Submissions at Intake until they edit it. What needs changing?`);
+  if(reason===null)return;
+  if(!reason.trim()){alert('Please say what needs changing, so the submitter knows what to fix.');return;}
+  if(btn){btn.disabled=true;btn.textContent='Sending back…';}
+  const who=currentUser?.name||currentUserEmail||'Someone';
+  const note=`${reason.trim()} (${who}, ${new Date().toLocaleDateString('en-AU',{day:'numeric',month:'short'})})`;
+  let columnMissing=false;
+  try{
+    const token=await getToken(true);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{SentBackNote:note}})});
+    if(!res.ok){
+      const text=await res.text();
+      if(res.status===400&&/SentBackNote/i.test(text))columnMissing=true;
+      else throw new Error('HTTP '+res.status+': '+text.substring(0,200));
+    }
+    ev.sentBackNote=note;
+    // The submitter is whoever created the item; fall back to the activity owner.
+    const target=ev.submittedBy||ev.owner;
+    const tag=target?await autoTagPerson(ev.spId,ev.title,target,`sent back for changes by ${who}: ${reason.trim()}${/[.!?]$/.test(reason.trim())?'':'.'} Please edit the activity to resubmit.`):{error:new Error('no submitter recorded')};
+    renderApprovals&&renderApprovals();
+    const problems=[
+      columnMissing?'the "Sent back" status will disappear on reload until the Sent Back Note column is added in Admin & Schema':'',
+      tag?.error?`the submitter couldn't be tagged in the Inbox (${tag.error.message||tag.error}), so let them know directly`:''
+    ].filter(Boolean);
+    if(problems.length)showApprovalError(`"${ev.title}" was sent back, but ${problems.join('; and ')}.`);
+    else if(typeof showToast==='function')showToast(`"${ev.title}" sent back to ${target}`);
+  }catch(e){
+    console.error('Send back failed:',e);
+    showApprovalError(`Could not send "${ev.title}" back: ${e.message}`);
+  }
+  if(btn){btn.disabled=false;btn.textContent='↩ Send back';}
 }
 
 function duplicateCampaign(evId){
@@ -6092,6 +6131,8 @@ async function loadCampaigns(){
         posStatus:f.PosStatus||(posRequired?'Required':''),
         posNotes:f.POSNotes||descriptionParts.posNotes,
         designJobCreated:f.DesignJobCreated===true||f.DesignJobCreated==='Yes',
+        // Set by "Send back" on Submissions; cleared the next time the activity is edited.
+        sentBackNote:f.SentBackNote||'',
         collateralStatus:f.CollateralStatus||'',
         artworkFile:sharePointUrl(f.Artwork_x0020_File),
         // Design step
@@ -10927,7 +10968,7 @@ function renderCampaigns(){
           <td><span style="font-size:10px;font-weight:600;color:#fff;background:${vc.c};padding:2px 8px;border-radius:var(--radius-sm);white-space:nowrap;display:inline-block">${shortVenue(ev.venue)}</span></td>
           <td>${ev.activityType||ev.eventFormat?`<span class="tag t-gr" style="font-size:10px">${ev.activityType||ev.eventFormat}</span>`:'-'}</td>
           <td style="font-size:12px;white-space:nowrap">${fmtShort(ev.start)}</td>
-          <td><span style="font-size:10px;font-weight:500;color:${sc};background:${sc}18;padding:2px 7px;border-radius:var(--radius-sm);white-space:nowrap">${stageLabel(ev.stage)}</span></td>
+          <td><span style="font-size:10px;font-weight:500;color:${sc};background:${sc}18;padding:2px 7px;border-radius:var(--radius-sm);white-space:nowrap">${stageLabel(ev.stage)}</span>${(()=>{const c=jobTicketCountHtml(ev);return c?`<div style="margin-top:3px">${c}</div>`:'';})()}</td>
           <td>${statusPill(ev.status)}</td>
           <td>${ev.loadedRewards?'<span class="tag t-a" style="font-size:10px">★</span>':'-'}</td>
           <td>${posText?`<span style="font-size:10px;font-weight:500;color:${['Required','Pending','To Do','In Progress'].includes(posText)?'#9c732b':'#4a6e3e'}">${posText}</span>`:'-'}</td>
@@ -12515,6 +12556,77 @@ function pickMyWorkTab(tab){_mwTab=tab;renderMyWork();}
 // "Unassigned team tasks" bucket for admin/management only (see canEditTeamTask), never mixed into
 // a person's own counts. Defaults to false so every other caller (Dashboard widget included) keeps
 // exactly its current behaviour.
+// Job tickets (Tasks & Job Tickets items) linked to one activity: by the Campaign lookup id, or
+// by title for older tickets saved before CampaignLookupId was written — same rule myWorkItems()
+// uses. Returns {tickets, done, total}.
+function jobTicketsForActivity(ev){
+  if(!ev)return{tickets:[],done:0,total:0};
+  const ids=[String(ev.spId),String(ev.id)];
+  const title=(ev.title||'').toLowerCase();
+  const tickets=MY_TASKS.filter(t=>t.campaignLookupId?ids.includes(String(t.campaignLookupId)):(title&&(t.campaignLookup||'').toLowerCase()===title));
+  const done=tickets.filter(t=>t.status==='Done').length;
+  return{tickets,done,total:tickets.length};
+}
+// "3/5 tickets" chip for cards and tables; '' when the activity has no job tickets.
+function jobTicketCountHtml(ev){
+  const {done,total}=jobTicketsForActivity(ev);
+  if(!total)return'';
+  const complete=done===total;
+  return`<span class="tag ${complete?'t-g':'t-gr'}" style="font-size:10px" title="${done} of ${total} job tickets done">${done}/${total} tickets</span>`;
+}
+function ticketOwnerName(email){
+  if(!email)return'Unassigned';
+  const u=M365_USERS.find(x=>(x.email||'').toLowerCase()===email.toLowerCase());
+  return u?u.name.replace(/\s*\([^)]*\)\s*/g,'').trim():email.split('@')[0];
+}
+// Which activity detail is on screen, so ticking/editing a ticket there can redraw it.
+let ACTIVITY_DETAIL_CTX=null;
+function refreshActivityDetailIfOpen(){
+  if(!ACTIVITY_DETAIL_CTX)return;
+  const el=document.getElementById(ACTIVITY_DETAIL_CTX.mode==='page'?'activityDetailBody':'popBody');
+  if(!el||!el.offsetParent)return;
+  renderActivityDetail(ACTIVITY_DETAIL_CTX.id,ACTIVITY_DETAIL_CTX.mode);
+}
+async function toggleTicketFromActivity(taskId){
+  await toggleTask(taskId);
+  refreshActivityDetailIfOpen();
+}
+function editTicketFromActivity(taskId){
+  // The task editor sits earlier in the page than the activity popup, so lift it above.
+  const ov=document.getElementById('addTaskOv');if(ov)ov.style.zIndex='650';
+  openEditTask(taskId);
+}
+function jobTicketsSectionHtml(ev){
+  const {tickets,done,total}=jobTicketsForActivity(ev);
+  const todayStr=toLocalISODate(new Date());
+  let h=`<div class="pop-section" style="display:flex;align-items:center;justify-content:space-between">Job tickets <span class="u-meta">${total?`${done} of ${total} done`:''}</span></div>`;
+  if(!total){
+    h+=`<div class="u-meta" style="margin-bottom:8px">No job tickets linked to this activity yet.${ev.stage==='Intake'?' They are created when it is approved.':''}</div>`;
+    return h;
+  }
+  const order={Blocked:0,'In Progress':1,'Not Started':2,Done:3};
+  tickets.slice().sort((a,b)=>(order[a.status]??2)-(order[b.status]??2)||(a.due||'9').localeCompare(b.due||'9')).forEach(t=>{
+    const isDone=t.status==='Done';
+    const canEditT=canEditTeamTask(t);
+    const isOverdue=t.due&&t.due<todayStr&&!isDone;
+    const title=(t.title||'').replace(new RegExp('^\\['+(ev.title||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\]\\s*'),'');
+    h+=`<div class="task-item" style="padding:6px 0">
+      <div class="task-cb ${isDone?'done':''}" ${canEditT?`onclick="toggleTicketFromActivity('${escapeAttr(String(t.id))}')" style="cursor:pointer" title="${isDone?'Mark not done':'Mark done'}"`:'title="View only"'}>${isDone?'✓':''}</div>
+      <div class="task-info" ${canEditT?`onclick="editTicketFromActivity('${escapeAttr(String(t.id))}')" style="cursor:pointer"`:''}>
+        <div class="task-name ${isDone?'done':''}">${escapeAttr(title||'Untitled')}</div>
+        <div class="task-meta">
+          <span>${escapeAttr(ticketOwnerName(t.assignedTo))}</span>
+          ${t.venue?`<span>${escapeAttr(shortVenue(t.venue))}</span>`:''}
+          ${t.category?`<span>${escapeAttr(t.category)}</span>`:''}
+          ${t.due?`<span style="color:${isOverdue?'var(--attention)':'var(--ink-muted)'};font-weight:${isOverdue?'600':'400'}">Due ${fmtDate(t.due)}${isOverdue?' · overdue':''}</span>`:''}
+          <span>${escapeAttr(t.status||'Not Started')}</span>
+        </div>
+      </div>
+    </div>`;
+  });
+  return h;
+}
+
 function myWorkItems(includeUnassigned){
   const canSeePersonal=canAccessPanel('personaltasks');
   const projectById=id=>PROJECTS.find(p=>String(p.id)===String(id));
@@ -13092,6 +13204,10 @@ async function loadTasks(){
     }catch(e){console.error('Tasks load error:',e);}
   }
   renderMyTasks();
+  // Job ticket counts show on Submissions cards, the Activities table and the activity detail.
+  if(document.getElementById('apprList')?.offsetParent)renderApprovals();
+  if(document.getElementById('campBody')?.offsetParent)renderCampaigns();
+  refreshActivityDetailIfOpen();
 }
 
 function openAddTask(campaignId){
@@ -13167,7 +13283,7 @@ function openEditTask(taskId){
   });
   document.getElementById('addTaskOv').classList.add('show');
 }
-function closeAddTask(){document.getElementById('addTaskOv').classList.remove('show');}
+function closeAddTask(){const ov=document.getElementById('addTaskOv');ov.classList.remove('show');ov.style.zIndex='';}
 
 async function saveTask(){
   const title=document.getElementById('tTitle').value.trim();
@@ -13292,6 +13408,7 @@ async function saveTask(){
   if(btn){btn.disabled=false;btn.textContent='Save Task';}
   renderMyTasks();
   renderMyWorkIfVisible();
+  refreshActivityDetailIfOpen();
 }
 
 async function toggleTask(id){
@@ -13952,6 +14069,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'myTasks',name:'ConvertedFromPersonalTaskId',displayName:'Converted From Personal Task Id',type:'number',purpose:'Back-reference to the private Personal Task this shared task was converted from, written at creation time. The authoritative idempotency check for convertPersonalTaskToShared — a retry after a failed patch-back on the Personal Task side reuses this record instead of creating a duplicate.'},
   {listKey:'ideas',name:'ActivityType',displayName:'Activity Type',type:'choice',choices:ACTIVITY_TYPE_OPTIONS.join(', '),purpose:'Captured at idea stage so "Continue Brief" can prefill it on the Activity submission form.'},
   {listKey:'ideas',name:'PromotedActivityId',displayName:'Promoted Activity Id',type:'number',purpose:'Links an idea to the real Activity created from it via "Continue Brief", so reopening a promoted idea opens that Activity instead of letting it be promoted twice.'},
+  {listKey:'campaigns',name:'SentBackNote',displayName:'Sent Back Note',type:'text',purpose:'Set by "Send back" on Submissions: the reason, who sent it back and when. Shows "Sent back — waiting on submitter" on the Submissions card, and is cleared the next time the activity is edited. Without it, the send-back message still reaches the submitter, but the card status only lasts until the page reloads.'},
   {listKey:'campaigns',name:'DesignJobCreated',displayName:'Design Job Created',type:'yesno',purpose:'Marks that approval has already created this activity\'s proposed work items, so re-approving never creates a second set. Already read by the Hub; this is the first time anything writes to it.'},
   {listKey:'campaigns',name:'WebStatus',displayName:'Web Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Didier’s web build status.'},
   {listKey:'campaigns',name:'LoadedStatus',displayName:'Loaded Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Amelia’s Loaded Rewards build status.'},
@@ -14857,9 +14975,12 @@ function renderApprovals(){
           <div style="font-size:11px;color:var(--text3);margin-top:2px">
             Submitted ${ev.submittedAt?fmtShort(ev.submittedAt.split('T')[0]):'—'}${ev.submittedBy?' by '+ev.submittedBy:''}
           </div>
+          ${(()=>{const c=jobTicketCountHtml(ev);return c?`<div style="margin-top:4px">${c}</div>`:'';})()}
+          ${ev.sentBackNote?`<div style="margin-top:6px;font-size:12px;color:var(--attention);border-left:3px solid var(--attention);padding:4px 8px;background:var(--attention-tint,transparent)"><strong>Sent back — waiting on submitter.</strong> ${escapeAttr(ev.sentBackNote)}</div>`:''}
         </div>
         <div class="appr-actions">
           ${canApproveCampaigns()?`<button class="btn btn-p" style="padding:6px 12px;font-size:12px" onclick="approveCampaign(${ev.id},this)">✓ Approve</button>
+          ${ev.stage==='Intake'?`<button class="btn btn-s" style="padding:6px 12px;font-size:12px" onclick="sendBackCampaign(${ev.id},this)">↩ Send back</button>`:''}
           <button class="btn btn-s" style="padding:6px 12px;font-size:12px;color:var(--red);border-color:#fab496" onclick="denyCampaign(${ev.id},this)">✕ Deny</button>`:''}
           <button class="btn btn-s" style="padding:6px 12px;font-size:12px" onclick="showPop(${ev.id})">View Details</button>
         </div>
@@ -16272,8 +16393,10 @@ function renderBulkImportResults(){
   summary.innerHTML=[['New',counts.new,'var(--accent)'],['Duplicates',counts.duplicate,'var(--gold)'],['Invalid',counts.invalid,'var(--red)'],['Created / repaired',counts.created+counts.repaired,'#4a6e3e']].map(([label,value,color])=>`<div class="import-stat"><strong style="color:${color}">${value}</strong><span>${label}</span></div>`).join('');
   const log=document.getElementById('bulkImportLog');
   log.style.display='block';
+  // Bulk import doesn't require Activity Group, but job ticket choice on approval depends on it.
+  const noGroup=BULK_IMPORT_PREFLIGHT.filter(item=>['new','created','repaired'].includes(item.status)&&!importRowActivityGroup(item.row).group);
   const color={new:'var(--accent)',duplicate:'var(--gold)',invalid:'var(--red)',created:'#4a6e3e',repaired:'#4a6e3e',failed:'var(--red)'};
-  log.innerHTML=BULK_IMPORT_PREFLIGHT.map(item=>`<div class="import-log-row"><strong style="color:${color[item.status]||'var(--text3)'}">${escapeAttr(item.status.toUpperCase())}</strong><span>${escapeAttr(item.row.Title)}</span><span>${escapeAttr(item.row.Venue)}</span><span>${escapeAttr(item.reason||'')}</span></div>`).join('');
+  log.innerHTML=(noGroup.length?`<div class="import-log-row" style="display:block"><strong style="color:var(--attention)">${noGroup.length} row${noGroup.length===1?' has':'s have'} no Activity Group</strong> — add an "Activity Group" (and "Activity Subtype") column to the CSV, or set it on each activity before approving. Without it, job tickets are chosen from Activity Type only: ${noGroup.map(item=>escapeAttr(item.row.Title)).join(', ')}</div>`:'')+BULK_IMPORT_PREFLIGHT.map(item=>`<div class="import-log-row"><strong style="color:${color[item.status]||'var(--text3)'}">${escapeAttr(item.status.toUpperCase())}</strong><span>${escapeAttr(item.row.Title)}</span><span>${escapeAttr(item.row.Venue)}</span><span>${escapeAttr(item.reason||'')}</span></div>`).join('');
 }
 
 async function preflightBulkImport(){
@@ -16338,8 +16461,19 @@ function lookupIdByLabel(kind,label){
   return (LOOKUP_OPTIONS[kind]||[]).find(option=>normaliseImportText(option.label)===key)?.id||'';
 }
 
+// Optional "Activity Group" / "Activity Subtype" CSV columns, matched case-insensitively against
+// ACTIVITY_GROUPS. A subtype only counts if it belongs to the matched group.
+function importRowActivityGroup(row){
+  const g=Object.keys(ACTIVITY_GROUPS).find(k=>normaliseImportText(k)===normaliseImportText(row['Activity Group']));
+  if(!g)return{group:'',subtype:''};
+  const st=(ACTIVITY_GROUPS[g]||[]).find(k=>normaliseImportText(k)===normaliseImportText(row['Activity Subtype']));
+  return{group:g,subtype:st||''};
+}
 function optionalImportFields(row){
   const optional={};
+  const {group:importGroup,subtype:importSubtype}=importRowActivityGroup(row);
+  if(importGroup)optional.ActivityGroup=importGroup;
+  if(importSubtype)optional.ActivitySubtype=importSubtype;
   const add=(aliases,value)=>addCampaignField(optional,Array.isArray(aliases)?aliases:[aliases],value);
   const numberValue=(value)=>{
     const cleaned=String(value??'').replace(/[$,]/g,'').trim();
@@ -16469,6 +16603,10 @@ async function submitEvent(){
   const actType=document.getElementById('fActType').value;
   const start=document.getElementById('fStart').value;
   if(!title||!venue||!actType||!start){showFMsg('Please fill in Activation, Venue, Activity Type and Start Date.','err');return;}
+  // Activity Group/Subtype decide which job tickets are proposed when this is approved.
+  const actGroupReq=document.getElementById('fActGroup')?.value;
+  const actSubtypeReq=document.getElementById('fActSubtype')?.value;
+  if(!actGroupReq||!actSubtypeReq){showFMsg('Please choose an Activity Group and Activity Subtype. They decide which job tickets are created when this is approved.','err');return;}
   const end=document.getElementById('fEnd').value;
   if(end&&end<start){showFMsg('End Date cannot be before Start Date.','err');return;}
   const btn=document.querySelector('#submitFormActivity .btn-p');
@@ -16730,6 +16868,7 @@ function showActivityPage(id,fromChat=false){
 
 function renderActivityDetail(id,mode){
   const ev=EVENTS.find(e=>e.id===id);if(!ev)return;
+  ACTIVITY_DETAIL_CTX={id,mode};
   const canEdit=canEditCampaigns();
   const canApprove=canApproveCampaigns();
   const vc=vColor(ev.venue);
@@ -16988,6 +17127,7 @@ function renderActivityDetail(id,mode){
   }
 
   // ═══ DESIGN STEP ═══
+  h+=jobTicketsSectionHtml(ev);
   h+=`<div class="pop-section">Design</div>`;
   h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">`;
   h+=`<div class="pop-field"><div class="pop-lbl">Design Status</div>
@@ -17359,6 +17499,9 @@ async function savePopEdit(evId,mode){
     setBtns('Save changes',{disabled:false,display:'none'});
     return;
   }
+  // Any edit after a "Send back" counts as the submitter's response, so the card stops showing
+  // "Sent back — waiting on submitter". Only sent when set, so it never touches a missing column.
+  if(ev.sentBackNote){fields.SentBackNote='';ev.sentBackNote='';}
 
   console.log('Saving fields to SharePoint item',ev.spId,':',JSON.stringify(fields));
 
