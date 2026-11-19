@@ -12,6 +12,17 @@
 
 **Template choice — RESOLVED 2026-11-10:** `autoSelectPlaybook` now uses Activity Group/Subtype first and falls back to ActivityType/EventFormat/BusinessStream only for activities with no Group. `buildProposedTickets` then applies the submission-answer rules from `SUBMISSION_WORKFLOW.md`. See that doc for the mapping.
 
+## Job ticket gaps from the 18 Nov audit — FIXED 2026-11-19 (awaiting live test)
+
+1. Team Work Register add/edit read the activity dropdown but never saved it. Now writes `CampaignLookupId` and `Venue`, preselects the link on edit, and can clear it.
+2. Design briefs only put the activity name in Notes. Now also write `CampaignLookupId`.
+3. Approval-created job tickets emailed nobody. Each owner now gets one email per activity.
+4. Web tickets always started unassigned. Default web owner is now Didier (`DEFAULT_WEB_OWNER_EMAIL`).
+5. A rejected `DesignJobCreated` was dropped silently. The approver is now warned that re-approving could duplicate tickets.
+6. "Duplicate as next month" skipped job tickets entirely. It now opens the job ticket preview for the new month.
+
+**Unverified:** whether Graph accepts `CampaignLookupId: null` to clear a lookup (B.10 in the live test).
+
 ## Campaign task lookup is not consistently mapped — RESOLVED 2026-10-14
 
 **Issue (confirmed via audit):** `loadMyTasks()` read the real "Campaign" Lookup column (`f.Campaign.LookupValue`) into `campaignLookup`, but manual job submission (`submitJob`) wrote a completely different, never-read field (`RelatedCampaignId`) — so selecting a campaign when submitting a job had no visible effect anywhere in the Hub. The dead `runPlaybook()` wrote neither. Downstream code (`myWorkItems()`'s shared-tasks mapping, the Projects work-count rollup) then matched a task back to its Activity by **title text**, which breaks if the Activity is ever renamed.
