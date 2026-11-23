@@ -138,6 +138,16 @@ This needs a ticket to fail on purpose. The simplest way is for someone with Sha
 | K.5 | Click a ticket's activity name | The activity opens. Under **Build Channels** each line now says e.g. "In Progress · 1/2 tickets done". It can't be changed by hand. | |
 | K.6 | Sign in as Luca or Didier (design role) | The Hub opens on Queues → Design. | |
 
+## Part L: automatic move to Review
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| L.1 | Take a Planning activity from Part C with several job tickets. Tick all but one done (Queues, My Work or the activity's Job tickets section). | It stays in Planning. | |
+| L.2 | Tick the last one done | Toast "All job tickets done — "*name*" moved to Review". On Pipeline it's now in Review, and on Submissions it's under **In review**. The activity owner gets an Inbox tag. | |
+| L.3 | Un-tick that ticket | The ticket re-opens, but the activity stays in Review (forwards only). | |
+| L.4 | Look at `TEST skip` from Part D (approved with no tickets) on Pipeline | Its card says "No job tickets", and it stays in Planning. | |
+| L.5 | In SharePoint, mark every ticket on another Planning test activity Done directly in the list. Then reload the Hub as an approver. | Toast "All job tickets done — moved to Review: *name*", and the activity is in Review. | |
+
 ## Part I: clean up
 
 1. In Tasks & Job Tickets, delete every item whose title contains `TEST`.
@@ -159,6 +169,7 @@ This needs a ticket to fail on purpose. The simplest way is for someone with Sha
 | H: Activity view, form, Send back | | |
 | J: Five stages | | |
 | K: Team queues | | |
+| L: Automatic move to Review | | |
 
 Tested by: ________ Date: ________
 
