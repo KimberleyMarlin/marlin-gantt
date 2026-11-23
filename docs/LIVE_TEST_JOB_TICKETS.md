@@ -127,6 +127,17 @@ This needs a ticket to fail on purpose. The simplest way is for someone with Sha
 | J.4 | Select **Save … in the new stages** and confirm | "*n* activities saved in their new stage". In SharePoint, none are left as In Build or Ready for Live. | |
 | J.5 | In SharePoint list settings, edit the **WorkflowStage** column and remove the In Build and Ready for Live choices | The column offers only the five stages. Do this after J.4. | |
 
+## Part K: team queues
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| K.1 | Select **Queues** in the sidebar (where Design Jobs was) | "Team Queues" page with tabs Design, Web, Social & EDM, Ops & POS, Other. Each tab shows how many open job tickets it has. | |
+| K.2 | Open each tab | Design shows the design and signage tickets from Part C, Web the ticket platform and website tickets, Social & EDM the social and EDM tickets, Ops & POS the POS and staff brief tickets. Each row shows activity, venue, type, owner, due date and status, soonest due first. Overdue dates are rust. | |
+| K.3 | Try **Mine**, **Unassigned** and **Overdue** | Each narrows the list as named, and the counts match. | |
+| K.4 | Tick a ticket in a queue | It leaves the queue (open tickets only). Its activity's Job tickets section shows it done. | |
+| K.5 | Click a ticket's activity name | The activity opens. Under **Build Channels** each line now says e.g. "In Progress · 1/2 tickets done". It can't be changed by hand. | |
+| K.6 | Sign in as Luca or Didier (design role) | The Hub opens on Queues → Design. | |
+
 ## Part I: clean up
 
 1. In Tasks & Job Tickets, delete every item whose title contains `TEST`.
@@ -147,6 +158,7 @@ This needs a ticket to fail on purpose. The simplest way is for someone with Sha
 | G: Duplicate as next month | | |
 | H: Activity view, form, Send back | | |
 | J: Five stages | | |
+| K: Team queues | | |
 
 Tested by: ________ Date: ________
 

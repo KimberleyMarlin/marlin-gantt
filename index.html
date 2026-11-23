@@ -811,7 +811,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
     <button class="sb-item" data-p="approvals" onclick="nav(this)"><span class="ico">✓</span>Submissions</button>
     <button class="sb-item" data-p="projects" onclick="nav(this)"><span class="ico">▣</span>Projects</button>
     <button class="sb-item" data-p="mytasks" onclick="nav(this)"><span class="ico">☷</span>Team Work Register<span class="sb-badge a" id="tBadge" style="display:none">0</span></button>
-    <button class="sb-item" data-p="design" onclick="nav(this)"><span class="ico">✦</span>Design Jobs</button>
+    <button class="sb-item" data-p="design" onclick="nav(this)"><span class="ico">✦</span>Queues</button>
     <button class="sb-item" data-p="workload" onclick="nav(this)"><span class="ico">▥</span>Workload</button>
     <div class="sb-sec">Programs</div>
     <button class="sb-item" data-p="loaded" onclick="nav(this)"><span class="ico">☆</span>Loaded Rewards</button>
@@ -1388,20 +1388,16 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
   <!-- DESIGN JOBS -->
   <div class="panel" id="p-design">
     <div class="ph">
-      <div><div class="ph-eye">Creative</div><div class="ph-title">Design <em>Jobs</em></div></div>
+      <div><div class="ph-eye">Delivery</div><div class="ph-title">Team <em>Queues</em></div></div>
       <div class="ph-right">
         <button class="tb-btn p" onclick="openDesignBrief()">＋ Submit Brief</button>
         <button class="tb-btn" onclick="navTo('workload')">Workload</button>
       </div>
     </div>
     <div class="ca">
-      <div class="stats" id="dStats" style="margin-bottom:12px"></div>
-      <div class="filters"><div class="chips" id="dChips">
-        <div class="chip on" data-s="" onclick="pickChip(this,'dChips',renderDesign)">All</div>
-        <div class="chip" data-s="urgent" onclick="pickChip(this,'dChips',renderDesign)">● Urgent</div>
-        <div class="chip" data-s="indesign" onclick="pickChip(this,'dChips',renderDesign)">In Design</div>
-        <div class="chip" data-s="review" onclick="pickChip(this,'dChips',renderDesign)">Review</div>
-      </div></div>
+      <div class="filters"><div class="chips" id="qTabs"></div></div>
+      <div class="filters" style="margin-top:6px"><div class="chips" id="qFilters"></div></div>
+      <div class="u-meta" id="qSummary" style="margin:6px 0 10px"></div>
       <div id="designList"><div class="loading"><div class="spinner"></div></div></div>
     </div>
   </div>
@@ -6794,7 +6790,7 @@ function populateAssignDropdowns(){
 }
 
 // ═══════════════════════════════════════
-const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Design <em>Jobs</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',mktreport:'Marketing <em>Report</em>',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',appearance:'<em>Appearance</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
+const PANEL_TITLES={overview:'Dashboard <em>Overview</em>',gantt:'Event <em>Schedule</em>',crossvenue:'Cross-Venue <em>Overview</em>',pipeline:'Campaign <em>Pipeline</em>',calendar:'Activity <em>Calendar</em>',campaigns:'Activity <em>Overview</em>',activitydetail:'Activity <em>Detail</em>',artwork:'<em>Artwork</em>',mywork:'My <em>Work</em>',loaded:'Loaded <em>Rewards</em>',crm:'Mailing <em>CRM</em>',ticketing:'Ticketing <em>Dashboard</em>',design:'Team <em>Queues</em>',workload:'Team <em>Workload</em>',social:'Social <em>Calendar</em>',budget:'Finance',mktreport:'Marketing <em>Report</em>',venues:'Venue <em>Overview</em>',sponsorships:'Sponsorships <em>&amp; Agreements</em>',specials:'Specials <em>&amp; Offers</em>',mytasks:'Shared <em>Work Setup</em>',personaltasks:'Personal <em>Tasks</em>',schema:'Admin &amp; <em>Schema</em>',appearance:'<em>Appearance</em>',operations:'<em>Oversight</em>',projects:'<em>Projects</em>',approvals:'<em>Submissions</em>',inbox:'Your <em>Inbox</em>',notifications:'Notifications',submit:'Submit <em>something</em>',venuemonth:'Venue <em>Monthly</em>',ideas:'Activation <em>Library</em>',drivesearch:'Drive <em>Search</em>',phototagging:'Photo <em>Tagging</em>'};
 
 function nav(btn){
   if(!isAuthed){signIn();return;}
@@ -11863,16 +11859,74 @@ async function updateTicketsSold(evId){
 // ═══════════════════════════════════════
 // DESIGN JOBS
 // ═══════════════════════════════════════
+// TEAM QUEUES (docs/DELIVERY_STAGES_PLAN.md, step 2) — job tickets grouped by TaskType into one
+// tab per team, replacing the old Design Jobs list of activities. Sidebar item and panel id stay
+// "design" so bookmarks and the designer role's default landing page keep working.
+const QUEUE_TABS=[
+  {key:'design',label:'Design',types:['Design Asset','Print / Signage'],owner:'Luca'},
+  {key:'web',label:'Web',types:['Web Update'],owner:'Didier'},
+  {key:'social',label:'Social & EDM',types:['Social Post','EDM / Newsletter','Paid Ad'],owner:'Marketing (the approver)'},
+  {key:'ops',label:'Ops & POS',types:['POS Update','Admin'],owner:'Perrin'},
+  {key:'other',label:'Other',types:null,owner:''},
+];
+const QUEUE_FILTERS=[['all','All'],['mine','Mine'],['unassigned','Unassigned'],['overdue','Overdue']];
+let QUEUE_TAB='',QUEUE_FILTER='all';
+function queueTabFor(t){
+  const tab=QUEUE_TABS.find(q=>q.types&&q.types.includes(t.category));
+  return tab?tab.key:'other';
+}
+function pickQueueTab(key){QUEUE_TAB=key;renderDesign();}
+function pickQueueFilter(key){QUEUE_FILTER=key;renderDesign();}
+async function toggleQueueTicket(id){await toggleTask(id);renderDesign();refreshActivityDetailIfOpen();}
 function renderDesign(){
   if(!isAuthed)return;
-  const filter=document.querySelector('#dChips .chip.on')?.dataset.s||'';
-  const today=new Date();today.setHours(0,0,0,0);const week=new Date(Date.now()+7*864e5);
-  let items=EVENTS.filter(e=>['In Design'].includes(e.stage)||e.designBriefDue);
-  if(filter==='urgent')items=items.filter(e=>e.designBriefDue&&new Date(e.designBriefDue+'T00:00:00')<=week);
-  if(filter==='indesign')items=items.filter(e=>['In Design','Design Review'].includes(e.stage));
-  const urgent=EVENTS.filter(e=>e.designBriefDue&&new Date(e.designBriefDue+'T00:00:00')<=week&&new Date(e.designBriefDue+'T00:00:00')>=today).length;
-  document.getElementById('dStats').innerHTML=`<div class="stat"><div class="stat-n">${EVENTS.filter(e=>e.stage==='In Design').length}</div><div class="stat-l">In Design</div></div><div class="stat ${urgent>0?'hi':''}"><div class="stat-n">${urgent}</div><div class="stat-l">Brief Due ≤7d</div><div class="stat-tag ${urgent>0?'st-alert':'st-up'}">${urgent>0?'Urgent':'OK'}</div></div><div class="stat"><div class="stat-n">${EVENTS.filter(e=>e.stage==='Intake').length}</div><div class="stat-l">Brief Required</div></div>`;
-  document.getElementById('designList').innerHTML=items.length?items.map((j,i)=>{const isUrgent=j.designBriefDue&&new Date(j.designBriefDue+'T00:00:00')<=week;const vc=vColor(j.venue);return`<div class="task-item ${isUrgent?'critical':''}" onclick="showPop(${j.id})" style="margin-bottom:5px"><div class="task-id">MKT-${String(j.spId||i+1).padStart(3,'0')}</div><div class="task-info"><div class="task-name">${j.title}</div><div class="task-meta"><span style="display:flex;align-items:center;gap:4px"><span style="width:5px;height:5px;border-radius:50%;background:${vc.c};display:inline-block"></span>${j.venue}</span>${j.brand?`<span>${j.brand}</span>`:''}<span>${fmtShort(j.start)}</span></div></div><div class="task-right"><span class="tag t-b">${stageLabel(j.stage)}</span>${j.designBriefDue?`<span style="font-size:10px;color:${isUrgent?'var(--red)':'var(--text3)'};font-weight:${isUrgent?'700':'400'}">Brief: ${fmtShort(j.designBriefDue)}</span>`:''}</div></div>`}).join(''):'<div class="loading">No design items found</div>';
+  if(!QUEUE_TAB)QUEUE_TAB=currentRole==='ops'?'ops':'design';
+  const todayStr=toLocalISODate(new Date());
+  const open=MY_TASKS.filter(t=>t.title&&t.status!=='Done');
+  const isOverdue=t=>t.due&&t.due<todayStr;
+  const tabsEl=document.getElementById('qTabs');
+  if(tabsEl)tabsEl.innerHTML=QUEUE_TABS.map(q=>{
+    const n=open.filter(t=>queueTabFor(t)===q.key).length;
+    return`<div class="chip ${q.key===QUEUE_TAB?'on':''}" onclick="pickQueueTab('${q.key}')">${q.label} <span class="u-meta-sm">${n}</span></div>`;
+  }).join('');
+  const inTab=open.filter(t=>queueTabFor(t)===QUEUE_TAB);
+  const filtered=inTab.filter(t=>QUEUE_FILTER==='mine'?(t.assignedTo&&isCurrentUserAssignment(t.assignedTo))
+    :QUEUE_FILTER==='unassigned'?!t.assignedTo
+    :QUEUE_FILTER==='overdue'?isOverdue(t):true);
+  const filtersEl=document.getElementById('qFilters');
+  if(filtersEl)filtersEl.innerHTML=QUEUE_FILTERS.map(([k,l])=>{
+    const n=k==='all'?inTab.length:inTab.filter(t=>k==='mine'?(t.assignedTo&&isCurrentUserAssignment(t.assignedTo)):k==='unassigned'?!t.assignedTo:isOverdue(t)).length;
+    return`<div class="chip ${k===QUEUE_FILTER?'on':''}" onclick="pickQueueFilter('${k}')">${l} <span class="u-meta-sm">${n}</span></div>`;
+  }).join('');
+  const tab=QUEUE_TABS.find(q=>q.key===QUEUE_TAB);
+  const summary=document.getElementById('qSummary');
+  if(summary)summary.textContent=tab.types?`${tab.types.join(', ')} job tickets${tab.owner?' · default owner '+tab.owner:''}. Open tickets only, soonest due first.`:'General and any other job tickets. Open tickets only, soonest due first.';
+  const eventFor=t=>t.campaignLookupId?EVENTS.find(e=>String(e.spId)===String(t.campaignLookupId)||String(e.id)===String(t.campaignLookupId)):(t.campaignLookup?EVENTS.find(e=>(e.title||'').toLowerCase()===t.campaignLookup.toLowerCase()):null);
+  const rows=filtered.slice().sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
+  const list=document.getElementById('designList');
+  if(!list)return;
+  if(!rows.length){list.innerHTML=`<div class="card"><div class="loading" style="padding:20px">Nothing here${QUEUE_FILTER==='all'?'':' for this filter'}.</div></div>`;return;}
+  list.innerHTML=`<div class="card">${rows.map(t=>{
+    const ev=eventFor(t);
+    const canEditT=canEditTeamTask(t);
+    const late=isOverdue(t);
+    const title=ev?(t.title||'').replace(new RegExp('^\\['+(ev.title||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\]\\s*'),''):t.title;
+    const venue=t.venue||ev?.venue||'';
+    return`<div class="task-item" style="padding:8px 12px">
+      <div class="task-cb" ${canEditT?`onclick="toggleQueueTicket('${escapeAttr(String(t.id))}')" style="cursor:pointer" title="Mark done"`:'title="View only"'}></div>
+      <div class="task-info" ${canEditT?`onclick="openEditTask('${escapeAttr(String(t.id))}')" style="cursor:pointer"`:''}>
+        <div class="task-name">${escapeAttr(title||'Untitled')}</div>
+        <div class="task-meta">
+          ${ev?`<span style="color:var(--accent);cursor:pointer" onclick="event.stopPropagation();showPop(${ev.id})">↗ ${escapeAttr(ev.title)}</span>`:(t.campaignLookup?`<span>↗ ${escapeAttr(t.campaignLookup)}</span>`:'<span>No activity</span>')}
+          ${venue?`<span>${escapeAttr(shortVenue(venue))}</span>`:''}
+          <span>${escapeAttr(t.category||'General')}</span>
+          <span>${escapeAttr(ticketOwnerName(t.assignedTo))}</span>
+          ${t.due?`<span style="color:${late?'var(--attention)':'var(--ink-muted)'};font-weight:${late?'600':'400'}">Due ${fmtDate(t.due)}${late?' · overdue':''}</span>`:'<span>No due date</span>'}
+          <span>${escapeAttr(t.status||'Not Started')}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 // ═══════════════════════════════════════
@@ -13839,6 +13893,7 @@ async function loadTasks(){
   // Job ticket counts show on Submissions cards, the Activities table and the activity detail.
   if(document.getElementById('apprList')?.offsetParent)renderApprovals();
   if(document.getElementById('campBody')?.offsetParent)renderCampaigns();
+  if(document.getElementById('designList')?.offsetParent)renderDesign();
   refreshActivityDetailIfOpen();
 }
 
@@ -14041,6 +14096,7 @@ async function saveTask(){
   renderMyTasks();
   renderMyWorkIfVisible();
   refreshActivityDetailIfOpen();
+  if(document.getElementById('designList')?.offsetParent)renderDesign();
 }
 
 async function toggleTask(id){
@@ -17840,23 +17896,29 @@ function renderActivityDetail(id,mode){
   </div>`;
 
   // ═══ BUILD CHANNELS (tickable) ═══
-  h+=`<div class="pop-section">Build Channels</div>`;
-  const chanState=(v)=>v||'To Do';
+  // Build Channels: progress is now calculated from the activity's job tickets (delivery stages
+  // plan, decision 5), so there's one place to update it. The old hand-set WebStatus/PosStatus/
+  // LoadedStatus/SocialStatus values only show, read-only, for activities with no tickets of that kind.
+  h+=`<div class="pop-section">Build Channels <span class="u-meta" style="font-weight:400">from job tickets</span></div>`;
   const chanColor=(v)=>v==='Done'?'#4a6e3e':v==='In Progress'?'#9c732b':v==='Not Required'?'#a9a6a7':'#5f6b7a';
+  const evTickets=jobTicketsForActivity(ev).tickets;
   const buildChans=[
-    {label:'Web',owner:'Didier',field:'WebStatus',val:ev.webStatus},
-    {label:'▤ POS',owner:'Perrin',field:'PosStatus',val:ev.posStatus==='Not Required'?'':ev.posStatus},
-    {label:'★ Loaded',owner:'Amelia',field:'LoadedStatus',val:ev.loadedStatus},
-    {label:'Social',owner:'Marketing',field:'SocialStatus',val:ev.socialStatus},
+    {label:'Web',owner:'Didier',match:t=>t.category==='Web Update',old:ev.webStatus},
+    {label:'▤ POS',owner:'Perrin',match:t=>t.category==='POS Update',old:ev.posStatus==='Not Required'?'':ev.posStatus},
+    {label:'★ Loaded',owner:'Amelia',match:t=>t.category==='Admin'&&ticketKind({taskType:'Admin',title:t.title})==='app',old:ev.loadedStatus},
+    {label:'Social & EDM',owner:'Marketing',match:t=>['Social Post','EDM / Newsletter','Paid Ad'].includes(t.category),old:ev.socialStatus},
   ];
   h+=`<div style="display:flex;flex-direction:column;gap:6px">`;
   buildChans.forEach(c=>{
+    const ts=evTickets.filter(c.match);
+    const done=ts.filter(t=>t.status==='Done').length;
+    const state=ts.length?(done===ts.length?'Done':(done||ts.some(t=>t.status==='In Progress'))?'In Progress':'To Do'):(c.old||'');
+    const detail=ts.length?`${done}/${ts.length} ticket${ts.length===1?'':'s'} done`:(c.old?'set by hand (older record)':'no tickets');
     h+=`<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface2);border-radius:var(--radius-sm)">
       <span style="font-size:12px;font-weight:600;min-width:80px">${c.label}</span>
       <span style="font-size:10px;color:var(--text3);min-width:60px">${c.owner}</span>
-      <select class="pop-edit-sel" data-field="${c.field}" data-original="${escapeAttr(c.val||'')}" onchange="markPopDirty()" style="flex:1;font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:${chanColor(c.val)};font-weight:600;outline:none">
-        ${['','Not Required','To Do','In Progress','Done'].map(o=>`<option value="${o}" ${o===c.val?'selected':''}>${o||'—'}</option>`).join('')}
-      </select>
+      <span style="flex:1;font-size:12px;font-weight:600;color:${chanColor(state)}">${state||'—'}</span>
+      <span class="u-meta">${detail}</span>
     </div>`;
   });
   h+=`</div>`;

@@ -1,6 +1,6 @@
 # Delivery stages plan: Planning to Done
 
-Status: **decisions made 23 Nov 2026 (all seven as recommended); step 1 built.** Written 19 Nov 2026 from the code on `main`. It covers gaps 10 and 11 from the 18 Nov job ticket audit. The decisions at the end are Kim's to make before anything is built.
+Status: **decisions made 23 Nov 2026 (all seven as recommended); steps 1–2 built.** Written 19 Nov 2026 from the code on `main`. It covers gaps 10 and 11 from the 18 Nov job ticket audit. The decisions at the end are Kim's to make before anything is built.
 
 ## What the code does today
 
@@ -115,7 +115,7 @@ This keeps "needs report" working. There's no Done without numbers, unless an ap
 ## Order of work, once decided
 
 1. **The five-stage cut and mapping (a).** This change is behind every other step. **Built 23 Nov** (Stage clean-up in Admin & Schema).
-2. **Queues (d).** No stage logic, and useful straight away.
+2. **Queues (d).** No stage logic, and useful straight away. **Built 23 Nov**, along with the ticket-calculated Build Channels (decision 5).
 3. **Planning → Review on last ticket (b).**
 4. **Review checklist and Go Live blocking (c).**
 5. **Live on the start date and Done rules (e).** Needs the Power Automate decision.

@@ -38,6 +38,17 @@ Not yet verified against live SharePoint (SUB-03 / FLOW-01 in `OS_RESET_MASTER.m
 - Submissions cards and the Activities table show a "*x*/*y* tickets" chip.
 - Tickets are matched to an activity by `CampaignLookupId`, or by title for older tickets (`jobTicketsForActivity`, the same rule as My Work).
 
+## Team queues
+
+The **Queues** page (sidebar, replacing Design Jobs; panel id `design`, `renderDesign`) lists open job tickets by TaskType, in tabs:
+- **Design:** Design Asset, Print / Signage
+- **Web:** Web Update
+- **Social & EDM:** Social Post, EDM / Newsletter, Paid Ad
+- **Ops & POS:** POS Update, Admin
+- **Other:** everything else
+
+Filters are All, Mine, Unassigned and Overdue, and rows are sorted by due date. Each activity's **Build Channels** (Web, POS, Loaded, Social & EDM) is now calculated from its tickets and read-only. The old hand-set status fields only show for activities with no tickets of that kind.
+
 ## Other ways job tickets are created
 
 - **Manual job** (Submit → Maintenance / Update Ticket, `submitJob`): writes `CampaignLookupId` and `Venue`; emails the assignee.
