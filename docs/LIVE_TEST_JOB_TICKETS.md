@@ -148,6 +148,19 @@ This needs a ticket to fail on purpose. The simplest way is for someone with Sha
 | L.4 | Look at `TEST skip` from Part D (approved with no tickets) on Pipeline | Its card says "No job tickets", and it stays in Planning. | |
 | L.5 | In SharePoint, mark every ticket on another Planning test activity Done directly in the list. Then reload the Hub as an approver. | Toast "All job tickets done — moved to Review: *name*", and the activity is in Review. | |
 
+## Part M: Review checks and Go Live
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| M.1 | **Submissions → In review**, find the activity moved to Review in Part L | Its card shows **Go Live checks**: Job tickets, Final artwork (if it had design work), Live link (if it had web work), Social posts and Featured photo, each with ✓, ✕ or "warning only". | |
+| M.2 | On that activity, set an Artwork File or Linked Artwork Folder, and a Landing Page / Booking / Ticket URL | The card shows a **Ready** badge, and the button says **Go Live**. | |
+| M.3 | Select **Go Live** | It goes Live with no questions. | |
+| M.4 | On another Review activity with an open check, select **Go live anyway…** | A prompt lists the open checks and asks for a reason. Enter one: it goes Live, and the activity's description now ends with "WENT LIVE WITH OPEN CHECKS … Reason: …". | |
+| M.5 | Cancel the prompt instead | Nothing changes. | |
+| M.6 | On **Pipeline**, drag a Review activity with open checks into Live | The same prompt appears. Cancelling leaves it in Review. | |
+| M.7 | As someone who isn't an approver, try to move an activity with open checks to Live | A message lists what's missing and says an approver can go live anyway. Nothing changes. | |
+| M.8 | Dashboard → **Upcoming Launches** | Review activities only appear once they're Ready, alongside Live ones starting in the next 30 days. | |
+
 ## Part I: clean up
 
 1. In Tasks & Job Tickets, delete every item whose title contains `TEST`.
@@ -170,6 +183,7 @@ This needs a ticket to fail on purpose. The simplest way is for someone with Sha
 | J: Five stages | | |
 | K: Team queues | | |
 | L: Automatic move to Review | | |
+| M: Review checks and Go Live | | |
 
 Tested by: ________ Date: ________
 

@@ -1,6 +1,6 @@
 # Delivery stages plan: Planning to Done
 
-Status: **decisions made 23 Nov 2026 (all seven as recommended); steps 1–3 built.** Written 19 Nov 2026 from the code on `main`. It covers gaps 10 and 11 from the 18 Nov job ticket audit. The decisions at the end are Kim's to make before anything is built.
+Status: **decisions made 23 Nov 2026 (all seven as recommended); steps 1–4 built.** Written 19 Nov 2026 from the code on `main`. It covers gaps 10 and 11 from the 18 Nov job ticket audit. The decisions at the end are Kim's to make before anything is built.
 
 ## What the code does today
 
@@ -117,7 +117,7 @@ This keeps "needs report" working. There's no Done without numbers, unless an ap
 1. **The five-stage cut and mapping (a).** This change is behind every other step. **Built 23 Nov** (Stage clean-up in Admin & Schema).
 2. **Queues (d).** No stage logic, and useful straight away. **Built 23 Nov**, along with the ticket-calculated Build Channels (decision 5).
 3. **Planning → Review on last ticket (b).** **Built 23 Nov.** Only tickets linked by ID count; the load-time catch-up runs for approvers.
-4. **Review checklist and Go Live blocking (c).**
+4. **Review checklist and Go Live blocking (c).** **Built 23 Nov.** Artwork counts as attached when Artwork File or Linked Artwork Folder is set (the auto-created Job Folder alone doesn't count). The checks apply to every route to Live: Go Live, Pipeline drag and the Stage dropdown.
 5. **Live on the start date and Done rules (e).** Needs the Power Automate decision.
 
 Each step is one PR, with a live-test section added to `LIVE_TEST_JOB_TICKETS.md`.
