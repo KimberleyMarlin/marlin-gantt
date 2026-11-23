@@ -1515,6 +1515,25 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
     </div>
   </div>
 
+  <div class="overlay" id="reelMakeOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closeReelMaker()">
+    <div class="popup" style="max-width:520px">
+      <div class="pop-h"><div class="pop-title">Make a reel</div><button class="pop-close" onclick="closeReelMaker()">✕</button></div>
+      <div class="pop-body">
+        <div id="reelMakeClips" class="field-help" style="margin-bottom:10px;word-break:break-word"></div>
+        <div class="form-grid">
+          <div class="form-group full"><label class="form-label">Venue</label><select class="form-select" id="reelMakeVenue"></select><div class="field-help">Shown on the end card. The reel is saved in this venue's subfolder if there is one.</div></div>
+          <div class="form-group full"><label class="form-label">On-screen text</label><input class="form-input" id="reelMakeLine1" maxlength="60" placeholder="e.g. Spritz season is here"></div>
+          <div class="form-group full"><label class="form-label">Second line or call to action (optional)</label><input class="form-input" id="reelMakeLine2" maxlength="60" placeholder="e.g. Book at the link in our bio"></div>
+          <div class="form-group full"><label class="form-label">Length</label><div style="display:flex;gap:16px;font-size:13px;padding-top:4px"><label><input type="radio" name="reelMakeLen" value="15" checked> 15 seconds</label><label><input type="radio" name="reelMakeLen" value="30"> 30 seconds</label></div></div>
+        </div>
+        <div class="field-help" style="margin:8px 0 12px">No music: add it in Instagram when you post. Making the reel takes about as long as the reel itself, so keep this screen open.</div>
+        <div id="reelMakeStatus" style="margin-bottom:10px"></div>
+        <div id="reelMakePreview" style="margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px"><button class="btn btn-p" id="reelMakeGo" onclick="makeReel()">Make reel</button><button class="btn btn-s" onclick="closeReelMaker()">Close</button></div>
+      </div>
+    </div>
+  </div>
+
   <div class="overlay" id="socAttachOv" onmousedown="overlayMouseDown(event)" onclick="if(event.target===this&&_overlayMouseDownOnBackdrop)closeReelAttach()">
     <div class="popup" style="max-width:560px">
       <div class="pop-h"><div class="pop-title">Attach reel</div><button class="pop-close" onclick="closeReelAttach()">✕</button></div>
@@ -12537,6 +12556,224 @@ async function reelResumePoint(u){
   return u.sent;
 }
 
+// ── Make a reel ───────────────────────────────────────────────────────────────────────────────
+// Turns 2–8 ticked clips into one 9:16 reel in the browser: each clip trimmed to an even share of
+// the length (skipping its shaky first half-second), centre-cropped, the text on a navy band over
+// the opening clip, and a 2s navy end card with the Marlin Hospitality logo and the venue. The
+// clips play in hidden <video> elements and are drawn to a canvas that MediaRecorder records, so
+// it renders in real time (a 15s reel takes about 15–20s) and the screen has to stay open. No
+// audio: music goes on in Instagram. The result is uploaded to the Reels folder like any upload.
+// When the GitHub Action can reach SharePoint, a server render (ffmpeg) can sit behind the same
+// button for faster, higher-quality output.
+const REEL_SIZE={w:1080,h:1920},REEL_FPS=30,REEL_END_CARD=2,REEL_SKIP_START=0.5,REEL_MIN=2,REEL_MAX=8;
+const REEL_LOGO='design-system/assets/logos/marlin-hospitality-stacked-white.svg';
+const _reelPicked=new Set();
+let _reelMaking=false;
+
+function toggleReelPick(key){
+  if(_reelPicked.has(key))_reelPicked.delete(key);
+  else if(_reelPicked.size>=REEL_MAX){alert(`Pick up to ${REEL_MAX} clips.`);return;}
+  else _reelPicked.add(key);
+  renderReels();
+}
+function reelPickBarHtml(){
+  if(!_reelPicked.size)return`<div style="font-size:12px;color:var(--ink-muted);margin-bottom:10px">Tick ${REEL_MIN} to ${REEL_MAX} clips to make a reel from them.</div>`;
+  const ok=_reelPicked.size>=REEL_MIN;
+  return`<div class="card" style="position:sticky;top:8px;z-index:5;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;margin-bottom:12px">
+    <span style="font-size:13px;font-weight:700;color:var(--ink-brand)">${_reelPicked.size} clip${_reelPicked.size===1?'':'s'} ticked</span>
+    <button class="tb-btn p" ${ok?'':'disabled'} onclick="openReelMaker()">Make a reel</button>
+    <button class="tb-btn" onclick="_reelPicked.clear();renderReels()">Clear</button>
+    ${ok?'':`<span style="font-size:12px;color:var(--ink-muted)">Tick at least ${REEL_MIN}.</span>`}
+  </div>`;
+}
+// The venue a clip belongs to, from its subfolder name ("Whitfords" → Whitfords Brewing Co).
+function reelVenueFromGroup(group){
+  const g=String(group||'').toLowerCase().trim();if(!g)return'';
+  const v=VENUES_DATA.find(v=>{const n=v.name.toLowerCase(),s=shortVenue(v.name).toLowerCase();return n===g||n.includes(g)||g.includes(s.toLowerCase())||g.includes(v.key);});
+  return v?v.name:'';
+}
+function openReelMaker(){
+  const clips=REELS.filter(r=>_reelPicked.has(socReelKey(r)));
+  if(clips.length<REEL_MIN)return;
+  const venue=clips.map(c=>reelVenueFromGroup(c.group)).find(Boolean)||currentVenueAccess||'';
+  const sel=document.getElementById('reelMakeVenue');
+  sel.innerHTML=`<option value="">Marlin Hospitality (no venue)</option>`+VENUES_DATA.map(v=>`<option value="${escapeAttr(v.name)}">${escapeAttr(v.name)}</option>`).join('');
+  sel.value=venue;
+  document.getElementById('reelMakeLine1').value='';
+  document.getElementById('reelMakeLine2').value='';
+  document.querySelector('input[name="reelMakeLen"][value="15"]').checked=true;
+  document.getElementById('reelMakeClips').textContent=clips.map(c=>c.name).join(' · ');
+  reelMakeStatus('');
+  document.getElementById('reelMakePreview').innerHTML='';
+  document.getElementById('reelMakeGo').disabled=false;
+  document.getElementById('reelMakeOv').classList.add('show');
+}
+function closeReelMaker(){if(_reelMaking&&!confirm('The reel is still being made. Stop and close?'))return;_reelMaking=false;document.getElementById('reelMakeOv').classList.remove('show');}
+function reelMakeStatus(text,pct,attention){
+  const el=document.getElementById('reelMakeStatus');if(!el)return;
+  el.innerHTML=text?`${pct!=null?`<div style="height:6px;background:var(--surface-alt);border-radius:var(--radius-sm);margin-bottom:6px;overflow:hidden" role="progressbar" aria-valuenow="${Math.round(pct)}" aria-valuemin="0" aria-valuemax="100" aria-label="Making the reel"><div style="height:100%;width:${Math.round(pct)}%;background:var(--accent)"></div></div>`:''}<div style="font-size:13px;color:${attention?'var(--attention)':'var(--ink)'};font-weight:600">${attention?'⊘ ':''}${escapeAttr(text)}</div>`:'';
+}
+function reelRecorderType(){
+  if(typeof MediaRecorder==='undefined'||!HTMLCanvasElement.prototype.captureStream)return null;
+  return['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm'].find(t=>MediaRecorder.isTypeSupported(t))||null;
+}
+function reelTainted(source,w,h){
+  try{const c=document.createElement('canvas');c.width=c.height=8;const x=c.getContext('2d');x.drawImage(source,0,0,w||8,h||8,0,0,8,8);x.getImageData(0,0,1,1);return false;}catch{return true;}
+}
+function reelWaitEvent(el,ev,ms=20000){return new Promise((res,rej)=>{const t=setTimeout(()=>rej(new Error('timed out waiting for '+ev)),ms);el.addEventListener(ev,()=>{clearTimeout(t);res();},{once:true});el.addEventListener('error',()=>{clearTimeout(t);rej(new Error('video error'));},{once:true});});}
+// A <video> for one clip, ready to draw. Streams from SharePoint's download link; if the browser
+// won't let the canvas read those frames, downloads the clip into memory instead.
+async function reelLoadClip(clip){
+  const info=await socDownloadUrl({driveId:clip.driveId,itemId:clip.itemId});
+  const make=async src=>{
+    const v=document.createElement('video');
+    v.muted=true;v.playsInline=true;v.setAttribute('playsinline','');v.preload='auto';v.crossOrigin='anonymous';v.src=src;
+    await reelWaitEvent(v,'loadeddata');
+    return v;
+  };
+  let v=await make(info.url);
+  if(reelTainted(v,v.videoWidth,v.videoHeight)){
+    if(info.size>250e6)throw new Error(`${clip.name} is too large to prepare on this device (${socFmtSize(info.size)}).`);
+    const blob=await (await fetch(info.url)).blob();
+    v.removeAttribute('src');v.load();
+    v=await make(URL.createObjectURL(blob));v._blobUrl=v.src;
+  }
+  return v;
+}
+function reelDrawCover(ctx,v){
+  const vw=v.videoWidth,vh=v.videoHeight;if(!vw||!vh)return;
+  const scale=Math.max(REEL_SIZE.w/vw,REEL_SIZE.h/vh),sw=REEL_SIZE.w/scale,sh=REEL_SIZE.h/scale;
+  ctx.drawImage(v,(vw-sw)/2,(vh-sh)/2,sw,sh,0,0,REEL_SIZE.w,REEL_SIZE.h);
+}
+// Wraps text to a width; returns lines.
+function reelWrap(ctx,text,maxW){
+  const words=String(text).split(/\s+/).filter(Boolean),lines=[];let cur='';
+  for(const w of words){const t=cur?cur+' '+w:w;if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=w;}else cur=t;}
+  if(cur)lines.push(cur);return lines;
+}
+// Line 1 (and 2) on a solid navy band in the lower third. Cream on navy is an approved pairing.
+function reelDrawText(ctx,line1,line2){
+  if(!line1&&!line2)return;
+  const css=getComputedStyle(document.documentElement);
+  const navy=css.getPropertyValue('--navy-900').trim()||'#14416d',cream=css.getPropertyValue('--cream-500').trim()||'#fff6dc';
+  const pad=56,maxW=REEL_SIZE.w-pad*4;
+  ctx.font='800 76px "Work Sans", sans-serif';const l1=line1?reelWrap(ctx,line1,maxW).slice(0,3):[];
+  ctx.font='600 50px "Work Sans", sans-serif';const l2=line2?reelWrap(ctx,line2,maxW).slice(0,2):[];
+  const h=l1.length*90+l2.length*64+(l1.length&&l2.length?20:0)+pad*2;
+  const y=Math.round(REEL_SIZE.h*0.66);
+  ctx.fillStyle=navy;
+  ctx.beginPath();if(ctx.roundRect)ctx.roundRect(pad,y,REEL_SIZE.w-pad*2,h,6);else ctx.rect(pad,y,REEL_SIZE.w-pad*2,h);ctx.fill();
+  ctx.fillStyle=cream;ctx.textBaseline='top';ctx.textAlign='left';
+  let ty=y+pad;
+  ctx.font='800 76px "Work Sans", sans-serif';l1.forEach(t=>{ctx.fillText(t,pad*2,ty);ty+=90;});
+  if(l1.length&&l2.length)ty+=20;
+  ctx.font='600 50px "Work Sans", sans-serif';l2.forEach(t=>{ctx.fillText(t,pad*2,ty);ty+=64;});
+}
+function reelDrawEndCard(ctx,logo,venue){
+  const css=getComputedStyle(document.documentElement);
+  ctx.fillStyle=css.getPropertyValue('--navy-900').trim()||'#14416d';ctx.fillRect(0,0,REEL_SIZE.w,REEL_SIZE.h);
+  const cream=css.getPropertyValue('--cream-500').trim()||'#fff6dc';
+  let y=REEL_SIZE.h*0.36;
+  if(logo){const w=620,h=w*(logo.naturalHeight||logo.height||1)/(logo.naturalWidth||logo.width||1);ctx.drawImage(logo,(REEL_SIZE.w-w)/2,y-h/2,w,h);y+=h/2+90;}
+  if(venue){
+    ctx.fillStyle=cream;ctx.textAlign='center';ctx.textBaseline='top';ctx.font='800 64px "Work Sans", sans-serif';
+    reelWrap(ctx,venue.toUpperCase(),REEL_SIZE.w-200).forEach(t=>{ctx.fillText(t,REEL_SIZE.w/2,y);y+=80;});
+  }
+}
+async function reelLoadLogo(){
+  try{
+    const img=new Image();img.src=REEL_LOGO;await img.decode();
+    return reelTainted(img,img.naturalWidth,img.naturalHeight)?null:img;
+  }catch{return null;}
+}
+
+async function makeReel(){
+  const type=reelRecorderType();
+  if(!type){reelMakeStatus('This browser can\'t make videos. Use Safari on an iPhone (iOS 14.3 or later), or Chrome on a computer.',null,true);return;}
+  const clips=REELS.filter(r=>_reelPicked.has(socReelKey(r)));
+  if(clips.length<REEL_MIN)return;
+  const venue=document.getElementById('reelMakeVenue').value;
+  const line1=document.getElementById('reelMakeLine1').value.trim(),line2=document.getElementById('reelMakeLine2').value.trim();
+  const length=Number(document.querySelector('input[name="reelMakeLen"]:checked')?.value||15);
+  const go=document.getElementById('reelMakeGo');go.disabled=true;
+  _reelMaking=true;reelHoldScreen(true);
+  const videos=[];
+  try{
+    reelMakeStatus('Getting the clips ready…',0);
+    await Promise.all([document.fonts?.load('800 76px "Work Sans"'),document.fonts?.load('600 50px "Work Sans"')].filter(Boolean)).catch(()=>{});
+    const logo=await reelLoadLogo();
+    for(const [i,c] of clips.entries()){
+      reelMakeStatus(`Getting the clips ready (${i+1} of ${clips.length})…`,0);
+      try{videos.push(await reelLoadClip(c));}
+      catch(e){throw new Error(/video error/.test(e.message)?`${c.name} won't play in this browser. HEVC videos from an iPhone play in Safari, so try on the iPhone.`:`Couldn't open ${c.name}: ${e.message}`);}
+    }
+    // Even share of the length per clip, after the end card; a short clip just plays out.
+    const slot=(length-REEL_END_CARD)/videos.length;
+    const plan=videos.map(v=>{const d=v.duration||0;const start=Math.min(REEL_SKIP_START,Math.max(0,d-slot));return{v,start,dur:Math.max(0.5,Math.min(slot,d-start))};});
+    const total=plan.reduce((a,p)=>a+p.dur,0)+REEL_END_CARD;
+
+    const canvas=document.createElement('canvas');canvas.width=REEL_SIZE.w;canvas.height=REEL_SIZE.h;
+    const ctx=canvas.getContext('2d');
+    const stream=canvas.captureStream(REEL_FPS);
+    const chunks=[];
+    const rec=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:8e6});
+    rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+    const stopped=new Promise(r=>{rec.onstop=r;});
+
+    // Seek the first clip, paint a frame, then start recording.
+    const seek=async(p)=>{p.v.currentTime=p.start;await reelWaitEvent(p.v,'seeked').catch(()=>{});};
+    await seek(plan[0]);
+    reelDrawCover(ctx,plan[0].v);reelDrawText(ctx,line1,line2);
+    rec.start(1000);
+    const t0=performance.now();
+    for(let i=0;i<plan.length;i++){
+      if(!_reelMaking)throw new Error('Stopped.');
+      const p=plan[i],next=plan[i+1];
+      if(i>0&&Math.abs(p.v.currentTime-p.start)>0.2)await seek(p);
+      await p.v.play().catch(()=>{});
+      if(next)seek(next);   // get the next clip ready while this one plays
+      const segStart=performance.now();
+      await new Promise(resolve=>{
+        const tick=()=>{
+          const el=(performance.now()-segStart)/1000;
+          reelDrawCover(ctx,p.v);
+          if(i===0)reelDrawText(ctx,line1,line2);
+          reelMakeStatus('Making the reel. Keep this screen open.',Math.min(99,(performance.now()-t0)/1000/total*100));
+          if(el>=p.dur||p.v.ended)return resolve();
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+      p.v.pause();
+    }
+    // End card.
+    const endStart=performance.now();
+    await new Promise(resolve=>{const tick=()=>{reelDrawEndCard(ctx,logo,venue);if((performance.now()-endStart)/1000>=REEL_END_CARD)return resolve();requestAnimationFrame(tick);};requestAnimationFrame(tick);});
+    rec.stop();await stopped;
+    stream.getTracks().forEach(t=>t.stop());
+
+    const ext=type.startsWith('video/mp4')?'mp4':'webm';
+    const blob=new Blob(chunks,{type:type.split(';')[0]});
+    const name=`${venue||'Marlin Hospitality'} reel ${socToday()}.${ext}`;
+    const preview=URL.createObjectURL(blob);
+    document.getElementById('reelMakePreview').innerHTML=`<video src="${preview}" controls playsinline muted style="width:100%;max-height:50vh;background:var(--navy-900,#14416d);border-radius:var(--radius-sm)"></video>${ext==='webm'?'<div class="field-help" style="color:var(--attention);margin-top:6px">This browser made a WebM file, which Instagram doesn\'t take. Make the reel on the iPhone (Safari) for an MP4.</div>':''}`;
+    // Save into the venue's subfolder if there is one, else the Reels folder.
+    const sub=REEL_SUBFOLDERS.find(f=>venue&&reelVenueFromGroup(f.name)===venue);
+    reelMakeStatus('Saving to the Reels folder…',100);
+    const u={file:new File([blob],name,{type:blob.type}),name,size:blob.size,sent:0,state:'waiting',message:'Waiting',parentId:sub?sub.id:_reelsLoc.folderId,uploadUrl:''};
+    _reelUploads.push(u);
+    _reelMaking=false;
+    await runReelUploads();
+    if(u.state==='done'){reelMakeStatus(`Saved as "${name}" in the Reels folder${sub?` (${sub.name})`:''}. It's at the top of the list, ready to attach to a post or save to your phone.`);_reelPicked.clear();renderReels();}
+    else reelMakeStatus(`The reel was made but didn't save: ${u.message}`,null,true);
+  }catch(e){
+    reelMakeStatus(e.message||String(e),null,true);
+  }finally{
+    _reelMaking=false;reelHoldScreen(false);go.disabled=false;
+    videos.forEach(v=>{v.pause();if(v._blobUrl)URL.revokeObjectURL(v._blobUrl);v.removeAttribute('src');v.load();});
+  }
+}
+
 function renderReels(){
   const el=document.getElementById('socReels');if(!el)return;
   renderReelUploadBar();
@@ -12546,11 +12783,12 @@ function renderReels(){
   if(REELS_STATE.status!=='loaded'){el.innerHTML='<div class="loading"><div class="spinner"></div></div>';return;}
   if(!REELS.length){el.innerHTML=banner+`<div style="padding:30px;text-align:center;color:var(--ink-muted);font-size:13px">No videos in the Reels folder yet${_reelsLoc?.webUrl?` · <a href="${escapeAttr(_reelsLoc.webUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">Open the folder ↗</a>`:''}</div>`;return;}
   const used={};SOCIAL_POSTS.forEach(p=>{const k=socReelKey(p.videoRef);if(k)(used[k]=used[k]||[]).push(p);});
-  el.innerHTML=banner+`<div style="font-size:12px;color:var(--ink-muted);margin-bottom:10px">${REELS.length} video${REELS.length===1?'':'s'} in the Reels folder${_reelsLoc?.webUrl?` · <a href="${escapeAttr(_reelsLoc.webUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">Open the folder ↗</a>`:''} · newest first</div>
+  el.innerHTML=banner+(target?'':reelPickBarHtml())+`<div style="font-size:12px;color:var(--ink-muted);margin-bottom:10px">${REELS.length} video${REELS.length===1?'':'s'} in the Reels folder${_reelsLoc?.webUrl?` · <a href="${escapeAttr(_reelsLoc.webUrl)}" target="_blank" rel="noopener" style="color:var(--accent)">Open the folder ↗</a>`:''} · newest first</div>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px">${REELS.map(r=>{
     const shape=socReelShape(r),key=socReelKey(r),posts=used[key]||[];
     return`<div class="card" style="padding:0;overflow:hidden;display:flex;flex-direction:column">
       <div style="aspect-ratio:9/16;background:var(--surface-alt) ${r.thumb?`url('${r.thumb.replace(/'/g,'%27')}') center/cover`:''};position:relative">
+        ${target?'':`<label style="position:absolute;left:6px;top:6px;display:flex;align-items:center;gap:6px;background:${_reelPicked.has(key)?'var(--navy-900,#14416d)':'var(--surface)'};color:${_reelPicked.has(key)?'#fff':'var(--ink-brand)'};border:1px solid var(--line);border-radius:var(--radius-sm);padding:4px 8px;font-size:12px;font-weight:700;cursor:pointer"><input type="checkbox" ${_reelPicked.has(key)?'checked':''} onchange="toggleReelPick('${escapeAttr(key)}')" style="margin:0" aria-label="Use ${escapeAttr(r.name)} in a reel">${_reelPicked.has(key)?'In reel':'Use'}</label>`}
         ${r.duration?`<span style="position:absolute;right:6px;bottom:6px;background:var(--navy-900,#14416d);color:#fff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:var(--radius-sm)">${socFmtDuration(r.duration)}</span>`:''}
       </div>
       <div style="padding:8px 10px;display:flex;flex-direction:column;gap:4px;flex:1">
