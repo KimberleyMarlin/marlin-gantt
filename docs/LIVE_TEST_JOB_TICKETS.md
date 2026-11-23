@@ -117,6 +117,16 @@ This needs a ticket to fail on purpose. The simplest way is for someone with Sha
 | H.9 | Open `TEST send back`, edit any field and save | Back on **Submissions**, the "Sent back" message has gone and the card is still at Intake, ready to approve. | |
 | H.10 | **＋ Submit something → "Admin: Bulk import activities from a reviewed CSV"**: preflight a CSV with one row that has an "Activity Group" column filled in and one that doesn't | The log starts with "1 row has no Activity Group", naming the second row. After importing, the first row's activity has its Group set. | |
 
+## Part J: five stages
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| J.1 | Open **Pipeline** | Columns are Submissions, Planning, Review, Live, Done. There's no In Build or Ready for Live column. | |
+| J.2 | Open any activity and look at the Stage dropdown, the Activities stage filter and the bulk "Set stage…" menu | Each offers only the five stages. | |
+| J.3 | **Admin & Schema → Stage clean-up** | Shows how many activities are still stored as In Build or Ready for Live, and what they'll become. Activities stored that way already show as Planning or Review elsewhere in the Hub. | |
+| J.4 | Select **Save … in the new stages** and confirm | "*n* activities saved in their new stage". In SharePoint, none are left as In Build or Ready for Live. | |
+| J.5 | In SharePoint list settings, edit the **WorkflowStage** column and remove the In Build and Ready for Live choices | The column offers only the five stages. Do this after J.4. | |
+
 ## Part I: clean up
 
 1. In Tasks & Job Tickets, delete every item whose title contains `TEST`.
@@ -136,6 +146,7 @@ This needs a ticket to fail on purpose. The simplest way is for someone with Sha
 | F: Failure handling | | |
 | G: Duplicate as next month | | |
 | H: Activity view, form, Send back | | |
+| J: Five stages | | |
 
 Tested by: ________ Date: ________
 
