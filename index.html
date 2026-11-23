@@ -3701,8 +3701,12 @@ async function approveCampaign(evId,btn){
     openApprovalPreview(ev.id);
     return;
   }
+  if(nextStage==='Live'){
+    const go=await confirmGoLive(ev);
+    if(!go.ok)return;
+  }
   btn=btn||document.getElementById('approveBtn-'+evId);
-  if(btn){btn.disabled=true;btn.textContent='Approving…';}
+  if(btn){btn.disabled=true;btn.textContent=nextStage==='Live'?'Going live…':'Approving…';}
   try{
     await advanceCampaignStage(ev,nextStage);
     if(typeof showToast==='function')showToast(`"${ev.title}" approved → ${nextStage}`);
@@ -3710,7 +3714,7 @@ async function approveCampaign(evId,btn){
     console.error('Approve failed:',e);
     showApprovalError(`Could not approve "${ev.title}" → ${nextStage}: ${e.message}`);
   }
-  if(btn){btn.disabled=false;btn.textContent='Approve';}
+  if(btn){btn.disabled=false;btn.textContent=nextStage==='Live'?'Go Live':'Approve';}
 }
 
 // Shared by the plain approval path and the task-preview's own Approve step — PATCHes the stage
@@ -8015,6 +8019,7 @@ async function cvDrop(e,newStage){
   if(!ev||ev.stage===newStage)return;
   const ok=confirm(`Move "${ev.title}" from "${ev.stage}" to "${newStage}"?\n\nThis updates the live campaign stage for everyone right away.`);
   if(!ok)return;
+  if(newStage==='Live'&&ev.stage!=='Live'&&!(await confirmGoLive(ev)).ok)return;
   const oldStage=ev.stage;
   ev.stage=newStage;
   // A health filter (stat-card or the dropdown) can be actively hiding non-matching cards — since
@@ -8466,7 +8471,7 @@ function renderDashUpcomingLaunches(){
   const today=new Date();today.setHours(0,0,0,0);
   const in30=new Date(today.getTime()+30*864e5);
   const items=EVENTS.filter(e=>!venue||e.venue===venue).filter(e=>!isArchived(e))
-    .filter(e=>(e.stage==='Review'||e.stage==='Live')&&new Date(e.start+'T00:00:00')>=today&&new Date(e.start+'T00:00:00')<=in30)
+    .filter(e=>((e.stage==='Review'&&reviewChecklist(e).ready)||e.stage==='Live')&&new Date(e.start+'T00:00:00')>=today&&new Date(e.start+'T00:00:00')<=in30)
     .sort((a,b)=>a.start.localeCompare(b.start)).slice(0,8);
   el.innerHTML=items.length?items.map(ev=>{
     const vc=vColor(ev.venue);
@@ -9895,6 +9900,7 @@ async function pipeDrop(e,newStage){
   const spId=_dragSpId;_dragSpId=null;
   const ev=EVENTS.find(ev=>ev.spId==spId);
   if(!ev)return;
+  if(newStage==='Live'&&ev.stage!=='Live'&&!(await confirmGoLive(ev)).ok)return;
   const oldStage=ev.stage;
   ev.stage=newStage;
   renderPipeline();
@@ -14101,6 +14107,72 @@ async function saveTask(){
   if(document.getElementById('designList')?.offsetParent)renderDesign();
 }
 
+// Delivery stages plan, step 4: what Review shows, and what blocks Go Live.
+// Blocking: all job tickets done; final artwork when there was design/print work; a live link
+// (landing page, booking or ticket URL) when there was web work. Warnings only: social posts,
+// featured photo. Approvers can go live anyway with a reason, recorded on the activity.
+function reviewChecklist(ev){
+  const {tickets,done,total}=jobTicketsForActivity(ev);
+  const has=types=>tickets.some(t=>types.includes(t.category));
+  const checks=[];
+  checks.push({label:'Job tickets',blocking:true,ok:total===0||done===total,detail:total?`${done} of ${total} done`:'No job tickets'});
+  const needsArt=has(['Design Asset','Print / Signage']);
+  const art=ev.artworkFile||ev.linkedArtworkFolderUrl;
+  checks.push({label:'Final artwork',blocking:needsArt,ok:!needsArt||!!art,url:art,detail:art?'Attached':needsArt?'Not attached: add an Artwork File or Linked Artwork Folder on the activity':'No design work'});
+  const needsLink=has(['Web Update']);
+  const link=ev.landingPageUrl||ev.bookingUrl||ev.ticketUrl;
+  checks.push({label:'Live link',blocking:needsLink,ok:!needsLink||!!link,url:link,detail:link?'Set':needsLink?'Not set: add the landing page, booking or ticket link':'No web work'});
+  if(SOCIAL_STATE.status==='loaded'){
+    const posts=SOCIAL_POSTS.filter(p=>p.activityId&&(p.activityId===String(ev.spId)||p.activityId===String(ev.id)));
+    const by=st=>posts.filter(p=>p.status===st).length;
+    checks.push({label:'Social posts',blocking:false,ok:posts.length>0,detail:posts.length?[['Scheduled','scheduled'],['Posted','posted'],['Approved','approved'],['Draft','draft']].map(([k,l])=>by(k)?`${by(k)} ${l}`:'').filter(Boolean).join(', ')||`${posts.length} post${posts.length===1?'':'s'}`:'None yet'});
+  }
+  const photo=ev.eventImageRef||ev.eventImageUrl;
+  checks.push({label:'Featured photo',blocking:false,ok:!!photo,detail:photo?'Set':'Not set'});
+  const blockers=checks.filter(c=>c.blocking&&!c.ok);
+  return{checks,blockers,ready:!blockers.length};
+}
+function reviewChecklistHtml(ev){
+  const {checks,ready}=reviewChecklist(ev);
+  return`<div style="margin-top:8px;border-top:1px solid var(--line,var(--border));padding-top:8px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="u-meta" style="font-weight:700;text-transform:uppercase;letter-spacing:.04em">Go Live checks</span>${ready?'<span class="tag t-g" style="font-size:10px">Ready</span>':''}</div>
+    ${checks.map(c=>{const mark=c.ok?'✓':c.blocking?'✕':'!';const col=c.ok?'var(--positive,#4a6e3e)':c.blocking?'var(--attention)':'var(--ink-muted)';
+      return`<div style="display:flex;gap:8px;font-size:12px;line-height:1.6"><span style="color:${col};font-weight:700;width:12px">${mark}</span><span style="min-width:110px;font-weight:600">${c.label}</span><span style="color:${c.ok?'var(--ink-muted)':col}">${c.url?`<a href="${escapeAttr(c.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${escapeAttr(c.detail)}</a>`:escapeAttr(c.detail)}${!c.ok&&!c.blocking?' (warning only)':''}</span></div>`;}).join('')}
+  </div>`;
+}
+// Saves "went live with open checks" plus the reason to the activity's description history, the
+// same way Deny reasons are kept, and tags the owner. Returns false if the note couldn't be saved.
+async function recordGoLiveOverride(ev,reason,blockers){
+  const token=await getToken(true);
+  const stamp=new Date().toLocaleDateString('en-AU');
+  const who=currentUser?.name||currentUserEmail||'Unknown';
+  const base=(ev.description||'')+`\n\n--- WENT LIVE WITH OPEN CHECKS ${stamp} by ${who} ---\nOpen: ${blockers.map(b=>b.label).join(', ')}\nReason: ${reason.trim()}`;
+  let newDesc=withLongDescription(base,writableCampaignKey('LongDescription','Long Description')?'':ev.longDescription);
+  newDesc=withPOSNotes(newDesc,ev.posNotes);
+  // Schema is loaded at sign-in (loadAll); fall back to the standard column name if it isn't yet.
+  const descriptionKey=writableCampaignKey('Description')||'Description';
+  const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{[descriptionKey]:newDesc}})});
+  if(!res.ok)return false;
+  ev.description=splitActivityDescription(newDesc).description;
+  return true;
+}
+// Used by every route to Live (Go Live button, Pipeline drag, Stage dropdown). Returns
+// {ok:true} to carry on, or {ok:false} if blocked / cancelled. When checks are open, approvers
+// are asked for a reason ("go live anyway"); everyone else is told what's missing.
+async function confirmGoLive(ev){
+  const {blockers}=reviewChecklist(ev);
+  if(!blockers.length)return{ok:true};
+  const list=blockers.map(b=>`• ${b.label}: ${b.detail}`).join('\n');
+  if(!canApproveCampaigns()){alert(`"${ev.title}" can't go live yet:\n\n${list}\n\nAn approver can go live anyway with a reason.`);return{ok:false};}
+  const reason=prompt(`"${ev.title}" has open Go Live checks:\n\n${list}\n\nTo go live anyway, give a reason (it's saved on the activity):`);
+  if(reason===null)return{ok:false};
+  if(!reason.trim()){alert('Please give a reason, or cancel and finish the checks first.');return{ok:false};}
+  let saved=false;
+  try{saved=await recordGoLiveOverride(ev,reason,blockers);}catch(e){console.warn('Go-live note failed:',e);}
+  if(!saved&&!confirm('The reason could not be saved on the activity. Go live anyway?'))return{ok:false};
+  return{ok:true,overridden:true};
+}
+
 // Delivery stages plan, step 3: Planning (In Design) → Review once every job ticket on the
 // activity is Done. Forwards only — re-opening a ticket never pulls an activity back. Only
 // tickets linked by CampaignLookupId count, so title-matched legacy tickets never move anything,
@@ -15686,6 +15758,8 @@ function renderApprovals(){
   }
   let intake=EVENTS.filter(e=>e.stage==='Intake'&&!isArchived(e));
   let review=EVENTS.filter(e=>e.stage==='Review'&&!isArchived(e));
+  // Review cards show social post counts in their Go Live checks — fetch the posts once, then redraw.
+  if(review.length&&SOCIAL_STATE.status==='idle'&&LIST_IDS.socialPosts&&isAuthed&&!isPreviewMode)loadSocialPosts().then(()=>{if(SOCIAL_STATE.status==='loaded')renderApprovals();});
   if(_apprVenueFilter){intake=intake.filter(e=>e.venue===_apprVenueFilter);review=review.filter(e=>e.venue===_apprVenueFilter);}
 
   // Submitter dropdown is built from everything currently in Intake/Review (before the submitter
@@ -15752,12 +15826,13 @@ function renderApprovals(){
           ${ev.sentBackNote?`<div style="margin-top:6px;font-size:12px;color:var(--attention);border-left:3px solid var(--attention);padding:4px 8px;background:var(--attention-tint,transparent)"><strong>Sent back — waiting on submitter.</strong> ${escapeAttr(ev.sentBackNote)}</div>`:''}
         </div>
         <div class="appr-actions">
-          ${canApproveCampaigns()?`<button class="btn btn-p" style="padding:6px 12px;font-size:12px" onclick="approveCampaign(${ev.id},this)">✓ Approve</button>
+          ${canApproveCampaigns()?`<button class="btn btn-p" style="padding:6px 12px;font-size:12px" onclick="approveCampaign(${ev.id},this)" ${ev.stage==='Review'?`title="${reviewChecklist(ev).ready?'All Go Live checks pass':'Some Go Live checks are open — you can go live anyway with a reason'}"`:''}>${ev.stage==='Review'?(reviewChecklist(ev).ready?'Go Live':'Go live anyway…'):'✓ Approve'}</button>
           ${ev.stage==='Intake'?`<button class="btn btn-s" style="padding:6px 12px;font-size:12px" onclick="sendBackCampaign(${ev.id},this)">↩ Send back</button>`:''}
           <button class="btn btn-s" style="padding:6px 12px;font-size:12px;color:var(--red);border-color:#fab496" onclick="denyCampaign(${ev.id},this)">✕ Deny</button>`:''}
           <button class="btn btn-s" style="padding:6px 12px;font-size:12px" onclick="showPop(${ev.id})">View Details</button>
         </div>
       </div>
+      ${ev.stage==='Review'?`<div class="appr-body">${reviewChecklistHtml(ev)}</div>`:''}
       ${ev.description?`<div class="appr-body">${ev.description}</div>`:''}
     </div>`;
   };
@@ -18046,7 +18121,7 @@ function renderActivityDetail(id,mode){
   // Action buttons
   h+=`<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">`;
   if(ev.stage==='Review'&&canApprove){
-    h+=`<button id="approveBtn-${ev.id}" class="btn btn-p" onclick="approveCampaign(${ev.id},this)">✓ Approve</button>`;
+    h+=`<button id="approveBtn-${ev.id}" class="btn btn-p" onclick="approveCampaign(${ev.id},this)">${reviewChecklist(ev).ready?'Go Live':'Go Live…'}</button>`;
   }
   // Any delivered activity can be reported on, and a saved report can be edited. Previously the
   // button vanished once the report moved the activity to Done, so a report couldn't be corrected.
@@ -18147,6 +18222,8 @@ async function savePopEdit(evId,mode){
   const roots=activityEditRoots(mode);
   const btns=roots.flatMap(root=>[...root.querySelectorAll('.pop-save-btn')]);
   const setBtns=(text,opts={})=>btns.forEach(b=>{b.textContent=text;if(opts.disabled!==undefined)b.disabled=opts.disabled;if(opts.bg!==undefined)b.style.background=opts.bg;if(opts.color!==undefined)b.style.color=opts.color;if(opts.display!==undefined)b.style.display=opts.display;});
+  const stageSel=roots.flatMap(root=>[...root.querySelectorAll('[data-field="WorkflowStage"]')])[0];
+  if(stageSel&&stageSel.value==='Live'&&ev.stage!=='Live'&&!(await confirmGoLive(ev)).ok){stageSel.value=ev.stage;return;}
   setBtns('Saving…',{disabled:true});
   const fields={};
   let requestedPOSNotes=null;
