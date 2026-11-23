@@ -17,7 +17,7 @@ The OS itself never holds a Meta token: it is a public static page. Automatic pu
 
 ## Reels
 
-The *Reels* tab lists the videos in **00 OS/Reels** on the Marlin Hospitality Marketing site (and one level of subfolders, shown as groups), newest first, with length, size and a 9:16 check. `REELS_FOLDER_PATH` in `index.html` sets the folder; the default library is tried first, then every other library on the site.
+The *Reels* tab lists the videos in the Reels folder on the Marlin Hospitality Marketing site (and one level of subfolders, shown as groups), newest first, with length, size and a 9:16 check. The folder is found from its SharePoint sharing link, `REELS_SHARE_LINK` in `index.html` (Share → Copy link on the folder), so it works wherever the folder sits. If the link stops resolving, `REELS_FOLDER_PATH` (`00 OS/Reels`) is tried in each library on the site. If neither works, the tab says so and what to check.
 
 - **Save to phone** gets the original file, not SharePoint's compressed preview. On an iPhone it's two taps: the first downloads the original (with progress), the second opens the share sheet, where *Save Video* puts it in Photos at full quality. iOS only allows the share sheet straight from a tap, hence the two steps. On a computer it simply downloads. Files over about 600 MB are downloaded in the browser instead, and are better done on a computer.
 - **Attach to a post** adds the video to an upcoming post (a feed post becomes a reel), or starts a new reel post for a venue and date. From a post's *Edit*, *Choose from Reels* does the same the other way round.
