@@ -12528,7 +12528,7 @@ async function createReelPost(btn){
   if(!date){alert('Pick a publish date.');return;}
   btn.disabled=true;
   try{
-    await socWrite('POST',socListUrl(),{Title:`Reel · ${socReelFor(ref)?.name||''}`.slice(0,255),Venue:venue,Platforms:'Facebook;Instagram',PostType:'Reel',Step:'reel',PublishAt:new Date(`${date}T${SOCIAL_DEFAULT_TIME.Reel}:00`).toISOString(),Caption:'',VideoRef:JSON.stringify(ref),Status:'Draft',CaptionEdited:false,PublishMode:'Manual'});
+    await socWrite('POST',socListUrl(),{Title:`Reel · ${socReelFor(ref)?.name||''}`.slice(0,255),Venue:venue,Platforms:'Facebook;Instagram',PostType:'Reel',Step:'reel',PublishAt:new Date(`${date}T${SOCIAL_DEFAULT_TIME.Reel}:00`).toISOString(),Caption:'',VideoRef:JSON.stringify(ref),Status:'Draft',CaptionEdited:false});
   }catch(e){alert('Could not create the post: '+e.message);btn.disabled=false;return;}
   btn.disabled=false;
   closeReelAttach();
