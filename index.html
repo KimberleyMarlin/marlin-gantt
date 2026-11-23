@@ -1510,6 +1510,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
       <div class="stats" id="socStats" style="margin-bottom:12px"></div>
       <div id="socSuggest"></div>
       <div id="socCal"></div>
+      <div id="reelUpload" style="display:none"></div>
       <div id="socReels" style="display:none"></div>
     </div>
   </div>
@@ -12073,6 +12074,7 @@ async function renderSocial(){
   setup.innerHTML='';
   const reelsEl=document.getElementById('socReels'),onReels=_socView==='reels';
   reelsEl.style.display=onReels?'':'none';
+  document.getElementById('reelUpload').style.display=onReels?'':'none';
   [cal,stats,sugg].forEach(e=>{e.style.display=onReels?'none':'';});
   ['socVenue','socStatus'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=onReels?'none':'';});
   if(SOCIAL_STATE.status!=='loaded'&&SOCIAL_STATE.status!=='loading'){cal.innerHTML='<div class="loading"><div class="spinner"></div></div>';await loadSocialPosts();}
@@ -12386,6 +12388,7 @@ async function loadReels(force){
     const top=await list(loc.folderId);
     const out=top.filter(socIsVideo).map(it=>({...it,group:''}));
     // One level of subfolders (e.g. one per venue), shown as groups.
+    REEL_SUBFOLDERS=top.filter(it=>it.folder).map(f=>({id:f.id,name:f.name})).sort((a,b)=>a.name.localeCompare(b.name));
     for(const f of top.filter(it=>it.folder)){
       (await list(f.id)).filter(socIsVideo).forEach(it=>out.push({...it,group:f.name}));
     }
@@ -12413,8 +12416,130 @@ function socReelShape(r){
 function socReelKey(ref){return ref?`${ref.driveId}/${ref.itemId}`:'';}
 function socReelFor(ref){return REELS.find(r=>r.driveId===ref?.driveId&&r.itemId===ref?.itemId)||null;}
 
+// ── Upload from phone ─────────────────────────────────────────────────────────────────────────
+// Picks videos from the iPhone camera roll (or a computer) and uploads them to the Reels folder,
+// or one of its subfolders, with Graph upload sessions: 10 MB chunks, so 100 MB+ phone videos
+// work, and an interrupted chunk (screen locked, signal dropped) resumes from where SharePoint
+// says it got to. Uploads run as the signed-in person, so they need Edit access to the folder;
+// a 403 is explained as exactly that.
+const REEL_CHUNK=320*1024*32; // 10 MiB: Graph wants chunks in multiples of 320 KiB
+let REEL_SUBFOLDERS=[],_reelUploads=[],_reelUploading=false,_reelWakeLock=null;
+
+function renderReelUploadBar(){
+  const el=document.getElementById('reelUpload');if(!el)return;
+  if(!_reelsLoc){el.innerHTML='';return;}
+  const opts=`<option value="">Reels folder</option>`+REEL_SUBFOLDERS.map(f=>`<option value="${escapeAttr(f.id)}">${escapeAttr(f.name)}</option>`).join('');
+  const rows=_reelUploads.map((u,i)=>{
+    const pct=u.size?Math.round(u.sent/u.size*100):0;
+    const colour=u.state==='failed'?'var(--attention)':u.state==='done'?'var(--positive)':'var(--accent)';
+    return`<div style="padding:8px 0;border-top:1px solid var(--line)">
+      <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px"><span style="font-weight:700;color:var(--ink-brand);word-break:break-word">${escapeAttr(u.name)}</span><span style="color:var(--ink-muted);white-space:nowrap">${socFmtSize(u.size)}</span></div>
+      <div style="height:6px;background:var(--surface-alt);border-radius:var(--radius-sm);margin:6px 0;overflow:hidden" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${escapeAttr(u.name)}"><div style="height:100%;width:${u.state==='done'?100:pct}%;background:${colour}"></div></div>
+      <div style="font-size:12px;color:${u.state==='failed'?'var(--attention)':'var(--ink-muted)'};${u.state==='failed'?'font-weight:600':''}">${u.state==='failed'?'⊘ ':u.state==='done'?'✓ ':''}${escapeAttr(u.message||'')}${u.state==='failed'&&u.retryable?` <button class="tb-btn" style="margin-left:6px" onclick="retryReelUpload(${i})">↻ Try again</button>`:''}</div>
+    </div>`;
+  }).join('');
+  el.innerHTML=`<div class="card" style="padding:12px 14px;margin-bottom:12px">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label class="tb-btn p" style="cursor:${_reelUploading?'default':'pointer'};opacity:${_reelUploading?.6:1}">Upload from phone<input type="file" accept="video/*" multiple style="display:none" ${_reelUploading?'disabled':''} onchange="startReelUploads(this.files);this.value=''"></label>
+      <label style="font-size:12px;color:var(--ink-muted);display:flex;align-items:center;gap:6px">to <select class="form-select" id="reelUploadFolder" style="width:auto;font-size:12px" ${_reelUploading?'disabled':''} aria-label="Upload to folder">${opts}</select></label>
+    </div>
+    ${_reelUploading?'<div style="font-size:12px;color:var(--ink);margin-top:8px;font-weight:600">Keep this screen open until the uploads finish. If the phone locks, the upload carries on from where it stopped when you come back.</div>':''}
+    ${rows?`<div style="margin-top:8px">${rows}</div>`:''}
+  </div>`;
+  const sel=document.getElementById('reelUploadFolder');if(sel&&_reelUploadFolder)sel.value=_reelUploadFolder;
+}
+let _reelUploadFolder='';
+
+// Plain-words reasons for the failures people actually hit.
+function reelUploadError(status,bodyText){
+  const t=String(bodyText||'');
+  if(status===403||/accessDenied/i.test(t))return{msg:'Your account can\'t add files to this folder. Someone who owns the Reels folder (or the Marketing site) needs to give you Edit access to it. Uploading in SharePoint itself fails for the same reason.',retry:false};
+  if(status===401)return{msg:'You\'ve been signed out. Sign in to the OS again, then try again.',retry:true};
+  if(status===507||/quota|insufficientStorage/i.test(t))return{msg:'The SharePoint site is out of storage. Ask IT to free up or add space.',retry:false};
+  if(status===413)return{msg:'This file is too big for SharePoint to accept.',retry:false};
+  if(status===404||/itemNotFound/i.test(t))return{msg:'The Reels folder couldn\'t be found any more. Refresh the page and try again.',retry:true};
+  return{msg:'Upload failed: '+graphErrorText(status,t),retry:true};
+}
+async function reelHoldScreen(on){
+  try{
+    if(on&&'wakeLock' in navigator&&!_reelWakeLock){_reelWakeLock=await navigator.wakeLock.request('screen');_reelWakeLock.addEventListener('release',()=>{_reelWakeLock=null;});}
+    if(!on&&_reelWakeLock){await _reelWakeLock.release();_reelWakeLock=null;}
+  }catch{/* not supported or not allowed; the on-screen note covers it */}
+}
+// iOS drops the wake lock when the page is hidden; ask again when it's back.
+document.addEventListener('visibilitychange',()=>{if(_reelUploading&&document.visibilityState==='visible')reelHoldScreen(true);});
+function reelWaitVisible(){return document.visibilityState==='visible'?Promise.resolve():new Promise(r=>{const h=()=>{if(document.visibilityState==='visible'){document.removeEventListener('visibilitychange',h);r();}};document.addEventListener('visibilitychange',h);});}
+
+async function startReelUploads(fileList){
+  const files=[...(fileList||[])];if(!files.length||_reelUploading)return;
+  _reelUploadFolder=document.getElementById('reelUploadFolder')?.value||'';
+  const parentId=_reelUploadFolder||_reelsLoc.folderId;
+  files.forEach(f=>_reelUploads.push({file:f,name:f.name||'video.mov',size:f.size,sent:0,state:'waiting',message:'Waiting',parentId,uploadUrl:''}));
+  await runReelUploads();
+}
+async function retryReelUpload(i){const u=_reelUploads[i];if(!u||_reelUploading)return;u.state='waiting';u.message='Waiting';await runReelUploads();}
+async function runReelUploads(){
+  _reelUploading=true;reelHoldScreen(true);renderReelUploadBar();
+  for(const u of _reelUploads.filter(x=>x.state==='waiting'))await uploadOneReel(u);
+  _reelUploading=false;reelHoldScreen(false);renderReelUploadBar();
+  if(_reelUploads.some(u=>u.state==='done'&&!u.listed)){
+    _reelUploads.forEach(u=>{if(u.state==='done')u.listed=true;});
+    await loadReels(true);renderReels();renderReelUploadBar();
+  }
+}
+async function uploadOneReel(u){
+  const setMsg=(state,message)=>{u.state=state;u.message=message;renderReelUploadBar();};
+  try{
+    // 1. An upload session (or the one from an earlier attempt, which SharePoint keeps for days).
+    if(!u.uploadUrl){
+      setMsg('uploading','Starting…');
+      const token=await getToken(true);
+      const res=await fetch(`https://graph.microsoft.com/v1.0/drives/${_reelsLoc.driveId}/items/${u.parentId}:/${encodeURIComponent(u.name)}:/createUploadSession`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({item:{'@microsoft.graph.conflictBehavior':'rename'}})});
+      if(!res.ok){const e=reelUploadError(res.status,await res.text().catch(()=>''));u.retryable=e.retry;setMsg('failed',e.msg);return;}
+      u.uploadUrl=(await res.json()).uploadUrl;u.sent=0;
+    }
+    // 2. Chunks. The upload URL is pre-authorised: no Authorization header on these.
+    let failures=0;
+    while(u.sent<u.size){
+      const end=Math.min(u.sent+REEL_CHUNK,u.size);
+      setMsg('uploading',`Uploading… ${Math.round(u.sent/u.size*100)}%`);
+      let res;
+      try{
+        res=await fetch(u.uploadUrl,{method:'PUT',headers:{'Content-Range':`bytes ${u.sent}-${end-1}/${u.size}`},body:u.file.slice(u.sent,end)});
+      }catch(netErr){
+        // Screen locked or signal dropped: wait to be visible, ask SharePoint where it got to, carry on.
+        if(++failures>6){u.retryable=true;setMsg('failed','The connection kept dropping. Check your signal and press Try again. It carries on from where it stopped.');return;}
+        setMsg('uploading','Connection paused. Carrying on…');
+        await reelWaitVisible();await sleep(1500*failures);
+        u.sent=await reelResumePoint(u);
+        continue;
+      }
+      if(res.status===200||res.status===201){u.sent=u.size;break;}
+      if(res.status===202){
+        const j=await res.json().catch(()=>({}));
+        const next=Number(String(j.nextExpectedRanges?.[0]||'').split('-')[0]);
+        u.sent=Number.isFinite(next)&&next>0?next:end;failures=0;continue;
+      }
+      if(res.status===404){u.uploadUrl='';u.retryable=true;setMsg('failed','The upload expired before it finished. Press Try again to start this file again.');return;}
+      if([408,409,416,429,500,502,503,504].includes(res.status)&&++failures<=6){await sleep(1500*failures);u.sent=await reelResumePoint(u);continue;}
+      const e=reelUploadError(res.status,await res.text().catch(()=>''));u.retryable=e.retry;setMsg('failed',e.msg);return;
+    }
+    u.uploadUrl='';
+    setMsg('done','Uploaded');
+  }catch(e){u.retryable=true;setMsg('failed','Upload failed: '+(e.message||e));}
+}
+// Where SharePoint says this upload got to (GET on the upload URL), or where we last were.
+async function reelResumePoint(u){
+  try{
+    const res=await fetch(u.uploadUrl);
+    if(res.ok){const j=await res.json();const n=Number(String(j.nextExpectedRanges?.[0]||'').split('-')[0]);if(Number.isFinite(n))return n;}
+  }catch{/* still offline; keep the last known point */}
+  return u.sent;
+}
+
 function renderReels(){
   const el=document.getElementById('socReels');if(!el)return;
+  renderReelUploadBar();
   const target=_socAttachTarget&&SOCIAL_POSTS.find(p=>p.id===_socAttachTarget);
   const banner=target?`<div class="card" style="padding:10px 14px;margin-bottom:12px;background:var(--surface-alt);font-size:13px">Choosing a reel for <strong>${escapeAttr(target.caption.split('\n')[0]||'this post')}</strong> (${escapeAttr(shortVenue(target.venue))}, ${fmtShort(socLocalParts(target.publishAt).date)}). <button class="tb-btn" style="margin-left:8px" onclick="_socAttachTarget=null;socShowView('calendar');renderSocial()">Cancel</button></div>`:'';
   if(REELS_STATE.status==='error'){el.innerHTML=banner+`<div class="card" style="padding:14px 16px;background:var(--attention-tint)"><strong style="color:var(--attention)">Could not load reels.</strong> ${escapeAttr(REELS_STATE.error)} <button class="tb-btn" style="margin-left:8px" onclick="loadReels(true).then(renderReels)">↻ Try again</button></div>`;return;}
@@ -12528,7 +12653,7 @@ async function createReelPost(btn){
   if(!date){alert('Pick a publish date.');return;}
   btn.disabled=true;
   try{
-    await socWrite('POST',socListUrl(),{Title:`Reel · ${socReelFor(ref)?.name||''}`.slice(0,255),Venue:venue,Platforms:'Facebook;Instagram',PostType:'Reel',Step:'reel',PublishAt:new Date(`${date}T${SOCIAL_DEFAULT_TIME.Reel}:00`).toISOString(),Caption:'',VideoRef:JSON.stringify(ref),Status:'Draft',CaptionEdited:false,PublishMode:'Manual'});
+    await socWrite('POST',socListUrl(),{Title:`Reel · ${socReelFor(ref)?.name||''}`.slice(0,255),Venue:venue,Platforms:'Facebook;Instagram',PostType:'Reel',Step:'reel',PublishAt:new Date(`${date}T${SOCIAL_DEFAULT_TIME.Reel}:00`).toISOString(),Caption:'',VideoRef:JSON.stringify(ref),Status:'Draft',CaptionEdited:false});
   }catch(e){alert('Could not create the post: '+e.message);btn.disabled=false;return;}
   btn.disabled=false;
   closeReelAttach();
