@@ -10276,6 +10276,7 @@ function renderPipeline(){
             <div class="pc-f" style="margin-top:5px">
               <span class="tag t-gr" style="font-size:10px">${ev.activityType||ev.eventFormat||'Event'}</span>
               ${ev.loadedRewards?'<span style="font-size:10px">★</span>':''}
+              ${ev.stage==='In Design'?(()=>{const c=jobTicketCountHtml(ev);return c||'<span class="tag t-gr" style="font-size:10px" title="Approved without job tickets, so it will not move to Review by itself">No job tickets</span>';})():''}
               <span class="pc-d">${fmtShort(ev.start)}</span>
             </div>
           </div>
@@ -13895,6 +13896,7 @@ async function loadTasks(){
   if(document.getElementById('campBody')?.offsetParent)renderCampaigns();
   if(document.getElementById('designList')?.offsetParent)renderDesign();
   refreshActivityDetailIfOpen();
+  if(LIST_IDS.myTasks)sweepPlanningToReview();
 }
 
 function openAddTask(campaignId){
@@ -14099,6 +14101,46 @@ async function saveTask(){
   if(document.getElementById('designList')?.offsetParent)renderDesign();
 }
 
+// Delivery stages plan, step 3: Planning (In Design) → Review once every job ticket on the
+// activity is Done. Forwards only — re-opening a ticket never pulls an activity back. Only
+// tickets linked by CampaignLookupId count, so title-matched legacy tickets never move anything,
+// and an activity with no tickets stays in Planning until someone moves it.
+function activityReadyForReview(ev){
+  if(!ev||ev.stage!=='In Design'||isArchived(ev))return false;
+  const {tickets,done,total}=jobTicketsForActivity(ev);
+  return total>0&&done===total&&tickets.some(t=>t.campaignLookupId);
+}
+async function moveToReviewIfTicketsDone(ev){
+  if(!activityReadyForReview(ev)||!ev.spId||isPreviewMode)return false;
+  try{
+    const token=await getToken(true);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{WorkflowStage:'Review'}})});
+    if(!res.ok)throw new Error('HTTP '+res.status+': '+(await res.text()).substring(0,160));
+    ev.stage='Review';ev.storedStageRaw='Review';
+    notifySubmitter(ev,'All its job tickets are done, so it has moved to Review.');
+    renderPipeline&&renderPipeline();renderOverview&&renderOverview();renderApprovals&&renderApprovals();
+    if(document.getElementById('campBody')?.offsetParent)renderCampaigns();
+    refreshActivityDetailIfOpen();
+    return true;
+  }catch(e){
+    // Not fatal: an approver's next load of the Hub moves it (sweepPlanningToReview).
+    console.warn('Could not move',ev.title,'to Review:',e);
+    return false;
+  }
+}
+// Catches tickets finished outside the Hub (in SharePoint, or by a flow). Runs after tickets load,
+// for approvers only, since it writes to SharePoint.
+let _reviewSweepRunning=false;
+async function sweepPlanningToReview(){
+  if(_reviewSweepRunning||isPreviewMode||!canApproveCampaigns())return;
+  _reviewSweepRunning=true;
+  try{
+    const ready=EVENTS.filter(activityReadyForReview);
+    const moved=[];
+    for(const ev of ready){if(await moveToReviewIfTicketsDone(ev))moved.push(ev.title);}
+    if(moved.length&&typeof showToast==='function')showToast(`All job tickets done — moved to Review: ${moved.join(', ')}`);
+  }finally{_reviewSweepRunning=false;}
+}
 async function toggleTask(id){
   const t=MY_TASKS.find(t=>t.id===id);
   if(!t)return;
@@ -14115,6 +14157,10 @@ async function toggleTask(id){
       const token=await getToken(true);
       const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.myTasks}/items/${id}`,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:t.status}})});
       if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
+      if(t.status==='Done'&&t.campaignLookupId){
+        const ev=EVENTS.find(e=>String(e.spId)===String(t.campaignLookupId)||String(e.id)===String(t.campaignLookupId));
+        if(await moveToReviewIfTicketsDone(ev)&&typeof showToast==='function')showToast(`All job tickets done — "${ev.title}" moved to Review`);
+      }
     }catch(e){
       t.status=oldStatus;
       console.error('Toggle task error:',e);

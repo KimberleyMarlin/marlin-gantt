@@ -28,7 +28,8 @@ There are five stages: **Intake** (shown as Submissions), **In Design** (shown a
 6. **Email:** once every ticked ticket has saved, each owner (except the approver) gets one email listing their new tickets for that activity (`emailNewJobTicketOwners`). Mail permission is requested on the button click. Email failures are named in the toast and never block approval.
 7. **Duplicate flag check:** if SharePoint rejects `DesignJobCreated`, the stage still advances, but the approver is told the marker didn't save and the column needs adding in Admin & Schema.
 8. **Skip:** "Skip tasks, just approve" advances without creating tickets.
-9. **Go live:** Review → Live is a plain one-click approval with no new tickets.
+9. **Auto-move to Review:** when the last open job ticket on a Planning activity is ticked done, the activity moves to Review (`moveToReviewIfTicketsDone`), and the owner is tagged. This only moves forwards. Only tickets linked by `CampaignLookupId` count, and activities with no tickets stay in Planning, marked "No job tickets" on Pipeline. When an approver loads the Hub, tickets finished outside the Hub are caught up (`sweepPlanningToReview`).
+10. **Go live:** Review → Live is a plain one-click approval with no new tickets.
 
 Not yet verified against live SharePoint (SUB-03 / FLOW-01 in `OS_RESET_MASTER.md`).
 
