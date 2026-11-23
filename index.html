@@ -1208,13 +1208,13 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
       <div class="filters">
         <div class="fg"><label>Venue</label><select id="cVenue" onchange="renderCampaigns()"><option value="">All</option><option>The Left Bank</option><option>The Ravenswood</option><option>Whitfords Brewing Co</option><option>Hotel Darwin</option><option>Mustang Bar</option><option>Beerland Brewing</option></select></div>
         <div class="fg"><label>Type</label><select id="cPType" onchange="renderCampaigns()"><option value="">All</option><option>Event</option><option>Promotion / Offer</option><option>Campaign</option><option>Maintenance / Update</option></select></div>
-        <div class="fg"><label>Stage</label><select id="cStat" onchange="renderCampaigns()"><option value="">All</option><option value="Intake">New Submission</option><option>In Design</option><option>In Build</option><option>Review</option><option>Live</option><option>Done</option></select></div>
+        <div class="fg"><label>Stage</label><select id="cStat" onchange="renderCampaigns()"><option value="">All</option><option value="Intake">New Submission</option><option>In Design</option><option>Review</option><option>Live</option><option>Done</option></select></div>
         <div class="fg"><label>Silo</label><select id="cSilo" onchange="renderCampaigns()"><option value="">All</option><option>Hero</option><option>Momentum</option><option>Always-On</option></select></div>
         <div class="fg"><label>Loaded</label><select id="cLoaded" onchange="renderCampaigns()"><option value="">All</option><option value="yes">★ Loaded Only</option><option value="no">Not Loaded</option></select></div>
       </div>
       <div id="campBulkBar" style="display:none;margin-bottom:10px;padding:8px 12px;background:var(--surface);border:1px solid var(--accent);border-radius:var(--r);align-items:center;gap:8px;flex-wrap:wrap">
         <span id="campBulkCount" style="font-size:12px;font-weight:700;color:var(--text)"></span>
-        <select id="campBulkStage" class="form-select" style="width:auto;min-width:150px"><option value="">Set stage…</option><option>Intake</option><option>In Design</option><option>In Build</option><option>Review</option><option>Ready for Live</option><option>Live</option><option>Done</option></select>
+        <select id="campBulkStage" class="form-select" style="width:auto;min-width:150px"><option value="">Set stage…</option><option>Intake</option><option>In Design</option><option>Review</option><option>Live</option><option>Done</option></select>
         <button class="tb-btn" onclick="bulkApplyCampStage()">Apply</button>
         <select id="campBulkStatus" class="form-select" style="width:auto;min-width:150px"><option value="">Set status…</option><option>Active</option><option>Paused</option><option>Cancelled</option><option>Archive</option></select>
         <button class="tb-btn" onclick="bulkApplyCampStatus()">Apply</button>
@@ -1862,6 +1862,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
     <div class="ca">
       <div id="schemaKnownGaps"></div>
       <div id="schemaChoiceChecks" style="margin-top:16px"></div>
+      <div id="schemaStageCleanup" style="margin-top:16px"></div>
       <div class="card" style="margin-top:16px">
         <div class="card-h"><span class="card-title">Add a column to any list</span></div>
         <div class="card-body">
@@ -5945,6 +5946,7 @@ async function loadCampaigns(){
       // ActivityType is the new primary type field (replaces old ActivationType/Category)
       const actType=f.ActivityType||f.ActivationType||'';
       const storedStage=normaliseStage(f.WorkflowStage);
+      const storedStageRaw=String(f.WorkflowStage||'');
       // RecurringWeekday is a comma-separated Text column (see SCHEMA_KNOWN_GAPS — Microsoft Graph's
       // column-creation API has no multi-select facet for Choice columns, so a genuine SharePoint
       // MultiChoice column could never actually be created for this) — normalise to an array of
@@ -6162,6 +6164,9 @@ async function loadCampaigns(){
         posStatus:f.PosStatus||(posRequired?'Required':''),
         posNotes:f.POSNotes||descriptionParts.posNotes,
         designJobCreated:f.DesignJobCreated===true||f.DesignJobCreated==='Yes',
+        // The WorkflowStage value exactly as SharePoint holds it — differs from .stage only for
+        // retired stages (In Build, Ready for Live) not yet rewritten by the stage clean-up.
+        storedStageRaw,
         // Set by "Send back" on Submissions; cleared the next time the activity is edited.
         sentBackNote:f.SentBackNote||'',
         collateralStatus:f.CollateralStatus||'',
@@ -7704,7 +7709,11 @@ function shortVenue(v){if(!v||typeof v!=='string')return'';return v.replace('The
 // ── HEALTH CHECK ──
 // Calculates whether an activity is on track based on days-to-event vs stage vs lead time.
 // Returns {level:'green'|'amber'|'red', label:'...'}
-const STAGE_ORDER={'Intake':0,'In Design':1,'In Build':2,'Review':3,'Ready for Live':4,'Live':5,'Done':6};
+const STAGE_ORDER={'Intake':0,'In Design':1,'Review':2,'Live':3,'Done':4};
+// Weeks of work left before Live, per stage. Kept at the old seven-stage values so health
+// flags don't loosen: Planning still covers what was In Design + In Build, Review what was
+// Review + Ready for Live.
+const STAGES_LEFT_TO_LIVE={'Intake':5,'In Design':4,'Review':2};
 function healthCheck(ev){
   if(!ev||!ev.start)return{level:'green',label:'No date'};
   const stage=ev.stage||'Intake';
@@ -7727,7 +7736,7 @@ function healthCheck(ev){
   }
   // Expected stage given time remaining: the closer the event, the further along it should be.
   // Rough model: need ~1 week per remaining stage.
-  const stagesLeft=liveIdx-stageIdx;
+  const stagesLeft=STAGES_LEFT_TO_LIVE[stage]??Math.max(0,liveIdx-stageIdx);
   const weeksOut=daysOut/7;
   const weeksNeeded=stagesLeft*1.2; // ~1.2 weeks buffer per remaining stage
   if(weeksOut>=weeksNeeded*1.3)return{level:'green',label:'On track'};
@@ -7736,7 +7745,12 @@ function healthCheck(ev){
 }
 function healthColor(h){return h==='green'?'#4a6e3e':h==='amber'?'#9c732b':'#a64a24';}
 // Map any legacy/messy WorkflowStage value to the canonical stages.
-const CANONICAL_STAGES=['Intake','In Design','In Build','Review','Ready for Live','Live','Done'];
+// Five stages (docs/DELIVERY_STAGES_PLAN.md, decision 1). "In Build" and "Ready for Live" were
+// retired: tickets in progress ARE the build, and "ready" is the end of Review. Records still
+// stored with those values are read as the stage they fold into (RETIRED_STAGES) until the
+// Admin & Schema clean-up rewrites them.
+const CANONICAL_STAGES=['Intake','In Design','Review','Live','Done'];
+const RETIRED_STAGES={'In Build':'In Design','Ready for Live':'Review'};
 // Display-only relabeling — the SharePoint WorkflowStage value stays "Intake"; this just changes what
 // shows on screen. Add other stage relabels here if needed later.
 const STAGE_LABELS={'Intake':'Submissions','In Design':'Planning'};
@@ -7744,15 +7758,17 @@ function stageLabel(s){return STAGE_LABELS[s]||s;}
 function normaliseStage(s){
   if(!s)return'Intake';
   const v=String(s).toLowerCase();
+  const retired=Object.keys(RETIRED_STAGES).find(x=>x.toLowerCase()===v);
+  if(retired)return RETIRED_STAGES[retired];
   if(CANONICAL_STAGES.map(x=>x.toLowerCase()).includes(v)){
     return CANONICAL_STAGES.find(x=>x.toLowerCase()===v);
   }
   // Legacy mappings
   if(v.includes('submission')||v.includes('new')||v.includes('triage')||v.includes('idea'))return'Intake';
   if(v.includes('design brief')||v.includes('in design')||v==='design'||v.includes('brief'))return'In Design';
-  if(v.includes('build')||v.includes('web')&&!v.includes('review')||v.includes('progress')||v.includes('staff brief'))return'In Build';
+  if(v.includes('build')||v.includes('web')&&!v.includes('review')||v.includes('progress')||v.includes('staff brief'))return'In Design';
   if(v.includes('review')||v.includes('approval')||v.includes('awaiting'))return'Review';
-  if(v.includes('ready for live')||v.includes('ready to go live'))return'Ready for Live';
+  if(v.includes('ready for live')||v.includes('ready to go live'))return'Review';
   if(v.includes('live')||v.includes('scheduled'))return'Live';
   if(v.includes('complete')||v.includes('done')||v.includes('reporting')||v.includes('archive'))return'Done';
   return'Intake';
@@ -7790,7 +7806,7 @@ function pickCalType(el){document.querySelectorAll('[onclick*="pickCalType"]').f
 let _cvView='timeline';
 let _cvVenues=null; // null = all
 let _cvLoadedOnly=false; // dedicated Loaded Rewards filter (was mislabeled as a duplicate "All Venues" chip)
-const CV_STAGE_COLOR={'Intake':'#5f6b7a','In Design':'#14416d','In Build':'#9c732b','Review':'#1e578e','Ready for Live':'#678d5d','Live':'#4a6e3e','Done':'#aab3cd'};
+const CV_STAGE_COLOR={'Intake':'#5f6b7a','In Design':'#14416d','Review':'#1e578e','Live':'#4a6e3e','Done':'#aab3cd'};
 const CV_CHAN_ICON={design:'✦',web:'◈',loaded:'★',pos:'▤'};
 
 function setCvView(el){
@@ -7945,7 +7961,7 @@ function cvRenderStats(data){
 }
 
 function cvLegend(){
-  const stages=['Intake','In Design','In Build','Review','Ready for Live','Live','Done'];
+  const stages=CANONICAL_STAGES;
   return `<div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap;font-size:12px;color:var(--text2)">
     <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text3)">Health</span>
     <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#4a6e3e"></span>On track</span>
@@ -7957,7 +7973,7 @@ function cvLegend(){
 }
 
 function cvRenderBoard(data){
-  const stages=['Intake','In Design','In Build','Review','Ready for Live','Live','Done'];
+  const stages=CANONICAL_STAGES;
   return `<div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:10px;align-items:flex-start">`+stages.map(stage=>{
     // Sorted by start date, same convention as the Timeline and By Venue sub-views — previously
     // unsorted here, so cards sat in arbitrary load order within a column.
@@ -8354,7 +8370,7 @@ function renderDashThisMonth(){
     if(aEnded!==bEnded)return aEnded?1:-1;
     return a.start.localeCompare(b.start);
   });
-  const stageColor=(stage)=>({Intake:'var(--text3)',['In Design']:'#1e578e',['In Build']:'#396998',Review:'#9c732b',['Ready for Live']:'#678d5d',Live:'#4a6e3e',Done:'var(--text3)'}[stage]||'var(--text3)');
+  const stageColor=(stage)=>({Intake:'var(--text3)',['In Design']:'#1e578e',Review:'#9c732b',Live:'#4a6e3e',Done:'var(--text3)'}[stage]||'var(--text3)');
   const ovCard=(ev)=>{
     const vc=vColor(ev.venue);
     const evEnd=new Date((ev.end||ev.start)+'T00:00:00');
@@ -8454,7 +8470,7 @@ function renderDashUpcomingLaunches(){
   const today=new Date();today.setHours(0,0,0,0);
   const in30=new Date(today.getTime()+30*864e5);
   const items=EVENTS.filter(e=>!venue||e.venue===venue).filter(e=>!isArchived(e))
-    .filter(e=>e.stage==='Ready for Live'||(e.stage==='Live'&&new Date(e.start+'T00:00:00')>=today&&new Date(e.start+'T00:00:00')<=in30))
+    .filter(e=>(e.stage==='Review'||e.stage==='Live')&&new Date(e.start+'T00:00:00')>=today&&new Date(e.start+'T00:00:00')<=in30)
     .sort((a,b)=>a.start.localeCompare(b.start)).slice(0,8);
   el.innerHTML=items.length?items.map(ev=>{
     const vc=vColor(ev.venue);
@@ -8520,7 +8536,7 @@ function renderOverview(){
   const in14=new Date(today.getTime()+14*864e5);
   const active=allEvts.filter(e=>!isArchived(e));
   const live=active.filter(e=>e.stage==='Live').length;
-  const inPipe=active.filter(e=>['Intake','In Design','In Build','Review','Ready for Live'].includes(e.stage)).length;
+  const inPipe=active.filter(e=>['Intake','In Design','Review'].includes(e.stage)).length;
   const blocked=MY_TASKS.filter(t=>t.status==='Blocked').length;
   const briefsDue=allEvts.filter(e=>e.designBriefDue&&new Date(e.designBriefDue+'T00:00:00')>=today&&new Date(e.designBriefDue+'T00:00:00')<=new Date(Date.now()+7*864e5)&&!isArchived(e)).length;
   const atRisk=active.filter(e=>healthCheck(e).level==='red').length;
@@ -8939,7 +8955,7 @@ function renderWorkload(targetId='workloadBody',limit=0){
   // Active work = marketing Activities still in motion (not yet Live/Done, not archived) PLUS open
   // Tasks & Job Tickets (not Done/Complete) — this view used to only read Activities, so job
   // tickets never showed up here even though they're real active work assigned to someone.
-  const activeStages=['Intake','In Design','In Build','Review','Ready for Live'];
+  const activeStages=['Intake','In Design','Review'];
   const activityItems=EVENTS.filter(ev=>activeStages.includes(ev.stage)&&!isArchived(ev)).map(ev=>({
     kind:'activity',id:ev.id,title:ev.title,date:ev.start,label:stageLabel(ev.stage),
     person:ev.owner||'Unassigned'
@@ -10205,15 +10221,15 @@ function activitySummaryRow(ev,{approve=false}={}){
 function renderPipeline(){
   if(!isAuthed)return;
   // Correct stage order — New Submission first, then approval flow
-  // Canonical six stages
-  const stages=['Intake','In Design','In Build','Review','Ready for Live','Live','Done'];
+  // The five canonical stages
+  const stages=CANONICAL_STAGES;
 
   const colors={
     'Intake':'#5f6b7a',
     'In Design':'#14416d',
-    'In Build':'#9c732b',
+    
     'Review':'#1e578e',
-    'Ready for Live':'#678d5d',
+    
     'Live':'#4a6e3e',
     'Done':'#aab3cd'
   };
@@ -11206,7 +11222,7 @@ function renderCampaigns(){
   })[key]||'';
   evts.sort((a,b)=>String(sortValue(a,campSortKey)).localeCompare(String(sortValue(b,campSortKey)),'en-AU',{numeric:true,sensitivity:'base'})*(campSortDir==='asc'?1:-1));
   updateCampaignSortHeaders();
-  const stageColors={'Intake':'#5f6b7a','In Design':'#14416d','In Build':'#9c732b','Review':'#1e578e','Ready for Live':'#678d5d','Live':'#4a6e3e','Done':'#aab3cd'};
+  const stageColors={'Intake':'#5f6b7a','In Design':'#14416d','Review':'#1e578e','Live':'#4a6e3e','Done':'#aab3cd'};
   document.getElementById('campBody').innerHTML=evts.length
     ?evts.map(ev=>{
         const vc=vColor(ev.venue);
@@ -11655,7 +11671,7 @@ const TIER_ICONS={
 // never drifts from "exactly" what the real Loaded Rewards page shows.
 function renderLoadedRewardsCard(ev){
   const variants=loadedVariantsForEvent(ev);
-  const stageColor={'Intake':'#5f6b7a','In Design':'#14416d','In Build':'#9c732b','Review':'#1e578e','Ready for Live':'#678d5d','Live':'#4a6e3e','Done':'#aab3cd'}[ev.stage]||'#5f6b7a';
+  const stageColor={'Intake':'#5f6b7a','In Design':'#14416d','Review':'#1e578e','Live':'#4a6e3e','Done':'#aab3cd'}[ev.stage]||'#5f6b7a';
   const detail=activityDetailLabel(ev)||'Not supplied';
 
   return`<div class="lr-card" onclick="showPop(${ev.id})">
@@ -14905,6 +14921,7 @@ async function renderSchemaTools(forceRefresh){
     const displayRows=_schemaShowReadyColumns?rows:missing;
     gapsEl.innerHTML=`<div class="card"><div class="card-h"><span class="card-title">Proposed SharePoint columns</span>${readyCount?`<span class="card-act" onclick="toggleSchemaShowReadyColumns()">${_schemaShowReadyColumns?'Hide ready columns':`Show ${readyCount} ready column${readyCount===1?'':'s'}`} →</span>`:''}</div><div class="card-body" style="overflow:auto"><div style="min-width:760px">${displayRows.length?`<div style="display:grid;grid-template-columns:1.35fr 1fr 1fr .65fr 1.7fr .55fr;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;font-weight:800;text-transform:uppercase;color:var(--text3)"><span>List</span><span>Field</span><span>Internal name</span><span>Type</span><span>Purpose</span><span>Status</span></div>${displayRows.map(r=>`<div style="display:grid;grid-template-columns:1.35fr 1fr 1fr .65fr 1.7fr .55fr;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);font-size:11px;align-items:start"><strong>${escapeAttr(r.listLabel)}</strong><span>${escapeAttr(r.displayName)}</span><code>${escapeAttr(r.name)}</code><span>${escapeAttr(r.type)}</span><span style="color:var(--text2)">${escapeAttr(r.purpose)}</span><strong style="color:${r.exists?'#4a6e3e':'var(--gold)'}">${r.exists?'Ready':'Missing'}</strong></div>`).join('')}`:`<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">All proposed columns already exist — nothing missing.</div>`}</div>${missing.length?`<div style="padding:12px"><button class="btn btn-p" onclick="createKnownSchemaGaps()">Review &amp; create ${missing.length} missing column${missing.length===1?'':'s'}</button></div>`:''}</div></div>`;
     await renderSchemaChoiceChecks(token);
+    renderStageCleanup();
   }catch(e){
     gapsEl.innerHTML=`<div class="card"><div class="card-body" style="padding:20px;color:var(--red)">Could not check columns: ${escapeAttr(e.message)}</div></div>`;
   }
@@ -14931,6 +14948,43 @@ async function createKnownSchemaGaps(){
 // Separate from the gaps list above — these are EXISTING Choice columns that need specific values
 // present (SCHEMA_CHOICE_ENSURE), not columns that need creating. Needs the full column definition
 // (choice.choices), not the lightweight name-only list fetchListColumnsRaw already cached.
+// One-off clean-up for the five-stage change: activities still stored as In Build or Ready for
+// Live already display as Planning / Review (normaliseStage), but SharePoint keeps the old value
+// until this rewrites it. Shows the counts first; changes nothing until the button is pressed.
+function retiredStageActivities(){return EVENTS.filter(e=>Object.keys(RETIRED_STAGES).some(r=>r.toLowerCase()===(e.storedStageRaw||'').toLowerCase()));}
+function renderStageCleanup(){
+  const el=document.getElementById('schemaStageCleanup');if(!el)return;
+  const items=retiredStageActivities();
+  const counts=Object.keys(RETIRED_STAGES).map(r=>({from:r,to:RETIRED_STAGES[r],n:items.filter(e=>e.storedStageRaw.toLowerCase()===r.toLowerCase()).length}));
+  el.innerHTML=`<div class="card"><div class="card-h"><span class="card-title">Stage clean-up (five stages)</span></div><div class="card-body" style="padding:14px 16px">
+    ${items.length?`<div style="font-size:13px;margin-bottom:8px">${counts.map(c=>`<div>${c.n} activit${c.n===1?'y':'ies'} stored as <strong>${c.from}</strong> → will be saved as <strong>${stageLabel(c.to)}</strong></div>`).join('')}</div>
+      <div class="u-meta" style="margin-bottom:10px">They already show in their new stage everywhere in the Hub. This saves the new stage in SharePoint so other tools see it too. Afterwards, remove the In Build and Ready for Live choices from the WorkflowStage column in SharePoint list settings.</div>
+      <button class="btn btn-p" id="stageCleanupBtn" onclick="runStageCleanup(this)">Save ${items.length} activit${items.length===1?'y':'ies'} in the new stages</button>`
+      :`<div class="u-meta">No activities are stored as In Build or Ready for Live. If the WorkflowStage column in SharePoint still offers those choices, remove them in list settings.</div>`}
+    <div id="stageCleanupMsg" class="form-msg"></div></div></div>`;
+}
+async function runStageCleanup(btn){
+  if(!canAccessPanel('schema'))return;
+  const items=retiredStageActivities();
+  if(!items.length)return;
+  if(!confirm(`Save ${items.length} activities in their new stage? In Build becomes Planning (In Design) and Ready for Live becomes Review. Nothing else on them changes.`))return;
+  btn.disabled=true;btn.textContent='Saving…';
+  const token=await getToken(true);
+  const failed=[];let done=0;
+  for(const ev of items){
+    const to=RETIRED_STAGES[Object.keys(RETIRED_STAGES).find(r=>r.toLowerCase()===ev.storedStageRaw.toLowerCase())];
+    try{
+      const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{WorkflowStage:to}})});
+      if(res.ok){ev.storedStageRaw=to;done++;}
+      else failed.push(`${ev.title}: HTTP ${res.status}`);
+    }catch(e){failed.push(`${ev.title}: ${e.message}`);}
+    btn.textContent=`Saving… ${done+failed.length}/${items.length}`;
+  }
+  renderStageCleanup();
+  const msg=document.getElementById('stageCleanupMsg');
+  msg.textContent=failed.length?`${done} saved, ${failed.length} failed: ${failed.join('; ')}`:`${done} activities saved in their new stage.`;
+  msg.className=failed.length?'form-msg err':'form-msg ok';
+}
 async function renderSchemaChoiceChecks(token){
   const el=document.getElementById('schemaChoiceChecks');if(!el)return;
   const rows=[];
@@ -14969,6 +15023,7 @@ async function addMissingSchemaChoices(listKey,name){
     if(!res.ok)throw new Error('HTTP '+res.status+': '+await res.text());
     alert(`${name} now includes: ${merged.join(', ')}`);
     await renderSchemaChoiceChecks(token);
+    renderStageCleanup();
   }catch(e){alert('Could not update choices: '+e.message);}
 }
 async function createSchemaColumn(){
@@ -17542,7 +17597,7 @@ function renderActivityDetail(id,mode){
   h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="popEditFields">`;
   h+=editField('Start Date',ev.start,'Start','date');
   h+=editField('End Date',ev.end,'End','date');
-  h+=editField('Stage',ev.stage,'WorkflowStage','select',['Intake','In Design','In Build','Review','Ready for Live','Live','Done']);
+  h+=editField('Stage',ev.stage,'WorkflowStage','select',CANONICAL_STAGES);
   h+=editField('Status',ev.status||'Active','Status','select',campaignColumnDefinition('Status')?.choice?.choices||['Active','Paused','Cancelled','Archive']);
   h+=editField('Activity Type',ev.activityType,'ActivityType','select',ACTIVITY_TYPE_OPTIONS);
   // Activity Group/Subtype — hand-written (not the generic editField helper) so picking a Group

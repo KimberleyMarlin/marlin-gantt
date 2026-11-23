@@ -12,6 +12,10 @@ Updated: 2026-11-10.
 
 Tasks & Job Tickets has a text `Venue` column (added through Admin & Schema). Manual job tickets, approval-created tickets and design briefs write it through `postSharedTask()`. If the column is missing or rejects the value, the save retries once without it, puts a `Venue: X` line at the top of Notes, and tells the user. `loadTasks()` reads the column first and falls back to that Notes line, so older tickets still show their venue.
 
+## Stages
+
+There are five stages: **Intake** (shown as Submissions), **In Design** (shown as Planning), **Review**, **Live** and **Done** (`CANONICAL_STAGES`). In Build and Ready for Live were retired in Nov 2026 (`docs/DELIVERY_STAGES_PLAN.md`). Records still stored with those values are read as Planning and Review (`RETIRED_STAGES`) until the Stage clean-up in Admin & Schema rewrites them.
+
 ## Current behaviour
 
 1. **Submit:** Activity submission creates a row at `WorkflowStage = Intake`. Activity Group and Activity Subtype are required on the form, because they decide the job tickets. Bulk import also lands at Intake, with no per-row emails. Its CSV can carry optional "Activity Group" and "Activity Subtype" columns, and the preflight log lists rows without a Group.
