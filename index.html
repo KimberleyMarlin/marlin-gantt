@@ -401,6 +401,14 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 .cal-month-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;position:relative;margin-top:7px}
 .cal-month-week .cal-day{height:auto;min-width:0}
 .cal-month-details{position:relative;z-index:1}
+/* Multi-day activities: one bar across the week row. Top offset = border (1) + padding (8) + date line (17) + gap (4). */
+.cal-month-week .cal-num{line-height:17px;margin-bottom:4px}
+.cal-span-layer{position:absolute;left:0;right:0;top:30px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));column-gap:7px;row-gap:3px;pointer-events:none;z-index:2}
+.cal-span{pointer-events:auto;margin:0 8px;display:flex;align-items:center;gap:2px;min-width:0;height:22px;padding:0 8px;line-height:22px}
+.cal-span.cs-before{border-top-left-radius:0;border-bottom-left-radius:0;margin-left:0}
+.cal-span.cs-after{border-top-right-radius:0;border-bottom-right-radius:0;margin-right:0}
+.cal-span .cs-arrow{opacity:.75;margin-right:3px;flex-shrink:0}.cal-span .cs-arrow-r{margin:0 0 0 auto;padding-left:4px}
+@media(max-width:479px){.cal-span-layer{column-gap:4px}}
 @media(max-width:479px){.cal-month-header,.cal-month-week{gap:4px}}
 
 /* ── VENUE CARDS ── */
@@ -1166,7 +1174,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
         <div id="cvVenueChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
         <div style="flex:1"></div>
         <select id="cvSilo" onchange="renderCrossVenue()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;background:var(--surface);color:var(--text)"><option value="">All silos</option><option>Hero</option><option>Momentum</option><option>Always-On</option><option>Maintenance</option></select>
-        <select id="cvHealth" onchange="renderCrossVenue()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;background:var(--surface);color:var(--text)"><option value="">All health</option><option value="green">● On track</option><option value="amber">● Tight</option><option value="red">● At risk</option></select>
+        <select id="cvHealth" onchange="renderCrossVenue()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;background:var(--surface);color:var(--text)"><option value="">All health</option><option value="green">● Nothing to flag</option><option value="red">● Needs attention</option></select>
       </div>
       <div id="cvContent"></div>
     </div>
@@ -1946,7 +1954,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
         <input class="form-input" id="projectSearch" type="search" placeholder="Search projects" oninput="renderProjects()">
         <select class="form-select" id="projectStatusFilter" onchange="renderProjects()"><option value="">All statuses</option><option>Not Started</option><option>In Progress</option><option>On Hold</option><option>Done</option></select>
         <select class="form-select" id="projectOwnerFilter" onchange="renderProjects()"><option value="">All owners</option></select>
-        <select class="form-select" id="projectRiskFilter" onchange="renderProjects()"><option value="">All health</option><option value="risk">At risk</option><option value="clear">No current risk</option></select>
+        <select class="form-select" id="projectRiskFilter" onchange="renderProjects()"><option value="">All health</option><option value="risk">Needs attention</option><option value="clear">No current risk</option></select>
       </div>
       <div id="projList"><div class="loading"><div class="spinner"></div></div></div>
       <div id="unassignedActivities"></div>
@@ -3311,7 +3319,7 @@ function calcComplexity(ev){
 
 function calcSubmissionTiming(ev){
   if(!ev.start||!ev.marketingSilo)return'';
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const weeksUntil=(new Date(ev.start+'T00:00:00')-today)/(7*864e5);
   const required=ev.mktLeadWeeks||calcLeadWeeks(ev);
   if(weeksUntil>=required)return'On Time';
@@ -4966,7 +4974,7 @@ let PERSONAL_TASKS_ERROR='';
 let personalTaskSelected=new Set(),personalTaskExpanded=new Set();
 const TASK_SHARING_ENABLED=true;
 let PROJECTS_ERROR='';
-let calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calTypeFilter='';
+let calYear=todayDate().getFullYear(),calMonth=todayDate().getMonth(),calTypeFilter='';
 let NOTIFS=[];
 let globalShowArchive=false; // single toggle that controls ALL views
 
@@ -5974,7 +5982,7 @@ async function loadCampaigns(){
       // without separately remembering to push End years out. Default an unset End on a recurring
       // Activity several years out instead, so it keeps recurring until a real End is actually set.
       const endDate=f.End?f.End.split('T')[0]:(recurringDay.length?`${new Date().getFullYear()+5}-12-31`:f.Start.split('T')[0]);
-      const today=new Date();today.setHours(0,0,0,0);
+      const today=todayDate();
       const isPast=new Date(endDate+'T00:00:00')<today;
       const descriptionParts=splitActivityDescription(f.Description||'');
       const loadedRewards=isLoadedRewardsFields(f);
@@ -6211,7 +6219,7 @@ function showError(msg){
 // ═══════════════════════════════════════
 // VENUE MONTHLY
 // ═══════════════════════════════════════
-let vmYear=new Date().getFullYear(),vmMonth=new Date().getMonth(),vmVenue='';
+let vmYear=todayDate().getFullYear(),vmMonth=todayDate().getMonth(),vmVenue='';
 function vmPrev(){vmMonth--;if(vmMonth<0){vmMonth=11;vmYear--;}renderVenueMonth();}
 function vmNext(){vmMonth++;if(vmMonth>11){vmMonth=0;vmYear++;}renderVenueMonth();}
 function pickVmVenue(el){document.querySelectorAll('#vmVenueChips .chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');vmVenue=el.dataset.v;renderVenueMonth();}
@@ -7697,6 +7705,25 @@ function upgradeFeaturedImages(scopeSelector){
 // HELPERS
 // ═══════════════════════════════════════
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+// ── Dates: Perth time for everyone, Darwin time for Darwin users ─────────────────────────────
+// "Today" comes from the business's clock, not the device's: Australia/Perth, or Australia/Darwin
+// for Hotel Darwin staff (venue access) and anyone whose device is set to Darwin time. Date-only
+// values are compared as YYYY-MM-DD strings. Never fix a date by adding or subtracting a day.
+function userTimeZone(){
+  let device='';try{device=Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch(e){}
+  return (typeof currentVenueAccess!=='undefined'&&currentVenueAccess==='Hotel Darwin')||device==='Australia/Darwin'
+    ?'Australia/Darwin':'Australia/Perth';
+}
+// Today's date in the user's business time zone, as YYYY-MM-DD.
+function todayYMD(){
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:userTimeZone(),year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());}
+  catch(e){return toLocalISODate(new Date());}
+}
+// Today as a Date at local midnight, built from todayYMD() so it lines up with how activity dates
+// are parsed elsewhere (new Date(ymd+'T00:00:00')).
+function todayDate(){return new Date(todayYMD()+'T00:00:00');}
+// A locally built Date -> YYYY-MM-DD (never toISOString, which shifts to UTC).
+function ymd(d){return toLocalISODate(d);}
 function toLocalISODate(d){
   if(!(d instanceof Date)||Number.isNaN(d.getTime()))return'';
   return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -7714,34 +7741,38 @@ const STAGE_ORDER={'Intake':0,'In Design':1,'Review':2,'Live':3,'Done':4};
 // flags don't loosen: Planning still covers what was In Design + In Build, Review what was
 // Review + Ready for Live.
 const STAGES_LEFT_TO_LIVE={'Intake':5,'In Design':4,'Review':2};
-function healthCheck(ev){
-  if(!ev||!ev.start)return{level:'green',label:'No date'};
-  const stage=ev.stage||'Intake';
-  const stageIdx=STAGE_ORDER[stage]!==undefined?STAGE_ORDER[stage]:0;
-  const liveIdx=STAGE_ORDER['Live'],doneIdx=STAGE_ORDER['Done'];
-  // Done/complete = always green
-  if(stageIdx>=doneIdx)return{level:'green',label:'Complete'};
-  const daysOut=Math.round((new Date(ev.start+'T00:00:00')-new Date())/864e5);
-  // Live stage: fine if event is near/now
-  if(stageIdx===liveIdx)return{level:'green',label:'Live'};
-  // A past start date alone doesn't mean the activity is over — loadCampaigns() already gives
-  // every activity a real end date (today for a one-off with no explicit End, or ~5 years out for
-  // a recurring one), so check that before calling it overdue. Without this, a standing/recurring
-  // promotion whose WorkflowStage was never manually bumped to Live (e.g. a weekly special that
-  // just keeps running) got wrongly flagged "Overdue — event passed" forever.
-  if(daysOut<0){
-    const hasEnded=new Date((ev.end||ev.start)+'T00:00:00')<new Date();
-    if(!hasEnded)return{level:'amber',label:'Live, but stage not updated'};
-    return{level:'red',label:'Overdue — event passed'};
+// Activity status (CAL-FIX-2, Kim 19 Nov): calm wording only. "Overdue" is for tasks, never
+// activities, and nothing here is red. Returns the same {level,label} shape every caller already
+// reads: level 'green' = nothing to flag, 'red' = needs attention (drawn in --attention rust);
+// 'amber' is no longer produced. The label is the date state (Upcoming / Live / Finished /
+// Paused) or, when something needs attention, the plain-English reason.
+const ATTENTION_PREP_DAYS=14;
+function activityDateState(ev){
+  if(!ev||!ev.start)return'';
+  if(/^paused$/i.test(ev.status||''))return'Paused';
+  const t=todayYMD(),end=ev.end||ev.start;
+  if((STAGE_ORDER[ev.stage]??-1)>=STAGE_ORDER['Done']||end<t)return'Finished';
+  if(ev.start<=t)return'Live';
+  return'Upcoming';
+}
+function activityAttention(ev){
+  const reasons=[];
+  if(!ev||!ev.start||!/^\d{4}-\d{2}-\d{2}$/.test(ev.start)){reasons.push({code:'CHECK_DATES',label:'Check dates'});return{state:'',reasons};}
+  const state=activityDateState(ev);
+  if(state==='Finished'||state==='Paused')return{state,reasons};
+  const t=todayYMD();
+  const late=jobTicketsForActivity(ev).tickets.filter(x=>x.due&&x.due<t&&!['Done','Complete','Completed','Cancelled'].includes(x.status)).length;
+  if(late)reasons.push({code:'TASKS_LATE',label:`${late} task${late===1?'':'s'} late`});
+  if(state==='Upcoming'&&['Intake','In Design'].includes(ev.stage||'Intake')){
+    const days=Math.round((new Date(ev.start+'T00:00:00')-todayDate())/864e5);
+    if(days<=ATTENTION_PREP_DAYS)reasons.push({code:'PREP_BEHIND',label:`Starts in ${days} day${days===1?'':'s'}, still in ${ev.stage||'Intake'}`});
   }
-  // Expected stage given time remaining: the closer the event, the further along it should be.
-  // Rough model: need ~1 week per remaining stage.
-  const stagesLeft=STAGES_LEFT_TO_LIVE[stage]??Math.max(0,liveIdx-stageIdx);
-  const weeksOut=daysOut/7;
-  const weeksNeeded=stagesLeft*1.2; // ~1.2 weeks buffer per remaining stage
-  if(weeksOut>=weeksNeeded*1.3)return{level:'green',label:'On track'};
-  if(weeksOut>=weeksNeeded)return{level:'amber',label:'Tight'};
-  return{level:'red',label:'At risk — behind schedule'};
+  return{state,reasons};
+}
+function healthCheck(ev){
+  const a=activityAttention(ev);
+  if(a.reasons.length)return{level:'red',label:a.reasons.map(r=>r.label).join(' · '),state:a.state,reasons:a.reasons};
+  return{level:'green',label:a.state||'Check dates',state:a.state,reasons:[]};
 }
 function healthColor(h){return h==='green'?'#4a6e3e':h==='amber'?'#9c732b':'#a64a24';}
 // Map any legacy/messy WorkflowStage value to the canonical stages.
@@ -7867,7 +7898,7 @@ let _cvStatFilter=null; // null | 'live' | 'next14' | 'atrisk'
 function cvGetData(includeStatFilter=true){
   const silo=document.getElementById('cvSilo')?.value||'';
   const health=document.getElementById('cvHealth')?.value||'';
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   return EVENTS.filter(e=>{
     if(isArchived(e))return false;
     if(_cvVenues&&!_cvVenues.has(e.venue))return false;
@@ -7900,7 +7931,7 @@ function cvEventMatchesActiveFilters(ev){
   if(health&&healthCheck(ev).level!==health)return false;
   if(_cvStatFilter==='live'&&ev.stage!=='Live')return false;
   if(_cvStatFilter==='next14'){
-    const today=new Date();today.setHours(0,0,0,0);
+    const today=todayDate();
     const daysOut=Math.round((new Date(ev.start+'T00:00:00')-today)/864e5);
     if(!(daysOut>=0&&daysOut<=14))return false;
   }
@@ -7911,7 +7942,7 @@ function cvEventMatchesActiveFilters(ev){
 function cvCard(ev){
   const vc=vColor(ev.venue);
   const h=healthCheck(ev);
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const dOut=Math.round((new Date(ev.start+'T00:00:00')-today)/864e5);
   const cdColor=dOut<0?'var(--text3)':dOut<=7?'#a64a24':dOut<=21?'#9c732b':'var(--text3)';
   const cdText=dOut<0?`${Math.abs(dOut)}d ago`:dOut===0?'Today':`${dOut} days`;
@@ -7946,7 +7977,7 @@ function cvCard(ev){
 }
 
 function cvRenderStats(data){
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const atRisk=data.filter(e=>healthCheck(e).level==='red').length;
   const tight=data.filter(e=>healthCheck(e).level==='amber').length;
   const live=data.filter(e=>e.stage==='Live').length;
@@ -7957,16 +7988,15 @@ function cvRenderStats(data){
   return `<div class="stat" style="${sm};${on(null)}" onclick="cvSetStatFilter(null)"><div class="stat-n" style="${nSm}">${data.length}</div><div class="stat-l">Active</div></div>
     <div class="stat" style="${sm};${on('live')}" onclick="cvSetStatFilter('live')"><div class="stat-n" style="${nSm};color:#4a6e3e">${live}</div><div class="stat-l">Live now</div></div>
     <div class="stat" style="${sm};${on('next14')}" onclick="cvSetStatFilter('next14')"><div class="stat-n" style="${nSm}">${soon}</div><div class="stat-l">Next 14 days</div></div>
-    <div class="stat ${atRisk>0?'hi':''}" style="${sm};${on('atrisk')}" onclick="cvSetStatFilter('atrisk')"><div class="stat-n" style="${nSm};color:${atRisk>0?'#a64a24':'inherit'}">${atRisk}</div><div class="stat-l">At risk</div><div class="stat-tag ${atRisk>0?'st-alert':'st-up'}">${tight} tight</div></div>`;
+    <div class="stat ${atRisk>0?'hi':''}" style="${sm};${on('atrisk')}" onclick="cvSetStatFilter('atrisk')"><div class="stat-n" style="${nSm};color:${atRisk>0?'#a64a24':'inherit'}">${atRisk}</div><div class="stat-l">Needs attention</div></div>`;
 }
 
 function cvLegend(){
   const stages=CANONICAL_STAGES;
   return `<div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap;font-size:12px;color:var(--text2)">
     <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text3)">Health</span>
-    <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#4a6e3e"></span>On track</span>
-    <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#9c732b"></span>Tight</span>
-    <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#a64a24"></span>At risk</span>
+    <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#4a6e3e"></span>Nothing to flag</span>
+    <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#a64a24"></span>Needs attention</span>
     <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);margin-left:10px">Stage</span>
     ${stages.map(s=>`<span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:2px;background:${CV_STAGE_COLOR[s]}"></span>${s}</span>`).join('')}
   </div>`;
@@ -8062,7 +8092,7 @@ function cvRenderVenue(data){
 let _cvLabelWidth=240; // resizable Timeline label column width, persists for the session
 function cvRenderTimeline(data){
   // Range: from earliest marketing-start (or 30 days ago) to latest event (or +120 days)
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   let minD=new Date(today.getTime()-14*864e5), maxD=new Date(today.getTime()+120*864e5);
   data.forEach(e=>{
     const s=new Date((e.marketingStartDate||e.start)+'T00:00:00'), en=new Date(e.start+'T00:00:00');
@@ -8349,7 +8379,7 @@ function changeDashMonth(delta){_dashMonthOffset+=delta;renderDashThisMonth();}
 function renderDashThisMonth(){
   const el=document.getElementById('ovNext14');if(!el)return;
   const venue=document.getElementById('ovVenue')?.value||'';
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const viewedMonth=new Date(today.getFullYear(),today.getMonth()+_dashMonthOffset,1);
   const monthStart=new Date(viewedMonth.getFullYear(),viewedMonth.getMonth(),1);
   const monthEnd=new Date(viewedMonth.getFullYear(),viewedMonth.getMonth()+1,0,23,59,59);
@@ -8428,7 +8458,7 @@ function openEditPersonalTaskOrTask(t){
 
 function renderDashMyPriorities(){
   const el=document.getElementById('ovMyPriorities');if(!el)return;
-  const todayStr=toLocalISODate(new Date());
+  const todayStr=todayYMD();
   const open=myWorkItems().filter(t=>!['Done','Complete','Completed'].includes(t.status));
   const scored=open.map(t=>{
     const overdue=!!(t.due&&t.due<todayStr);
@@ -8452,7 +8482,7 @@ function renderDashMyPriorities(){
 
 function renderDashOverdueBlocked(){
   const el=document.getElementById('ovOverdueBlocked');if(!el)return;
-  const todayStr=toLocalISODate(new Date());
+  const todayStr=todayYMD();
   const open=myWorkItems().filter(t=>!['Done','Complete','Completed'].includes(t.status));
   const items=open.filter(t=>(t.due&&t.due<todayStr)||t.status==='Blocked')
     .sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999'))).slice(0,8);
@@ -8468,7 +8498,7 @@ function renderDashOverdueBlocked(){
 function renderDashUpcomingLaunches(){
   const el=document.getElementById('ovUpcomingLaunches');if(!el)return;
   const venue=document.getElementById('ovVenue')?.value||'';
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const in30=new Date(today.getTime()+30*864e5);
   const items=EVENTS.filter(e=>!venue||e.venue===venue).filter(e=>!isArchived(e))
     .filter(e=>((e.stage==='Review'&&reviewChecklist(e).ready)||e.stage==='Live')&&new Date(e.start+'T00:00:00')>=today&&new Date(e.start+'T00:00:00')<=in30)
@@ -8488,7 +8518,7 @@ function renderDashProjectProgress(){
   const el=document.getElementById('ovProjectProgress');if(!el)return;
   if(!widgetAllowed('projectprogress')){el.innerHTML='';return;}
   if(!PROJECTS.length){el.innerHTML='<div class="u-empty">No projects found</div>';return;}
-  const today=toLocalISODate(new Date());
+  const today=todayYMD();
   const active=PROJECTS.filter(p=>p.status!=='Done').sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999')).slice(0,6);
   el.innerHTML=active.length?active.map(p=>{
     const overdue=!!(p.due&&p.due<today&&p.status!=='Done');
@@ -8506,7 +8536,7 @@ function renderDashLoadedCampaigns(){
   const el=document.getElementById('ovLoadedCampaigns');if(!el)return;
   if(!widgetAllowed('loadedcampaigns')){el.innerHTML='';return;}
   const venue=document.getElementById('ovVenue')?.value||'';
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   // A venue filter should still surface cross-venue Loaded Rewards campaigns, not hide them —
   // same single-selection pattern used by Calendar's own venue filter elsewhere in this file.
   const items=EVENTS.filter(e=>e.loadedRewards&&(!venue||e.venue===venue||e.venue==='All Venues')&&!isArchived(e))
@@ -8533,7 +8563,7 @@ function renderOverview(){
   }
   const venue=ovSel.value;
   const allEvts=EVENTS.filter(e=>!venue||e.venue===venue);
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const in14=new Date(today.getTime()+14*864e5);
   const active=allEvts.filter(e=>!isArchived(e));
   const live=active.filter(e=>e.stage==='Live').length;
@@ -8552,7 +8582,7 @@ function renderOverview(){
     <div class="stat" onclick="navTo('campaigns')" style="cursor:pointer"><div class="stat-n">${active.length}</div><div class="stat-l">Active</div></div>
     <div class="stat" onclick="goToCampaignsFiltered('Live')" style="cursor:pointer"><div class="stat-n">${live}</div><div class="stat-l">Live Now</div><div class="stat-tag st-up">● Running</div></div>
     <div class="stat" onclick="navToActivitiesView('pipeline')" style="cursor:pointer"><div class="stat-n">${inPipe}</div><div class="stat-l">In Pipeline</div></div>
-    <div class="stat ${atRisk>0?'hi':''}" onclick="goToAtRisk()" style="cursor:pointer"><div class="stat-n" style="color:${atRisk>0?'#a64a24':'inherit'}">${atRisk}</div><div class="stat-l">At Risk</div><div class="stat-tag ${atRisk>0?'st-alert':'st-up'}">${tight} tight</div></div>
+    <div class="stat ${atRisk>0?'hi':''}" onclick="goToAtRisk()" style="cursor:pointer"><div class="stat-n" style="color:${atRisk>0?'#a64a24':'inherit'}">${atRisk}</div><div class="stat-l">Needs attention</div></div>
     <div class="stat ${blocked>0?'hi':''}" onclick="goToBlockedTasks()" style="cursor:pointer"><div class="stat-n">${blocked}</div><div class="stat-l">Blocked</div></div>
   `;
 
@@ -8942,7 +8972,7 @@ async function saveDesignBrief(btn){
 // data as the full Team Workload page, just a shorter list.
 function renderWorkload(targetId='workloadBody',limit=0){
   if(!isAuthed)return;
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const week=new Date(today);week.setDate(week.getDate()+7);
   const twoWeeks=new Date(today);twoWeeks.setDate(twoWeeks.getDate()+14);
 
@@ -9248,7 +9278,7 @@ async function uploadReviewsFile(input){
   const btn=document.getElementById('mrUploadBtn');if(btn){btn.disabled=true;btn.textContent='Uploading…';}
   try{
     const token=await getToken(true);
-    const name=`${toLocalISODate(new Date())} ${file.name}`;
+    const name=`${todayYMD()} ${file.name}`;
     const res=await fetch(`${graphDrive()}/root:/${graphPath(REVIEWS_SOURCE.importsPath+'/'+name)}:/content?@microsoft.graph.conflictBehavior=rename`,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':file.type||'application/octet-stream'},body:file});
     if(!res.ok)throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,200)}`);
     await loadReviewsData(true);
@@ -9348,7 +9378,7 @@ function renderMarketingReport(){
   const canMoney=!!rolePermissions().canViewBudget;
   // Loaded Rewards is a programme, not a venue: its activities are the Loaded-flagged ones anywhere.
   const inVenue=e=>!venue||e.venue===venue||(venue==='Loaded Rewards'&&e.loadedRewards);
-  const evs=EVENTS.filter(e=>inVenue(e)&&String(e.end||e.start||'')>=from&&String(e.start||'')<=toLocalISODate(new Date()));
+  const evs=EVENTS.filter(e=>inVenue(e)&&String(e.end||e.start||'')>=from&&String(e.start||'')<=todayYMD());
   const k=computeMarketingKpis(evs,{withMoney:canMoney});
   const chanTotals={};evs.filter(isActivityDelivered).forEach(e=>Object.entries(e.channelResults||{}).forEach(([c,m])=>{const t=chanTotals[c]=chanTotals[c]||{n:0};t.n++;Object.entries(m).forEach(([kk,v])=>t[kk]=(t[kk]||0)+Number(v||0));}));
   const chanRows=Object.entries(chanTotals).filter(([c])=>CHANNEL_RESULT_METRICS[c]);
@@ -9474,7 +9504,7 @@ function parseMetaExport(rows,venue){
     const end=/^\d{4}-\d{2}-\d{2}/.test(v(r,c.ends))?v(r,c.ends).slice(0,10):'';
     const m={spend:metaNum(v(r,c.spend)),impressions:metaNum(v(r,c.impressions)),reach:metaNum(v(r,c.reach)),clicks,leads,purchases,purchaseValue:c.value>=0?metaNum(v(r,c.value)):0};
     return{id:v(r,c.id)||'export:'+normTitle(v(r,c.name)),venue,name:v(r,c.name),objective:v(r,c.objective),
-      status:META_EXPORT_STATUS[v(r,c.delivery).toLowerCase().replace(/\s+/g,'_')]||(end&&end<toLocalISODate(new Date())?'COMPLETED':'PAUSED'),
+      status:META_EXPORT_STATUS[v(r,c.delivery).toLowerCase().replace(/\s+/g,'_')]||(end&&end<todayYMD()?'COMPLETED':'PAUSED'),
       start:/^\d{4}-\d{2}-\d{2}/.test(v(r,c.starts))?v(r,c.starts).slice(0,10):'',end,metrics:{lifetime:m},daily:[]};
   });
   if(!campaigns.length)throw new Error('No campaigns found in this file.');
@@ -9511,7 +9541,7 @@ async function uploadMetaExport(input){
   const btn=document.getElementById('pmExportBtn');if(btn){btn.disabled=true;btn.textContent='Uploading…';}
   try{
     const token=await getToken(true);
-    const name=`${toLocalISODate(new Date())} ${code} ${file.name}`;
+    const name=`${todayYMD()} ${code} ${file.name}`;
     const res=await fetch(`${graphDrive()}/root:/${graphPath(META_IMPORTS_PATH+'/'+name)}:/content?@microsoft.graph.conflictBehavior=rename`,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'text/csv'},body:file});
     if(!res.ok){const t=await res.text();throw new Error(res.status===403||/accessDenied/.test(t)?'Your account can\'t save files to Integrations/Meta in SharePoint. A site owner needs to give you Edit access to the Marketing site\'s Documents library.':`HTTP ${res.status}: ${t.slice(0,200)}`);}
     pmStatus='';
@@ -9592,7 +9622,7 @@ function pmLinkedEvent(c){
   if(parts.length<2)return null;
   const act=normTitle(parts[1]);if(!act)return null;
   const shift=(d,n)=>{const x=new Date(d+'T00:00:00');x.setDate(x.getDate()+n);return toLocalISODate(x);};
-  const cs=c.start||'',ce=c.end||toLocalISODate(new Date());
+  const cs=c.start||'',ce=c.end||todayYMD();
   // The Loaded Rewards ad account is group-wide: its campaigns match Loaded activities at any venue.
   const venueOk=e=>e.venue===c.venue||(c.venue==='Loaded Rewards'&&e.loadedRewards);
   return EVENTS.filter(e=>venueOk(e)&&e.start&&!['Cancelled','Canceled'].includes(e.status)).filter(e=>{
@@ -9617,7 +9647,7 @@ function sortPaidMedia(key){
   renderMarketingReport();
 }
 function pmTrendSvg(campaigns,key,label,canMoney){
-  const today=new Date();today.setHours(0,0,0,0);const dates=[];
+  const today=todayDate();const dates=[];
   for(let o=30;o>=1;o--){const d=new Date(today);d.setDate(d.getDate()-o);dates.push(toLocalISODate(d));}
   const mv=Object.fromEntries(dates.map(d=>[d,0])),rv=Object.fromEntries(dates.map(d=>[d,0]));
   campaigns.forEach(c=>(c.daily||[]).forEach(r=>{if(r.date in mv){mv[r.date]+=r[key]||0;rv[r.date]+=(r.leads||0)+(r.purchases||0);}}));
@@ -9936,7 +9966,7 @@ async function savePostCampaign(btn){
     const url=`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`;
     const stageRes=await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{WorkflowStage:'Done'}})});
     if(!stageRes.ok)throw new Error('HTTP '+stageRes.status);
-    fields.ReportSubmittedAt=toLocalISODate(new Date());
+    fields.ReportSubmittedAt=todayYMD();
     const{WorkflowStage,...reportFields}=fields;
     let{failed}=await patchImportOptionalFields(url,token,reportFields);
     // Self-setup: the first time an admin saves a report and the report columns don't exist yet,
@@ -10076,7 +10106,7 @@ function toggleCalArchive(){
 }
 
 function initGanttDates(){
-  const today=new Date();
+  const today=todayDate();
   const threeMonths=new Date(today);threeMonths.setMonth(threeMonths.getMonth()+3);
   const gFrom=document.getElementById('gFrom');
   const gTo=document.getElementById('gTo');
@@ -10119,7 +10149,7 @@ function _renderGanttInner(){
   // it should sit in the top row rather than wherever EVENTS happened to list it.
   evts=[...ganttRows.values()].sort((a,b)=>Number(!!b.loadedRewards)-Number(!!a.loadedRewards));
 
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
 
   // Date range: use pickers if set, else default today → today+3mo
   let minD=fromVal?new Date(fromVal+'T00:00:00'):new Date(today);
@@ -10833,9 +10863,10 @@ function renderCalMonthlyFeatures(){
 // by default, no month/day window to overlap).
 function activityOverlapsRange(ev,rangeStart,rangeEnd){
   if(!ev||!ev.start)return false;
-  const s=new Date(ev.start+'T00:00:00');
-  const en=new Date((ev.end||ev.start)+'T00:00:00');
-  return s<=rangeEnd&&en>=rangeStart;
+  // Compare YYYY-MM-DD strings (Perth/Darwin-safe). Range bounds may be Dates or YMD strings.
+  const from=rangeStart instanceof Date?ymd(rangeStart):String(rangeStart).slice(0,10);
+  const to=rangeEnd instanceof Date?ymd(rangeEnd):String(rangeEnd).slice(0,10);
+  return ev.start<=to&&(ev.end||ev.start)>=from;
 }
 function isCalendarContinuousActivity(ev){
   return !!(ev.start&&ev.end&&ev.end>ev.start&&!(ev.recurringDay&&ev.recurringDay.length));
@@ -10894,13 +10925,45 @@ function renderCalendar(){
   const firstDay=new Date(calYear,calMonth,1).getDay();
   const dim=new Date(calYear,calMonth+1,0).getDate();
   const dip=new Date(calYear,calMonth,0).getDate();
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   let h=`<div class="cal-month-header">${dayNames.map(d=>`<div class="cal-dn">${d}</div>`).join('')}</div>`;
   const total=Math.ceil((firstDay+dim)/7)*7;
 
+  // Same archive / venue / category rules as the day chips below, for the spanning bars.
+  const calPassesFilters=e=>{
+    if(!ganttShowArchive&&isArchived(e))return false;
+    if(calVenueFilter&&!(e.venue===calVenueFilter||e.venue==='All Venues'))return false;
+    if(calCatFilter){
+      if(calCatFilter==='holiday')return['Public Holiday','National Calendar Event','School Holidays'].includes(e.activityType||e.eventFormat||e.businessStream);
+      return e.activityType===calCatFilter||e.eventFormat===calCatFilter||e.businessStream===calCatFilter;
+    }
+    return true;
+  };
+  const spanCandidates=EVENTS.filter(e=>isCalendarContinuousActivity(e)&&calPassesFilters(e));
   for(let weekOffset=0;weekOffset<total;weekOffset+=7){
     h+='<div class="cal-month-week">';
+    // ── Multi-day activities: ONE bar per week row across the days they run (wrapping at the week
+    // end), instead of a repeated chip in every day cell. Bars are packed into lanes; up to
+    // CAL_SPAN_LANES are drawn, anything beyond is counted in that day's "+N more".
+    const wkDays=[];
+    for(let i=weekOffset;i<weekOffset+7;i++){
+      let d,io=false;
+      if(i<firstDay){d=dip-firstDay+i+1;io=true;}else if(i>=firstDay+dim){d=i-firstDay-dim+1;io=true;}else{d=i-firstDay+1;}
+      const mm=io&&i<firstDay?calMonth===0?11:calMonth-1:io?calMonth===11?0:calMonth+1:calMonth;
+      const yy=io&&i<firstDay&&calMonth===0?calYear-1:io&&calMonth===11?calYear+1:calYear;
+      const ds=toLocalISODate(new Date(yy,mm,d));
+      wkDays.push({ds,inRange:calendarDateInRange(ds)});
+    }
+    const wkSpans=spanCandidates.map(e=>{
+      const cols=wkDays.map((d,ix)=>d.inRange&&e.start<=d.ds&&(e.end||e.start)>=d.ds?ix:-1).filter(ix=>ix>=0);
+      return cols.length?{ev:e,c0:cols[0],c1:cols[cols.length-1]}:null;
+    }).filter(Boolean).sort((a,b)=>calDayChipSort(a.ev,b.ev)||a.c0-b.c0||b.c1-a.c1);
+    const laneEnd=[];
+    wkSpans.forEach(sp=>{let l=laneEnd.findIndex(end=>end<sp.c0);if(l===-1){l=laneEnd.length;laneEnd.push(-1);}laneEnd[l]=sp.c1;sp.lane=l;});
+    const wkLanes=Math.min(CAL_SPAN_LANES,laneEnd.length);
+    const wkHiddenPerCol=[0,0,0,0,0,0,0];
+    wkSpans.filter(sp=>sp.lane>=CAL_SPAN_LANES).forEach(sp=>{for(let c=sp.c0;c<=sp.c1;c++)wkHiddenPerCol[c]++;});
     for(let i=weekOffset;i<weekOffset+7;i++){
     let day,isOther=false;
     if(i<firstDay){day=dip-firstDay+i+1;isOther=true;}
@@ -10944,34 +11007,47 @@ function renderCalendar(){
     const dayBriefsDue=inSelectedRange?EVENTS.filter(e=>!isArchived(e)&&e.designBriefDue===dateStr&&matchesCalFilters(e)):[];
     const dayMarketingStarts=inSelectedRange?EVENTS.filter(e=>!isArchived(e)&&e.marketingStartDate===dateStr&&e.marketingStartDate!==e.start&&matchesCalFilters(e)):[];
 
-    const maxShow=3;
+    // Spanning activities are drawn as bars across the week (above); only one-day and recurring
+    // items stay as chips here. Rows per day are capped at CAL_DAY_ROWS (bars + chips).
+    dayEvts=dayEvts.filter(e=>!isCalendarContinuousActivity(e));
+    const maxShow=Math.max(1,CAL_DAY_ROWS-wkLanes);
     const shown=dayEvts.slice(0,maxShow);
-    const extra=dayEvts.length-maxShow;
+    const extra=Math.max(0,dayEvts.length-maxShow)+wkHiddenPerCol[i-weekOffset];
 
     h+=`<div class="cal-day${isOther?' om':''}${isToday?' td':''}${isPublicHoliday?' cd-hol':''}${!inSelectedRange?' cal-day-out':''}" style="min-height:116px">
       <div class="cal-num">${day}</div>
       <div class="cal-month-details">
+      ${wkLanes?`<div class="cal-span-gap" style="height:${wkLanes*CAL_SPAN_ROW}px"></div>`:''}
       ${dayKeyDates.map(k=>`<div class="cal-ev" style="color:${k.isPublicHoliday?'#a64a24':'#1e578e'};background:${k.isPublicHoliday?'#fcd3c1':'#d5dae7'};cursor:default" title="${k.title}">${k.isPublicHoliday?'○ ':'▦ '}${k.title}</div>`).join('')}
       ${dayBriefsDue.map(ev=>`<div class="cal-ev" style="color:#1e578e;background:#d5dae7" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✎ Brief: ${ev.title}</div>`).join('')}
       ${dayMarketingStarts.map(ev=>`<div class="cal-ev" style="color:#14416d;background:#fff6dc" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">▸ Marketing: ${ev.title}</div>`).join('')}
       ${shown.map(ev=>{
         const style=calEvtStyle(ev);
-        const icon=ev.loadedRewards?'★':ev.businessStream==='Functions'?'◆':ev.ticketed?'▣':ev.supplierInvolved?'⇄':ev.eventFormat==='Sporting Screening'?'◎':calTypeIcon(ev);
-        // A continuous multi-day Activity (not a Recurring one) gets a continuation arrow on
-        // whichever side(s) it runs past this day — same small chip as everything else, just with
-        // a hint that it keeps going, instead of a separate oversized bar overlay.
-        const isContinuous=isCalendarContinuousActivity(ev);
-        const continuesBefore=isContinuous&&ev.start<dateStr,continuesAfter=isContinuous&&ev.end>dateStr;
-        const label=`${continuesBefore?'← ':''}${icon?icon+' ':''}${ev.title}${continuesAfter?' →':''}`;
+        const icon=calChipIcon(ev);
+        const label=`${icon?icon+' ':''}${ev.title}`;
         return`<div class="cal-ev" style="${style}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calVenueDot(ev)}${escapeAttr(label)}</div>`;
       }).join('')}
       ${extra>0?`<div class="cal-more" onclick="showCalDayPopup(event,${y},${m},${day})">+${extra} more</div>`:''}
       </div>
     </div>`;
     }
+    if(wkLanes){
+      h+=`<div class="cal-span-layer" style="grid-template-rows:repeat(${wkLanes},${CAL_SPAN_ROW-3}px)">${wkSpans.filter(sp=>sp.lane<CAL_SPAN_LANES).map(sp=>{
+        const ev=sp.ev,icon=calChipIcon(ev);
+        const before=ev.start<wkDays[sp.c0].ds,after=(ev.end||ev.start)>wkDays[sp.c1].ds;
+        const range=ev.end&&ev.end!==ev.start?`${fmtShort(ev.start)} – ${fmtShort(ev.end)}`:fmtShort(ev.start);
+        return`<div class="cal-ev cal-span${before?' cs-before':''}${after?' cs-after':''}" style="grid-column:${sp.c0+1}/${sp.c1+2};grid-row:${sp.lane+1};${calEvtStyle(ev)}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()" title="${escapeAttr(ev.title+' · '+range)}">${before?'<span class="cs-arrow">←</span>':''}${calVenueDot(ev)}${escapeAttr((icon?icon+' ':'')+ev.title)}${after?'<span class="cs-arrow cs-arrow-r">→</span>':''}</div>`;
+      }).join('')}</div>`;
+    }
     h+='</div>';
   }
   document.getElementById('calGrid').innerHTML=h;
+}
+// Month grid layout constants: bar lanes per week row, total rows per day, and one bar row's height
+// (px, including its 3px gap) — the day cells reserve wkLanes*CAL_SPAN_ROW above their chips.
+const CAL_SPAN_LANES=3,CAL_DAY_ROWS=4,CAL_SPAN_ROW=25;
+function calChipIcon(ev){
+  return ev.loadedRewards?'★':ev.businessStream==='Functions'?'◆':ev.ticketed?'▣':ev.supplierInvolved?'⇄':ev.eventFormat==='Sporting Screening'?'◎':calTypeIcon(ev);
 }
 
 // Small floating preview on hover — shows the Activity's featured image (same field the Artwork
@@ -11101,7 +11177,7 @@ function calOverviewStatus(ev,monthStart,monthEnd,today){
   if(isLiveNow&&daysToEnd<=7)return{key:'ending',label:'Ending soon',order:2};
   if(isLiveNow)return{key:'live',label:'Live this month',order:3};
   if(s>today)return{key:'upcoming',label:'Upcoming',order:4};
-  return{key:'ended',label:'Ended',order:5};
+  return{key:'ended',label:'Finished',order:5};
 }
 function calOverviewCard(ev,status){
   const artworkUrl=ev.eventImageUrl||ev.artworkFile||'';
@@ -11133,7 +11209,7 @@ function renderCalendarMonthOverview(){
   const grid=document.getElementById('calGrid');
   grid.style.display='block';grid.style.gridTemplateColumns='';
 
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   let monthStart=new Date(calYear,calMonth,1);
   let monthEnd=new Date(calYear,calMonth+1,0,23,59,59);
   // Respect a manually-set date range (From/To above), narrowing the month window rather than
@@ -11203,7 +11279,7 @@ function renderCalendarWeek(){
 
   const busDiv=document.getElementById('calBusyness');if(busDiv)busDiv.innerHTML='';
   const projStripDiv=document.getElementById('calMonthlyFeatures');if(projStripDiv)projStripDiv.innerHTML=renderVenueWeeklySpecials();
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
   // 7 day columns — same grid as month view but just 7 cells
@@ -11382,7 +11458,7 @@ function renderCalendarYear(){
   grid.style.display='block';grid.style.gridTemplateColumns='';
 
   const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   grid.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px">${monthNames.map((mName,mIdx)=>{
     const firstDay=new Date(calYear,mIdx,1).getDay();
     const dim=new Date(calYear,mIdx+1,0).getDate();
@@ -12125,7 +12201,7 @@ async function toggleQueueTicket(id){await toggleTask(id);renderDesign();refresh
 function renderDesign(){
   if(!isAuthed)return;
   if(!QUEUE_TAB)QUEUE_TAB=currentRole==='ops'?'ops':'design';
-  const todayStr=toLocalISODate(new Date());
+  const todayStr=todayYMD();
   const open=MY_TASKS.filter(t=>t.title&&t.status!=='Done');
   const isOverdue=t=>t.due&&t.due<todayStr;
   const tabsEl=document.getElementById('qTabs');
@@ -13528,7 +13604,7 @@ function editTicketFromActivity(taskId){
 }
 function jobTicketsSectionHtml(ev){
   const {tickets,done,total}=jobTicketsForActivity(ev);
-  const todayStr=toLocalISODate(new Date());
+  const todayStr=todayYMD();
   let h=`<div class="pop-section" style="display:flex;align-items:center;justify-content:space-between">Job tickets <span class="u-meta">${total?`${done} of ${total} done`:''}</span></div>`;
   if(!total){
     h+=`<div class="u-meta" style="margin-bottom:8px">No job tickets linked to this activity yet.${ev.stage==='Intake'?' They are created when it is approved.':''}</div>`;
@@ -13598,7 +13674,7 @@ function renderMyWork(){
   const canSeePersonal=canAccessPanel('personaltasks');
   const addPersonal=document.getElementById('myWorkAddPersonal');if(addPersonal)addPersonal.style.display=canSeePersonal?'':'none';
   const managePersonalLink=document.getElementById('myWorkManagePersonalLink');if(managePersonalLink)managePersonalLink.style.display=canSeePersonal?'':'none';
-  const today=toLocalISODate(new Date());
+  const today=todayYMD();
   // "Unassigned team tasks" is its own bucket, visible only to admin/management (canEditTeamTask on
   // an unassigned task resolves to exactly that) — never mixed into a person's own stats below.
   const canSeeUnassigned=canEditTeamTask({assignedTo:''});
@@ -13954,7 +14030,7 @@ function renderMyTasks(){
     ['tBadge'].forEach(id=>{const badge=document.getElementById(id);if(badge)badge.style.display='none';});
     return;
   }
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const todayStr=toLocalISODate(today);
   const weekStr=toLocalISODate(new Date(today.getTime()+7*864e5));
 
@@ -14529,7 +14605,7 @@ function renderPersonalTasks(){
     list.innerHTML=`<div class="card"><div class="card-body" style="padding:22px"><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:7px">Private SharePoint list not connected yet</div><div style="font-size:12px;color:var(--text2);line-height:1.55">Create a list named <b>Kimberley Personal Tasks</b>, restrict it to Kimberley only, then add its list GUID to <code>LIST_IDS.personalTasks</code>. Required columns: Title, Status, Priority, DueDate and Notes.</div></div></div>`;
     return;
   }
-  const today=toLocalISODate(new Date());
+  const today=todayYMD();
   // Converted tasks are closed (not "Open") but are intentionally left out of "Completed" too — they
   // didn't get done here, they became a shared task, which is tracked as its own item in Tasks & Job Tickets.
   const open=PERSONAL_TASKS.filter(task=>task.status!=='Done'&&task.status!=='Converted');
@@ -15574,7 +15650,7 @@ function renderOperationsMap(){
   const el=document.getElementById('operationsMapBody');if(!el)return;
   const tasks=MY_TASKS.filter(task=>task.title&&task.title.trim());
   const open=tasks.filter(task=>task.status!=='Done');
-  const today=toLocalISODate(new Date());
+  const today=todayYMD();
   const overdue=open.filter(task=>task.due&&task.due<today);
   const blocked=open.filter(task=>task.status==='Blocked'||task.blocker);
   const critical=open.filter(task=>task.priority==='Critical');
@@ -15893,7 +15969,7 @@ function renderProjects(){
     list.innerHTML='<div style="padding:36px;text-align:center;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:var(--r)">No projects found in the connected SharePoint Projects list.</div>';
     return;
   }
-  const today=toLocalISODate(new Date());
+  const today=todayYMD();
   const linkedFor=p=>EVENTS.filter(ev=>String(ev.projectId)===String(p.id));
   const risksFor=(p,linked)=>{
     const reasons=[];
@@ -16113,7 +16189,7 @@ function isAssignedToMe(ev){
 
 function generateNotifications(){
   NOTIFS=[];
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=todayDate();
   const week=new Date(Date.now()+7*864e5);
   const twoWeeks=new Date(Date.now()+14*864e5);
   const fourWeeks=new Date(Date.now()+28*864e5);
@@ -16994,7 +17070,7 @@ function exportCRMSegment(kind='mail'){
   const rows=CRM_CUSTOMERS.filter(customer=>crmMailingState(customer)===kind);if(!rows.length){alert('There are no customers in this segment.');return;}
   const quote=value=>`"${String(value??'').replace(/"/g,'""')}"`;const headers=['Customer ID','First Name','Last Name','Email','Phone','Preferred Venue','Consent Status','Source Count'];
   const csv=[headers.map(quote).join(','),...rows.map(c=>[c.spId,c.firstName,c.lastName,c.email,c.phone,c.venue,c.consent,c.sourceCount].map(quote).join(','))].join('\r\n');
-  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`Marlin_CRM_${kind}_${toLocalISODate(new Date())}.csv`;link.click();URL.revokeObjectURL(link.href);
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`Marlin_CRM_${kind}_${todayYMD()}.csv`;link.click();URL.revokeObjectURL(link.href);
 }
 
 function populateCRMVenueSelect(){
@@ -17278,7 +17354,7 @@ async function runCRMImport(){
   const button=document.getElementById('crmRunBtn');
   if(isPreviewMode){
     if(!confirm(`Simulate importing ${actionable.length} confident rows? This changes demo data only.`))return;
-    let created=0,updated=0;actionable.forEach((item,index)=>{const priorStatus=item.status;if(priorStatus==='update'){item.status='updated';updated++;}else{item.status='created';created++;if(priorStatus!=='consolidate'){const data=item.data;CRM_CUSTOMERS.push({spId:`SIM-${Date.now()}-${index}`,title:data.fullName||data.email||'Unnamed customer',firstName:data.firstName,lastName:data.lastName,email:data.email,emailNorm:data.emailNorm,phone:data.phone,phoneNorm:data.phoneNorm,status:crmMarketingSuppressed(data)?'Needs Review':'Active',sourceCount:1,venue:data.venue,source:document.getElementById('crmSourceSystem').value.trim(),consent:data.emailConsent||'Unknown',suppressed:crmMarketingSuppressed(data),lastSeen:toLocalISODate(new Date())});}item.reason='Simulated safe write, no SharePoint record created';}});
+    let created=0,updated=0;actionable.forEach((item,index)=>{const priorStatus=item.status;if(priorStatus==='update'){item.status='updated';updated++;}else{item.status='created';created++;if(priorStatus!=='consolidate'){const data=item.data;CRM_CUSTOMERS.push({spId:`SIM-${Date.now()}-${index}`,title:data.fullName||data.email||'Unnamed customer',firstName:data.firstName,lastName:data.lastName,email:data.email,emailNorm:data.emailNorm,phone:data.phone,phoneNorm:data.phoneNorm,status:crmMarketingSuppressed(data)?'Needs Review':'Active',sourceCount:1,venue:data.venue,source:document.getElementById('crmSourceSystem').value.trim(),consent:data.emailConsent||'Unknown',suppressed:crmMarketingSuppressed(data),lastSeen:todayYMD()});}item.reason='Simulated safe write, no SharePoint record created';}});
     CRM_IMPORTS.unshift({demo:true,title:`Simulation · ${CRM_FILE_NAME||'customer export'}`,status:'Simulation complete',source:document.getElementById('crmSourceSystem').value.trim(),date:new Date().toLocaleString('en-AU'),rows:CRM_PREFLIGHT.length});
     renderCRMPreflight();renderCRMSegments();renderCRMReview();crmSetMessage(`Simulation complete: ${created} would be created, ${updated} would be updated. SharePoint remains untouched.`,'ok');button.disabled=true;return;
   }
