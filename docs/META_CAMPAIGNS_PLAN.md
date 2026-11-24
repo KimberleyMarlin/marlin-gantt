@@ -27,15 +27,16 @@ Goal: a **Paid Media** section in the Hub that shows active Meta (Facebook / Ins
 
 ---
 
-### Until the sync can run: Ads Manager exports (24 Nov 2026)
+### Until the sync can run: Ads Manager exports (24 Nov 2026, group exports fixed the same day)
 
 The sync is waiting on IT's SharePoint grant. Meanwhile, Marketing Report → Paid media has **Upload Meta export**:
-- Pick the venue (Whitfords Brewing Co, Loaded Rewards, …), then upload an Ads Manager **Campaigns → Reports → Export table data → .csv**, with the date range set first.
-- It's saved to `Integrations/Meta/Imports` as `<date> <CODE> <name>.csv` (CODE from `REPORT_VENUE_CODES`), using the uploader's own SharePoint access.
-- The newest file per venue becomes the same snapshot shape the sync writes. The section, campaign → activity linking (MetaCampaignID, or the `CODE | Activity | MonYY` naming rule) and activity totals all work unchanged.
-- An export covers one date range, so there are no 7-day/30-day windows or daily trend. The section shows every campaign in the period, labelled with the export's dates.
-- Columns are matched by name, so added or reordered columns don't matter. Leads, sales and link clicks come from their own columns if present, else from *Results* by *Result indicator*.
-- A real sync snapshot (`_all.json`) always wins over exports.
+- **Recommended export:** Ads Manager → **Campaigns** tab, **no breakdowns**, set the date range first, then Reports → Export table data → .csv. Columns: *Account name, Campaign name, Campaign ID, Campaign delivery, Starts, Ends, Amount spent, Reach, Impressions, Link clicks, CTR (link click-through rate), Results, Result indicator, Cost per result, Leads, Purchases, Purchases conversion value, Landing page views*.
+- **One file for all ad accounts:** a file with *Account name* is saved as `<date> ALL <name>.csv`, and each campaign's venue comes from its ad account name. Unknown accounts show as "Unassigned". Without *Account name*, the venue picked at upload is used and the file is saved as `<date> <CODE> <name>.csv`.
+- **Breakdowns:** rows broken down by age, gender, ad or month, plus the totals row, are collapsed to one row per account and campaign. Reach can't be added up across breakdowns, so it takes the largest breakdown row and is marked approximate.
+- **Missing columns:** metrics the file doesn't have show as "Not in export", never 0, with a note naming the columns to add. Leads, sales, link clicks and landing page views come from their own columns, else from *Results* by *Result indicator*.
+- **Which file is used:** for each venue, the newest file that covers it. Each upload is listed with **Remove this upload**, which deletes it from `Integrations/Meta/Imports` (Marlin Hospitality Marketing → Documents → Integrations → Meta → Imports). It stays in the site recycle bin for 93 days.
+- **Linking:** unlinked campaigns get an activity picker and **Link** button right in the table, and a confirmation shows when it saves. Campaigns from an export without *Campaign ID* get a stable `x-<account>-<campaign>` ID.
+- **Sync wins:** a real sync snapshot (`_all.json`) always takes priority over exports.
 
 The Marketing Report's venue picker also has **Loaded Rewards**. Its campaign results are the Loaded-flagged activities at any venue.
 
