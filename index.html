@@ -397,8 +397,8 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 .wk-ev-sub{font-size:10px;opacity:.75;margin-top:2px;display:flex;align-items:center;gap:4px}
 .wk-empty{font-size:11px;color:var(--text3);text-align:center;padding:24px 6px}
 .cal-more:hover{background:var(--accent);color:#fff}
-.cal-month-header{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px}
-.cal-month-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;position:relative;margin-top:7px}
+.cal-month-header{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;border-bottom:1px solid var(--line)}
+.cal-month-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;position:relative;margin-top:0}
 .cal-month-week .cal-day{height:auto;min-width:0}
 .cal-month-details{position:relative;z-index:1}
 .ov-thumb{width:40px;height:40px;border-radius:var(--radius-sm);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:15px}
@@ -409,21 +409,41 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 .mf-venue-toggle>summary::-webkit-details-marker{display:none}
 .mf-venue-toggle>summary::before{content:'▸';display:inline-block;margin-right:6px;transition:transform .15s}
 .mf-venue-toggle[open]>summary::before{transform:rotate(90deg)}
-/* Multi-day activities: one bar across the week row. Top offset = border (1) + padding (8) + date line (17) + gap (4). */
-.cal-month-week .cal-num{line-height:17px;margin-bottom:4px}
-.cal-span-layer{position:absolute;left:0;right:0;top:30px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));column-gap:7px;row-gap:1px;pointer-events:none;z-index:2}
-.cal-span{pointer-events:auto;margin:0 8px;display:flex;align-items:center;gap:2px;min-width:0;height:14px;padding:0 5px;line-height:14px;font-size:9px;font-weight:600}
+/* ── Month grid, Apple Calendar style (Kim 24 Nov): calm hairline grid, pale event tints, dark
+   text. Bar layer top = padding (6) + date line (20) + gap (4). */
+.cal-month-week .cal-day{background:var(--surface);border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;padding:6px 4px 6px;min-height:128px!important}
+.cal-month-week .cal-day:first-child{border-left:1px solid var(--line)}
+.cal-month-week .cal-day:hover{border-color:var(--line);box-shadow:none;background:var(--surface)}
+.cal-month-week .cal-day:nth-child(1),.cal-month-week .cal-day:nth-child(7){background:#fafbfc}
+.cal-month-week .cal-day.om .cal-num{color:var(--mist-700)}
+.cal-month-week .cal-day.om{opacity:1}
+.cal-month-week .cal-day.td{background:var(--surface);border-color:var(--line)}
+.cal-month-week .cal-num{font-size:12px;font-weight:500;color:var(--ink-muted);line-height:20px;height:20px;margin:0 0 4px 2px}
+.cal-month-week .cal-day.td .cal-num{display:inline-flex;align-items:center;justify-content:center;min-width:20px;padding:0 5px;border-radius:10px;background:var(--accent);color:var(--on-accent);font-weight:700}
+.cal-span-layer{position:absolute;left:0;right:0;top:30px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));column-gap:0;row-gap:2px;pointer-events:none;z-index:2}
+.cal-span{pointer-events:auto;margin:0 4px;display:flex;align-items:center;gap:3px;min-width:0;height:18px;padding:0 6px;line-height:18px;font-size:11px;font-weight:500;border-radius:4px}
+.cal-span:hover{filter:brightness(.97);transform:none}
 .cal-span.cs-before{border-top-left-radius:0;border-bottom-left-radius:0;margin-left:0}
 .cal-span.cs-after{border-top-right-radius:0;border-bottom-right-radius:0;margin-right:0}
-.cal-span .cs-arrow{opacity:.75;margin-right:2px;flex-shrink:0;font-size:8px}.cal-span .cs-arrow-r{margin:0 0 0 auto;padding-left:3px}
-.cal-span .cs-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* Month grid chips match the bars: 18px rows, 10px text, ellipsis on overflow. */
-.cal-month-week .cal-day .cal-ev{font-size:9px;font-weight:600;height:14px;line-height:14px;padding:0 5px;margin-bottom:1px}
-/* Venue dots scaled to the slim rows. */
-.cal-month-week .cal-ev span[style*="border-radius:50%"]{width:5px!important;height:5px!important;margin-right:3px!important}
-.cal-month-week .cal-more{font-size:10px;padding:1px 6px}
-@media(max-width:479px){.cal-span-layer{column-gap:4px}}
-@media(max-width:479px){.cal-month-header,.cal-month-week{gap:4px}}
+.cal-span .cs-arrow{color:var(--ink-muted);flex-shrink:0;font-size:9px}.cal-span .cs-arrow-r{margin:0 0 0 auto;padding-left:3px}
+.cal-span .cs-title,.cal-dot-ev .cs-title,.cal-run-chip .cs-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Single-day items: no fill, a colour dot, the title in ink (optional time in muted). */
+.cal-month-week .cal-day .cal-ev{font-size:11px;font-weight:500;height:18px;line-height:18px;padding:0 4px;margin-bottom:2px;border-radius:4px}
+.cal-dot-ev{display:flex;align-items:center;gap:5px;background:transparent;color:var(--ink)}
+.cal-dot-ev:hover{background:var(--surface-alt);transform:none;filter:none}
+.cal-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.cal-time{color:var(--ink-muted);flex-shrink:0}
+.cal-month-week .cal-more{font-size:11px;font-weight:600;padding:0 4px;background:transparent;color:var(--ink-muted)}
+.cal-month-week .cal-more:hover{background:var(--surface-alt);color:var(--ink)}
+/* "Running this month": long promos listed once above the grid. */
+.cal-running{border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:10px;background:var(--surface)}
+.cal-running-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.cal-running-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-brand)}
+.cal-running-toggle{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-muted);cursor:pointer}
+.cal-running-list{display:flex;flex-wrap:wrap;gap:6px}
+.cal-run-chip{display:flex;align-items:center;gap:6px;max-width:320px;min-width:0;height:22px;padding:0 8px;border-radius:4px;font-size:11px;font-weight:500;cursor:pointer}
+.cal-run-dates{color:var(--ink-muted);flex-shrink:0;font-variant-numeric:tabular-nums}
+@media(max-width:479px){.cal-month-week .cal-day{padding:4px 2px}.cal-run-chip{max-width:100%}}
 
 /* ── VENUE CARDS ── */
 .venue-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;width:100%}
@@ -11071,7 +11091,9 @@ function renderCalendar(){
     }
     return true;
   };
-  const spanCandidates=EVENTS.filter(e=>isCalendarContinuousActivity(e)&&calPassesFilters(e));
+  const longInGrid=calShowLongInGrid();
+  const spanCandidates=EVENTS.filter(e=>isCalendarContinuousActivity(e)&&calPassesFilters(e)&&(longInGrid||!isCalLongPromo(e)));
+  h=calRunningRowHtml(toLocalISODate(new Date(calYear,calMonth,1)),toLocalISODate(new Date(calYear,calMonth+1,0)),'Running this month')+h;
   for(let weekOffset=0;weekOffset<total;weekOffset+=7){
     h+='<div class="cal-month-week">';
     // ── Multi-day activities: ONE bar per week row across the days they run (wrapping at the week
@@ -11153,10 +11175,9 @@ function renderCalendar(){
       ${dayBriefsDue.map(ev=>`<div class="cal-ev" style="color:#1e578e;background:#d5dae7" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✎ Brief: ${ev.title}</div>`).join('')}
       ${dayMarketingStarts.map(ev=>`<div class="cal-ev" style="color:#14416d;background:#fff6dc" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">▸ Marketing: ${ev.title}</div>`).join('')}
       ${shown.map(ev=>{
-        const style=calEvtStyle(ev);
         const icon=calChipIcon(ev);
-        const label=`${icon?icon+' ':''}${ev.title}`;
-        return`<div class="cal-ev" style="${style}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">${calVenueDot(ev)}${escapeAttr(label)}</div>`;
+        const time=String(ev.eventDoorsOpen||'').trim();
+        return`<div class="cal-ev cal-dot-ev" style="opacity:${calEvtOpacity(ev)}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()" title="${escapeAttr(ev.title)}"><span class="cal-dot" style="background:${calEvtColor(ev)}"></span>${time?`<span class="cal-time">${escapeAttr(time)}</span>`:''}<span class="cs-title">${escapeAttr((icon==='★'?'★ ':'')+ev.title)}</span></div>`;
       }).join('')}
       ${extra>0?`<div class="cal-more" onclick="showCalDayPopup(event,${y},${m},${day})">+${extra} more</div>`:''}
       </div>
@@ -11167,7 +11188,7 @@ function renderCalendar(){
         const ev=sp.ev,icon=calChipIcon(ev);
         const before=ev.start<wkDays[sp.c0].ds,after=(ev.end||ev.start)>wkDays[sp.c1].ds;
         const range=ev.end&&ev.end!==ev.start?`${fmtShort(ev.start)} – ${fmtShort(ev.end)}`:fmtShort(ev.start);
-        return`<div class="cal-ev cal-span${before?' cs-before':''}${after?' cs-after':''}" style="grid-column:${sp.c0+1}/${sp.c1+2};grid-row:${sp.lane+1};${calEvtStyle(ev)}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()" title="${escapeAttr(ev.title+' · '+range)}">${before?'<span class="cs-arrow">←</span>':''}${calVenueDot(ev)}<span class="cs-title">${escapeAttr((icon?icon+' ':'')+ev.title)}</span>${after?'<span class="cs-arrow cs-arrow-r">→</span>':''}</div>`;
+        return`<div class="cal-ev cal-span${before?' cs-before':''}${after?' cs-after':''}" style="grid-column:${sp.c0+1}/${sp.c1+2};grid-row:${sp.lane+1};${calEvtPaleStyle(ev,!before)}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()" title="${escapeAttr(ev.title+' · '+range)}">${before?'<span class="cs-arrow">←</span>':''}<span class="cs-title">${escapeAttr((icon==='★'?'★ ':'')+ev.title)}</span>${after?'<span class="cs-arrow cs-arrow-r">→</span>':''}</div>`;
       }).join('')}</div>`;
     }
     h+='</div>';
@@ -11176,8 +11197,46 @@ function renderCalendar(){
 }
 // Month grid layout constants: bar lanes per week row, total rows per day, and one bar row's height
 // (px, including its 3px gap) — the day cells reserve wkLanes*CAL_SPAN_ROW above their chips.
-// Slim rows (Kim 24 Nov): 14px bars and chips, 9px semi-bold text, 1px lane gaps.
-const CAL_SPAN_LANES=6,CAL_DAY_ROWS=7,CAL_SPAN_ROW=15,CAL_SPAN_GAP=1;
+// Apple-style rows (Kim 24 Nov): 18px bars, 11px medium text, 2px lane gaps.
+const CAL_SPAN_LANES=4,CAL_DAY_ROWS=5,CAL_SPAN_ROW=20,CAL_SPAN_GAP=2;
+// Apple Calendar look (Kim 24 Nov): pale tint of the venue / Loaded colour, dark text, optional
+// 3px colour edge on an event's first segment. No solid saturated fills.
+function calEvtPaleStyle(ev,edge){
+  const c=calEvtColor(ev);
+  return`background:color-mix(in srgb, ${c} 15%, var(--surface));color:var(--ink);opacity:${calEvtOpacity(ev)};${edge?`border-left:3px solid ${c};`:''}`;
+}
+// Long promos (14+ days, e.g. Beer of the Month, Feature Tap) are listed once in a "Running this
+// month" row instead of flooding every week's lanes, unless the person turns them back on.
+const CAL_LONG_PROMO_DAYS=14;
+function isCalLongPromo(ev){
+  if(!isCalendarContinuousActivity(ev))return false;
+  const days=Math.round((new Date(ev.end+'T00:00:00')-new Date(ev.start+'T00:00:00'))/864e5)+1;
+  return days>=CAL_LONG_PROMO_DAYS;
+}
+// Same archive / venue / category rules the Calendar views use.
+function calPassesViewFilters(e){
+  if(!ganttShowArchive&&isArchived(e))return false;
+  if(calVenueFilter&&!(e.venue===calVenueFilter||e.venue==='All Venues'))return false;
+  if(calCatFilter){
+    if(calCatFilter==='holiday')return['Public Holiday','National Calendar Event','School Holidays'].includes(e.activityType||e.eventFormat||e.businessStream);
+    return e.activityType===calCatFilter||e.eventFormat===calCatFilter||e.businessStream===calCatFilter;
+  }
+  return true;
+}
+// "Running this month/week": every long promo overlapping [fromYMD,toYMD], once, as pale chips.
+function calRunningRowHtml(fromYMD,toYMD,label){
+  const longPromos=EVENTS.filter(e=>isCalLongPromo(e)&&calPassesViewFilters(e)&&activityOverlapsRange(e,fromYMD,toYMD))
+    .sort((a,b)=>calDayChipSort(a,b)||a.start.localeCompare(b.start));
+  if(!longPromos.length)return'';
+  const on=calShowLongInGrid();
+  return`<div class="cal-running">
+    <div class="cal-running-head"><span class="cal-running-label">${escapeAttr(label)}</span><span class="u-meta">${longPromos.length}</span>
+      <label class="cal-running-toggle"><input type="checkbox" ${on?'checked':''} onchange="toggleCalLongInGrid(this.checked)"> Show long promos in grid</label></div>
+    <div class="cal-running-list">${longPromos.map(ev=>`<div class="cal-run-chip" style="${calEvtPaleStyle(ev,true)}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()" title="${escapeAttr(ev.title)}"><span class="cs-title">${escapeAttr((calChipIcon(ev)==='★'?'★ ':'')+ev.title)}</span><span class="cal-run-dates">${fmtShort(ev.start)} – ${fmtShort(ev.end)}</span></div>`).join('')}</div>
+  </div>`;
+}
+function calShowLongInGrid(){try{return localStorage.getItem('marlin_cal_long_promos_in_grid')==='1';}catch(e){return false;}}
+function toggleCalLongInGrid(on){try{localStorage.setItem('marlin_cal_long_promos_in_grid',on?'1':'0');}catch(e){}renderCalendar();}
 function calChipIcon(ev){
   return ev.loadedRewards?'★':ev.businessStream==='Functions'?'◆':ev.ticketed?'▣':ev.supplierInvolved?'⇄':ev.eventFormat==='Sporting Screening'?'◎':calTypeIcon(ev);
 }
@@ -11422,7 +11481,7 @@ function renderCalendarWeek(){
     ws.toLocaleDateString('en-AU',{day:'numeric',month:'short'})+' – '+we.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
 
   const busDiv=document.getElementById('calBusyness');if(busDiv)busDiv.innerHTML='';
-  const projStripDiv=document.getElementById('calMonthlyFeatures');if(projStripDiv)projStripDiv.innerHTML=renderVenueWeeklySpecials();
+  const projStripDiv=document.getElementById('calMonthlyFeatures');if(projStripDiv)projStripDiv.innerHTML=renderVenueWeeklySpecials()+calRunningRowHtml(toLocalISODate(ws),toLocalISODate(new Date(ws.getTime()+6*864e5)),'Running this week');
   const today=todayDate();
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -11447,6 +11506,7 @@ function renderCalendarWeek(){
       else{dayEvts=dayEvts.filter(e=>(e.activityType===calCatFilter||e.eventFormat===calCatFilter||e.businessStream===calCatFilter));}
     }
 
+    if(!calShowLongInGrid())dayEvts=dayEvts.filter(e=>!isCalLongPromo(e));
     // Loaded Rewards first, then spanning/recurring items, then category — see calDayChipSort.
     dayEvts.sort(calDayChipSort);
 
@@ -11466,7 +11526,7 @@ function renderCalendarWeek(){
       ${dayBriefsDue.map(ev=>`<div class="cal-ev" style="color:#1e578e;background:#d5dae7" onclick="showPop(${ev.id})" title="Design brief due — ${ev.title}">✎ Brief: ${ev.title}</div>`).join('')}
       ${dayMarketingStarts.map(ev=>`<div class="cal-ev" style="color:#14416d;background:#fff6dc" onclick="showPop(${ev.id})" title="Marketing starts — ${ev.title}">▸ Marketing: ${ev.title}</div>`).join('')}
       ${dayEvts.length?dayEvts.map(ev=>{
-        const style=calEvtStyle(ev);
+        const style=calEvtPaleStyle(ev,true);
         const icon=ev.loadedRewards?'★':ev.businessStream==='Functions'?'◆':ev.ticketed||ev.eventFormat==='Live Music / Entertainment'?'▣':ev.supplierInvolved?'⇄':ev.eventFormat==='Sporting Screening'?'◎':calTypeIcon(ev);
         return`<div class="wk-ev" style="${style}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()">
           <div class="wk-ev-title">${icon?icon+' ':''}${ev.title}</div>
