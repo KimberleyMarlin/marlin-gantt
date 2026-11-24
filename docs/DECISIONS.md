@@ -79,3 +79,13 @@ Luca Brignoli is mapped to the `design` role. The previous Limited Access screen
 **Chosen approach:** One set of visual rules: the repo's `docs/DESIGN_SYSTEM.md` (inline tokens in `index.html`, the single-colour glyph set, the 10–14px app scale). `OS_UI_GUIDELINES.md` is withdrawn and isn't committed.
 
 **Consequences:** Briefs point to `docs/DESIGN_SYSTEM.md` for anything visual. The design file's System tab is ignored.
+
+## Keep Social visible; switch CRM writes off
+
+**Confirmed:** 24 November 2026 (Kimberley)
+
+**Decision 1, Social:** The Social page stays visible in the nav. The 17 Nov plan to hide it (UX-03 PR-2) is reversed, because the Social Calendar was built on 18–19 Nov and now runs on real data. `docs/HIDDEN_MODULES.md` is updated. UX-03 keeps Social under Programs.
+
+**Decision 2, CRM writes:** `CRM_WRITE_ENABLED` is set to `false` in `index.html`. The OS no longer writes to the 8 old CRM SharePoint lists while contacts move to Emma (one sub-account per venue). Contacts & Mailing stays hidden and reads only.
+
+**Status:** In effect.
