@@ -27,6 +27,18 @@ Goal: a **Paid Media** section in the Hub that shows active Meta (Facebook / Ins
 
 ---
 
+### Until the sync can run: Ads Manager exports (24 Nov 2026)
+
+The sync is waiting on IT's SharePoint grant. Meanwhile, Marketing Report → Paid media has **Upload Meta export**:
+- Pick the venue (Whitfords Brewing Co, Loaded Rewards, …), then upload an Ads Manager **Campaigns → Reports → Export table data → .csv**, with the date range set first.
+- It's saved to `Integrations/Meta/Imports` as `<date> <CODE> <name>.csv` (CODE from `REPORT_VENUE_CODES`), using the uploader's own SharePoint access.
+- The newest file per venue becomes the same snapshot shape the sync writes. The section, campaign → activity linking (MetaCampaignID, or the `CODE | Activity | MonYY` naming rule) and activity totals all work unchanged.
+- An export covers one date range, so there are no 7-day/30-day windows or daily trend. The section shows every campaign in the period, labelled with the export's dates.
+- Columns are matched by name, so added or reordered columns don't matter. Leads, sales and link clicks come from their own columns if present, else from *Results* by *Result indicator*.
+- A real sync snapshot (`_all.json`) always wins over exports.
+
+The Marketing Report's venue picker also has **Loaded Rewards**. Its campaign results are the Loaded-flagged activities at any venue.
+
 ## 0. Decisions confirmed (21 Oct 2026)
 
 | Question | Answer | Effect on the plan |
