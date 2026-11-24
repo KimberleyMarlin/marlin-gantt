@@ -441,6 +441,10 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 .cal-running-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-brand)}
 .cal-running-toggle{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-muted);cursor:pointer}
 .cal-car-nav{display:flex;gap:4px}
+.md-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.md-title{font-size:15px;font-weight:800;letter-spacing:.01em;color:var(--theme-monthlydeals)}
+.md-nav{margin-left:auto;display:flex;align-items:center;gap:6px}
+.md-month{min-width:120px;text-align:center;font-size:12px;font-weight:700;color:var(--ink-brand)}
 .cal-car-btn{width:24px;height:24px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:15px;line-height:1;cursor:pointer;padding:0}
 .cal-car-btn:hover{background:var(--surface-alt)}
 .cal-car{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px 0 4px}
@@ -1410,6 +1414,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
       </div>
     </div>
     <div class="ca" style="margin-top:16px">
+      <div id="lrMonthlyDeals"></div>
       <div class="stats" id="lrStats" style="margin-bottom:12px"></div>
       <div id="lrOfferMapping"></div>
       <div id="lrFeaturedProducts"></div>
@@ -1652,7 +1657,7 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
   <!-- SPECIALS -->
   <div class="panel" id="p-specials">
     <div class="ph"><div><div class="ph-eye">Offers</div><div class="ph-title">Specials <em>&amp; Offers</em></div></div></div>
-    <div class="ca"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:11px;width:100%" id="spGrid"></div></div>
+    <div class="ca"><div id="spMonthlyFeatures" style="width:100%"></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:11px;width:100%" id="spGrid"></div></div>
   </div>
 
   <!-- BUDGET -->
@@ -10940,8 +10945,12 @@ function renderMonthlyDealsLoadedCard(ev){
     <div style="flex:1;min-width:0">${loadedOfferGridHtml(ev,variants,true)}</div>
   </div>`;
 }
+// Monthly Deals (Kim 24 Nov: moved off the Calendar, where the "Running this month" carousel
+// covers it). opts.part 'loaded' = Loaded Rewards cards + offer mechanics (Loaded Rewards page);
+// 'venue' = the venue features grid (Specials page). opts.year/opts.month pick the month.
 function renderCalMonthlyFeatures(opts={}){
-  const monthStart=new Date(calYear,calMonth,1),monthEnd=new Date(calYear,calMonth+1,0);
+  const fy=opts.year??calYear,fm=opts.month??calMonth;
+  const monthStart=new Date(fy,fm,1),monthEnd=new Date(fy,fm+1,0);
   const inMonth=e=>activityOverlapsRange(e,monthStart,monthEnd);
   const candidates=EVENTS.filter(e=>!isArchived(e)&&(/of the month$/i.test(e.activitySubtype||'')||e.activitySubtype==="Chef's Special")&&inMonth(e));
   // Food Special is day-specific (Taco Tuesday, Steak Night Wednesday, etc.) rather than one value
@@ -11004,15 +11013,46 @@ function renderCalMonthlyFeatures(opts={}){
         }).join('')}`).join('')}
     </div>
   </div>`:'';
-  // Compact (This Month overview): Loaded Rewards cards in full, the venue grid behind a toggle.
-  const gridBlock=opts.compact&&gridHtml
-    ?`<details class="mf-venue-toggle"><summary>Venue features <span class="u-meta">${rows.length} row${rows.length===1?'':'s'}</span></summary><div style="margin-top:10px">${gridHtml}</div></details>`
-    :gridHtml;
-  if(opts.compact&&!loadedHtml&&!gridHtml)return'';
+  if(opts.part==='loaded'){
+    return loadedHtml||`<div class="u-empty" style="border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface)">No Loaded Rewards specials this month. Set Primary Brand to Loaded Rewards on an activity to list it here.</div>`;
+  }
+  if(opts.part==='venue'){
+    return gridHtml||`<div class="u-empty" style="border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface)">No Beer, Wine or Cocktail of the Month, Chef's Special or Food Special set for this month.</div>`;
+  }
   return`<div class="card" style="margin-bottom:12px;padding:14px 16px;overflow:hidden">
     <div style="font-size:15px;font-weight:800;letter-spacing:.01em;margin-bottom:12px;color:var(--theme-monthlydeals)">Monthly Deals</div>
-    ${loadedHtml}${gridBlock}
+    ${loadedHtml}${gridHtml}
   </div>`;
+}
+// Month picker shared by the Loaded Rewards and Specials pages (each keeps its own month).
+const MONTHLY_DEALS_YM={loaded:null,venue:null};
+function monthlyDealsYM(which){
+  if(!MONTHLY_DEALS_YM[which]){const t=todayDate();MONTHLY_DEALS_YM[which]={y:t.getFullYear(),m:t.getMonth()};}
+  return MONTHLY_DEALS_YM[which];
+}
+function shiftMonthlyDeals(which,delta){
+  const ym=monthlyDealsYM(which),d=new Date(ym.y,ym.m+delta,1);
+  MONTHLY_DEALS_YM[which]={y:d.getFullYear(),m:d.getMonth()};
+  which==='loaded'?renderLoadedMonthlyDeals():renderSpecialsVenueFeatures();
+}
+function monthlyDealsSection(which,title,bodyHtml){
+  const ym=monthlyDealsYM(which);
+  const label=new Date(ym.y,ym.m,1).toLocaleDateString('en-AU',{month:'long',year:'numeric'});
+  return`<div class="card md-section" style="margin-bottom:14px;padding:14px 16px;overflow:hidden">
+    <div class="md-head"><span class="md-title">${escapeAttr(title)}</span>
+      <span class="md-nav"><button type="button" class="cal-car-btn" aria-label="Previous month" onclick="shiftMonthlyDeals('${which}',-1)">‹</button><span class="md-month">${escapeAttr(label)}</span><button type="button" class="cal-car-btn" aria-label="Next month" onclick="shiftMonthlyDeals('${which}',1)">›</button></span></div>
+    ${bodyHtml}
+  </div>`;
+}
+function renderLoadedMonthlyDeals(){
+  const el=document.getElementById('lrMonthlyDeals');if(!el)return;
+  const ym=monthlyDealsYM('loaded');
+  el.innerHTML=monthlyDealsSection('loaded','Monthly Deals',renderCalMonthlyFeatures({part:'loaded',year:ym.y,month:ym.m}));
+}
+function renderSpecialsVenueFeatures(){
+  const el=document.getElementById('spMonthlyFeatures');if(!el)return;
+  const ym=monthlyDealsYM('venue');
+  el.innerHTML=monthlyDealsSection('venue','Venue features',renderCalMonthlyFeatures({part:'venue',year:ym.y,month:ym.m}));
 }
 
 // A multi-day Activity appears as one continuous bar per calendar week, including month-long
@@ -11087,7 +11127,7 @@ function renderCalendar(){
   const busDiv=document.getElementById('calBusyness');
   if(busDiv)busDiv.innerHTML=busHtml;
   const projStripDiv=document.getElementById('calMonthlyFeatures');
-  if(projStripDiv)projStripDiv.innerHTML=renderCalMonthlyFeatures();
+  if(projStripDiv)projStripDiv.innerHTML=''; // Monthly Deals now lives on the Loaded Rewards page
 
   const firstDay=new Date(calYear,calMonth,1).getDay();
   const dim=new Date(calYear,calMonth+1,0).getDate();
@@ -11453,9 +11493,9 @@ function calOverviewCard(ev,status){
 function renderCalendarMonthOverview(){
   document.getElementById('calLabel').textContent=new Date(calYear,calMonth,1).toLocaleDateString('en-AU',{month:'long',year:'numeric'});
   const busDiv=document.getElementById('calBusyness');if(busDiv)busDiv.innerHTML='';
-  // Kim's Monthly Deals strip (Loaded Rewards artwork cards) stays at the top of the overview too;
-  // the venue features grid is folded away there so the overview stays clean.
-  const projStripDiv=document.getElementById('calMonthlyFeatures');if(projStripDiv)projStripDiv.innerHTML=renderCalMonthlyFeatures({compact:true});
+  // Monthly Deals moved to the Loaded Rewards page (venue features to Specials); the Month view's
+  // "Running this month" carousel covers the long promos on the Calendar.
+  const projStripDiv=document.getElementById('calMonthlyFeatures');if(projStripDiv)projStripDiv.innerHTML='';
   const grid=document.getElementById('calGrid');
   grid.style.display='block';grid.style.gridTemplateColumns='';
 
@@ -12270,6 +12310,7 @@ function renderLoadedRewardsCard(ev){
 
 function renderLoaded(){
   if(!isAuthed)return;
+  renderLoadedMonthlyDeals();
   const allLR=EVENTS.filter(e=>e.loadedRewards);
   const lr=allLR.filter(e=>!isArchived(e));
   const totalRedemptions=OFFER_VARIANTS.reduce((a,v)=>a+(v.actualRedemption||0),0);
@@ -13700,6 +13741,7 @@ function renderSponsorships(){
 // ═══════════════════════════════════════
 function renderSpecials(){
   if(!isAuthed)return;
+  renderSpecialsVenueFeatures();
   document.getElementById('spGrid').innerHTML=`<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text3)"><div style="font-weight:500">No specials yet</div><div style="font-size:12px;margin-top:6px">This page isn't connected to a live data source yet — recurring specials could be pulled from the Specials/Offers list once it's set up</div></div>`;
 }
 
