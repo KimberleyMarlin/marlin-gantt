@@ -411,11 +411,17 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 .mf-venue-toggle[open]>summary::before{transform:rotate(90deg)}
 /* Multi-day activities: one bar across the week row. Top offset = border (1) + padding (8) + date line (17) + gap (4). */
 .cal-month-week .cal-num{line-height:17px;margin-bottom:4px}
-.cal-span-layer{position:absolute;left:0;right:0;top:30px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));column-gap:7px;row-gap:3px;pointer-events:none;z-index:2}
-.cal-span{pointer-events:auto;margin:0 8px;display:flex;align-items:center;gap:2px;min-width:0;height:22px;padding:0 8px;line-height:22px}
+.cal-span-layer{position:absolute;left:0;right:0;top:30px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));column-gap:7px;row-gap:1px;pointer-events:none;z-index:2}
+.cal-span{pointer-events:auto;margin:0 8px;display:flex;align-items:center;gap:2px;min-width:0;height:14px;padding:0 5px;line-height:14px;font-size:9px;font-weight:600}
 .cal-span.cs-before{border-top-left-radius:0;border-bottom-left-radius:0;margin-left:0}
 .cal-span.cs-after{border-top-right-radius:0;border-bottom-right-radius:0;margin-right:0}
-.cal-span .cs-arrow{opacity:.75;margin-right:3px;flex-shrink:0}.cal-span .cs-arrow-r{margin:0 0 0 auto;padding-left:4px}
+.cal-span .cs-arrow{opacity:.75;margin-right:2px;flex-shrink:0;font-size:8px}.cal-span .cs-arrow-r{margin:0 0 0 auto;padding-left:3px}
+.cal-span .cs-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Month grid chips match the bars: 18px rows, 10px text, ellipsis on overflow. */
+.cal-month-week .cal-day .cal-ev{font-size:9px;font-weight:600;height:14px;line-height:14px;padding:0 5px;margin-bottom:1px}
+/* Venue dots scaled to the slim rows. */
+.cal-month-week .cal-ev span[style*="border-radius:50%"]{width:5px!important;height:5px!important;margin-right:3px!important}
+.cal-month-week .cal-more{font-size:10px;padding:1px 6px}
 @media(max-width:479px){.cal-span-layer{column-gap:4px}}
 @media(max-width:479px){.cal-month-header,.cal-month-week{gap:4px}}
 
@@ -11157,11 +11163,11 @@ function renderCalendar(){
     </div>`;
     }
     if(wkLanes){
-      h+=`<div class="cal-span-layer" style="grid-template-rows:repeat(${wkLanes},${CAL_SPAN_ROW-3}px)">${wkSpans.filter(sp=>sp.lane<CAL_SPAN_LANES).map(sp=>{
+      h+=`<div class="cal-span-layer" style="grid-template-rows:repeat(${wkLanes},${CAL_SPAN_ROW-CAL_SPAN_GAP}px)">${wkSpans.filter(sp=>sp.lane<CAL_SPAN_LANES).map(sp=>{
         const ev=sp.ev,icon=calChipIcon(ev);
         const before=ev.start<wkDays[sp.c0].ds,after=(ev.end||ev.start)>wkDays[sp.c1].ds;
         const range=ev.end&&ev.end!==ev.start?`${fmtShort(ev.start)} – ${fmtShort(ev.end)}`:fmtShort(ev.start);
-        return`<div class="cal-ev cal-span${before?' cs-before':''}${after?' cs-after':''}" style="grid-column:${sp.c0+1}/${sp.c1+2};grid-row:${sp.lane+1};${calEvtStyle(ev)}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()" title="${escapeAttr(ev.title+' · '+range)}">${before?'<span class="cs-arrow">←</span>':''}${calVenueDot(ev)}${escapeAttr((icon?icon+' ':'')+ev.title)}${after?'<span class="cs-arrow cs-arrow-r">→</span>':''}</div>`;
+        return`<div class="cal-ev cal-span${before?' cs-before':''}${after?' cs-after':''}" style="grid-column:${sp.c0+1}/${sp.c1+2};grid-row:${sp.lane+1};${calEvtStyle(ev)}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()" title="${escapeAttr(ev.title+' · '+range)}">${before?'<span class="cs-arrow">←</span>':''}${calVenueDot(ev)}<span class="cs-title">${escapeAttr((icon?icon+' ':'')+ev.title)}</span>${after?'<span class="cs-arrow cs-arrow-r">→</span>':''}</div>`;
       }).join('')}</div>`;
     }
     h+='</div>';
@@ -11170,7 +11176,8 @@ function renderCalendar(){
 }
 // Month grid layout constants: bar lanes per week row, total rows per day, and one bar row's height
 // (px, including its 3px gap) — the day cells reserve wkLanes*CAL_SPAN_ROW above their chips.
-const CAL_SPAN_LANES=3,CAL_DAY_ROWS=4,CAL_SPAN_ROW=25;
+// Slim rows (Kim 24 Nov): 14px bars and chips, 9px semi-bold text, 1px lane gaps.
+const CAL_SPAN_LANES=6,CAL_DAY_ROWS=7,CAL_SPAN_ROW=15,CAL_SPAN_GAP=1;
 function calChipIcon(ev){
   return ev.loadedRewards?'★':ev.businessStream==='Functions'?'◆':ev.ticketed?'▣':ev.supplierInvolved?'⇄':ev.eventFormat==='Sporting Screening'?'◎':calTypeIcon(ev);
 }
