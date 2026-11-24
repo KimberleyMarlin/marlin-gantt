@@ -9340,7 +9340,7 @@ function renderMarketingReport(){
   if(META_STATE.status==='idle')loadMetaSnapshot();
   // Venue picker, filled once from the venues the OS knows plus any in the reviews.
   const vSel=document.getElementById('mrVenue');
-  const venues=[...new Set([...VENUES_DATA.map(v=>v.name).filter(Boolean),...REVIEWS.map(r=>r.venue)])].sort();
+  const venues=[...new Set([...VENUES_DATA.map(v=>v.name).filter(Boolean),'Loaded Rewards',...REVIEWS.map(r=>r.venue)])].sort();
   const curV=vSel?.value||'';
   if(vSel&&vSel.options.length!==venues.length+1)vSel.innerHTML='<option value="">All venues</option>'+venues.map(v=>`<option value="${escapeAttr(v)}">${escapeAttr(v)}</option>`).join('');
   if(vSel)vSel.value=curV;
@@ -9349,7 +9349,9 @@ function renderMarketingReport(){
 
   // 1. Campaign results
   const canMoney=!!rolePermissions().canViewBudget;
-  const evs=EVENTS.filter(e=>(!venue||e.venue===venue)&&String(e.end||e.start||'')>=from&&String(e.start||'')<=toLocalISODate(new Date()));
+  // Loaded Rewards is a programme, not a venue: its activities are the Loaded-flagged ones anywhere.
+  const inVenue=e=>!venue||e.venue===venue||(venue==='Loaded Rewards'&&e.loadedRewards);
+  const evs=EVENTS.filter(e=>inVenue(e)&&String(e.end||e.start||'')>=from&&String(e.start||'')<=toLocalISODate(new Date()));
   const k=computeMarketingKpis(evs,{withMoney:canMoney});
   const chanTotals={};evs.filter(isActivityDelivered).forEach(e=>Object.entries(e.channelResults||{}).forEach(([c,m])=>{const t=chanTotals[c]=chanTotals[c]||{n:0};t.n++;Object.entries(m).forEach(([kk,v])=>t[kk]=(t[kk]||0)+Number(v||0));}));
   const chanRows=Object.entries(chanTotals).filter(([c])=>CHANNEL_RESULT_METRICS[c]);
@@ -9443,6 +9445,95 @@ const normTitle=t=>String(t||'').toLowerCase().replace(/&/g,'and').replace(/[^a-
 // Same rule as scripts/meta-sync.mjs, so file names line up.
 const venueSlug=v=>String(v||'').toLowerCase().replace(/^the\s+/,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 
+// ── Ads Manager export (until the Meta sync can run) ──────────────────────────────────────────
+// The sync needs IT's SharePoint grant. Until then, an Ads Manager "Export table data" CSV can be
+// uploaded per venue (or Loaded Rewards). It's saved to Integrations/Meta/Imports as
+// "<date> <CODE> <original name>.csv", and the newest file per venue is turned into the same
+// snapshot shape the sync writes, so the Paid media section, activity links and activity totals
+// all work unchanged. A real sync snapshot always wins over exports.
+const META_IMPORTS_PATH='Integrations/Meta/Imports';
+const META_EXPORT_STATUS={active:'ACTIVE',completed:'COMPLETED',recently_completed:'COMPLETED',archived:'COMPLETED',deleted:'COMPLETED'};
+function metaCodeFor(venue){return Object.entries(REPORT_VENUE_CODES).find(([,v])=>v===venue)?.[0]||'';}
+function metaNum(v){const n=Number(String(v??'').replace(/[^0-9.\-]/g,''));return Number.isFinite(n)?n:0;}
+// Ads Manager CSV rows → campaigns. Columns are matched by name, so added or reordered columns
+// don't matter. Returns {campaigns,from,to} or throws with what's missing.
+function parseMetaExport(rows,venue){
+  const head=(rows[0]||[]).map(h=>String(h).replace(/^﻿/,'').trim().toLowerCase());
+  const col=(...tests)=>head.findIndex(h=>tests.some(t=>typeof t==='string'?h===t:t.test(h)));
+  const c={name:col('campaign name'),id:col('campaign id'),delivery:col('campaign delivery','delivery'),spend:col(/^amount spent/),reach:col('reach'),impressions:col('impressions'),
+    clicks:col('link clicks'),results:col('results'),indicator:col('result indicator','result type'),leads:col('leads'),purchases:col('purchases',/^website purchases$/),value:col(/^purchases conversion value/,/^website purchases conversion value/),
+    from:col('reporting starts'),to:col('reporting ends'),starts:col('starts'),ends:col('ends'),objective:col('objective')};
+  if(c.name<0)throw new Error('This file has no "Campaign name" column. In Ads Manager, open the Campaigns tab, then Reports → Export table data → .csv.');
+  if(c.spend<0)throw new Error('This file has no "Amount spent" column. Export the Campaigns table from Ads Manager without removing the default columns.');
+  const v=(r,i)=>i>=0?String(r[i]??'').trim():'';
+  let from='',to='';
+  const campaigns=rows.slice(1).filter(r=>v(r,c.name)).map(r=>{
+    const ind=v(r,c.indicator).toLowerCase(),results=metaNum(v(r,c.results));
+    const leads=c.leads>=0?metaNum(v(r,c.leads)):(/lead/.test(ind)?results:0);
+    const purchases=c.purchases>=0?metaNum(v(r,c.purchases)):(/purchase/.test(ind)?results:0);
+    const clicks=c.clicks>=0?metaNum(v(r,c.clicks)):(/link_click/.test(ind)?results:0);
+    const rf=v(r,c.from).slice(0,10),rt=v(r,c.to).slice(0,10);
+    if(rf&&(!from||rf<from))from=rf;if(rt&&rt>to)to=rt;
+    const end=/^\d{4}-\d{2}-\d{2}/.test(v(r,c.ends))?v(r,c.ends).slice(0,10):'';
+    const m={spend:metaNum(v(r,c.spend)),impressions:metaNum(v(r,c.impressions)),reach:metaNum(v(r,c.reach)),clicks,leads,purchases,purchaseValue:c.value>=0?metaNum(v(r,c.value)):0};
+    return{id:v(r,c.id)||'export:'+normTitle(v(r,c.name)),venue,name:v(r,c.name),objective:v(r,c.objective),
+      status:META_EXPORT_STATUS[v(r,c.delivery).toLowerCase().replace(/\s+/g,'_')]||(end&&end<toLocalISODate(new Date())?'COMPLETED':'PAUSED'),
+      start:/^\d{4}-\d{2}-\d{2}/.test(v(r,c.starts))?v(r,c.starts).slice(0,10):'',end,metrics:{lifetime:m},daily:[]};
+  });
+  if(!campaigns.length)throw new Error('No campaigns found in this file.');
+  return{campaigns,from,to};
+}
+// The newest export per venue code, as a snapshot. null when there are none.
+async function loadMetaExports(token){
+  const files=(await listDriveFolder(META_IMPORTS_PATH,token)).filter(f=>f.file&&/\.csv$/i.test(f.name))
+    .sort((a,b)=>String(b.lastModifiedDateTime).localeCompare(String(a.lastModifiedDateTime)));
+  const newest={};
+  files.forEach(f=>{const code=(f.name.match(/^\d{4}-\d{2}-\d{2}\s+([A-Za-z]{2,4})\s/)||[])[1]?.toUpperCase();if(code&&REPORT_VENUE_CODES[code]&&!newest[code])newest[code]=f;});
+  const campaigns=[],ranges=[],errors=[];let latest='';
+  for(const [code,f] of Object.entries(newest)){
+    try{
+      const r=await fetchWithRetry(`${graphDrive()}/items/${f.id}/content`,{headers:{Authorization:'Bearer '+token}});
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      const p=parseMetaExport(parseCsvRows(await r.text()),REPORT_VENUE_CODES[code]);
+      campaigns.push(...p.campaigns);ranges.push({venue:REPORT_VENUE_CODES[code],from:p.from,to:p.to,file:f.name,uploaded:f.lastModifiedDateTime});
+      if(String(f.lastModifiedDateTime)>latest)latest=f.lastModifiedDateTime;
+    }catch(e){errors.push(`${f.name}: ${e.message}`);}
+  }
+  if(!campaigns.length)return errors.length?{source:'export',campaigns:[],ranges,errors,generatedAt:latest||new Date().toISOString()}:null;
+  return{source:'export',generatedAt:latest,campaigns,ranges,errors};
+}
+async function uploadMetaExport(input){
+  const file=input.files?.[0];input.value='';if(!file)return;
+  const venue=document.getElementById('pmExportVenue')?.value||'';
+  const code=metaCodeFor(venue);
+  if(!code){alert('Choose which venue this export is for first.');return;}
+  if(!/\.csv$/i.test(file.name)){alert('Upload the Ads Manager export as a .csv file (Reports → Export table data → .csv).');return;}
+  if(file.size>4*1024*1024){alert('That file is over 4 MB. Export a shorter date range, or fewer columns.');return;}
+  let parsed;
+  try{parsed=parseMetaExport(parseCsvRows(await file.text()),venue);}catch(e){alert(e.message);return;}
+  const btn=document.getElementById('pmExportBtn');if(btn){btn.disabled=true;btn.textContent='Uploading…';}
+  try{
+    const token=await getToken(true);
+    const name=`${toLocalISODate(new Date())} ${code} ${file.name}`;
+    const res=await fetch(`${graphDrive()}/root:/${graphPath(META_IMPORTS_PATH+'/'+name)}:/content?@microsoft.graph.conflictBehavior=rename`,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'text/csv'},body:file});
+    if(!res.ok){const t=await res.text();throw new Error(res.status===403||/accessDenied/.test(t)?'Your account can\'t save files to Integrations/Meta in SharePoint. A site owner needs to give you Edit access to the Marketing site\'s Documents library.':`HTTP ${res.status}: ${t.slice(0,200)}`);}
+    pmStatus='';
+    await loadMetaSnapshot(true);
+    alert(`Uploaded. ${parsed.campaigns.length} ${venue} campaign${parsed.campaigns.length===1?'':'s'}${parsed.from?`, ${fmtShort(parsed.from)} to ${fmtShort(parsed.to)}`:''}.`);
+  }catch(e){alert('Upload failed: '+e.message);}
+  if(btn){btn.disabled=false;btn.textContent='Upload Meta export';}
+}
+function metaExportUploadHtml(venue){
+  if(!canEditCampaigns()||isPreviewMode)return'';
+  const opts=['Whitfords Brewing Co','Loaded Rewards',...Object.values(REPORT_VENUE_CODES).filter(v=>!['Whitfords Brewing Co','Loaded Rewards'].includes(v))].filter((v,i,a)=>a.indexOf(v)===i);
+  return`<div class="mr-noprint" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+    <select class="form-select" id="pmExportVenue" style="width:auto;font-size:12px" aria-label="Venue for the Meta export">${opts.map(v=>`<option value="${escapeAttr(v)}"${v===(venue||'Whitfords Brewing Co')?' selected':''}>${escapeAttr(v)}</option>`).join('')}</select>
+    <input type="file" id="pmExportInput" accept=".csv,text/csv" style="display:none" onchange="uploadMetaExport(this)">
+    <button class="btn btn-s" id="pmExportBtn" onclick="document.getElementById('pmExportInput').click()">Upload Meta export</button>
+    <span class="u-meta">Ads Manager → Campaigns → Reports → Export table data → .csv. Pick the date range first.</span>
+  </div>`;
+}
+
 async function loadMetaSnapshot(force=false){
   if(isPreviewMode||META_STATE.status==='loading'||(META_STATE.status!=='idle'&&!force))return;
   META_STATE={status:'loading',error:''};
@@ -9458,6 +9549,12 @@ async function loadMetaSnapshot(force=false){
     // their own venue's file.
     let snap=await get(META_SNAPSHOT_PATH.all);
     if(!snap&&currentVenueAccess)snap=await get(`${META_SNAPSHOT_PATH.venues}/${venueSlug(currentVenueAccess)}.json`);
+    // No sync yet: fall back to uploaded Ads Manager exports.
+    if(!snap){
+      snap=await loadMetaExports(token);
+      // An export is a report on one period: show every campaign in it, not just active ones.
+      if(snap&&pmStatus==='ACTIVE')pmStatus='';
+    }
     META_SNAPSHOT=snap&&Array.isArray(snap.campaigns)?snap:null;
     META_STATE={status:META_SNAPSHOT?'ok':'none',error:''};
   }catch(e){META_SNAPSHOT=null;META_STATE={status:'error',error:e.message||String(e)};}
@@ -9541,22 +9638,25 @@ function renderPaidMediaSection(venue){
   if(isPreviewMode)return h+'<div class="mr-note">UI preview has no live data.</div></div>';
   if(META_STATE.status==='idle'||META_STATE.status==='loading')return h+'<div class="loading"><div class="spinner"></div></div></div>';
   if(META_STATE.status==='error')return h+`<div class="mr-note">Couldn't read the Meta snapshot: ${escapeAttr(META_STATE.error)}</div></div>`;
-  if(!META_SNAPSHOT)return h+`<div class="mr-call att"><h4>Meta isn't connected yet</h4><div>Live Meta results appear here once the Meta sync is set up and has run (docs/META_CAMPAIGNS_PLAN.md §5). Until then nothing is shown.</div></div></div>`;
+  if(!META_SNAPSHOT)return h+`<div class="mr-call att"><h4>Meta isn't connected yet</h4><div>Live Meta results appear here once the Meta sync is set up and has run (docs/META_CAMPAIGNS_PLAN.md §5). Until then, upload an Ads Manager export for each venue.</div></div>${metaExportUploadHtml(venue)}</div>`;
   const canMoney=pmCanSeeSpend();
   if(!pmSortKey)pmSortKey=canMoney?'spend':'clicks';
   const all=metaVisibleCampaigns().filter(c=>!venue||c.venue===venue);
   const rows=all.filter(c=>!pmStatus||c.status===pmStatus);
-  const win=pmWindow,t=pmTotals(rows,win);
-  const stale=Date.now()-new Date(META_SNAPSHOT.generatedAt).getTime()>24*3600000;
+  // An export covers one date range, so there's one window: the export's own.
+  const fromExport=META_SNAPSHOT.source==='export';
+  const win=fromExport?'lifetime':pmWindow,t=pmTotals(rows,win);
+  const winLabel=fromExport?'Export period':PM_WINDOW_LABELS[win];
+  const stale=!fromExport&&Date.now()-new Date(META_SNAPSHOT.generatedAt).getTime()>24*3600000;
   const chip=(grp,v,l,cur)=>`<button type="button" class="chip${cur===v?' on':''}" onclick="${grp}='${v}';renderMarketingReport()">${l}</button>`;
   h+=`<div class="mr-noprint" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
-    <div class="chips">${Object.entries(PM_WINDOW_LABELS).map(([v,l])=>chip('pmWindow',v,l,pmWindow)).join('')}</div>
+    ${fromExport?'':`<div class="chips">${Object.entries(PM_WINDOW_LABELS).map(([v,l])=>chip('pmWindow',v,l,pmWindow)).join('')}</div>`}
     <div class="chips">${chip('pmStatus','ACTIVE','Active',pmStatus)}${chip('pmStatus','PAUSED','Paused',pmStatus)}${chip('pmStatus','COMPLETED','Ended',pmStatus)}${chip('pmStatus','','All',pmStatus)}</div>
   </div>`;
   if(stale)h+=`<div class="mr-call att"><h4>Meta numbers are out of date</h4><div>The last sync from Meta was ${pmAgo(META_SNAPSHOT.generatedAt)}. Check the Meta sync in GitHub Actions before relying on these figures.</div></div>`;
   h+=`<div class="stats" style="margin-bottom:0">
     ${kpiTile(all.filter(c=>c.status==='ACTIVE').length,'Active campaigns')}
-    ${canMoney?kpiTile(pmMoney(t.spend),'Spend',PM_WINDOW_LABELS[win]):''}
+    ${canMoney?kpiTile(pmMoney(t.spend),'Spend',winLabel):''}
     ${kpiTile(pmInt(t.reach),'Reach','Summed per campaign')}
     ${kpiTile(pmInt(t.clicks),'Link clicks',t.ctr==null?'':`${t.ctr.toFixed(2)}% click-through`)}
     ${kpiTile(pmInt(t.leads),'Leads','Lead forms + website Lead events')}
@@ -9590,10 +9690,10 @@ function renderPaidMediaSection(venue){
     <tbody>${enriched.length?enriched.map(e=>`<tr>${cols.map(c=>cell(e,c.k)).join('')}</tr>`).join(''):`<tr><td colspan="${cols.length}" class="u-meta" style="text-align:center;padding:16px">No ${pmStatus?(PM_STATUS[pmStatus]?.t||'').toLowerCase()+' ':''}campaigns${venue?' for '+escapeAttr(shortVenue(venue)):''}</td></tr>`}</tbody></table></div>`;
   if(!venue&&!currentVenueAccess){
     const vs=[...new Set(rows.map(c=>c.venue))].map(v=>({v,t:pmTotals(rows.filter(c=>c.venue===v),win)})).sort((a,b)=>(canMoney?b.t.spend-a.t.spend:b.t.clicks-a.t.clicks));
-    if(vs.length>1)h+=`<div class="mr-sub">By venue · ${PM_WINDOW_LABELS[win].toLowerCase()}</div><div style="overflow-x:auto"><table class="tbl" style="min-width:480px"><thead><tr><th>Venue</th>${canMoney?'<th class="n">Spend</th>':''}<th class="n">Link clicks</th><th class="n">Leads</th><th class="n">Sales</th>${canMoney?'<th class="n">ROAS</th>':''}</tr></thead><tbody>${vs.map(({v,t})=>`<tr><td>${escapeAttr(v)}</td>${canMoney?`<td class="n">${pmMoney(t.spend)}</td>`:''}<td class="n">${pmInt(t.clicks)}</td><td class="n">${pmInt(t.leads)}</td><td class="n">${pmInt(t.purchases)}</td>${canMoney?`<td class="n">${t.roas?t.roas.toFixed(1)+'×':'—'}</td>`:''}</tr>`).join('')}</tbody></table></div>`;
+    if(vs.length>1)h+=`<div class="mr-sub">By venue · ${winLabel.toLowerCase()}</div><div style="overflow-x:auto"><table class="tbl" style="min-width:480px"><thead><tr><th>Venue</th>${canMoney?'<th class="n">Spend</th>':''}<th class="n">Link clicks</th><th class="n">Leads</th><th class="n">Sales</th>${canMoney?'<th class="n">ROAS</th>':''}</tr></thead><tbody>${vs.map(({v,t})=>`<tr><td>${escapeAttr(v)}</td>${canMoney?`<td class="n">${pmMoney(t.spend)}</td>`:''}<td class="n">${pmInt(t.clicks)}</td><td class="n">${pmInt(t.leads)}</td><td class="n">${pmInt(t.purchases)}</td>${canMoney?`<td class="n">${t.roas?t.roas.toFixed(1)+'×':'—'}</td>`:''}</tr>`).join('')}</tbody></table></div>`;
   }
   const key=canMoney?'spend':'clicks',lab=canMoney?'Daily spend':'Daily link clicks';
-  h+=`<div class="mr-sub">${lab} and leads + sales · last 30 days</div><div class="mr-chart">${pmTrendSvg(rows,key,lab,canMoney)}</div>
+  if(!fromExport)h+=`<div class="mr-sub">${lab} and leads + sales · last 30 days</div><div class="mr-chart">${pmTrendSvg(rows,key,lab,canMoney)}</div>
     <div class="mr-key"><span><i style="background:var(--ink-brand)"></i>${lab} (left)</span><span><i style="background:var(--gold-300,var(--line))"></i>Leads + sales (right)</span></div>`;
   const unlinked=all.filter(c=>c.status!=='COMPLETED'&&!pmLinkedEvent(c));
   if(unlinked.length&&canEditCampaigns()){
@@ -9604,6 +9704,11 @@ function renderPaidMediaSection(venue){
         <select class="form-select" style="width:auto;font-size:12px" id="pmLink-${escapeAttr(c.id)}" aria-label="Activity for ${escapeAttr(c.name)}"><option value="">Choose activity…</option>${opts(c.venue).map(e=>`<option value="${e.id}">${escapeAttr(e.title)} · ${fmtShort(e.start)}</option>`).join('')}</select>
         <button class="btn btn-s" onclick="const s=document.getElementById('pmLink-${escapeAttr(c.id)}');if(s.value)linkMetaCampaign('${escapeAttr(c.id)}',s.value)">Link</button></div>`).join('')}
     </details>`;
+  }
+  if(fromExport){
+    const rs=(META_SNAPSHOT.ranges||[]).filter(r=>!venue||r.venue===venue);
+    h+=`<div class="mr-note">From Ads Manager exports: ${rs.map(r=>`${escapeAttr(r.venue)} ${r.from?`${fmtShort(r.from)} to ${fmtShort(r.to)}`:''} (uploaded ${pmAgo(r.uploaded)})`).join(' · ')||'none for this venue'}. Upload a newer export to update. Daily trend appears once the Meta sync runs.${(META_SNAPSHOT.errors||[]).length?` Couldn't read: ${escapeAttr(META_SNAPSHOT.errors.join(' · '))}.`:''}</div>${metaExportUploadHtml(venue)}`;
+    return h+'</div>';
   }
   h+=`<div class="mr-note">From Meta, updated ${pmAgo(META_SNAPSHOT.generatedAt)}. Reach is summed across campaigns, so people reached by two campaigns count twice. Leads and sales depend on the Meta Pixel being set up on each booking and ticketing site (pixel audit, plan §9).</div>`;
   return h+'</div>';
@@ -9616,7 +9721,7 @@ function renderActivityMeta(ev){
   const canMoney=pmCanSeeSpend();const t=pmTotals(camps,'lifetime');
   const row=(l,v)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid var(--line);font-size:12px"><span style="color:var(--ink-muted)">${l}</span><span style="font-weight:700;color:var(--ink-brand);text-align:right">${v}</span></div>`;
   return`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:var(--text3);text-transform:uppercase">Meta ads</div><div class="u-meta">${camps.length} campaign${camps.length===1?'':'s'} · updated ${pmAgo(META_SNAPSHOT.generatedAt)}</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:var(--text3);text-transform:uppercase">Meta ads</div><div class="u-meta">${camps.length} campaign${camps.length===1?'':'s'} · ${META_SNAPSHOT.source==='export'?'from an Ads Manager export':'updated'} ${pmAgo(META_SNAPSHOT.generatedAt)}</div></div>
     ${canMoney?row('Spend',pmMoney(t.spend)):''}
     ${row('Reach',pmInt(t.reach))}
     ${row('Link clicks',`${pmInt(t.clicks)}${t.ctr!=null?` (${t.ctr.toFixed(2)}% CTR)`:''}`)}
