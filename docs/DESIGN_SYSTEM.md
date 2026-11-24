@@ -56,7 +56,7 @@ Work Sans is the only typeface, loaded from Google Fonts at the top of `index.ht
 | Body | Medium (500), 14px. |
 | Former monospace numbers | Work Sans with `font-variant-numeric: tabular-nums`. |
 
-**App density (a deliberate difference from the system).** The system's text styles are sized for reports and decks: `body` 16px, `small` 13px, `label` 12px. The OS is a dense working tool, so it keeps a 14px body and uses 10–12px for table cells, chips and meta. Nothing is set below 10px, and there are no half-pixel sizes. The working app scale is 10 / 11 / 12 / 13 / 14px for interface text, then 16 / 18 / 20 / 22 / 28px for headings and figures. Use those sizes in new code.
+**App density (a deliberate difference from the system).** The system's text styles are sized for reports and decks: `body` 16px, `small` 13px, `label` 12px. The OS is a dense working tool, so it keeps a 14px body and uses 10–12px for table cells, chips and meta. Nothing is set below 10px, and there are no half-pixel sizes. One deliberate exception (Kim, 24 Nov): the Calendar Month grid's activity bars and chips are 14px rows with 9px semi-bold text, so a busy week stays light and up to 6 lanes fit; their full titles are always in the hover card and the day list. The working app scale is 10 / 11 / 12 / 13 / 14px for interface text, then 16 / 18 / 20 / 22 / 28px for headings and figures. Use those sizes in new code.
 
 ## Writing in the UI
 
