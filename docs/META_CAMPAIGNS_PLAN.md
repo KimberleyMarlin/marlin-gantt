@@ -37,6 +37,8 @@ The sync is waiting on IT's SharePoint grant. Meanwhile, Marketing Report → Pa
 - **Which file is used:** for each venue, the newest file that covers it. Each upload is listed with **Remove this upload**, which deletes it from `Integrations/Meta/Imports` (Marlin Hospitality Marketing → Documents → Integrations → Meta → Imports). It stays in the site recycle bin for 93 days.
 - **Linking:** unlinked campaigns get an activity picker and **Link** button right in the table, and a confirmation shows when it saves. Campaigns from an export without *Campaign ID* get a stable `x-<account>-<campaign>` ID.
 - **Sync wins:** a real sync snapshot (`_all.json`) always takes priority over exports.
+- **Who saw it (age and gender):** when an export has *Age* and/or *Gender* columns, those breakdowns are kept. Paid media shows a **Who saw it** panel for the venue, and each campaign has its own under its name. Each age band and gender shows spend, reach and impressions, plus link clicks and leads + sales when the export has them, as bars in the series colours. Bars are sized by spend, or by impressions for roles that don't see spend. Reach is added up across rows, so it overstates people reached; the panel says so. Campaign totals are unchanged.
+- **For the age and gender panel**, export with **Breakdown → By Delivery → Age and Gender** at Campaign (or Ad) level, plus the columns above.
 
 The Marketing Report's venue picker also has **Loaded Rewards**. Its campaign results are the Loaded-flagged activities at any venue.
 

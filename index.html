@@ -9514,7 +9514,7 @@ function parseMetaExport(rows,fallbackVenue){
   const col=(...tests)=>head.findIndex(h=>tests.some(t=>typeof t==='string'?h===t:t.test(h)));
   const c={account:col('account name'),name:col('campaign name'),id:col('campaign id'),delivery:col('campaign delivery'),spend:col(/^amount spent/),reach:col('reach'),impressions:col('impressions'),
     clicks:col('link clicks'),results:col('results'),indicator:col('result indicator','result type'),leads:col('leads'),purchases:col('purchases','website purchases'),purchaseValue:col(/^purchases conversion value/,/^website purchases conversion value/),
-    landingPageViews:col('landing page views'),from:col('reporting starts'),to:col('reporting ends'),starts:col('starts'),ends:col('ends'),objective:col('objective')};
+    landingPageViews:col('landing page views'),age:col('age'),gender:col('gender'),from:col('reporting starts'),to:col('reporting ends'),starts:col('starts'),ends:col('ends'),objective:col('objective')};
   if(c.name<0)throw new Error('This file has no "Campaign name" column. In Ads Manager, open the Campaigns tab, then Reports → Export table data → .csv.');
   if(c.spend<0)throw new Error('This file has no "Amount spent" column. Add it under Columns → Customise columns, then export again.');
   if(c.account<0&&!fallbackVenue)throw new Error('Choose which venue this export is for, or export with the "Account name" column.');
@@ -9532,13 +9532,20 @@ function parseMetaExport(rows,fallbackVenue){
     const key=account+'\u0000'+name;
     let g=groups.get(key);
     if(!g){g={account,name,id:v(r,c.id),delivery:v(r,c.delivery).toLowerCase().replace(/\s+/g,'_'),objective:v(r,c.objective),starts:'',ends:'',rows:0,
-      m:{spend:0,impressions:0,reach:0,clicks:0,leads:0,purchases:0,purchaseValue:0,landingPageViews:0}};groups.set(key,g);}
+      m:{spend:0,impressions:0,reach:0,clicks:0,leads:0,purchases:0,purchaseValue:0,landingPageViews:0},aud:{age:{},gender:{}}};groups.set(key,g);}
     g.rows++;
     const ind=v(r,c.indicator).toLowerCase(),results=metaNum(v(r,c.results));
     const metric=k=>c[k]>=0?metaNum(v(r,c[k])):(viaResults(k)&&viaResults(k).test(ind)?results:0);
     g.m.spend+=metaNum(v(r,c.spend));g.m.impressions+=metaNum(v(r,c.impressions));
     g.m.reach=Math.max(g.m.reach,metaNum(v(r,c.reach)));
     ['clicks','leads','purchases','purchaseValue','landingPageViews'].forEach(k=>{g.m[k]+=metric(k);});
+    // Age and gender breakdowns are kept for "Who saw it" rather than thrown away.
+    [['age',v(r,c.age)],['gender',v(r,c.gender).toLowerCase()]].forEach(([dim,band])=>{
+      if(c[dim]<0||!band)return;
+      const b=g.aud[dim][band]=g.aud[dim][band]||{spend:0,reach:0,impressions:0,clicks:0,results:0};
+      b.spend+=metaNum(v(r,c.spend));b.reach+=metaNum(v(r,c.reach));b.impressions+=metaNum(v(r,c.impressions));
+      b.clicks+=metric('clicks');b.results+=metric('leads')+metric('purchases');
+    });
     const rf=v(r,c.from).slice(0,10),rt=v(r,c.to).slice(0,10);
     if(rf&&(!from||rf<from))from=rf;if(rt&&rt>to)to=rt;
     const s0=v(r,c.starts).slice(0,10),e0=v(r,c.ends).slice(0,10);
@@ -9553,7 +9560,8 @@ function parseMetaExport(rows,fallbackVenue){
     missing.forEach(k=>{m[k]=null;});
     return{id:g.id||`x-${metaSlug(g.account)}-${metaSlug(g.name)}`,venue,account:g.account,name:g.name,objective:g.objective,
       status:c.delivery>=0?(META_EXPORT_STATUS[g.delivery]||'PAUSED'):(g.ends&&g.ends<today?'COMPLETED':'UNKNOWN'),
-      start:g.starts,end:g.ends,metrics:{lifetime:m},daily:[]};
+      start:g.starts,end:g.ends,metrics:{lifetime:m},daily:[],
+      audience:(c.age>=0||c.gender>=0)?g.aud:null};
   });
   if(!campaigns.length)throw new Error('No campaigns found in this file.');
   const byAccount={};campaigns.forEach(x=>{const k=x.venue;(byAccount[k]=byAccount[k]||{campaigns:0,spend:0});byAccount[k].campaigns++;byAccount[k].spend+=x.metrics.lifetime.spend;});
@@ -9615,6 +9623,31 @@ async function removeMetaExport(fileId,fileName){
     await loadMetaSnapshot(true);
     showToast('Upload removed',fileName);
   }catch(e){alert('Could not remove the upload: '+e.message);}
+}
+// "Who saw it": spend, reach and impressions (plus link clicks and results when the export has
+// them) by age band and by gender, from an export broken down by Age and/or Gender. Reach is summed
+// across rows, so it overstates people reached; bars are sized by spend (or impressions for
+// roles that don't see spend).
+const META_GENDER_LABEL={female:'Women',male:'Men',unknown:'Unknown'};
+const META_GENDER_COLOUR={female:'var(--series-ty)',male:'var(--series-3)',unknown:'var(--series-ly)'};
+function metaAudienceHtml(campaigns,canMoney,missing){
+  const sum={age:{},gender:{}};
+  campaigns.forEach(c=>{if(!c.audience)return;['age','gender'].forEach(dim=>Object.entries(c.audience[dim]||{}).forEach(([band,b])=>{const t=sum[dim][band]=sum[dim][band]||{spend:0,reach:0,impressions:0,clicks:0,results:0};Object.keys(t).forEach(k=>t[k]+=b[k]||0);}));});
+  const key=canMoney?'spend':'impressions';
+  const ageOrder=b=>/^\d/.test(b)?parseInt(b,10):999;
+  const block=(dim,title)=>{
+    const bands=Object.entries(sum[dim]);if(!bands.length)return'';
+    bands.sort((a,b)=>dim==='age'?ageOrder(a[0])-ageOrder(b[0]):b[1][key]-a[1][key]);
+    const max=Math.max(1,...bands.map(([,b])=>b[key])),total=bands.reduce((a,[,b])=>a+b[key],0)||1;
+    return`<div style="flex:1 1 280px;min-width:0"><div class="mr-sub" style="margin-top:0">${title}</div>${bands.map(([band,b])=>{
+      const bits=[canMoney&&pmMoney(b.spend),`${pmInt(b.reach)} reach`,`${pmInt(b.impressions)} impressions`,!missing.has('clicks')&&`${pmInt(b.clicks)} link clicks`,(!missing.has('leads')||!missing.has('purchases'))&&`${pmInt(b.results)} leads + sales`].filter(Boolean);
+      return`<div style="display:grid;grid-template-columns:70px 1fr;gap:8px;align-items:center;padding:3px 0;font-size:12px">
+        <span style="font-weight:600;color:var(--ink-brand)">${escapeAttr(dim==='gender'?(META_GENDER_LABEL[band]||band):band)}</span>
+        <span><span style="display:block;height:10px;width:${Math.max(1,b[key]/max*100)}%;background:${dim==='gender'?(META_GENDER_COLOUR[band]||'var(--series-ty)'):'var(--series-ty)'};border-radius:var(--radius-sm)"></span>
+        <span class="u-meta">${Math.round(b[key]/total*100)}% of ${canMoney?'spend':'impressions'} · ${bits.join(' · ')}</span></span></div>`;}).join('')}</div>`;
+  };
+  const h=block('age','By age')+block('gender','By gender');
+  return h?`<div style="display:flex;gap:24px;flex-wrap:wrap">${h}</div>`:'';
 }
 function metaExportUploadHtml(venue){
   if(!canEditCampaigns()||isPreviewMode)return'';
@@ -9778,7 +9811,7 @@ function renderPaidMediaSection(venue){
   const cols=[{k:'name',l:'Campaign'},{k:'venue',l:'Venue'},{k:'status',l:'Status'},{k:'spend',l:'Spend',fin:true,num:true},{k:'clicks',l:'Link clicks',num:true},{k:'ctr',l:'CTR',num:true},
     {k:'leads',l:'Leads',num:true},{k:'cpl',l:'Cost / lead',fin:true,num:true},{k:'purchases',l:'Sales',num:true},{k:'cps',l:'Cost / sale',fin:true,num:true},{k:'roas',l:'ROAS',fin:true,num:true},{k:'end',l:'Ends'},{k:'activity',l:'Activity in the OS',nosort:true}]
     .filter(c=>canMoney||!c.fin).filter(c=>!(venue&&c.k==='venue'))
-    .filter(c=>!({clicks:na('clicks'),ctr:na('clicks'),leads:na('leads'),cpl:na('leads'),purchases:na('purchases'),cps:na('purchases'),roas:na('purchaseValue')})[c.k]);
+    .filter(c=>!({status:noStatus,clicks:na('clicks'),ctr:na('clicks'),leads:na('leads'),cpl:na('leads'),purchases:na('purchases'),cps:na('purchases'),roas:na('purchaseValue')})[c.k]);
   if(lpv)cols.splice(cols.findIndex(c=>c.k==='end'),0,{k:'landingPageViews',l:'Landing page views',num:true});
   // Activities a campaign can be linked to: same venue (Loaded: Loaded-flagged anywhere; an
   // unassigned ad account: any venue), from the last 6 months on.
@@ -9789,7 +9822,7 @@ function renderPaidMediaSection(venue){
   enriched.sort((a,b)=>{const va=sv(a,pmSortKey),vb=sv(b,pmSortKey);if(va==null&&vb==null)return 0;if(va==null)return 1;if(vb==null)return -1;const r=typeof va==='string'?va.localeCompare(vb):va-vb;return pmSortDir==='asc'?r:-r;});
   const dash='<span class="u-meta">—</span>';
   const cell=({c,m,ev},k)=>{switch(k){
-    case'name':return`<td style="min-width:220px"><div style="font-weight:600">${escapeAttr(c.name)}</div><div class="u-meta">${escapeAttr(PM_OBJECTIVES[c.objective]||c.objective||'')}</div></td>`;
+    case'name':return`<td style="min-width:220px"><div style="font-weight:600">${escapeAttr(c.name)}</div><div class="u-meta">${escapeAttr(PM_OBJECTIVES[c.objective]||c.objective||'')}</div>${c.audience?`<details class="mr-noprint" style="margin-top:4px"><summary class="u-meta" style="cursor:pointer">Who saw it</summary><div style="padding:6px 0;min-width:320px">${metaAudienceHtml([c],canMoney,missing)}</div></details>`:''}</td>`;
     case'venue':return`<td>${escapeAttr(shortVenue(c.venue))}</td>`;
     case'status':{const s=PM_STATUS[c.status]||{t:c.status,cls:'t-gr'};return`<td><span class="tag ${s.cls}">${escapeAttr(s.t)}</span></td>`;}
     case'spend':return`<td class="n">${pmMoney(m.spend)}</td>`;
@@ -9809,6 +9842,10 @@ function renderPaidMediaSection(venue){
     const vs=[...new Set(rows.map(c=>c.venue))].map(v=>({v,t:pmTotals(rows.filter(c=>c.venue===v),win)})).sort((a,b)=>(canMoney?b.t.spend-a.t.spend:b.t.clicks-a.t.clicks));
     const vc=[canMoney&&['Spend',t=>pmMoney(t.spend)],['Campaigns',(t,v)=>rows.filter(c=>c.venue===v).length],['Reach',t=>pmInt(t.reach)],!na('clicks')&&['Link clicks',t=>pmInt(t.clicks)],!na('leads')&&['Leads',t=>pmInt(t.leads)],!na('purchases')&&['Sales',t=>pmInt(t.purchases)],canMoney&&!na('purchaseValue')&&['ROAS',t=>t.roas?t.roas.toFixed(1)+'×':'—']].filter(Boolean);
     if(vs.length>1)h+=`<div class="mr-sub">By venue · ${winLabel.toLowerCase()}</div><div style="overflow-x:auto"><table class="tbl" style="min-width:480px"><thead><tr><th>Venue</th>${vc.map(([l])=>`<th class="n">${l}</th>`).join('')}</tr></thead><tbody>${vs.map(({v,t})=>`<tr><td>${escapeAttr(v)}</td>${vc.map(([,f])=>`<td class="n">${f(t,v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+  if(fromExport&&rows.some(c=>c.audience)){
+    const aud=metaAudienceHtml(rows,canMoney,missing);
+    if(aud)h+=`<div class="mr-sub">Who saw it${venue?' · '+escapeAttr(shortVenue(venue)):''} · ${winLabel.toLowerCase()}</div>${aud}<div class="mr-note">From the export's age and gender breakdown. Reach is added up across rows, so it overstates the number of people reached. Open "Who saw it" under a campaign for that campaign alone.</div>`;
   }
   const key=canMoney?'spend':'clicks',lab=canMoney?'Daily spend':'Daily link clicks';
   if(!fromExport)h+=`<div class="mr-sub">${lab} and leads + sales · last 30 days</div><div class="mr-chart">${pmTrendSvg(rows,key,lab,canMoney)}</div>
