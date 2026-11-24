@@ -437,13 +437,29 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 .cal-month-week .cal-more:hover{background:var(--surface-alt);color:var(--ink)}
 /* "Running this month": long promos listed once above the grid. */
 .cal-running{border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:10px;background:var(--surface)}
-.cal-running-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.cal-running-head{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin-bottom:8px}
 .cal-running-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-brand)}
 .cal-running-toggle{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-muted);cursor:pointer}
-.cal-running-list{display:flex;flex-wrap:wrap;gap:6px}
-.cal-run-chip{display:flex;align-items:center;gap:6px;max-width:320px;min-width:0;height:22px;padding:0 8px;border-radius:4px;font-size:11px;font-weight:500;cursor:pointer}
-.cal-run-dates{color:var(--ink-muted);flex-shrink:0;font-variant-numeric:tabular-nums}
-@media(max-width:479px){.cal-month-week .cal-day{padding:4px 2px}.cal-run-chip{max-width:100%}}
+.cal-car-nav{display:flex;gap:4px}
+.cal-car-btn{width:24px;height:24px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:15px;line-height:1;cursor:pointer;padding:0}
+.cal-car-btn:hover{background:var(--surface-alt)}
+.cal-car{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px 0 4px}
+.cal-car::-webkit-scrollbar{display:none}
+.cal-car-group{flex:0 0 auto;scroll-snap-align:start;display:flex;flex-direction:column;gap:6px}
+.cal-car-group+.cal-car-group{padding-left:18px;border-left:1px solid var(--line)}
+.cal-car-venue{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--ink)}
+.cal-car-cards{display:flex;gap:10px}
+.cal-car-card{width:84px;cursor:pointer;scroll-snap-align:start}
+.cal-car-art{width:84px;height:119px;border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.cal-car-art img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.cal-car-logo img{padding:8px}
+.cal-car-tint{padding:6px;text-align:center;font-size:10px;font-weight:600;line-height:1.3;word-break:break-word}
+.cal-car-tint span{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.cal-car-card:hover .cal-car-art,.cal-car-card:focus-visible .cal-car-art{border-color:var(--navy-300)}
+.cal-car-title{margin-top:5px;font-size:11px;font-weight:600;line-height:1.3;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cal-car-dates{margin-top:2px;font-size:10px;color:var(--ink-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+@media(hover:none),(max-width:600px){.cal-car-nav{display:none}}
+@media(max-width:479px){.cal-month-week .cal-day{padding:4px 2px}}
 
 /* ── VENUE CARDS ── */
 .venue-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;width:100%}
@@ -11229,10 +11245,41 @@ function calRunningRowHtml(fromYMD,toYMD,label){
     .sort((a,b)=>calDayChipSort(a,b)||a.start.localeCompare(b.start));
   if(!longPromos.length)return'';
   const on=calShowLongInGrid();
+  // Artwork carousel (Kim 24 Nov): one A4-portrait card per long promo, grouped by venue, in a
+  // single sideways-scrolling row (scroll-snap; < > buttons on desktop, swipe on phones).
+  const byVenue={};
+  longPromos.forEach(ev=>{const v=ev.venue||'No venue';(byVenue[v]=byVenue[v]||[]).push(ev);});
+  const order=v=>{const i=CAL_OVERVIEW_VENUE_ORDER.indexOf(v);return i===-1?99:i;};
+  const venues=Object.keys(byVenue).sort((a,b)=>order(a)-order(b)||a.localeCompare(b));
+  const carId='calCar'+(++calCarouselSeq);
   return`<div class="cal-running">
     <div class="cal-running-head"><span class="cal-running-label">${escapeAttr(label)}</span><span class="u-meta">${longPromos.length}</span>
-      <label class="cal-running-toggle"><input type="checkbox" ${on?'checked':''} onchange="toggleCalLongInGrid(this.checked)"> Show long promos in grid</label></div>
-    <div class="cal-running-list">${longPromos.map(ev=>`<div class="cal-run-chip" style="${calEvtPaleStyle(ev,true)}" onclick="showPop(${ev.id})" onmouseenter="calEvtHover(event,${ev.id})" onmouseleave="calEvtHoverOut()" title="${escapeAttr(ev.title)}"><span class="cs-title">${escapeAttr((calChipIcon(ev)==='★'?'★ ':'')+ev.title)}</span><span class="cal-run-dates">${fmtShort(ev.start)} – ${fmtShort(ev.end)}</span></div>`).join('')}</div>
+      <label class="cal-running-toggle"><input type="checkbox" ${on?'checked':''} onchange="toggleCalLongInGrid(this.checked)"> Show long promos in grid</label>
+      <span class="cal-car-nav"><button type="button" class="cal-car-btn" aria-label="Scroll back" onclick="calCarouselScroll('${carId}',-1)">‹</button><button type="button" class="cal-car-btn" aria-label="Scroll forward" onclick="calCarouselScroll('${carId}',1)">›</button></span></div>
+    <div class="cal-car" id="${carId}">${venues.map(v=>`<div class="cal-car-group">
+      <div class="cal-car-venue"><span class="cal-dot" style="background:${vColor(v).c}"></span>${escapeAttr(v==='All Venues'?'All venues':shortVenue(v))}</div>
+      <div class="cal-car-cards">${byVenue[v].map(calCarouselCard).join('')}</div>
+    </div>`).join('')}</div>
+  </div>`;
+}
+let calCarouselSeq=0;
+function calCarouselScroll(id,dir){const el=document.getElementById(id);if(el)el.scrollBy({left:dir*Math.max(240,el.clientWidth*0.8),behavior:'smooth'});}
+// One carousel card: the whole A4 artwork (not cropped); without artwork, the Loaded Rewards logo
+// for Loaded jobs, otherwise a pale venue-tint card with the title. A broken image falls back too.
+function calCarouselCard(ev){
+  const art=ev.eventImageUrl||ev.artworkFile||'';
+  const loaded=isLoadedBranded(ev)||calChipIcon(ev)==='★';
+  const title=(calChipIcon(ev)==='★'?'★ ':'')+ev.title;
+  const fallback=loaded&&isLoadedBranded(ev)
+    ?`<div class="cal-car-art cal-car-logo"><img src="${escapeAttr(LR_LOGO)}" alt="Loaded Rewards"></div>`
+    :`<div class="cal-car-art cal-car-tint" style="${calEvtPaleStyle(ev,false)}"><span>${escapeAttr(ev.title)}</span></div>`;
+  const thumb=art
+    ?`<div class="cal-car-art" data-fb="${escapeAttr(fallback)}"><img src="${escapeAttr(art)}" alt="" loading="lazy" onerror="this.parentElement.outerHTML=this.parentElement.dataset.fb"></div>`
+    :fallback;
+  return`<div class="cal-car-card" role="button" tabindex="0" onclick="showPop(${ev.id})" onkeydown="if(event.key==='Enter')showPop(${ev.id})" title="${escapeAttr(ev.title)}">
+    ${thumb}
+    <div class="cal-car-title">${escapeAttr(title)}</div>
+    <div class="cal-car-dates">${fmtShort(ev.start)} – ${fmtShort(ev.end)}</div>
   </div>`;
 }
 function calShowLongInGrid(){try{return localStorage.getItem('marlin_cal_long_promos_in_grid')==='1';}catch(e){return false;}}
