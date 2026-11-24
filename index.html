@@ -12067,15 +12067,17 @@ const SOCIAL_DEFAULT_TIME={Feed:'11:30',Story:'16:00',Reel:'11:30'};
 // GitHub secrets. Business Settings → Accounts → Pages / Instagram accounts lists them.
 // Empty means not set up yet: the post then warns to check the Page by hand.
 // The publish job reads this same block (between the markers, as JSON), so keep it valid JSON:
-// double quotes, no comments, no trailing commas. "All Venues" is where group-wide posts go.
+// double quotes, no comments, no trailing commas. "All Venues" is where group-wide posts go:
+// the Loaded Rewards Page for now (24 Nov 2026), until Kimberley picks a group Page.
 const SOCIAL_ACCOUNTS=/*social-accounts:start*/{
   "The Left Bank":        {"page":"","pageId":"","instagram":""},
   "The Ravenswood":       {"page":"","pageId":"","instagram":""},
-  "Whitfords Brewing Co": {"page":"","pageId":"","instagram":""},
+  "Whitfords Brewing Co": {"page":"","pageId":"","instagram":"wbcbeerland"},
   "Hotel Darwin":         {"page":"","pageId":"","instagram":""},
   "Mustang Bar":          {"page":"","pageId":"","instagram":""},
   "Beerland Brewing":     {"page":"","pageId":"","instagram":""},
-  "All Venues":           {"page":"","pageId":"","instagram":""}
+  "Loaded Rewards":       {"page":"Loaded Rewards","pageId":"61574282537086","instagram":"loadedrewards"},
+  "All Venues":           {"page":"Loaded Rewards","pageId":"61574282537086","instagram":"loadedrewards"}
 }/*social-accounts:end*/;
 function socAccount(venue){return SOCIAL_ACCOUNTS[venue]||{page:'',pageId:'',instagram:''};}
 function socBusinessSuiteUrl(venue){
