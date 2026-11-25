@@ -441,6 +441,43 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 .cal-running-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-brand)}
 .cal-running-toggle{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-muted);cursor:pointer}
 .cal-car-nav{display:flex;gap:4px}
+/* Group timeline (Gantt → Group) */
+.gg-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.gg-legend{margin-left:auto;display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--ink-muted)}
+.gg-leg{display:inline-flex;align-items:center;gap:5px}
+.gg-attn-chip.on{background:var(--attention);border-color:var(--attention);color:var(--on-attention)}
+.gg-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface)}
+.gg-table{position:relative}
+.gg-row{display:flex;border-bottom:1px solid var(--line)}
+.gg-row:last-child{border-bottom:0}
+.gg-venue{flex:0 0 190px;width:190px;position:sticky;left:0;z-index:3;background:var(--surface);border-right:1px solid var(--line);padding:8px 10px}
+.gg-vname{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--ink)}
+.gg-sum{margin-top:3px;font-size:10px;line-height:1.35;color:var(--ink-muted)}
+.gg-sum-attn{color:var(--attention);font-weight:700}
+.gg-time{position:relative;flex:1;min-width:0}
+.gg-head .gg-venue{padding:0}
+.gg-time-head{height:40px;background:var(--surface-alt)}
+.gg-bands{position:absolute;left:0;right:0;top:0;height:20px}
+.gg-band{position:absolute;top:0;height:20px;line-height:20px;padding-left:6px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-brand);border-left:1px solid var(--line);white-space:nowrap;overflow:hidden}
+.gg-days{position:absolute;left:0;right:0;top:20px;height:20px}
+.gg-day{position:absolute;top:0;height:20px;line-height:20px;text-align:center;font-size:10px;color:var(--ink-muted);font-variant-numeric:tabular-nums}
+.gg-day.gg-today-d{color:var(--on-accent);background:var(--accent);border-radius:var(--radius-sm);font-weight:700}
+.gg-wkend-bg{position:absolute;top:0;bottom:0;background:#fafbfc}
+.gg-today{position:absolute;top:0;bottom:0;width:0;border-left:2px solid var(--accent);z-index:2;opacity:.6}
+.gg-bar .cs-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.gg-bar{position:absolute;height:18px;line-height:18px;display:flex;align-items:center;gap:5px;padding:0 6px;border-radius:4px;font-size:11px;font-weight:500;cursor:pointer;z-index:1;min-width:6px;overflow:hidden}
+.gg-bar:hover{filter:brightness(.97)}
+.gg-bar.gg-cutl{border-top-left-radius:0;border-bottom-left-radius:0}
+.gg-bar.gg-cutr{border-top-right-radius:0;border-bottom-right-radius:0}
+.gg-bar.gg-attn{outline:1px solid var(--attention);outline-offset:-1px}
+.gg-stage{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.gg-bar.gg-short{overflow:visible}
+.gg-bar.gg-short .cs-title{position:absolute;top:0;left:100%;margin-left:5px;flex:none;overflow:visible;white-space:nowrap;line-height:18px;color:var(--ink);background:var(--surface);padding:0 3px;border-radius:3px}
+.gg-bar.gg-short.gg-flip .cs-title{left:auto;right:100%;margin:0 5px 0 0}
+.gg-bar.gg-short .gg-attn-mark{margin-left:0}
+.gg-attn-mark{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:var(--attention);color:var(--on-attention);font-size:9px;font-weight:800;flex-shrink:0;margin-left:auto}
+.gg-leg .gg-attn-mark{margin-left:0}
+@media(max-width:600px){.gg-venue{flex-basis:130px;width:130px}.gg-legend{margin-left:0}}
 .md-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .md-title{font-size:15px;font-weight:800;letter-spacing:.01em;color:var(--theme-monthlydeals)}
 .md-nav{margin-left:auto;display:flex;align-items:center;gap:6px}
@@ -1165,18 +1202,19 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
   <!-- GANTT -->
   <div class="panel" id="p-gantt">
     <div class="ph">
-      <div><div class="ph-eye">Timeline</div><div class="ph-title">Events <em>Gantt Chart</em></div></div>
+      <div><div class="ph-eye">Timeline</div><div class="ph-title">Group <em>timeline</em></div><div class="ph-sub">Every venue's activities across the month, with where each one is up to.</div></div>
       <div class="ph-right">
         <button class="tb-btn" id="ganttArchiveBtn" onclick="toggleGanttArchive()">Show Completed</button>
         <div class="chips" id="ganttViewChips">
-          <div class="chip on" data-v="month" onclick="setGanttView(this)">Month</div>
+          <div class="chip on" data-v="group" onclick="setGanttView(this)">Group</div>
+          <div class="chip" data-v="month" onclick="setGanttView(this)">Month</div>
           <div class="chip" data-v="week" onclick="setGanttView(this)">Week</div>
           <div class="chip" data-v="day" onclick="setGanttView(this)">Day</div>
         </div>
       </div>
     </div>
     <div class="ca">
-      <div class="filters" style="margin-bottom:8px">
+      <div class="filters" id="gDateFilters" style="margin-bottom:8px">
         <div class="fg"><label>From</label><input type="date" id="gFrom" onchange="renderGantt()"></div>
         <div class="fg"><label>To</label><input type="date" id="gTo" onchange="renderGantt()"></div>
       </div>
@@ -7818,9 +7856,10 @@ function activityAttention(ev){
   const t=todayYMD();
   const late=jobTicketsForActivity(ev).tickets.filter(x=>x.due&&x.due<t&&!['Done','Complete','Completed','Cancelled'].includes(x.status)).length;
   if(late)reasons.push({code:'TASKS_LATE',label:`${late} task${late===1?'':'s'} late`});
-  if(state==='Upcoming'&&['Intake','In Design'].includes(ev.stage||'Intake')){
+  const stN=normaliseStage(ev.stage);
+  if(state==='Upcoming'&&['Intake','In Design'].includes(stN)){
     const days=Math.round((new Date(ev.start+'T00:00:00')-todayDate())/864e5);
-    if(days<=ATTENTION_PREP_DAYS)reasons.push({code:'PREP_BEHIND',label:`Starts in ${days} day${days===1?'':'s'}, still in ${ev.stage||'Intake'}`});
+    if(days<=ATTENTION_PREP_DAYS)reasons.push({code:'PREP_BEHIND',label:`Starts in ${days} day${days===1?'':'s'}, still in ${stageLabel(stN)}`});
   }
   return{state,reasons};
 }
@@ -7851,7 +7890,7 @@ function normaliseStage(s){
   }
   // Legacy mappings
   if(v.includes('submission')||v.includes('new')||v.includes('triage')||v.includes('idea'))return'Intake';
-  if(v.includes('design brief')||v.includes('in design')||v==='design'||v.includes('brief'))return'In Design';
+  if(v.includes('design brief')||v.includes('in design')||v==='design'||v.includes('brief')||v.includes('planning'))return'In Design';
   if(v.includes('build')||v.includes('web')&&!v.includes('review')||v.includes('progress')||v.includes('staff brief'))return'In Design';
   if(v.includes('review')||v.includes('approval')||v.includes('awaiting'))return'Review';
   if(v.includes('ready for live')||v.includes('ready to go live'))return'Review';
@@ -10214,7 +10253,7 @@ async function pipeDrop(e,newStage){
 // ═══════════════════════════════════════
 let ganttVenueFilter=new Set(); // empty = All
 let ganttTypeFilter=new Set();  // empty = All
-let ganttViewMode='month'; // month | week | day
+let ganttViewMode='group'; // group (default, venue swimlanes) | month | week | day
 
 function setGanttView(el){
   document.querySelectorAll('#ganttViewChips .chip').forEach(c=>c.classList.remove('on'));
@@ -10281,6 +10320,103 @@ function initGanttDates(){
   if(gTo&&!gTo.value)gTo.value=toLocalISODate(threeMonths);
 }
 
+// ── Group timeline (Kim 25 Nov): one swimlane per venue, calm pale bars (#178 language), a stage
+// dot on every bar, per-venue stage summary, week bands over the month, Needs-attention filter.
+const GG_LANES=['All Venues','The Left Bank','The Ravenswood','Whitfords Brewing Co','Hotel Darwin','Mustang Bar','Beerland Brewing','Loaded Rewards'];
+const GG_STAGE_COLOR={'Intake':'#7886ab','In Design':'#c3912c','Review':'#396998','Live':'#678d5d','Done':'#a9a6a7'};
+let ggStart=null,ggMonths=1,ggAttentionOnly=false;
+function ggShift(delta){const d=ggStart||todayDate();ggStart=new Date(d.getFullYear(),d.getMonth()+delta,1);renderGantt();}
+function ggSetMonths(n){ggMonths=n;renderGantt();}
+function ggToggleAttention(){ggAttentionOnly=!ggAttentionOnly;renderGantt();}
+function ggLaneOf(ev){return isLoadedBranded(ev)?'Loaded Rewards':(ev.venue||'All Venues');}
+function renderGanttGroup(){
+  const host=document.getElementById('ganttInner');if(!host)return;
+  const statsEl=document.getElementById('gStats');if(statsEl)statsEl.innerHTML='';
+  if(!ggStart){const t=todayDate();ggStart=new Date(t.getFullYear(),t.getMonth(),1);}
+  const first=new Date(ggStart.getFullYear(),ggStart.getMonth(),1);
+  const last=new Date(first.getFullYear(),first.getMonth()+ggMonths,0);
+  const days=[];for(let d=new Date(first);d<=last;d.setDate(d.getDate()+1))days.push(ymd(d));
+  const N=days.length,fromY=days[0],toY=days[N-1],todayY=todayYMD();
+  const idx={};days.forEach((d,i)=>idx[d]=i);
+  const pct=i=>(i/N*100).toFixed(4)+'%';
+  // One pass over EVENTS: same archive / venue / type rules as the rest of the Gantt.
+  const items=[];
+  for(const e of EVENTS){
+    if(!e.start)continue;
+    if(!ganttShowArchive&&isArchived(e))continue;
+    const end=e.end||e.start;
+    if(e.start>toY||end<fromY)continue;
+    if(ganttVenueFilter.size>0&&!ganttVenueFilter.has(e.venue)&&e.venue!=='All Venues')continue;
+    if(ganttTypeFilter.size>0&&!(ganttTypeFilter.has(e.activityType)||ganttTypeFilter.has(e.eventFormat)))continue;
+    const att=activityAttention(e);
+    if(ggAttentionOnly&&!att.reasons.length)continue;
+    items.push({ev:e,s:idx[e.start<fromY?fromY:e.start],e2:idx[end>toY?toY:end],cutL:e.start<fromY,cutR:end>toY,att});
+  }
+  const attnCount=items.filter(it=>it.att.reasons.length).length;
+  const lanes={};items.forEach(it=>{(lanes[ggLaneOf(it.ev)]=lanes[ggLaneOf(it.ev)]||[]).push(it);});
+  let laneKeys=GG_LANES.filter(v=>ganttVenueFilter.size===0||ganttVenueFilter.has(v)||v==='All Venues'||v==='Loaded Rewards');
+  Object.keys(lanes).forEach(v=>{if(!laneKeys.includes(v))laneKeys.push(v);});
+  // Header bands: weeks (1 month) or months with W1..W5 (3 months).
+  const bands=[];
+  if(ggMonths===1){
+    for(let w=0;w*7<N;w++)bands.push({label:`Week ${w+1}`,s:w*7,e:Math.min(N,w*7+7)});
+  }else{
+    days.forEach((d,i)=>{const k=d.slice(0,7);if(!bands.length||bands[bands.length-1].k!==k)bands.push({k,label:new Date(d+'T00:00:00').toLocaleDateString('en-AU',{month:'long'}),s:i,e:i+1});else bands[bands.length-1].e=i+1;});
+  }
+  const dayTicks=days.map((d,i)=>{const dt=new Date(d+'T00:00:00'),dow=dt.getDay(),n=dt.getDate();
+    const show=ggMonths===1||n===1||n%7===1;
+    return`<div class="gg-day${dow===0||dow===6?' gg-wkend':''}${d===todayY?' gg-today-d':''}" style="left:${pct(i)};width:${pct(1)}">${show?n:''}</div>`;}).join('');
+  const weekendShade=days.map((d,i)=>{const dow=new Date(d+'T00:00:00').getDay();return dow===0||dow===6?`<div class="gg-wkend-bg" style="left:${pct(i)};width:${pct(1)}"></div>`:'';}).join('');
+  const todayLine=idx[todayY]!==undefined?`<div class="gg-today" style="left:calc(${pct(idx[todayY])} + ${(50/N).toFixed(4)}%)"></div>`:'';
+  const ROW=24;
+  const laneHtml=laneKeys.map(v=>{
+    // Short items show their title outside the bar, so they occupy the label's width too: pack on
+    // the occupied span [o0,o1] (in days), not just the bar, so labels never run into each other.
+    const dayPx=ggMonths===1?26:12,shortDays=ggMonths===1?6:14;
+    (lanes[v]||[]).forEach(it=>{
+      it.short=(it.e2-it.s+1)<shortDays;
+      const labelDays=it.short?Math.ceil(((it.ev.title||'').length*6.3+22)/dayPx):0;
+      it.flip=it.short&&(it.e2+labelDays>=N);
+      it.o0=it.flip?Math.max(0,it.s-labelDays):it.s;
+      it.o1=it.flip?it.e2:Math.min(N-1,it.e2+labelDays);
+    });
+    const list=(lanes[v]||[]).sort((a,b)=>a.o0-b.o0||b.o1-a.o1);
+    const rowEnd=[];list.forEach(it=>{let r=rowEnd.findIndex(x=>x<it.o0);if(r===-1){r=rowEnd.length;rowEnd.push(-1);}rowEnd[r]=it.o1;it.row=r;});
+    const rows=Math.max(1,rowEnd.length);
+    const counts={};list.forEach(it=>{const st=normaliseStage(it.ev.stage);counts[st]=(counts[st]||0)+1;});
+    const summary=CANONICAL_STAGES.filter(st=>counts[st]).map(st=>`${counts[st]} ${stageLabel(st)}`).join(' · ');
+    const laneAttn=list.filter(it=>it.att.reasons.length).length;
+    const dotColor=v==='Loaded Rewards'?vColor('Loaded Rewards').c:v==='All Venues'?'#5f6b7a':vColor(v).c;
+    const name=v==='All Venues'?'Group / all venues':v==='Whitfords Brewing Co'?'WBC':v.replace(/^The /,'');
+    const bars=list.map(it=>{
+      const ev=it.ev,st=normaliseStage(ev.stage),attn=it.att.reasons.length;
+      const reason=attn?it.att.reasons.map(r=>r.label).join(' · '):'';
+      const range=ev.end&&ev.end!==ev.start?`${fmtShort(ev.start)} – ${fmtShort(ev.end)}`:fmtShort(ev.start);
+      const tip=`${ev.title} · ${range} · ${stageLabel(st)}${reason?' · Needs attention: '+reason:''}`;
+      // Short items (a few days) keep their title readable just outside the bar, on whichever side
+      // has room, instead of clipping it to a few letters.
+      const short=it.short,flip=it.flip;
+      return`<div class="gg-bar${attn?' gg-attn':''}${it.cutL?' gg-cutl':''}${it.cutR?' gg-cutr':''}${short?' gg-short':''}${flip?' gg-flip':''}" style="left:${pct(it.s)};width:calc(${pct(it.e2-it.s+1)} - 2px);top:${it.row*ROW+4}px;${calEvtPaleStyle(ev,!it.cutL)}" onclick="showPop(${ev.id})" title="${escapeAttr(tip)}"><span class="gg-stage" style="background:${GG_STAGE_COLOR[st]||'#a9a6a7'}"></span><span class="cs-title">${escapeAttr((calChipIcon(ev)==='★'?'★ ':'')+ev.title)}</span>${attn?'<span class="gg-attn-mark" aria-label="Needs attention">!</span>':''}</div>`;
+    }).join('');
+    return`<div class="gg-row"><div class="gg-venue"><div class="gg-vname"><span class="cal-dot" style="background:${dotColor}"></span>${escapeAttr(name)}</div><div class="gg-sum">${summary||'<span class="u-meta">Nothing on</span>'}${laneAttn?` · <span class="gg-sum-attn">${laneAttn} need${laneAttn===1?'s':''} attention</span>`:''}</div></div>
+      <div class="gg-time" style="height:${rows*ROW+8}px">${weekendShade}${todayLine}${bars}</div></div>`;
+  }).join('');
+  const label=ggMonths===1?first.toLocaleDateString('en-AU',{month:'long',year:'numeric'}):`${first.toLocaleDateString('en-AU',{month:'short'})} – ${last.toLocaleDateString('en-AU',{month:'short',year:'numeric'})}`;
+  const legend=CANONICAL_STAGES.map(st=>`<span class="gg-leg"><span class="gg-stage" style="background:${GG_STAGE_COLOR[st]}"></span>${stageLabel(st)}</span>`).join('')+`<span class="gg-leg"><span class="gg-attn-mark">!</span>Needs attention</span>`;
+  host.innerHTML=`<div class="gg-toolbar">
+      <span class="md-nav" style="margin:0"><button type="button" class="cal-car-btn" aria-label="Previous" onclick="ggShift(-1)">‹</button><span class="md-month">${escapeAttr(label)}</span><button type="button" class="cal-car-btn" aria-label="Next" onclick="ggShift(1)">›</button></span>
+      <span class="chips"><span class="chip${ggMonths===1?' on':''}" onclick="ggSetMonths(1)">1 month</span><span class="chip${ggMonths===3?' on':''}" onclick="ggSetMonths(3)">3 months</span></span>
+      <span class="chip gg-attn-chip${ggAttentionOnly?' on':''}" onclick="ggToggleAttention()">Needs attention${attnCount||ggAttentionOnly?` (${attnCount})`:''}</span>
+      <span class="gg-legend">${legend}</span>
+    </div>
+    <div class="gg-scroll"><div class="gg-table" style="min-width:${Math.max(720,190+N*(ggMonths===1?26:12))}px">
+      <div class="gg-row gg-head"><div class="gg-venue"></div><div class="gg-time gg-time-head">
+        <div class="gg-bands">${bands.map(b=>`<div class="gg-band" style="left:${pct(b.s)};width:${pct(b.e-b.s)}">${escapeAttr(b.label)}</div>`).join('')}</div>
+        <div class="gg-days">${dayTicks}</div>
+      </div></div>
+      ${laneHtml}
+    </div></div>`;
+}
 let _ganttRafId=null;
 function renderGantt(){
   if(_ganttRafId)cancelAnimationFrame(_ganttRafId);
@@ -10289,6 +10425,9 @@ function renderGantt(){
 function _renderGanttInner(){
   if(!isAuthed)return;
   initGanttDates();
+  const gDateFilters=document.getElementById('gDateFilters');
+  if(gDateFilters)gDateFilters.style.display=ganttViewMode==='group'?'none':'';
+  if(ganttViewMode==='group'){renderGanttGroup();return;}
   const fromVal=document.getElementById('gFrom')?.value;
   const toVal=document.getElementById('gTo')?.value;
 
