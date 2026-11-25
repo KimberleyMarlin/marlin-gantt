@@ -7856,9 +7856,10 @@ function activityAttention(ev){
   const t=todayYMD();
   const late=jobTicketsForActivity(ev).tickets.filter(x=>x.due&&x.due<t&&!['Done','Complete','Completed','Cancelled'].includes(x.status)).length;
   if(late)reasons.push({code:'TASKS_LATE',label:`${late} task${late===1?'':'s'} late`});
-  if(state==='Upcoming'&&['Intake','In Design'].includes(ev.stage||'Intake')){
+  const stN=normaliseStage(ev.stage);
+  if(state==='Upcoming'&&['Intake','In Design'].includes(stN)){
     const days=Math.round((new Date(ev.start+'T00:00:00')-todayDate())/864e5);
-    if(days<=ATTENTION_PREP_DAYS)reasons.push({code:'PREP_BEHIND',label:`Starts in ${days} day${days===1?'':'s'}, still in ${stageLabel(ev.stage||'Intake')}`});
+    if(days<=ATTENTION_PREP_DAYS)reasons.push({code:'PREP_BEHIND',label:`Starts in ${days} day${days===1?'':'s'}, still in ${stageLabel(stN)}`});
   }
   return{state,reasons};
 }
@@ -7889,7 +7890,7 @@ function normaliseStage(s){
   }
   // Legacy mappings
   if(v.includes('submission')||v.includes('new')||v.includes('triage')||v.includes('idea'))return'Intake';
-  if(v.includes('design brief')||v.includes('in design')||v==='design'||v.includes('brief'))return'In Design';
+  if(v.includes('design brief')||v.includes('in design')||v==='design'||v.includes('brief')||v.includes('planning'))return'In Design';
   if(v.includes('build')||v.includes('web')&&!v.includes('review')||v.includes('progress')||v.includes('staff brief'))return'In Design';
   if(v.includes('review')||v.includes('approval')||v.includes('awaiting'))return'Review';
   if(v.includes('ready for live')||v.includes('ready to go live'))return'Review';
@@ -10369,8 +10370,18 @@ function renderGanttGroup(){
   const todayLine=idx[todayY]!==undefined?`<div class="gg-today" style="left:calc(${pct(idx[todayY])} + ${(50/N).toFixed(4)}%)"></div>`:'';
   const ROW=24;
   const laneHtml=laneKeys.map(v=>{
-    const list=(lanes[v]||[]).sort((a,b)=>a.s-b.s||b.e2-a.e2);
-    const rowEnd=[];list.forEach(it=>{let r=rowEnd.findIndex(x=>x<it.s);if(r===-1){r=rowEnd.length;rowEnd.push(-1);}rowEnd[r]=it.e2;it.row=r;});
+    // Short items show their title outside the bar, so they occupy the label's width too: pack on
+    // the occupied span [o0,o1] (in days), not just the bar, so labels never run into each other.
+    const dayPx=ggMonths===1?26:12,shortDays=ggMonths===1?6:14;
+    (lanes[v]||[]).forEach(it=>{
+      it.short=(it.e2-it.s+1)<shortDays;
+      const labelDays=it.short?Math.ceil(((it.ev.title||'').length*6.3+22)/dayPx):0;
+      it.flip=it.short&&(it.e2+labelDays>=N);
+      it.o0=it.flip?Math.max(0,it.s-labelDays):it.s;
+      it.o1=it.flip?it.e2:Math.min(N-1,it.e2+labelDays);
+    });
+    const list=(lanes[v]||[]).sort((a,b)=>a.o0-b.o0||b.o1-a.o1);
+    const rowEnd=[];list.forEach(it=>{let r=rowEnd.findIndex(x=>x<it.o0);if(r===-1){r=rowEnd.length;rowEnd.push(-1);}rowEnd[r]=it.o1;it.row=r;});
     const rows=Math.max(1,rowEnd.length);
     const counts={};list.forEach(it=>{const st=normaliseStage(it.ev.stage);counts[st]=(counts[st]||0)+1;});
     const summary=CANONICAL_STAGES.filter(st=>counts[st]).map(st=>`${counts[st]} ${stageLabel(st)}`).join(' · ');
@@ -10384,7 +10395,7 @@ function renderGanttGroup(){
       const tip=`${ev.title} · ${range} · ${stageLabel(st)}${reason?' · Needs attention: '+reason:''}`;
       // Short items (a few days) keep their title readable just outside the bar, on whichever side
       // has room, instead of clipping it to a few letters.
-      const short=(it.e2-it.s+1)<(ggMonths===1?6:14),flip=short&&it.e2>N*0.72;
+      const short=it.short,flip=it.flip;
       return`<div class="gg-bar${attn?' gg-attn':''}${it.cutL?' gg-cutl':''}${it.cutR?' gg-cutr':''}${short?' gg-short':''}${flip?' gg-flip':''}" style="left:${pct(it.s)};width:calc(${pct(it.e2-it.s+1)} - 2px);top:${it.row*ROW+4}px;${calEvtPaleStyle(ev,!it.cutL)}" onclick="showPop(${ev.id})" title="${escapeAttr(tip)}"><span class="gg-stage" style="background:${GG_STAGE_COLOR[st]||'#a9a6a7'}"></span><span class="cs-title">${escapeAttr((calChipIcon(ev)==='★'?'★ ':'')+ev.title)}</span>${attn?'<span class="gg-attn-mark" aria-label="Needs attention">!</span>':''}</div>`;
     }).join('');
     return`<div class="gg-row"><div class="gg-venue"><div class="gg-vname"><span class="cal-dot" style="background:${dotColor}"></span>${escapeAttr(name)}</div><div class="gg-sum">${summary||'<span class="u-meta">Nothing on</span>'}${laneAttn?` · <span class="gg-sum-attn">${laneAttn} need${laneAttn===1?'s':''} attention</span>`:''}</div></div>
