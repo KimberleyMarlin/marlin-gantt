@@ -45,13 +45,10 @@
 |---|---|
 | Panel | `social` |
 | Was in nav | Programs → Social |
-| Status | **Planned** (UX-03 PR-2) |
-| Why hidden | Static placeholder HTML; no data behind it |
-| Decision | `docs/DECISIONS.md` (17 Nov 2026: Navigation and shell follow the Marlin Hub design) |
-| What exists in code | Static layout only; no list reads or writes |
-| Data | None |
-| Bring back when | There's a real data source for social content (e.g. a content calendar list or a Meta connection). The layout can be reused; the data layer has to be built |
-| Code anchors | *To be filled in* |
+| Status | **Visible, no longer planned for hiding** (decided 24 Nov 2026) |
+| Why it stays | The Social Calendar was built on 18–19 Nov (#158, #160, #162, #165, #167, #168, #173): suggested posts from Activities, approval, Business Suite hand-off, Reels upload and Make a reel. It now has real data |
+| Decision | `docs/DECISIONS.md` (24 Nov 2026: Keep Social visible) |
+| Note for UX-03 | Keep Social in the nav under Programs. Ignore the earlier "hide Social" line in the UX-03 brief |
 
 ### Contacts & Mailing
 | | |
