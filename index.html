@@ -6123,7 +6123,10 @@ async function loadCampaigns(){
         // Submission metadata — when it was created and by whom, straight from Graph item
         // metadata rather than parsed out of free-text, so it's reliable for sorting/filtering.
         submittedAt:item.createdDateTime||'',
-        submittedBy:item.createdBy?.user?.displayName||(f.Description||'').match(/Submitted by:\s*(.+)$/m)?.[1]||'',
+        // The last "Submitted by:" line wins over createdBy: the Submit form writes the same person
+        // into both, but activities created by the GDR email flow (docs/GDR_AUTOMATION.md) are
+        // created by the flow's owner, and only the description names the real requester.
+        submittedBy:[...String(f.Description||'').matchAll(/^Submitted by:\s*(.+)$/gm)].pop()?.[1]?.trim()||item.createdBy?.user?.displayName||'',
         // Core
         title:f.Title||'Untitled',
         start:f.Start.split('T')[0],
@@ -6278,6 +6281,8 @@ async function loadCampaigns(){
         // The WorkflowStage value exactly as SharePoint holds it — differs from .stage only for
         // retired stages (In Build, Ready for Live) not yet rewritten by the stage clean-up.
         storedStageRaw,
+        // Jotform submission ID, written by the Jotform → SharePoint integration (docs/GDR_AUTOMATION.md).
+        jotformId:String(f.JotformSubmissionId||'').trim(),
         // Marked by an approver: Done without a Post-Campaign Report (see confirmDone).
         noReportNeeded:/--- NO REPORT NEEDED /.test(String(f.Description||'')),
         // Set by "Send back" on Submissions; cleared the next time the activity is edited.
@@ -11105,7 +11110,7 @@ function renderPipeline(){
           style="padding:0;overflow:hidden">
           ${thumb?`<div style="height:64px;overflow:hidden;background:#f4f5f7;border-bottom:1px solid var(--border)"><img src="${thumb}" alt="${ev.title}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display='none'"></div>`:''}
           <div style="padding:9px 11px">
-            <div class="pc-n" style="margin-bottom:5px">${ev.title}${posWarn}</div>
+            <div class="pc-n" style="margin-bottom:5px">${ev.title}${posWarn} <span class="u-meta-sm">${activityRef(ev)}</span></div>
             <div class="pc-v"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${vc.c};margin-right:4px;vertical-align:middle"></span>${shortVenue(ev.venue)}<span style="margin-left:6px;font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">${ev.start?new Date(ev.start+'T00:00:00').toLocaleDateString('en-AU',{month:'short'}):''}</span></div>
             <div class="pc-f" style="margin-top:5px">
               <span class="tag t-gr" style="font-size:10px">${ev.activityType||ev.eventFormat||'Event'}</span>
@@ -13070,7 +13075,8 @@ function renderDesign(){
       <div class="task-info" ${canEditT?`onclick="openEditTask('${escapeAttr(String(t.id))}')" style="cursor:pointer"`:''}>
         <div class="task-name">${escapeAttr(title||'Untitled')}</div>
         <div class="task-meta">
-          ${ev?`<span style="color:var(--accent);cursor:pointer" onclick="event.stopPropagation();showPop(${ev.id})">↗ ${escapeAttr(ev.title)}</span>`:(t.campaignLookup?`<span>↗ ${escapeAttr(t.campaignLookup)}</span>`:'<span>No activity</span>')}
+          ${ev?`<span style="color:var(--accent);cursor:pointer" onclick="event.stopPropagation();showPop(${ev.id})">↗ ${escapeAttr(ev.title)} · ${activityRef(ev)}</span>`:(t.campaignLookup?`<span>↗ ${escapeAttr(t.campaignLookup)}</span>`:'<span>No activity</span>')}
+          ${ev&&DESIGN_TICKET_TYPES.includes(t.category)?(artworkReceived(ev)?'<span class="tag t-g" style="font-size:10px">Artwork received</span>':`<span style="color:var(--accent);cursor:pointer" onclick="event.stopPropagation();requestArtwork(${ev.id})" title="Email the designer with the brief">✉ Request artwork</span>`):''}
           ${venue?`<span>${escapeAttr(shortVenue(venue))}</span>`:''}
           <span>${escapeAttr(t.category||'General')}</span>
           <span>${escapeAttr(ticketOwnerName(t.assignedTo))}</span>
@@ -14398,6 +14404,53 @@ function pickMyWorkTab(tab){_mwTab=tab;renderMyWork();}
 // "Unassigned team tasks" bucket for admin/management only (see canEditTeamTask), never mixed into
 // a person's own counts. Defaults to false so every other caller (Dashboard widget included) keeps
 // exactly its current behaviour.
+// GDR automation (docs/GDR_AUTOMATION.md). Every activity has a visible reference, "A-" plus its
+// SharePoint item ID. The Power Automate flows put it in email subjects ("[A-1234] GDR – …") so a
+// designer's reply with artwork can be filed into the right activity's Job Folder automatically.
+function activityRef(ev){return ev?.spId?`A-${ev.spId}`:'';}
+// GDRs arrive through Jotform; its submission ID (JotformSubmissionId) is shown as "GDR #…" and is
+// what Luca's artwork reply to the Jotform notification email carries in its subject.
+function gdrRef(ev){return ev?.jotformId?`GDR #${ev.jotformId}`:'';}
+function activityRefHtml(ev){const r=activityRef(ev);const g=gdrRef(ev);return (r?`<span class="tag t-gr" style="font-size:10px;font-variant-numeric:tabular-nums" title="Activity reference — keep [${r}] in email subjects about this activity">${r}</span>`:'')+(g?` <span class="tag t-gr" style="font-size:10px;font-variant-numeric:tabular-nums" title="Jotform submission ID of the Graphic Design Request">${escapeAttr(g)}</span>`:'');}
+function activityFromRef(text){
+  const t=String(text||'');
+  const a=t.match(/\bA-?(\d{1,7})\b/i);if(a){const ev=EVENTS.find(e=>String(e.spId)===a[1]);if(ev)return ev;}
+  const g=t.match(/(?:GDR\s*#?\s*)?(\d{8,})/i);return g?EVENTS.find(e=>e.jotformId&&e.jotformId===g[1])||null:null;
+}
+// Artwork is "received" once final artwork is on the activity: an Artwork File, or a Linked Artwork
+// Folder (which Flow B sets to the Job Folder when it saves a designer's attachments).
+function artworkReceived(ev){return !!(ev&&(ev.artworkFile||ev.linkedArtworkFolderUrl));}
+const DESIGN_TICKET_TYPES=['Design Asset','Print / Signage'];
+// "Request artwork": a pre-filled email to the design ticket's owner (default the design lead),
+// with the [A-1234] reference in the subject so the reply can be filed automatically.
+function requestArtwork(evId){
+  const ev=EVENTS.find(e=>e.id===evId||String(e.spId)===String(evId));if(!ev)return;
+  const ref=activityRef(ev);
+  const tickets=jobTicketsForActivity(ev).tickets.filter(t=>DESIGN_TICKET_TYPES.includes(t.category));
+  const openTicket=tickets.find(t=>t.status!=='Done')||tickets[0];
+  const to=openTicket?.assignedTo||ROLE_EMAILS.designer||'luca@marlingroup.com.au';
+  const due=openTicket?.due||ev.designBriefDue||'';
+  const link=window.location.origin+window.location.pathname+'?activity='+encodeURIComponent(ev.spId);
+  const strip=v=>String(v||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+  const lines=[
+    `Hi ${ticketOwnerName(to)},`,'',
+    `Please design the artwork for this activity. Reply to this email with the final artwork attached and keep "[${ref}]" in the subject, so it saves into the activity's folder automatically.`,'',
+    `Activity: ${ev.title}`,`Reference: ${ref}`,gdrRef(ev)?`Jotform request: ${gdrRef(ev)}`:null,`Venue: ${ev.venue||'TBC'}`,
+    `Dates: ${ev.start?fmtDate(ev.start):'TBC'}${ev.end&&ev.end!==ev.start?' to '+fmtDate(ev.end):''}`,
+    due?`Artwork due: ${fmtDate(due)}`:null,
+    (ev.assetsNeeded||[]).length?`Assets needed: ${ev.assetsNeeded.join(', ')}`:null,
+    ev.assetTVsDetail?`TVs: ${strip(ev.assetTVsDetail)}`:null,
+    ev.assetNewsletterDetail?`Newsletter: ${strip(ev.assetNewsletterDetail)}`:null,
+    ev.keyMessage?`Key message: ${strip(ev.keyMessage)}`:null,
+    ev.cta?`Call to action: ${strip(ev.cta)}`:null,
+    ev.designBrief?`Brief: ${strip(ev.designBrief)}`:null,
+    ev.description?`Details: ${strip(ev.description).slice(0,600)}`:null,'',
+    `Open the activity: ${link}`
+  ].filter(l=>l!==null);
+  const subject=`[${ref}] ${gdrRef(ev)||'GDR'} – ${ev.title} – ${ev.venue||'TBC'}`;
+  window.location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`;
+}
+
 // Job tickets (Tasks & Job Tickets items) linked to one activity: by the Campaign lookup id, or
 // by title for older tickets saved before CampaignLookupId was written — same rule myWorkItems()
 // uses. Returns {tickets, done, total}.
@@ -14462,6 +14515,7 @@ function jobTicketsSectionHtml(ev){
           ${t.category?`<span>${escapeAttr(t.category)}</span>`:''}
           ${t.due?`<span style="color:${isOverdue?'var(--attention)':'var(--ink-muted)'};font-weight:${isOverdue?'600':'400'}">Due ${fmtDate(t.due)}${isOverdue?' · overdue':''}</span>`:''}
           <span>${escapeAttr(t.status||'Not Started')}</span>
+          ${DESIGN_TICKET_TYPES.includes(t.category)&&artworkReceived(ev)?'<span class="tag t-g" style="font-size:10px">Artwork received</span>':''}
         </div>
       </div>
     </div>`;
@@ -16076,6 +16130,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'myTasks',name:'ConvertedFromPersonalTaskId',displayName:'Converted From Personal Task Id',type:'number',purpose:'Back-reference to the private Personal Task this shared task was converted from, written at creation time. The authoritative idempotency check for convertPersonalTaskToShared — a retry after a failed patch-back on the Personal Task side reuses this record instead of creating a duplicate.'},
   {listKey:'ideas',name:'ActivityType',displayName:'Activity Type',type:'choice',choices:ACTIVITY_TYPE_OPTIONS.join(', '),purpose:'Captured at idea stage so "Continue Brief" can prefill it on the Activity submission form.'},
   {listKey:'ideas',name:'PromotedActivityId',displayName:'Promoted Activity Id',type:'number',purpose:'Links an idea to the real Activity created from it via "Continue Brief", so reopening a promoted idea opens that Activity instead of letting it be promoted twice.'},
+  {listKey:'campaigns',name:'JotformSubmissionId',displayName:'Jotform Submission ID',type:'text',purpose:'GDR intake: the Jotform submission ID ({id}), written by Jotform\'s SharePoint integration. Shown as "GDR #…" next to the A-number, and used by the artwork flow to match Luca\'s reply to the right activity. Text, not Number, because Jotform IDs are 19 digits.'},
   {listKey:'campaigns',name:'SentBackNote',displayName:'Sent Back Note',type:'text',purpose:'Set by "Send back" on Submissions: the reason, who sent it back and when. Shows "Sent back — waiting on submitter" on the Submissions card, and is cleared the next time the activity is edited. Without it, the send-back message still reaches the submitter, but the card status only lasts until the page reloads.'},
   {listKey:'campaigns',name:'DesignJobCreated',displayName:'Design Job Created',type:'yesno',purpose:'Marks that approval has already created this activity\'s proposed work items, so re-approving never creates a second set. Already read by the Hub; this is the first time anything writes to it.'},
   {listKey:'campaigns',name:'WebStatus',displayName:'Web Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Didier’s web build status.'},
@@ -17015,7 +17070,7 @@ function renderApprovals(){
     return`<div class="appr-card">
       <div class="appr-h">
         <div>
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px">${ev.title}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px">${ev.title} ${activityRefHtml(ev)}</div>
           <div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px">
             <span style="width:7px;height:7px;border-radius:50%;background:${vc.c};display:inline-block"></span>
             ${ev.venue} · ${ev.activityType||ev.eventFormat} · ${fmtShort(ev.start)}
@@ -18936,6 +18991,7 @@ function renderActivityDetail(id,mode){
   let h=`<div style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--surface2);border-radius:var(--r-sm);margin-bottom:12px;flex-wrap:wrap">
     <div style="width:8px;height:8px;border-radius:50%;background:${vc.c};flex-shrink:0"></div>
     <span style="font-size:13px;font-weight:600">${ev.venue}</span>
+    ${activityRefHtml(ev)}
     ${ev.activityType?`<span class="tag t-gr" style="font-size:10px">${ev.activityType}</span>`:''}
     ${ev.activitySubtype?`<span class="tag t-gr" style="font-size:10px" title="${escapeAttr(ev.activityGroup||'')}">${ev.activitySubtype}</span>`:''}
     ${ev.eventFormat?`<span class="tag t-gr" style="font-size:10px">${ev.eventFormat}</span>`:''}
@@ -19180,7 +19236,7 @@ function renderActivityDetail(id,mode){
 
   // ═══ DESIGN STEP ═══
   h+=jobTicketsSectionHtml(ev);
-  h+=`<div class="pop-section">Design</div>`;
+  h+=`<div class="pop-section" style="display:flex;align-items:center;justify-content:space-between">Design <span style="display:flex;gap:6px;align-items:center">${artworkReceived(ev)?'<span class="tag t-g" style="font-size:10px">Artwork received</span>':''}<button class="tb-btn" style="font-size:11px;padding:3px 9px" onclick="requestArtwork(${ev.id})" title="Opens an email to the designer with the brief and [${activityRef(ev)}] in the subject">✉ Request artwork</button></span></div>`;
   h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">`;
   h+=`<div class="pop-field"><div class="pop-lbl">Design Status</div>
     <select class="pop-edit-sel" data-field="DesignStatus" data-original="${escapeAttr(ev.designStatus||'')}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);width:100%;outline:none">
@@ -19717,7 +19773,9 @@ function doSearch(q){
   const box=document.getElementById('globalSearchResults');if(!box)return;
   const term=String(q||'').trim().toLowerCase();
   if(term.length<2){box.style.display='none';box.innerHTML='';return;}
-  const results=EVENTS.filter(e=>[e.title,e.venue,e.activityType,e.eventFormat,e.description,e.product,e.supplierLookup,e.owner].some(value=>String(value||'').toLowerCase().includes(term))).slice(0,20);
+  // "A-1234" (or "a1234") finds that activity by its reference.
+  const byRef=/^(a-?\d+|(gdr\s*#?\s*)?\d{8,})$/.test(term)?activityFromRef(term):null;
+  const results=byRef?[byRef]:EVENTS.filter(e=>[e.title,e.venue,e.activityType,e.eventFormat,e.description,e.product,e.supplierLookup,e.owner].some(value=>String(value||'').toLowerCase().includes(term))).slice(0,20);
   box.innerHTML=results.length?results.map(e=>`<div class="search-result" onclick="openSearchResult(${e.id})"><div class="search-result-title">${escapeAttr(e.title||'Untitled activity')}</div><div class="search-result-meta">${escapeAttr(e.venue||'No venue')} · ${escapeAttr(e.activityType||e.eventFormat||'Activity')} · ${e.start?fmtShort(e.start):'No date'}${isArchived(e)?' · Completed':''}</div></div>`).join(''):`<div class="search-result"><div class="search-result-title">No matching activities</div><div class="search-result-meta">Try a venue, campaign, product, supplier or owner.</div></div>`;
   box.style.display='block';
 }

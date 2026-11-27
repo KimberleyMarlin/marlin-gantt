@@ -19,6 +19,7 @@ This audit covers the Activity submission form in `index.html`, the `Marketing &
 | Submitted By | `Assignee` | `owner` | Signed-in user |
 | Initial workflow | `WorkflowStage` | `stage` | Always `Intake` on create |
 | Initial status | `Status` | `status` | Always `Active` on create |
+| Jotform submission ID | `JotformSubmissionId` (text) | `jotformId` | Written by the Jotform → SharePoint integration for Graphic Design Requests; shown as "GDR #…" (docs/GDR_AUTOMATION.md) |
 
 ## Conditional mapping
 
