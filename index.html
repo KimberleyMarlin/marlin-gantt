@@ -9819,6 +9819,39 @@ function pmLinkedEvent(c){
   }).filter(e=>!cs||(cs<=shift(e.end||e.start,7)&&ce>=shift(e.start,-60)))
     .sort((a,b)=>Math.abs(new Date(a.start)-new Date(cs||a.start))-Math.abs(new Date(b.start)-new Date(cs||b.start)))[0]||null;
 }
+// Activities a campaign can be linked to: those within 120 days either side of the campaign's
+// dates (the export's period when the campaign has none, else today). A campaign at a venue lists
+// that venue's activities and group-wide ones; a Loaded Rewards or unmatched campaign lists every
+// venue, grouped, Loaded-flagged activities first.
+const PM_LINK_WINDOW_DAYS=120;
+function pmLinkGroups(c){
+  const range=(META_SNAPSHOT?.ranges||[]).find(r=>(r.venues||[]).includes(c.venue));
+  const today=toLocalISODate(new Date());
+  const from0=c.start||range?.from||today,to0=c.end||range?.to||today;
+  const shift=(d,n)=>{const x=new Date(d+'T00:00:00');x.setDate(x.getDate()+n);return toLocalISODate(x);};
+  const lo=shift(from0,-PM_LINK_WINDOW_DAYS),hi=shift(to0,PM_LINK_WINDOW_DAYS);
+  const near=EVENTS.filter(e=>e.start&&!['Cancelled','Canceled'].includes(e.status)&&String(e.end||e.start)>=lo&&String(e.start)<=hi)
+    .sort((a,b)=>String(b.start).localeCompare(String(a.start)));
+  const real=c.venue&&c.venue!=='Unassigned'&&c.venue!=='Loaded Rewards';
+  if(real)return[{label:c.venue,items:near.filter(e=>e.venue===c.venue||e.venue==='All Venues')}].filter(g=>g.items.length);
+  const groups=[];
+  if(c.venue==='Loaded Rewards')groups.push({label:'Loaded Rewards activities',items:near.filter(e=>e.loadedRewards)});
+  const used=new Set(groups.flatMap(g=>g.items.map(e=>e.id)));
+  const venues=[...new Set(near.map(e=>e.venue||'No venue'))].sort((a,b)=>a.localeCompare(b));
+  venues.forEach(v=>groups.push({label:v,items:near.filter(e=>(e.venue||'No venue')===v&&!used.has(e.id))}));
+  return groups.filter(g=>g.items.length);
+}
+// "Christmas Day · Darwin · 25/12"
+function pmLinkLabel(e){
+  const d=String(e.start||'');
+  return`${e.title} · ${shortVenue(e.venue)||'No venue'}${d?` · ${d.slice(8,10)}/${d.slice(5,7)}`:''}`;
+}
+function pmFilterLinkOptions(selectId,q){
+  const sel=document.getElementById(selectId);if(!sel)return;
+  const t=String(q||'').toLowerCase().trim();
+  sel.querySelectorAll('option').forEach(o=>{if(o.value)o.hidden=!!t&&!o.textContent.toLowerCase().includes(t);});
+  sel.querySelectorAll('optgroup').forEach(g=>{g.hidden=![...g.querySelectorAll('option')].some(o=>!o.hidden);});
+}
 async function linkMetaCampaign(campaignId,evId){
   if(!canEditCampaigns()){alert('You do not have permission to edit activities.');return;}
   const ev=EVENTS.find(e=>String(e.id)===String(evId));if(!ev?.spId)return;
@@ -9832,7 +9865,7 @@ async function linkMetaCampaign(campaignId,evId){
     const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}/fields`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({MetaCampaignID:ids})});
     if(!res.ok){const t=await res.text();throw new Error(/Field 'MetaCampaignID' is not recognized/i.test(t)?'The Activities list has no MetaCampaignID column. Add it (single line of text) and try again.':graphErrorText(res.status,t));}
     ev.metaCampaignId=ids;renderMarketingReport();
-    showToast('Campaign linked',`${camp?camp.name:'Campaign'} → ${ev.title}`);
+    showToast(`Linked to ${ev.title} · ${shortVenue(ev.venue)||'No venue'}`,camp?camp.name:'');
   }catch(e){alert('Could not link the campaign: '+e.message);}
 }
 function sortPaidMedia(key){
@@ -9901,8 +9934,11 @@ function renderPaidMediaSection(venue){
   if(lpv)cols.splice(cols.findIndex(c=>c.k==='end'),0,{k:'landingPageViews',l:'Landing page views',num:true});
   // Activities a campaign can be linked to: same venue (Loaded: Loaded-flagged anywhere; an
   // unassigned ad account: any venue), from the last 6 months on.
-  const linkOpts=v=>EVENTS.filter(e=>(v==='Unassigned'||e.venue===v||(v==='Loaded Rewards'&&e.loadedRewards))&&!['Cancelled','Canceled'].includes(e.status)&&String(e.end||e.start||'')>=toLocalISODate(new Date(Date.now()-183*864e5))).sort((a,b)=>String(b.start).localeCompare(String(a.start))).slice(0,60);
-  const linkCtl=c=>{const sid='pmLink-'+metaSlug(c.id);return`<span class="mr-noprint" style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap"><select class="form-select" style="width:auto;font-size:12px;max-width:220px" id="${sid}" aria-label="Activity for ${escapeAttr(c.name)}"><option value="">Choose activity…</option>${linkOpts(c.venue).map(e=>`<option value="${e.id}">${escapeAttr(e.title)} · ${fmtShort(e.start)}${e.venue!==c.venue?' · '+escapeAttr(shortVenue(e.venue)):''}</option>`).join('')}</select><button class="btn btn-s" onclick="const s=document.getElementById('${sid}');if(!s.value){alert('Choose an activity first.');return;}linkMetaCampaign('${escapeAttr(c.id)}',s.value)">Link</button></span>`;};
+  const linkCtl=c=>{
+    const sid='pmLink-'+metaSlug(c.id),groups=pmLinkGroups(c),n=groups.reduce((a,g)=>a+g.items.length,0);
+    const opt=e=>`<option value="${e.id}">${escapeAttr(pmLinkLabel(e))}</option>`;
+    const list=groups.length>1?groups.map(g=>`<optgroup label="${escapeAttr(g.label)}">${g.items.map(opt).join('')}</optgroup>`).join(''):(groups[0]?.items||[]).map(opt).join('');
+    return`<span class="mr-noprint" style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap">${n>25?`<input type="search" class="form-input" style="width:140px;font-size:12px;padding:5px 8px" placeholder="Filter activities" aria-label="Filter activities for ${escapeAttr(c.name)}" oninput="pmFilterLinkOptions('${sid}',this.value)">`:''}<select class="form-select" style="width:auto;font-size:12px;max-width:260px" id="${sid}" aria-label="Activity for ${escapeAttr(c.name)}"><option value="">${n?'Choose activity…':'No activities near these dates'}</option>${list}</select><button class="btn btn-s" onclick="const s=document.getElementById('${sid}');if(!s.value){alert('Choose an activity first.');return;}linkMetaCampaign('${escapeAttr(c.id)}',s.value)">Link</button></span>`;};
   const enriched=rows.map(c=>({c,m:pmDerive(c.metrics?.[win]),ev:pmLinkedEvent(c)}));
   const sv=({c,m},k)=>({name:c.name,venue:c.venue,status:c.status,end:c.end||'9999'})[k]??m[k];
   enriched.sort((a,b)=>{const va=sv(a,pmSortKey),vb=sv(b,pmSortKey);if(va==null&&vb==null)return 0;if(va==null)return 1;if(vb==null)return -1;const r=typeof va==='string'?va.localeCompare(vb):va-vb;return pmSortDir==='asc'?r:-r;});
