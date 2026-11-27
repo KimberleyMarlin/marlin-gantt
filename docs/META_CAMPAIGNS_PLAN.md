@@ -39,6 +39,12 @@ The sync is waiting on IT's SharePoint grant. Meanwhile, Marketing Report → Pa
 - **Sync wins:** a real sync snapshot (`_all.json`) always takes priority over exports.
 - **Who saw it (age and gender):** when an export has *Age* and/or *Gender* columns, those breakdowns are kept. Paid media shows a **Who saw it** panel for the venue, and each campaign has its own under its name. Each age band and gender shows spend, reach and impressions, plus link clicks and leads + sales when the export has them, as bars in the series colours. Bars are sized by spend, or by impressions for roles that don't see spend. Reach is added up across rows, so it overstates people reached; the panel says so. Campaign totals are unchanged.
 - **For the age and gender panel**, export with **Breakdown → By Delivery → Age and Gender** at Campaign (or Ad) level, plus the columns above.
+- **Where it ran (27 Nov 2026):** *Platform*, *Placement* and *Region* breakdowns feed a **Where it ran** panel next to Who saw it, with the same bars.
+- **Two exports for one period:** upload a Demographics export (Age + Gender + Month) and a Placement export (Platform + Placement, or Region) for the same dates. The newest file per venue **drives the totals**; an older file covering the same dates adds only its breakdowns, ads and months, so nothing is double-counted. The file list tags each one: *Drives the totals*, *Breakdowns only (same period)* or *Not used*.
+- **Ads:** with *Ad name*, *Ad ID* and *Ad set name* (export from the Ads tab), each campaign lists its ads with spend, clicks, landing page views and impressions, plus an **Open ad** link.
+- **Links out:** each campaign has **Open in Ads Manager** (needs *Account ID* in the export for the account to open) and **Ad Library** (venues with a known Page ID).
+- **Creative:** exports don't include images or ad copy. **Attach screenshot** on any campaign saves an image to `Integrations/Meta/Creative` as `<campaign id>__<file>` and shows a thumbnail. Once the Meta sync runs, creative thumbnails and copy can come automatically from the Graph API (META_TOKEN already exists; only the MS_* secrets are missing).
+- **+ Create activity:** on a Needs-linking campaign, opens the activity form filled in from the campaign (title from "CODE | Activity | MonYY", venue from the ad account, dates, type Campaign, Loaded Rewards flag). Saving links the campaign to the new activity.
 
 The Marketing Report's venue picker also has **Loaded Rewards**. Its campaign results are the Loaded-flagged activities at any venue.
 
