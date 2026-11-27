@@ -6269,6 +6269,8 @@ async function loadCampaigns(){
         // The WorkflowStage value exactly as SharePoint holds it — differs from .stage only for
         // retired stages (In Build, Ready for Live) not yet rewritten by the stage clean-up.
         storedStageRaw,
+        // Marked by an approver: Done without a Post-Campaign Report (see confirmDone).
+        noReportNeeded:/--- NO REPORT NEEDED /.test(String(f.Description||'')),
         // Set by "Send back" on Submissions; cleared the next time the activity is edited.
         sentBackNote:f.SentBackNote||'',
         collateralStatus:f.CollateralStatus||'',
@@ -8144,6 +8146,7 @@ async function cvDrop(e,newStage){
   const ok=confirm(`Move "${ev.title}" from "${ev.stage}" to "${newStage}"?\n\nThis updates the live campaign stage for everyone right away.`);
   if(!ok)return;
   if(newStage==='Live'&&ev.stage!=='Live'&&!(await confirmGoLive(ev)).ok)return;
+  if(newStage==='Done'&&ev.stage!=='Done'&&!(await confirmDone(ev)).ok)return;
   const oldStage=ev.stage;
   ev.stage=newStage;
   // A health filter (stat-card or the dropdown) can be actively hiding non-matching cards — since
@@ -9152,7 +9155,7 @@ function isActivityDelivered(e){
 // K2 "Reported": a saved ReportSubmittedAt, or for activities reported before that column existed,
 // any post-campaign actual on the record.
 function isActivityReported(e){
-  return !!e.reportSubmittedAt||!!(e.actualSpend||e.supplierContrib||e.ticketsSold||e.ticketRevenue||e.redemptions||e.covers||e.reportWorked||e.reportImprove)||Object.keys(e.channelResults||{}).length>0;
+  return !!e.noReportNeeded||!!e.reportSubmittedAt||!!(e.actualSpend||e.supplierContrib||e.ticketsSold||e.ticketRevenue||e.redemptions||e.covers||e.reportWorked||e.reportImprove)||Object.keys(e.channelResults||{}).length>0;
 }
 // K6 per activity: the saved figure wins; tickets × price only for older reports without one.
 function activityTicketRevenue(e){
@@ -10296,6 +10299,7 @@ async function pipeDrop(e,newStage){
   const ev=EVENTS.find(ev=>ev.spId==spId);
   if(!ev)return;
   if(newStage==='Live'&&ev.stage!=='Live'&&!(await confirmGoLive(ev)).ok)return;
+  if(newStage==='Done'&&ev.stage!=='Done'&&!(await confirmDone(ev)).ok)return;
   const oldStage=ev.stage;
   ev.stage=newStage;
   renderPipeline();
@@ -10777,6 +10781,7 @@ function renderPipeline(){
             <div class="pc-f" style="margin-top:5px">
               <span class="tag t-gr" style="font-size:10px">${ev.activityType||ev.eventFormat||'Event'}</span>
               ${ev.loadedRewards?'<span style="font-size:10px">★</span>':''}
+              ${reviewStartPassed(ev)&&!reviewChecklist(ev).ready?'<span class="tag" style="font-size:10px;color:var(--attention);border:1px solid var(--attention)" title="Its start date has passed but Go Live checks are still open">Start date passed</span>':''}
               ${ev.stage==='In Design'?(()=>{const c=jobTicketCountHtml(ev);return c||'<span class="tag t-gr" style="font-size:10px" title="Approved without job tickets, so it will not move to Review by itself">No job tickets</span>';})():''}
               <span class="pc-d">${fmtShort(ev.start)}</span>
             </div>
@@ -12114,6 +12119,17 @@ async function bulkApplyCampField(sharePointField,evProp,newValue,fieldLabel){
 function bulkApplyCampStage(){
   const sel=document.getElementById('campBulkStage');
   const value=sel?.value;if(!value)return;
+  // Live and Done have their own checks (Go Live checks; a report or "no report needed"). Bulk
+  // only applies them to activities that already pass; the rest are left for one-by-one review.
+  if(value==='Live'||value==='Done'){
+    const evs=[...campSelected].map(id=>EVENTS.find(e=>String(e.id)===id)).filter(Boolean);
+    const held=evs.filter(e=>e.stage!==value&&(value==='Live'?!reviewChecklist(e).ready:!(isActivityReported(e)||e.noReportNeeded)));
+    if(held.length){
+      held.forEach(e=>campSelected.delete(String(e.id)));
+      alert(`${held.length} of the selected activities ${value==='Live'?'have open Go Live checks':'have no Post-Campaign Report'}, so they were left out:\n\n${held.slice(0,10).map(e=>'• '+e.title).join('\n')}${held.length>10?`\n…and ${held.length-10} more`:''}\n\nMove them one at a time to ${value==='Live'?'go live anyway with a reason':'give a "no report needed" reason'}.`);
+      if(!campSelected.size){renderCampaigns();if(sel)sel.value='';return;}
+    }
+  }
   bulkApplyCampField('WorkflowStage','stage',value,'stage').then(()=>{if(sel)sel.value='';});
 }
 function bulkApplyCampStatus(){
@@ -14706,7 +14722,7 @@ async function loadTasks(){
   if(document.getElementById('campBody')?.offsetParent)renderCampaigns();
   if(document.getElementById('designList')?.offsetParent)renderDesign();
   refreshActivityDetailIfOpen();
-  if(LIST_IDS.myTasks)sweepPlanningToReview();
+  if(LIST_IDS.myTasks)sweepPlanningToReview().then(()=>sweepReviewToLive());
 }
 
 function openAddTask(campaignId){
@@ -14944,21 +14960,24 @@ function reviewChecklistHtml(ev){
       return`<div style="display:flex;gap:8px;font-size:12px;line-height:1.6"><span style="color:${col};font-weight:700;width:12px">${mark}</span><span style="min-width:110px;font-weight:600">${c.label}</span><span style="color:${c.ok?'var(--ink-muted)':col}">${c.url?`<a href="${escapeAttr(c.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${escapeAttr(c.detail)}</a>`:escapeAttr(c.detail)}${!c.ok&&!c.blocking?' (warning only)':''}</span></div>`;}).join('')}
   </div>`;
 }
-// Saves "went live with open checks" plus the reason to the activity's description history, the
-// same way Deny reasons are kept, and tags the owner. Returns false if the note couldn't be saved.
-async function recordGoLiveOverride(ev,reason,blockers){
+// Appends a dated note to the activity's description history (the same way Deny reasons are
+// kept), optionally saving other fields in the same write. Returns false if it couldn't be saved.
+async function appendActivityNote(ev,heading,lines,extraFields={}){
   const token=await getToken(true);
   const stamp=new Date().toLocaleDateString('en-AU');
   const who=currentUser?.name||currentUserEmail||'Unknown';
-  const base=(ev.description||'')+`\n\n--- WENT LIVE WITH OPEN CHECKS ${stamp} by ${who} ---\nOpen: ${blockers.map(b=>b.label).join(', ')}\nReason: ${reason.trim()}`;
+  const base=(ev.description||'')+`\n\n--- ${heading} ${stamp} by ${who} ---\n${lines.join('\n')}`;
   let newDesc=withLongDescription(base,writableCampaignKey('LongDescription','Long Description')?'':ev.longDescription);
   newDesc=withPOSNotes(newDesc,ev.posNotes);
   // Schema is loaded at sign-in (loadAll); fall back to the standard column name if it isn't yet.
   const descriptionKey=writableCampaignKey('Description')||'Description';
-  const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{[descriptionKey]:newDesc}})});
+  const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{[descriptionKey]:newDesc,...extraFields}})});
   if(!res.ok)return false;
   ev.description=splitActivityDescription(newDesc).description;
   return true;
+}
+async function recordGoLiveOverride(ev,reason,blockers){
+  return appendActivityNote(ev,'WENT LIVE WITH OPEN CHECKS',[`Open: ${blockers.map(b=>b.label).join(', ')}`,`Reason: ${reason.trim()}`]);
 }
 // Used by every route to Live (Go Live button, Pipeline drag, Stage dropdown). Returns
 // {ok:true} to carry on, or {ok:false} if blocked / cancelled. When checks are open, approvers
@@ -14975,6 +14994,55 @@ async function confirmGoLive(ev){
   try{saved=await recordGoLiveOverride(ev,reason,blockers);}catch(e){console.warn('Go-live note failed:',e);}
   if(!saved&&!confirm('The reason could not be saved on the activity. Go live anyway?'))return{ok:false};
   return{ok:true,overridden:true};
+}
+
+// Delivery stages plan, step 5 (decision 7): an activity is only saved as Done once its
+// post-campaign report is in, or an approver marks it "no report needed" with a reason (kept in
+// the description as a NO REPORT NEEDED note, which also stops the "needs report" nudges).
+async function confirmDone(ev){
+  if(isActivityReported(ev)||ev.noReportNeeded)return{ok:true};
+  if(!canApproveCampaigns()){alert(`"${ev.title}" can't be marked Done until its Post-Campaign Report is saved.\n\nOpen the activity and use "Post-Campaign Report", or ask an approver to mark it "no report needed".`);return{ok:false};}
+  const reason=prompt(`"${ev.title}" has no Post-Campaign Report yet.\n\nTo mark it Done without one, say why no report is needed (it's saved on the activity). Cancel to go back and add the report.`);
+  if(reason===null)return{ok:false};
+  if(!reason.trim()){alert('Please give a reason, or cancel and save the report first.');return{ok:false};}
+  let saved=false;
+  try{saved=await appendActivityNote(ev,'NO REPORT NEEDED',[`Reason: ${reason.trim()}`]);}catch(e){console.warn('No-report note failed:',e);}
+  if(!saved){alert('The reason could not be saved on the activity, so it was not marked Done. Please try again.');return{ok:false};}
+  ev.noReportNeeded=true;
+  return{ok:true};
+}
+// Activity-page button: approvers mark a delivered activity Done with no report.
+async function markNoReportNeeded(evId){
+  const ev=EVENTS.find(e=>e.id===evId);if(!ev)return;
+  if(!(await confirmDone(ev)).ok)return;
+  try{
+    const token=await getToken(true);
+    const res=await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_SITE}/lists/${LIST_IDS.campaigns}/items/${ev.spId}`,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields:{WorkflowStage:'Done'}})});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    ev.stage='Done';ev.storedStageRaw='Done';ev.autoCompleted=false;
+    renderPipeline&&renderPipeline();renderOverview&&renderOverview();
+    if(document.getElementById('campBody')?.offsetParent)renderCampaigns();
+    refreshActivityDetailIfOpen();
+    if(typeof showToast==='function')showToast(`"${ev.title}" marked Done — no report needed`);
+  }catch(e){alert(`The reason was saved, but "${ev.title}" could not be marked Done: ${e.message}`);}
+}
+// Step 5 (decision 6): Review activities go Live on their start date. A static page can't run on
+// a timer, so this runs when an approver opens the Hub (after tickets load). Only activities whose
+// Go Live checks all pass move; the rest show "Start date passed" on their cards.
+function reviewStartPassed(ev){return ev.stage==='Review'&&!!ev.start&&ev.start<=toLocalISODate(new Date());}
+let _liveSweepRunning=false;
+async function sweepReviewToLive(){
+  if(_liveSweepRunning||isPreviewMode||!canApproveCampaigns())return;
+  _liveSweepRunning=true;
+  try{
+    const due=EVENTS.filter(e=>reviewStartPassed(e)&&!isArchived(e)&&e.spId&&reviewChecklist(e).ready);
+    const moved=[];
+    for(const ev of due){
+      try{await advanceCampaignStage(ev,'Live',{},{notify:false});moved.push(ev.title);}
+      catch(e){console.warn('Could not take',ev.title,'Live:',e);}
+    }
+    if(moved.length&&typeof showToast==='function')showToast(`Start date reached — now Live: ${moved.join(', ')}`);
+  }finally{_liveSweepRunning=false;}
 }
 
 // Delivery stages plan, step 3: Planning (In Design) → Review once every job ticket on the
@@ -16636,6 +16704,7 @@ function renderApprovals(){
           <button class="btn btn-s" style="padding:6px 12px;font-size:12px" onclick="showPop(${ev.id})">View Details</button>
         </div>
       </div>
+      ${reviewStartPassed(ev)&&!reviewChecklist(ev).ready?`<div class="appr-body" style="color:var(--attention);font-weight:600;font-size:12px">Start date passed (${fmtShort(ev.start)}) — finish the open checks or go live anyway.</div>`:''}
       ${ev.stage==='Review'?`<div class="appr-body">${reviewChecklistHtml(ev)}</div>`:''}
       ${ev.description?`<div class="appr-body">${ev.description}</div>`:''}
     </div>`;
@@ -18931,6 +19000,7 @@ function renderActivityDetail(id,mode){
   // button vanished once the report moved the activity to Done, so a report couldn't be corrected.
   if(canEdit&&(isActivityDelivered(ev)||ev.stage==='Reporting Required')){
     h+=`<button class="btn ${isActivityReported(ev)?'btn-s':'btn-p'}" onclick="closePop();openPostCampaign(${ev.spId})">${isActivityReported(ev)?'Edit report':'Post-Campaign Report'}</button>`;
+    if(canApprove&&!isActivityReported(ev)&&ev.storedStageRaw!=='Done')h+=`<button class="btn btn-s" onclick="markNoReportNeeded(${ev.id})" title="Mark Done without a report, with a reason">No report needed…</button>`;
   }
   if(canEdit&&['Intake','In Design','Review'].includes(ev.stage)){
     h+=`<button class="btn btn-s" onclick="closePop();openDesignBrief(${ev.spId})">✎ Submit Design Brief</button>`;
@@ -19028,6 +19098,7 @@ async function savePopEdit(evId,mode){
   const setBtns=(text,opts={})=>btns.forEach(b=>{b.textContent=text;if(opts.disabled!==undefined)b.disabled=opts.disabled;if(opts.bg!==undefined)b.style.background=opts.bg;if(opts.color!==undefined)b.style.color=opts.color;if(opts.display!==undefined)b.style.display=opts.display;});
   const stageSel=roots.flatMap(root=>[...root.querySelectorAll('[data-field="WorkflowStage"]')])[0];
   if(stageSel&&stageSel.value==='Live'&&ev.stage!=='Live'&&!(await confirmGoLive(ev)).ok){stageSel.value=ev.stage;return;}
+  if(stageSel&&stageSel.value==='Done'&&ev.storedStageRaw!=='Done'&&!(await confirmDone(ev)).ok){stageSel.value=ev.stage;return;}
   setBtns('Saving…',{disabled:true});
   const fields={};
   let requestedPOSNotes=null;

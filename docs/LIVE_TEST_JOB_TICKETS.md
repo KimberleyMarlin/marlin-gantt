@@ -161,6 +161,18 @@ This needs a ticket to fail on purpose. The simplest way is for someone with Sha
 | M.7 | As someone who isn't an approver, try to move an activity with open checks to Live | A message lists what's missing and says an approver can go live anyway. Nothing changes. | |
 | M.8 | Dashboard → **Upcoming Launches** | Review activities only appear once they're Ready, alongside Live ones starting in the next 30 days. | |
 
+## Part N: Live on the start date, Done after the report
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| N.1 | Make a test activity Ready in Review (Part M) with today's start date. Reload the Hub as an approver. | Toast "Start date reached — now Live: *name*". It's in Live on Pipeline. | |
+| N.2 | Leave another Review test activity with an open check and a start date in the past. Reload. | It stays in Review. Its Submissions card says "Start date passed … finish the open checks or go live anyway", and its Pipeline card has a "Start date passed" tag. | |
+| N.3 | Drag a Live activity with no Post-Campaign Report to Done on Pipeline | As an approver you're asked why no report is needed. Cancel: nothing changes. Give a reason: it's Done, and its description ends with "NO REPORT NEEDED … Reason: …". | |
+| N.4 | Open a delivered activity with no report, as an approver | Next to "Post-Campaign Report" there's **No report needed…**. Using it marks the activity Done with your reason, and it drops off the "needs report" reminders. | |
+| N.5 | As someone who isn't an approver, try to move an unreported activity to Done | A message says to save the Post-Campaign Report first. Nothing changes. | |
+| N.6 | **Activities**: select several activities, some ready and some not, and use "Set stage… → Live" (then "→ Done") | The ones that aren't ready, or have no report, are listed as left out. Only the rest move. | |
+| N.7 | Save a Post-Campaign Report on a Live activity | It moves to Done as before. | |
+
 ## Part I: clean up
 
 1. In Tasks & Job Tickets, delete every item whose title contains `TEST`.
@@ -184,6 +196,7 @@ This needs a ticket to fail on purpose. The simplest way is for someone with Sha
 | K: Team queues | | |
 | L: Automatic move to Review | | |
 | M: Review checks and Go Live | | |
+| N: Live on start date, Done after report | | |
 
 Tested by: ________ Date: ________
 
