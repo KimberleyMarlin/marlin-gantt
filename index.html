@@ -3882,6 +3882,8 @@ function openApprovalPreview(evId,opts={}){
   if(sourceEl)sourceEl.textContent=`Playbook: ${templateKey} · chosen from ${sourceLabel}. Each ticket shows why it is proposed; unticked ones were marked not needed on the submission.`;
   document.getElementById('approvalPreviewRows').innerHTML=tickets.map((task,i)=>{
     const dueDate=new Date(startDate);dueDate.setDate(dueDate.getDate()-task.leadDays);
+    // A GDR's Final Version date (from the Jotform email) is the real deadline for design work.
+    if(ev.gdrFinalDue&&task.kind==='design'){const g=new Date(ev.gdrFinalDue+'T00:00:00');if(!isNaN(g))dueDate.setTime(g.getTime());}
     const defaultOwner=ROLE_EMAILS[task.assignKey]||'';
     return`<div class="form-group full" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)" data-approval-row="${i}" data-task-title="${escapeAttr(task.title)}" data-task-type="${escapeAttr(task.taskType)}" data-task-priority="${escapeAttr(task.priority)}" data-task-details="${escapeAttr(task.details||'')}">
       <input type="checkbox" ${task.checked?'checked':''} style="flex-shrink:0">
@@ -6283,6 +6285,9 @@ async function loadCampaigns(){
         storedStageRaw,
         // Jotform submission ID, written by the Jotform → SharePoint integration (docs/GDR_AUTOMATION.md).
         jotformId:String(f.JotformSubmissionId||'').trim(),
+        // GDR dates from the Jotform email (First Draft / Final Version), written by the GDR intake flow.
+        gdrFirstDraftDue:f.GdrFirstDraftDue?String(f.GdrFirstDraftDue).split('T')[0]:'',
+        gdrFinalDue:f.GdrFinalDue?String(f.GdrFinalDue).split('T')[0]:'',
         // Marked by an approver: Done without a Post-Campaign Report (see confirmDone).
         noReportNeeded:/--- NO REPORT NEEDED /.test(String(f.Description||'')),
         // Set by "Send back" on Submissions; cleared the next time the activity is edited.
@@ -14429,7 +14434,7 @@ function requestArtwork(evId){
   const tickets=jobTicketsForActivity(ev).tickets.filter(t=>DESIGN_TICKET_TYPES.includes(t.category));
   const openTicket=tickets.find(t=>t.status!=='Done')||tickets[0];
   const to=openTicket?.assignedTo||ROLE_EMAILS.designer||'luca@marlingroup.com.au';
-  const due=openTicket?.due||ev.designBriefDue||'';
+  const due=openTicket?.due||ev.gdrFinalDue||ev.designBriefDue||'';
   const link=window.location.origin+window.location.pathname+'?activity='+encodeURIComponent(ev.spId);
   const strip=v=>String(v||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
   const lines=[
@@ -14437,7 +14442,8 @@ function requestArtwork(evId){
     `Please design the artwork for this activity. Reply to this email with the final artwork attached and keep "[${ref}]" in the subject, so it saves into the activity's folder automatically.`,'',
     `Activity: ${ev.title}`,`Reference: ${ref}`,gdrRef(ev)?`Jotform request: ${gdrRef(ev)}`:null,`Venue: ${ev.venue||'TBC'}`,
     `Dates: ${ev.start?fmtDate(ev.start):'TBC'}${ev.end&&ev.end!==ev.start?' to '+fmtDate(ev.end):''}`,
-    due?`Artwork due: ${fmtDate(due)}`:null,
+    ev.gdrFirstDraftDue?`First draft due: ${fmtDate(ev.gdrFirstDraftDue)}`:null,
+    due?`Final artwork due: ${fmtDate(due)}`:null,
     (ev.assetsNeeded||[]).length?`Assets needed: ${ev.assetsNeeded.join(', ')}`:null,
     ev.assetTVsDetail?`TVs: ${strip(ev.assetTVsDetail)}`:null,
     ev.assetNewsletterDetail?`Newsletter: ${strip(ev.assetNewsletterDetail)}`:null,
@@ -16131,6 +16137,8 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'ideas',name:'ActivityType',displayName:'Activity Type',type:'choice',choices:ACTIVITY_TYPE_OPTIONS.join(', '),purpose:'Captured at idea stage so "Continue Brief" can prefill it on the Activity submission form.'},
   {listKey:'ideas',name:'PromotedActivityId',displayName:'Promoted Activity Id',type:'number',purpose:'Links an idea to the real Activity created from it via "Continue Brief", so reopening a promoted idea opens that Activity instead of letting it be promoted twice.'},
   {listKey:'campaigns',name:'JotformSubmissionId',displayName:'Jotform Submission ID',type:'text',purpose:'GDR intake: the Jotform submission ID ({id}), written by Jotform\'s SharePoint integration. Shown as "GDR #…" next to the A-number, and used by the artwork flow to match Luca\'s reply to the right activity. Text, not Number, because Jotform IDs are 19 digits.'},
+  {listKey:'campaigns',name:'GdrFirstDraftDue',displayName:'GDR First Draft Due',type:'date',purpose:'GDR intake: the First Draft date from the Jotform GDR email, written by the GDR intake flow (docs/GDR_AUTOMATION.md). Shown in the activity\'s Design section.'},
+  {listKey:'campaigns',name:'GdrFinalDue',displayName:'GDR Final Version Due',type:'date',purpose:'GDR intake: the Final Version date from the Jotform GDR email. Used as the default due date for the design job ticket on approval, and as the artwork due date in Request artwork emails.'},
   {listKey:'campaigns',name:'SentBackNote',displayName:'Sent Back Note',type:'text',purpose:'Set by "Send back" on Submissions: the reason, who sent it back and when. Shows "Sent back — waiting on submitter" on the Submissions card, and is cleared the next time the activity is edited. Without it, the send-back message still reaches the submitter, but the card status only lasts until the page reloads.'},
   {listKey:'campaigns',name:'DesignJobCreated',displayName:'Design Job Created',type:'yesno',purpose:'Marks that approval has already created this activity\'s proposed work items, so re-approving never creates a second set. Already read by the Hub; this is the first time anything writes to it.'},
   {listKey:'campaigns',name:'WebStatus',displayName:'Web Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Didier’s web build status.'},
@@ -19242,6 +19250,7 @@ function renderActivityDetail(id,mode){
     <select class="pop-edit-sel" data-field="DesignStatus" data-original="${escapeAttr(ev.designStatus||'')}" onchange="markPopDirty()" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);width:100%;outline:none">
       ${['','Not Required','Brief Needed','In Design','Artwork Uploaded','Approved'].map(o=>`<option value="${o}" ${o===ev.designStatus?'selected':''}>${o||'—'}</option>`).join('')}
     </select></div>`;
+  if(ev.gdrFirstDraftDue||ev.gdrFinalDue)h+=`<div class="pop-field"><div class="pop-lbl">GDR dates</div><div class="pop-val" style="font-size:12px">${ev.gdrFirstDraftDue?'First draft '+fmtDate(ev.gdrFirstDraftDue):''}${ev.gdrFirstDraftDue&&ev.gdrFinalDue?' · ':''}${ev.gdrFinalDue?'Final '+fmtDate(ev.gdrFinalDue):''}</div></div>`;
   h+=`<div class="pop-field"><div class="pop-lbl">Brief Due</div><div class="pop-val" style="font-size:12px;color:${ev.designBriefDue&&new Date(ev.designBriefDue+'T00:00:00')<new Date()?'var(--red)':'var(--text2)'}">${ev.designBriefDue?fmtShort(ev.designBriefDue):'—'}</div></div>`;
   h+=`</div>`;
   h+=`<div class="pop-field" style="margin-top:6px"><div class="pop-lbl">Design Brief</div>

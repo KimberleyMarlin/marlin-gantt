@@ -20,6 +20,7 @@ This audit covers the Activity submission form in `index.html`, the `Marketing &
 | Initial workflow | `WorkflowStage` | `stage` | Always `Intake` on create |
 | Initial status | `Status` | `status` | Always `Active` on create |
 | Jotform submission ID | `JotformSubmissionId` (text) | `jotformId` | Written by the Jotform → SharePoint integration for Graphic Design Requests; shown as "GDR #…" (docs/GDR_AUTOMATION.md) |
+| GDR first draft / final version | `GdrFirstDraftDue`, `GdrFinalDue` (date) | `gdrFirstDraftDue`, `gdrFinalDue` | Written by the GDR intake flow from the Jotform email. Final Version is the default due date for the design job ticket on approval |
 
 ## Conditional mapping
 
