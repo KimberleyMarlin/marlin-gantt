@@ -256,6 +256,15 @@ html,body{font-family:var(--font-sans);font-weight:500;background:var(--bg);colo
 .tbl td.mr-bad{color:var(--attention);font-weight:700}
 .tbl td.n,.tbl th.n{text-align:right}
 @media print{.sb,.tb,.mr-controls .btn,.mr-noprint{display:none!important}.panel#p-mktreport{display:block!important}.mr-chart{break-inside:avoid}}
+.pm-print-head{display:none}
+@media print{
+  body.pm-print-only .topbar,body.pm-print-only .sb,body.pm-print-only #devBanner,body.pm-print-only #p-mktreport>.ph,body.pm-print-only #mrBody>:not(.pm-sec),body.pm-print-only .pm-sec>:not(#pmPrintArea){display:none!important}
+  body.pm-print-only .pm-print-head{display:block}
+  body.pm-print-only .main{margin-left:0;width:100%;max-width:100%}
+  body.pm-print-only #pmPrintArea .stat,body.pm-print-only #pmPrintArea [style*="border:1px solid"]{break-inside:avoid}
+  body.pm-print-only #pmPrintArea details:not([open])>*:not(summary){display:none}
+  @page{size:A4;margin:12mm}
+}
 /* DataTable (design-system/components/DataTable): navy header row, hairline rules, square corners */
 .tbl th{padding:7px 12px;text-align:left;font-size:11px;font-weight:800;color:var(--on-accent);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;background:var(--accent)}
 .tbl th.sortable{cursor:pointer;user-select:none;transition:background .15s}
@@ -9603,7 +9612,7 @@ function parseMetaExport(rows,fallbackVenue){
   const col=(...tests)=>head.findIndex(h=>tests.some(t=>typeof t==='string'?h===t:t.test(h)));
   const c={account:col('account name'),name:col('campaign name'),id:col('campaign id'),delivery:col('campaign delivery'),spend:col(/^amount spent/),reach:col('reach'),impressions:col('impressions'),
     clicks:col('link clicks'),results:col('results'),indicator:col('result indicator','result type'),leads:col('leads'),purchases:col('purchases','website purchases'),purchaseValue:col(/^purchases conversion value/,/^website purchases conversion value/),
-    landingPageViews:col('landing page views'),age:col('age'),gender:col('gender'),from:col('reporting starts'),to:col('reporting ends'),starts:col('starts'),ends:col('ends'),objective:col('objective')};
+    landingPageViews:col('landing page views'),age:col('age'),gender:col('gender'),month:col('month'),from:col('reporting starts'),to:col('reporting ends'),starts:col('starts'),ends:col('ends'),objective:col('objective')};
   if(c.name<0)throw new Error('This file has no "Campaign name" column. In Ads Manager, open the Campaigns tab, then Reports → Export table data → .csv.');
   if(c.spend<0)throw new Error('This file has no "Amount spent" column. Add it under Columns → Customise columns, then export again.');
   if(c.account<0&&!fallbackVenue)throw new Error('Choose which venue this export is for, or export with the "Account name" column.');
@@ -9621,7 +9630,7 @@ function parseMetaExport(rows,fallbackVenue){
     const key=account+'\u0000'+name;
     let g=groups.get(key);
     if(!g){g={account,name,id:v(r,c.id),delivery:v(r,c.delivery).toLowerCase().replace(/\s+/g,'_'),objective:v(r,c.objective),starts:'',ends:'',rows:0,
-      m:{spend:0,impressions:0,reach:0,clicks:0,leads:0,purchases:0,purchaseValue:0,landingPageViews:0},aud:{age:{},gender:{}}};groups.set(key,g);}
+      m:{spend:0,impressions:0,reach:0,clicks:0,leads:0,purchases:0,purchaseValue:0,landingPageViews:0},aud:{age:{},gender:{}},monthly:{}};groups.set(key,g);}
     g.rows++;
     const ind=v(r,c.indicator).toLowerCase(),results=metaNum(v(r,c.results));
     const metric=k=>c[k]>=0?metaNum(v(r,c[k])):(viaResults(k)&&viaResults(k).test(ind)?results:0);
@@ -9635,6 +9644,10 @@ function parseMetaExport(rows,fallbackVenue){
       b.spend+=metaNum(v(r,c.spend));b.reach+=metaNum(v(r,c.reach));b.impressions+=metaNum(v(r,c.impressions));
       b.clicks+=metric('clicks');b.results+=metric('leads')+metric('purchases');
     });
+    // Month breakdown kept for the by-month chart (it combines with Age and Gender rows).
+    const mk=c.month>=0?metaMonthKey(v(r,c.month)):'';
+    if(mk){const mm=g.monthly[mk]=g.monthly[mk]||{spend:0,impressions:0,clicks:0,landingPageViews:0,results:0};
+      mm.spend+=metaNum(v(r,c.spend));mm.impressions+=metaNum(v(r,c.impressions));mm.clicks+=metric('clicks');mm.landingPageViews+=metric('landingPageViews');mm.results+=metric('leads')+metric('purchases');}
     const rf=v(r,c.from).slice(0,10),rt=v(r,c.to).slice(0,10);
     if(rf&&(!from||rf<from))from=rf;if(rt&&rt>to)to=rt;
     const s0=v(r,c.starts).slice(0,10),e0=v(r,c.ends).slice(0,10);
@@ -9650,7 +9663,7 @@ function parseMetaExport(rows,fallbackVenue){
     return{id:g.id||`x-${metaSlug(g.account)}-${metaSlug(g.name)}`,venue,account:g.account,name:g.name,objective:g.objective,
       status:c.delivery>=0?(META_EXPORT_STATUS[g.delivery]||'PAUSED'):(g.ends&&g.ends<today?'COMPLETED':'UNKNOWN'),
       start:g.starts,end:g.ends,metrics:{lifetime:m},daily:[],
-      audience:(c.age>=0||c.gender>=0)?g.aud:null};
+      audience:(c.age>=0||c.gender>=0)?g.aud:null,monthly:Object.keys(g.monthly).length?g.monthly:null};
   });
   if(!campaigns.length)throw new Error('No campaigns found in this file.');
   const byAccount={};campaigns.forEach(x=>{const k=x.venue;(byAccount[k]=byAccount[k]||{campaigns:0,spend:0});byAccount[k].campaigns++;byAccount[k].spend+=x.metrics.lifetime.spend;});
@@ -9922,11 +9935,16 @@ function pmAgg(camps,win){
   const results=(has('leads')||has('purchases'))?(t.leads||0)+(t.purchases||0):null;
   return{...t,clicks:has('clicks')?t.clicks:null,leads:has('leads')?t.leads:null,purchases:has('purchases')?t.purchases:null,
     landingPageViews:t.landingPageViews||null,results,costPerResult:results?t.spend/results:null,
-    ctr:has('clicks')&&t.impressions?t.clicks/t.impressions*100:null};
+    ctr:has('clicks')&&t.impressions?t.clicks/t.impressions*100:null,
+    cpc:has('clicks')&&t.clicks?t.spend/t.clicks:null,
+    costPerLpv:t.landingPageViews?t.spend/t.landingPageViews:null,
+    cpm:t.impressions?t.spend/t.impressions*1000:null,
+    frequency:t.reach?t.impressions/t.reach:null,
+    roas:has('purchaseValue')&&t.spend&&t.purchaseValue?t.purchaseValue/t.spend:null};
 }
 // One labelled figure: "SPEND / $1,234". Shown only when there's a value or it's worth saying so.
 function pmFig(label,value,note){
-  return`<div style="min-width:0"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-muted)">${label}</div><div style="font-size:15px;font-weight:800;color:var(--ink-brand);font-variant-numeric:tabular-nums">${value}</div>${note?`<div class="u-meta">${note}</div>`:''}</div>`;
+  return`<div style="min-width:0"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-muted)"${pmHelpAttr(label)}>${label}</div><div style="font-size:15px;font-weight:800;color:var(--ink-brand);font-variant-numeric:tabular-nums">${value}</div>${note?`<div class="u-meta">${note}</div>`:''}</div>`;
 }
 function pmFigsHtml(a,{canMoney,approxReach}){
   const nie='<span class="u-meta" style="font-size:12px;font-weight:600">Not in export</span>';
@@ -9935,8 +9953,13 @@ function pmFigsHtml(a,{canMoney,approxReach}){
     canMoney&&pmFig('Cost per result',a.results==null?nie:(a.costPerResult!=null?pmMoney(a.costPerResult,true):'—')),
     pmFig('Link clicks',a.clicks==null?nie:pmInt(a.clicks),a.ctr!=null?`${a.ctr.toFixed(2)}% click-through`:''),
     a.landingPageViews?pmFig('Landing page views',pmInt(a.landingPageViews)):'',
+    canMoney&&a.costPerLpv!=null&&pmFig('Cost per landing page view',pmMoney(a.costPerLpv,true)),
+    canMoney&&a.cpc!=null&&pmFig('Cost per click',pmMoney(a.cpc,true)),
     pmFig('Reach',pmInt(a.reach),approxReach?'Approximate':''),
-    pmFig('Impressions',pmInt(a.impressions))].filter(Boolean).join('');
+    pmFig('Impressions',pmInt(a.impressions)),
+    canMoney&&a.cpm!=null&&pmFig('CPM',pmMoney(a.cpm,true)),
+    a.frequency!=null&&!approxReach&&pmFig('Frequency',a.frequency.toFixed(1)),
+    canMoney&&a.roas!=null&&pmFig('ROAS',a.roas.toFixed(1)+'×')].filter(Boolean).join('');
 }
 function pmActivityDates(ev){
   const s=ev.start,e=ev.end&&ev.end!==ev.start?ev.end:'';
@@ -9945,8 +9968,10 @@ function pmActivityDates(ev){
 function pmActivityCardHtml(ev,camps,win,o){
   const a=pmAgg(camps,win);
   const tickets=ev.ticketsSold||0,revenue=o.canMoney?activityTicketRevenue(ev):0,redemptions=ev.redemptions||0,covers=ev.covers||0;
-  const outcomes=[tickets&&pmFig('Tickets sold',pmInt(tickets),o.canMoney&&a.spend?`${pmMoney(a.spend/tickets,true)} ad spend per ticket`:''),
-    revenue&&pmFig('Ticket revenue',pmMoney(revenue),a.spend?`${(revenue/a.spend).toFixed(1)}× the ad spend`:''),
+  const outcomes=[tickets&&pmFig('Tickets sold',pmInt(tickets)),
+    tickets&&o.canMoney&&a.spend&&pmFig('Ad spend per ticket',pmMoney(a.spend/tickets,true)),
+    revenue&&pmFig('Ticket revenue',pmMoney(revenue)),
+    revenue&&a.spend&&pmFig('Revenue ÷ ad spend',`${(revenue/a.spend).toFixed(1)}×`),
     redemptions&&pmFig('Redemptions',pmInt(redemptions),o.canMoney&&a.spend?`${pmMoney(a.spend/redemptions,true)} ad spend each`:''),
     covers&&pmFig('Covers',pmInt(covers))].filter(Boolean).join('');
   const stage=ev.stage?stageLabel(ev.stage):'';
@@ -9963,14 +9988,108 @@ function pmActivityCardHtml(ev,camps,win,o){
         const m=pmAgg([c],win);
         return`<div style="border-top:1px solid var(--line);padding-top:8px"><div style="font-size:12px;font-weight:700">${escapeAttr(c.name)}</div>
           <div class="u-meta">${[escapeAttr(shortVenue(c.venue)),PM_OBJECTIVES[c.objective]||c.objective,PM_STATUS[c.status]&&c.status!=='UNKNOWN'?PM_STATUS[c.status].t:''].filter(Boolean).join(' · ')}</div>
-          <div class="u-meta" style="color:var(--ink)">${[o.canMoney&&pmMoney(m.spend),m.results!=null&&`${pmInt(m.results)} results`,m.clicks!=null&&`${pmInt(m.clicks)} link clicks`,m.landingPageViews&&`${pmInt(m.landingPageViews)} landing page views`,`${pmInt(m.reach)} reach`].filter(Boolean).join(' · ')}</div>
+          <div class="u-meta" style="color:var(--ink)">${[o.canMoney&&pmMoney(m.spend),m.results!=null&&`${pmInt(m.results)} results`,m.clicks!=null&&`${pmInt(m.clicks)} link clicks`,m.landingPageViews&&`${pmInt(m.landingPageViews)} landing page views`,o.canMoney&&m.costPerLpv!=null&&`${pmMoney(m.costPerLpv,true)} per landing page view`,o.canMoney&&m.cpc!=null&&`${pmMoney(m.cpc,true)} per click`,`${pmInt(m.reach)} reach`].filter(Boolean).join(' · ')}</div>
           ${c.audience?`<details style="margin-top:4px"><summary class="u-meta" style="cursor:pointer">Who saw it</summary><div style="padding:6px 0">${metaAudienceHtml([c],o.canMoney,o.missing)}</div></details>`:''}</div>`;}).join('')}</div>
     </details>
   </div>`;
 }
+// Plain-words explanations, shown on hover (title) and in the "What do these mean?" list.
+const PM_HELP={
+  'Results':'Leads + sales recorded by Meta (lead forms and Pixel purchase events).',
+  'Cost per result':'Spend ÷ results, across the same campaigns.',
+  'Cost per landing page view':'Spend ÷ landing page views: what each person who clicked and saw the page cost.',
+  'Cost per click':'Spend ÷ link clicks (CPC).',
+  'Click-through rate':'Link clicks ÷ impressions (CTR).',
+  'CPM':'Cost per 1,000 impressions: spend ÷ impressions × 1,000.',
+  'Frequency':'Impressions ÷ reach: about how many times each person saw the ads. Not shown when the export is broken down by age, gender or month, because reach can\'t be added up across those rows.',
+  'ROAS':'Return on ad spend: purchase value tracked by the Pixel ÷ spend.',
+  'Reach':'People who saw the ads. Added up across campaigns, so it overstates unique people.',
+  'Ad spend per ticket':'Ad spend ÷ tickets sold, from the post-campaign report.',
+  'Revenue ÷ ad spend':'Ticket revenue from the post-campaign report ÷ ad spend.'
+};
+const pmHelpAttr=l=>PM_HELP[l]?` title="${escapeAttr(PM_HELP[l])}"`:'';
+function pmHelpListHtml(){
+  return`<details class="mr-noprint"><summary class="u-meta" style="cursor:pointer;font-weight:700">What do these mean?</summary><dl style="display:grid;grid-template-columns:minmax(120px,max-content) 1fr;gap:4px 12px;margin:8px 0 0;font-size:12px">${Object.entries(PM_HELP).map(([k,v])=>`<dt style="font-weight:700;color:var(--ink-brand)">${escapeAttr(k)}</dt><dd style="margin:0;color:var(--ink)">${escapeAttr(v)}</dd>`).join('')}</dl></details>`;
+}
+// "2026-07", "2026-07-01 - 2026-07-31", "July 2026", "Jul 2026" → "2026-07".
+const PM_MONTHS=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+function metaMonthKey(v){
+  const s=String(v||'').trim().toLowerCase();if(!s)return'';
+  const iso=s.match(/(\d{4})-(\d{2})/);if(iso)return`${iso[1]}-${iso[2]}`;
+  const named=s.match(/([a-z]{3})[a-z]*\.?\s+(\d{4})/);if(named&&PM_MONTHS.includes(named[1]))return`${named[2]}-${String(PM_MONTHS.indexOf(named[1])+1).padStart(2,'0')}`;
+  return'';
+}
+const pmMonthLabel=k=>{const [y,m]=k.split('-');return`${PM_MONTHS[Number(m)-1].replace(/^./,c=>c.toUpperCase())} ${y.slice(2)}`;};
+
+// Horizontal bars as plain HTML: label, bar sized to the largest value, and a data label.
+function pmBarsHtml(items,colour){
+  const max=Math.max(1,...items.map(i=>i.value||0));
+  return`<div style="display:grid;gap:6px">${items.map(i=>`<div style="display:grid;grid-template-columns:minmax(90px,30%) 1fr;gap:8px;align-items:center;font-size:12px">
+    <span style="font-weight:600;color:var(--ink-brand);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeAttr(i.label)}">${escapeAttr(i.label)}</span>
+    <span style="min-width:0"><span style="display:block;height:12px;width:${Math.max(0.5,(i.value||0)/max*100)}%;background:${i.colour||colour||'var(--series-ty)'};border-radius:var(--radius-sm)"></span>
+    <span class="u-meta" style="color:var(--ink)">${i.text}</span></span></div>`).join('')}</div>`;
+}
+// Spend (bars) and results (labels) by month, as inline SVG.
+function pmMonthSvg(months,canMoney){
+  const W=Math.max(360,months.length*90),H=230,L=12,R=12,T=34,B=46,pw=W-L-R,ph=H-T-B,bw=pw/months.length;
+  const key=canMoney?'spend':'impressions';
+  const max=Math.max(1,...months.map(m=>m[key]));
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${canMoney?'Spend':'Impressions'} and results by month" style="width:100%;height:auto;min-width:0">`;
+  s+=`<line x1="${L}" x2="${W-R}" y1="${T+ph}" y2="${T+ph}" stroke="var(--line)"/>`;
+  months.forEach((m,i)=>{
+    const h=m[key]/max*ph,x=L+i*bw+bw*.2,w=bw*.6,y=T+ph-h;
+    s+=`<rect x="${x}" y="${y}" width="${w}" height="${Math.max(1,h)}" fill="var(--series-ty)"><title>${pmMonthLabel(m.key)}: ${canMoney?pmMoney(m.spend):pmInt(m.impressions)+' impressions'}</title></rect>`;
+    s+=`<text x="${x+w/2}" y="${y-6}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink-brand)">${canMoney?pmMoney(m.spend):pmInt(m.impressions)}</text>`;
+    s+=`<text x="${x+w/2}" y="${T+ph+16}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink-brand)">${pmMonthLabel(m.key)}</text>`;
+    if(m.results!=null)s+=`<text x="${x+w/2}" y="${T+ph+32}" text-anchor="middle" font-size="11" fill="var(--ink-muted)">${pmInt(m.results)} result${m.results===1?'':'s'}</text>`;
+  });
+  return s+'</svg>';
+}
+function pmChartsHtml(rows,groups,win,o,venue){
+  const parts=[];
+  const card=(title,body,note)=>`<div style="${PM_CARD_CSS};display:grid;gap:8px;break-inside:avoid"><div class="mr-sub" style="font-size:13px">${title}</div>${body}${note?`<div class="u-meta">${note}</div>`:''}</div>`;
+  const resText=a=>a.results==null?'':` · ${pmInt(a.results)} result${a.results===1?'':'s'}`;
+  const money=v=>o.canMoney?pmMoney(v):'';
+  // 1. Spend by venue.
+  const venues=[...new Set(rows.map(c=>c.venue))];
+  if(!venue&&venues.length>1){
+    const items=venues.map(v=>{const a=pmAgg(rows.filter(c=>c.venue===v),win);return{label:shortVenue(v)||v,value:o.canMoney?a.spend:a.impressions,text:`${o.canMoney?pmMoney(a.spend):pmInt(a.impressions)+' impressions'}${resText(a)}`};}).sort((a,b)=>b.value-a.value);
+    parts.push(card(o.canMoney?'Spend by venue':'Impressions by venue',pmBarsHtml(items)));
+  }
+  // 2. By month, from the export's Month breakdown.
+  const monthly={};let anyResults=false;
+  rows.forEach(c=>Object.entries(c.monthly||{}).forEach(([k,m])=>{const t=monthly[k]=monthly[k]||{key:k,spend:0,impressions:0,results:0};t.spend+=m.spend||0;t.impressions+=m.impressions||0;if(m.results!=null){t.results+=m.results;anyResults=true;}}));
+  const months=Object.values(monthly).sort((a,b)=>a.key.localeCompare(b.key)).map(m=>({...m,results:anyResults&&!(o.missing.has('leads')&&o.missing.has('purchases'))?m.results:null}));
+  parts.push(card(`${o.canMoney?'Spend':'Impressions'} and results by month`,months.length?`<div style="overflow-x:auto">${pmMonthSvg(months,o.canMoney)}</div>`:'<div class="mr-note">No month breakdown in this export. In Ads Manager choose Breakdown → By Time → Month, then export and upload again.</div>'));
+  // 3. Top activities by spend.
+  if(groups.length){
+    const top=groups.slice(0,8).map(g=>{const a=pmAgg(g.camps,win);return{label:g.ev.title,value:o.canMoney?a.spend:a.impressions,text:`${o.canMoney?pmMoney(a.spend):pmInt(a.impressions)+' impressions'}${a.results!=null?` · ${pmInt(a.results)} results${o.canMoney&&a.costPerResult!=null?` · ${pmMoney(a.costPerResult,true)} per result`:''}`:''} · ${escapeAttr(shortVenue(g.ev.venue))}`};});
+    parts.push(card(`Top activities by ${o.canMoney?'spend':'impressions'}`,pmBarsHtml(top,'var(--series-3)'),groups.length>8?`Top 8 of ${groups.length}.`:''));
+  }
+  // 4. Funnel: impressions → link clicks → landing page views → results.
+  const a=pmAgg(rows,win);
+  const steps=[['Impressions',a.impressions],['Link clicks',a.clicks],['Landing page views',a.landingPageViews],['Results',a.results]].filter(([,v])=>v!=null&&v>0);
+  if(steps.length>1){
+    const items=steps.map(([l,v],i)=>({label:l,value:v,colour:'var(--series-ty)',text:`${pmInt(v)}${i?` · ${(v/steps[i-1][1]*100).toFixed(v/steps[i-1][1]<0.1?2:1)}% of ${steps[i-1][0].toLowerCase()}`:''}`}));
+    const missingSteps=[['Link clicks',a.clicks],['Landing page views',a.landingPageViews],['Results',a.results]].filter(([,v])=>v==null).map(([l])=>l);
+    parts.push(card('From seeing the ad to a result',pmBarsHtml(items),`Bar lengths are to scale, so later steps are short.${missingSteps.length?` Not in this export: ${missingSteps.join(', ')}.`:''}`));
+  }
+  return parts.length?`<details open style="display:block"><summary class="mr-sub" style="cursor:pointer">Charts</summary><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:10px;margin-top:8px">${parts.join('')}</div></details>`:'';
+}
+// Prints just the Paid media summary, charts and activity cards: one or two A4 pages.
+function pmPrintReport(){
+  const area=document.getElementById('pmPrintArea');if(!area)return;
+  document.body.classList.add('pm-print-only');
+  area.querySelectorAll('details').forEach(d=>{d.dataset.wasOpen=d.open?'1':'';});
+  area.querySelectorAll('details.pm-print-open').forEach(d=>{d.open=true;});
+  const done=()=>{document.body.classList.remove('pm-print-only');area.querySelectorAll('details').forEach(d=>{d.open=d.dataset.wasOpen==='1';});window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);
+  window.print();
+  setTimeout(()=>{if(document.body.classList.contains('pm-print-only')&&!window.matchMedia('print').matches)done();},1500);
+}
 function renderPaidMediaSection(venue,from){
   if(!pmCanSeePaidMedia())return'';
-  let h=`<div class="mr-sec"><div class="mr-h">Paid media · Meta ads${venue?' · '+escapeAttr(venue):''}</div>`;
+  let h=`<div class="mr-sec pm-sec"><div class="mr-h">Paid media · Meta ads${venue?' · '+escapeAttr(venue):''}</div>`;
   if(isPreviewMode)return h+'<div class="mr-note">UI preview has no live data.</div></div>';
   if(META_STATE.status==='idle'||META_STATE.status==='loading')return h+'<div class="loading"><div class="spinner"></div></div></div>';
   if(META_STATE.status==='error')return h+`<div class="mr-note">Couldn't read the Meta snapshot: ${escapeAttr(META_STATE.error)}</div></div>`;
@@ -10002,26 +10121,38 @@ function renderPaidMediaSection(venue,from){
   // a) Summary strip: every campaign in view, linked or not.
   const s=pmAgg(rows,win);
   const nie='<span style="font-size:14px">Not in export</span>';
-  h+=`<div class="stats" style="margin-bottom:0">
+  const tile=(v,l,sub)=>kpiTile(v,`<span${pmHelpAttr(l)}>${l}</span>`,sub);
+  h+=`<div class="mr-noprint" style="display:flex;justify-content:flex-end"><button class="btn btn-s" onclick="pmPrintReport()">Print / PDF for Ben</button></div>
+  <div id="pmPrintArea" style="display:grid;gap:12px">
+  <div class="pm-print-head"><div style="font-size:18px;font-weight:900;color:var(--ink-brand);text-transform:uppercase">Paid media report${venue?' · '+escapeAttr(venue):''}</div><div class="u-meta">${escapeAttr(document.getElementById('mrPeriod')?.selectedOptions[0]?.textContent||'')} · printed ${new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'})}</div></div>
+  <div class="stats" style="margin-bottom:0">
     ${canMoney?kpiTile(pmMoney(s.spend),'Spend',winLabel):''}
     ${kpiTile(s.results==null?nie:pmInt(s.results),'Results',s.results==null?'':'Leads + sales')}
     ${canMoney?kpiTile(s.results==null?nie:(s.costPerResult!=null?pmMoney(s.costPerResult,true):'—'),'Cost per result'):''}
     ${kpiTile(s.clicks==null?nie:pmInt(s.clicks),'Link clicks',s.ctr!=null?`${s.ctr.toFixed(2)}% click-through`:'')}
+    ${canMoney&&s.costPerLpv!=null?tile(pmMoney(s.costPerLpv,true),'Cost per landing page view',`${pmInt(s.landingPageViews)} landing page views`):''}
+    ${canMoney&&s.cpc!=null?tile(pmMoney(s.cpc,true),'Cost per click'):''}
+    ${canMoney&&s.cpm!=null?tile(pmMoney(s.cpm,true),'CPM','Per 1,000 impressions'):''}
+    ${s.frequency!=null&&!approxReach?tile(s.frequency.toFixed(1),'Frequency','Impressions ÷ reach'):''}
+    ${canMoney?(s.roas!=null?tile(s.roas.toFixed(1)+'×','ROAS'):(missing.has('purchaseValue')?tile(nie,'ROAS'):'')):''}
     ${kpiTile(pmInt(groups.length),'Activities with ads',`${rows.length} campaign${rows.length===1?'':'s'}, ${unlinked.length} not linked`)}
   </div>
-  <div class="mr-note">${fromExport?`From Ads Manager exports: ${(META_SNAPSHOT.ranges||[]).filter(r=>!venue||r.venues.includes(venue)).map(r=>`${escapeAttr(r.venues.map(shortVenue).join(', '))} ${r.from?`${fmtShort(r.from)} to ${fmtShort(r.to)}`:''}, uploaded ${pmAgo(r.uploaded)}`).join(' · ')||'none for this venue'}.`:`From Meta, updated ${pmAgo(META_SNAPSHOT.generatedAt)}.`} Results are leads + sales; cost per result is spend ÷ results across the same campaigns.${missing.size?` Not in this export: ${[...missing].map(k=>META_EXPORT_METRICS[k]).join(', ')}. Add them in Ads Manager (Columns → Customise columns) and upload again.`:''}</div>`;
+  <div class="mr-note">${fromExport?`From Ads Manager exports: ${(META_SNAPSHOT.ranges||[]).filter(r=>!venue||r.venues.includes(venue)).map(r=>`${escapeAttr(r.venues.map(shortVenue).join(', '))} ${r.from?`${fmtShort(r.from)} to ${fmtShort(r.to)}`:''}, uploaded ${pmAgo(r.uploaded)}`).join(' · ')||'none for this venue'}.`:`From Meta, updated ${pmAgo(META_SNAPSHOT.generatedAt)}.`} Results are leads + sales; cost per result is spend ÷ results across the same campaigns.${missing.size?` Not in this export: ${[...missing].map(k=>META_EXPORT_METRICS[k]).join(', ')}. Add them in Ads Manager (Columns → Customise columns) and upload again.`:''}</div>${pmHelpListHtml()}`;
   if(!fromExport){
     const key=canMoney?'spend':'clicks',lab=canMoney?'Daily spend':'Daily link clicks';
     h+=`<div class="mr-sub">${lab} and leads + sales · last 30 days</div><div class="mr-chart">${pmTrendSvg(rows,key,lab,canMoney)}</div>
       <div class="mr-key"><span><i style="background:var(--ink-brand)"></i>${lab} (left)</span><span><i style="background:var(--gold-300,var(--line))"></i>Leads + sales (right)</span></div>`;
   }
 
-  // b) By activity.
+  // Charts.
   const o={canMoney,approxReach,missing};
+  h+=pmChartsHtml(rows,groups,win,o,venue);
+  // b) By activity.
   h+=`<div class="mr-sub">By activity</div>`;
   h+=groups.length?`<div style="display:grid;gap:10px">${groups.map(g=>pmActivityCardHtml(g.ev,g.camps,win,o)).join('')}</div>`
     :`<div class="mr-note">No campaigns are linked to activities${from?' in this period':''} yet.${unlinked.length?' Link them under "Needs linking" below.':''}</div>`;
   if(outOfPeriod)h+=`<div class="mr-note">${outOfPeriod} more activit${outOfPeriod===1?'y has':'ies have'} linked campaigns but ended before this period. Choose a longer Period to include ${outOfPeriod===1?'it':'them'}.</div>`;
+  h+='</div>'; // #pmPrintArea
 
   // d) Who saw it, collapsed.
   if(fromExport&&rows.some(c=>c.audience)){
