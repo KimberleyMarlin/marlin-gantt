@@ -9612,7 +9612,8 @@ function parseMetaExport(rows,fallbackVenue){
   const col=(...tests)=>head.findIndex(h=>tests.some(t=>typeof t==='string'?h===t:t.test(h)));
   const c={account:col('account name'),name:col('campaign name'),id:col('campaign id'),delivery:col('campaign delivery'),spend:col(/^amount spent/),reach:col('reach'),impressions:col('impressions'),
     clicks:col('link clicks'),results:col('results'),indicator:col('result indicator','result type'),leads:col('leads'),purchases:col('purchases','website purchases'),purchaseValue:col(/^purchases conversion value/,/^website purchases conversion value/),
-    landingPageViews:col('landing page views'),age:col('age'),gender:col('gender'),month:col('month'),from:col('reporting starts'),to:col('reporting ends'),starts:col('starts'),ends:col('ends'),objective:col('objective')};
+    landingPageViews:col('landing page views'),age:col('age'),gender:col('gender'),month:col('month'),platform:col('platform','publisher platform'),placement:col('placement','platform position'),region:col('region'),
+    accountId:col('account id'),adName:col('ad name'),adId:col('ad id'),adsetName:col('ad set name'),from:col('reporting starts'),to:col('reporting ends'),starts:col('starts'),ends:col('ends'),objective:col('objective')};
   if(c.name<0)throw new Error('This file has no "Campaign name" column. In Ads Manager, open the Campaigns tab, then Reports → Export table data → .csv.');
   if(c.spend<0)throw new Error('This file has no "Amount spent" column. Add it under Columns → Customise columns, then export again.');
   if(c.account<0&&!fallbackVenue)throw new Error('Choose which venue this export is for, or export with the "Account name" column.');
@@ -9630,7 +9631,7 @@ function parseMetaExport(rows,fallbackVenue){
     const key=account+'\u0000'+name;
     let g=groups.get(key);
     if(!g){g={account,name,id:v(r,c.id),delivery:v(r,c.delivery).toLowerCase().replace(/\s+/g,'_'),objective:v(r,c.objective),starts:'',ends:'',rows:0,
-      m:{spend:0,impressions:0,reach:0,clicks:0,leads:0,purchases:0,purchaseValue:0,landingPageViews:0},aud:{age:{},gender:{}},monthly:{}};groups.set(key,g);}
+      m:{spend:0,impressions:0,reach:0,clicks:0,leads:0,purchases:0,purchaseValue:0,landingPageViews:0},aud:{age:{},gender:{},platform:{},placement:{},region:{}},monthly:{},ads:{},accountId:''};groups.set(key,g);}
     g.rows++;
     const ind=v(r,c.indicator).toLowerCase(),results=metaNum(v(r,c.results));
     const metric=k=>c[k]>=0?metaNum(v(r,c[k])):(viaResults(k)&&viaResults(k).test(ind)?results:0);
@@ -9638,7 +9639,8 @@ function parseMetaExport(rows,fallbackVenue){
     g.m.reach=Math.max(g.m.reach,metaNum(v(r,c.reach)));
     ['clicks','leads','purchases','purchaseValue','landingPageViews'].forEach(k=>{g.m[k]+=metric(k);});
     // Age and gender breakdowns are kept for "Who saw it" rather than thrown away.
-    [['age',v(r,c.age)],['gender',v(r,c.gender).toLowerCase()]].forEach(([dim,band])=>{
+    // Placement, platform and region breakdowns feed "Where it ran" the same way.
+    [['age',v(r,c.age)],['gender',v(r,c.gender).toLowerCase()],['platform',v(r,c.platform).toLowerCase()],['placement',v(r,c.placement)],['region',v(r,c.region)]].forEach(([dim,band])=>{
       if(c[dim]<0||!band)return;
       const b=g.aud[dim][band]=g.aud[dim][band]||{spend:0,reach:0,impressions:0,clicks:0,results:0};
       b.spend+=metaNum(v(r,c.spend));b.reach+=metaNum(v(r,c.reach));b.impressions+=metaNum(v(r,c.impressions));
@@ -9654,6 +9656,11 @@ function parseMetaExport(rows,fallbackVenue){
     if(/^\d{4}-\d{2}-\d{2}$/.test(s0)&&(!g.starts||s0<g.starts))g.starts=s0;
     if(/^\d{4}-\d{2}-\d{2}$/.test(e0)&&e0>g.ends)g.ends=e0;
     if(!g.id)g.id=v(r,c.id);
+    if(!g.accountId)g.accountId=v(r,c.accountId).replace(/^act_/,'');
+    // Ad-level rows (an export from the Ads tab, or with Ad name) are kept per ad.
+    const adKey=v(r,c.adId)||v(r,c.adName);
+    if(adKey){const ad=g.ads[adKey]=g.ads[adKey]||{name:v(r,c.adName)||adKey,id:v(r,c.adId),adset:v(r,c.adsetName),spend:0,impressions:0,clicks:0,landingPageViews:0,results:0};
+      ad.spend+=metaNum(v(r,c.spend));ad.impressions+=metaNum(v(r,c.impressions));ad.clicks+=metric('clicks');ad.landingPageViews+=metric('landingPageViews');ad.results+=metric('leads')+metric('purchases');}
   }
   const today=toLocalISODate(new Date());
   const campaigns=[...groups.values()].map(g=>{
@@ -9663,17 +9670,19 @@ function parseMetaExport(rows,fallbackVenue){
     return{id:g.id||`x-${metaSlug(g.account)}-${metaSlug(g.name)}`,venue,account:g.account,name:g.name,objective:g.objective,
       status:c.delivery>=0?(META_EXPORT_STATUS[g.delivery]||'PAUSED'):(g.ends&&g.ends<today?'COMPLETED':'UNKNOWN'),
       start:g.starts,end:g.ends,metrics:{lifetime:m},daily:[],
-      audience:(c.age>=0||c.gender>=0)?g.aud:null,monthly:Object.keys(g.monthly).length?g.monthly:null};
+      audience:['age','gender','platform','placement','region'].some(d=>c[d]>=0)?Object.fromEntries(Object.entries(g.aud).filter(([,v])=>Object.keys(v).length)):null,
+      monthly:Object.keys(g.monthly).length?g.monthly:null,ads:Object.keys(g.ads).length?Object.values(g.ads):null,accountId:g.accountId};
   });
   if(!campaigns.length)throw new Error('No campaigns found in this file.');
   const byAccount={};campaigns.forEach(x=>{const k=x.venue;(byAccount[k]=byAccount[k]||{campaigns:0,spend:0});byAccount[k].campaigns++;byAccount[k].spend+=x.metrics.lifetime.spend;});
-  return{campaigns,from,to,byAccount,missing,approxReach:dataRows>campaigns.length,hasAccounts:c.account>=0};
+  const breakdowns=['age','gender','month','platform','placement','region'].filter(d=>c[d]>=0);
+  return{campaigns,from,to,byAccount,missing,approxReach:dataRows>campaigns.length,hasAccounts:c.account>=0,breakdowns};
 }
 // For each venue, campaigns from the newest export that covers it. null when there are none.
 async function loadMetaExports(token){
   const files=(await listDriveFolder(META_IMPORTS_PATH,token)).filter(f=>f.file&&/\.csv$/i.test(f.name))
     .sort((a,b)=>String(b.lastModifiedDateTime).localeCompare(String(a.lastModifiedDateTime)));
-  const taken=new Set(),campaigns=[],ranges=[],errors=[],missing=new Set();let latest='',approxReach=false;
+  const taken=new Set(),periodOf={},campaigns=[],ranges=[],errors=[],missing=new Set();let latest='',approxReach=false;
   for(const f of files){
     const code=(f.name.match(/^\d{4}-\d{2}-\d{2}\s+([A-Za-z]{2,4})\s/)||[])[1]?.toUpperCase();
     if(!code||(code!=='ALL'&&!REPORT_VENUE_CODES[code]))continue;
@@ -9681,14 +9690,31 @@ async function loadMetaExports(token){
       const r=await fetchWithRetry(`${graphDrive()}/items/${f.id}/content`,{headers:{Authorization:'Bearer '+token}});
       if(!r.ok)throw new Error('HTTP '+r.status);
       const p=parseMetaExport(parseCsvRows(await r.text()),REPORT_VENUE_CODES[code]||'');
-      // Newest file wins per venue: older files only fill in venues not covered yet.
+      // Newest file wins per venue and drives the totals. An older file for the SAME period (say a
+      // Placement export next to a Demographics one) only adds the breakdowns the totals file
+      // lacks (age, gender, platform, placement, region, month, ads), so spend is never counted
+      // twice. Older files for other periods are ignored for venues already covered.
       const fresh=p.campaigns.filter(x=>!taken.has(x.venue));
-      if(!fresh.length)continue;
-      const venues=[...new Set(fresh.map(x=>x.venue))];venues.forEach(x=>taken.add(x));
-      campaigns.push(...fresh);
-      ranges.push({id:f.id,file:f.name,url:f.webUrl,venues,from:p.from,to:p.to,uploaded:f.lastModifiedDateTime,missing:p.missing});
-      p.missing.forEach(k=>missing.add(k));if(p.approxReach)approxReach=true;
-      if(String(f.lastModifiedDateTime)>latest)latest=f.lastModifiedDateTime;
+      const venues=[...new Set(fresh.map(x=>x.venue))];
+      if(fresh.length){
+        venues.forEach(x=>{taken.add(x);periodOf[x]=`${p.from}|${p.to}`;});
+        campaigns.push(...fresh);
+        ranges.push({id:f.id,file:f.name,url:f.webUrl,venues,from:p.from,to:p.to,uploaded:f.lastModifiedDateTime,missing:p.missing,role:'totals',breakdowns:p.breakdowns});
+        p.missing.forEach(k=>missing.add(k));if(p.approxReach)approxReach=true;
+        if(String(f.lastModifiedDateTime)>latest)latest=f.lastModifiedDateTime;
+      }
+      const extra=p.campaigns.filter(x=>!venues.includes(x.venue)&&periodOf[x.venue]===`${p.from}|${p.to}`);
+      if(extra.length){
+        let added=0;
+        extra.forEach(x=>{
+          const t=campaigns.find(y=>y.venue===x.venue&&normTitle(y.name)===normTitle(x.name)&&(y.account||'')===(x.account||''));if(!t)return;
+          Object.entries(x.audience||{}).forEach(([dim,bands])=>{t.audience=t.audience||{};if(!t.audience[dim]){t.audience[dim]=bands;added++;}});
+          if(x.monthly&&!t.monthly){t.monthly=x.monthly;added++;}
+          if(x.ads&&!t.ads){t.ads=x.ads;added++;}
+          if(x.accountId&&!t.accountId)t.accountId=x.accountId;
+        });
+        ranges.push({id:f.id,file:f.name,url:f.webUrl,venues:[...new Set(extra.map(x=>x.venue))],from:p.from,to:p.to,uploaded:f.lastModifiedDateTime,missing:p.missing,role:added?'breakdowns':'unused',breakdowns:p.breakdowns});
+      }
     }catch(e){errors.push(`${f.name}: ${e.message}`);}
   }
   if(!campaigns.length&&!errors.length)return null;
@@ -9732,37 +9758,156 @@ async function removeMetaExport(fileId,fileName){
 // roles that don't see spend).
 const META_GENDER_LABEL={female:'Women',male:'Men',unknown:'Unknown'};
 const META_GENDER_COLOUR={female:'var(--series-ty)',male:'var(--series-3)',unknown:'var(--series-ly)'};
-function metaAudienceHtml(campaigns,canMoney,missing){
-  const sum={age:{},gender:{}};
-  campaigns.forEach(c=>{if(!c.audience)return;['age','gender'].forEach(dim=>Object.entries(c.audience[dim]||{}).forEach(([band,b])=>{const t=sum[dim][band]=sum[dim][band]||{spend:0,reach:0,impressions:0,clicks:0,results:0};Object.keys(t).forEach(k=>t[k]+=b[k]||0);}));});
+const META_PLATFORM_LABEL={facebook:'Facebook',instagram:'Instagram',messenger:'Messenger',audience_network:'Audience Network',threads:'Threads'};
+// Bars for a set of breakdown dimensions, from every campaign's breakdown rows added up.
+// dims: [[key,title],…]. Used for "Who saw it" (age, gender) and "Where it ran" (platform,
+// placement, region).
+function metaBreakdownHtml(campaigns,canMoney,missing,dims){
+  const sum={};dims.forEach(([d])=>sum[d]={});
+  campaigns.forEach(c=>{if(!c.audience)return;dims.forEach(([dim])=>Object.entries(c.audience[dim]||{}).forEach(([band,b])=>{const t=sum[dim][band]=sum[dim][band]||{spend:0,reach:0,impressions:0,clicks:0,results:0};Object.keys(t).forEach(k=>t[k]+=b[k]||0);}));});
   const key=canMoney?'spend':'impressions';
   const ageOrder=b=>/^\d/.test(b)?parseInt(b,10):999;
+  const label=(dim,band)=>dim==='gender'?(META_GENDER_LABEL[band]||band):dim==='platform'?(META_PLATFORM_LABEL[band]||band):band;
+  const colour=(dim,band)=>dim==='gender'?(META_GENDER_COLOUR[band]||'var(--series-ty)'):dim==='platform'?({facebook:'var(--series-ty)',instagram:'var(--series-3)'}[band]||'var(--series-ly)'):'var(--series-ty)';
   const block=(dim,title)=>{
-    const bands=Object.entries(sum[dim]);if(!bands.length)return'';
+    let bands=Object.entries(sum[dim]);if(!bands.length)return'';
     bands.sort((a,b)=>dim==='age'?ageOrder(a[0])-ageOrder(b[0]):b[1][key]-a[1][key]);
-    const max=Math.max(1,...bands.map(([,b])=>b[key])),total=bands.reduce((a,[,b])=>a+b[key],0)||1;
+    if(dim==='region'&&bands.length>10)bands=bands.slice(0,10);
+    const max=Math.max(1,...bands.map(([,b])=>b[key])),total=Object.values(sum[dim]).reduce((a,b)=>a+b[key],0)||1;
     return`<div style="flex:1 1 280px;min-width:0"><div class="mr-sub" style="margin-top:0">${title}</div>${bands.map(([band,b])=>{
       const bits=[canMoney&&pmMoney(b.spend),`${pmInt(b.reach)} reach`,`${pmInt(b.impressions)} impressions`,!missing.has('clicks')&&`${pmInt(b.clicks)} link clicks`,(!missing.has('leads')||!missing.has('purchases'))&&`${pmInt(b.results)} leads + sales`].filter(Boolean);
-      return`<div style="display:grid;grid-template-columns:70px 1fr;gap:8px;align-items:center;padding:3px 0;font-size:12px">
-        <span style="font-weight:600;color:var(--ink-brand)">${escapeAttr(dim==='gender'?(META_GENDER_LABEL[band]||band):band)}</span>
-        <span><span style="display:block;height:10px;width:${Math.max(1,b[key]/max*100)}%;background:${dim==='gender'?(META_GENDER_COLOUR[band]||'var(--series-ty)'):'var(--series-ty)'};border-radius:var(--radius-sm)"></span>
-        <span class="u-meta">${Math.round(b[key]/total*100)}% of ${canMoney?'spend':'impressions'} · ${bits.join(' · ')}</span></span></div>`;}).join('')}</div>`;
+      return`<div style="display:grid;grid-template-columns:minmax(70px,30%) 1fr;gap:8px;align-items:center;padding:3px 0;font-size:12px">
+        <span style="font-weight:600;color:var(--ink-brand);overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(label(dim,band))}">${escapeAttr(label(dim,band))}</span>
+        <span><span style="display:block;height:10px;width:${Math.max(1,b[key]/max*100)}%;background:${colour(dim,band)};border-radius:var(--radius-sm)"></span>
+        <span class="u-meta">${Math.round(b[key]/total*100)}% of ${canMoney?'spend':'impressions'} · ${bits.join(' · ')}</span></span></div>`;}).join('')}${dim==='region'&&Object.keys(sum[dim]).length>10?`<div class="u-meta">Top 10 of ${Object.keys(sum[dim]).length} regions.</div>`:''}</div>`;
   };
-  const h=block('age','By age')+block('gender','By gender');
+  const h=dims.map(([d,t])=>block(d,t)).join('');
   return h?`<div style="display:flex;gap:24px;flex-wrap:wrap">${h}</div>`:'';
+}
+const META_WHO_DIMS=[['age','By age'],['gender','By gender']];
+const META_WHERE_DIMS=[['platform','By platform'],['placement','By placement'],['region','By region']];
+function metaAudienceHtml(campaigns,canMoney,missing){return metaBreakdownHtml(campaigns,canMoney,missing,META_WHO_DIMS);}
+function metaWhereHtml(campaigns,canMoney,missing){return metaBreakdownHtml(campaigns,canMoney,missing,META_WHERE_DIMS);}
+
+// Links out to Meta. Exports never contain the ad image or text, so these (and an attached
+// screenshot) are how the report shows what the ads looked like until the Meta sync can read
+// creative straight from the API.
+function metaAdsManagerUrl(c,adId){
+  const act=c.accountId?`act=${encodeURIComponent(c.accountId)}&`:'';
+  if(adId)return`https://adsmanager.facebook.com/adsmanager/manage/ads?${act}selected_ad_ids=${encodeURIComponent(adId)}`;
+  return/^\d+$/.test(String(c.id))?`https://adsmanager.facebook.com/adsmanager/manage/campaigns?${act}selected_campaign_ids=${encodeURIComponent(c.id)}`:`https://adsmanager.facebook.com/adsmanager/manage/campaigns${c.accountId?'?act='+encodeURIComponent(c.accountId):''}`;
+}
+function metaAdLibraryUrl(venue){
+  const id=(SOCIAL_ACCOUNTS[venue]||SOCIAL_ACCOUNTS[venue==='Loaded Rewards'?'Loaded Rewards':'']||{}).pageId;
+  return id?`https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=AU&view_all_page_id=${encodeURIComponent(id)}`:'';
+}
+// Screenshots of the creative, attached by hand per campaign. Saved next to the imports as
+// "Integrations/Meta/Creative/<campaign key>__<file name>" and listed once with thumbnails.
+const META_CREATIVE_PATH='Integrations/Meta/Creative';
+let META_CREATIVE={};
+async function loadMetaCreative(token){
+  META_CREATIVE={};
+  try{
+    const res=await fetchWithRetry(`${graphDrive()}/root:/${graphPath(META_CREATIVE_PATH)}:/children?$select=id,name,webUrl,file&$expand=thumbnails&$top=999`,{headers:{Authorization:'Bearer '+token}});
+    if(!res.ok)return;
+    ((await res.json()).value||[]).filter(f=>f.file).forEach(f=>{
+      const k=f.name.split('__')[0];if(!k||k===f.name)return;
+      (META_CREATIVE[k]=META_CREATIVE[k]||[]).push({id:f.id,name:f.name.slice(k.length+2),url:f.webUrl,thumb:f.thumbnails?.[0]?.medium?.url||f.thumbnails?.[0]?.small?.url||''});
+    });
+  }catch(e){console.warn('Could not read attached creative:',e);}
+}
+async function uploadMetaCreative(input,campaignId){
+  const file=input.files?.[0];input.value='';if(!file)return;
+  if(!/^image\//.test(file.type)){alert('Attach an image (a screenshot of the ad).');return;}
+  if(file.size>4*1024*1024){alert('That image is over 4 MB. Take a smaller screenshot.');return;}
+  try{
+    const token=await getToken(true);
+    const name=`${metaSlug(campaignId)}__${file.name.replace(/[\\/:*?"<>|#%]/g,'-')}`;
+    const res=await fetch(`${graphDrive()}/root:/${graphPath(META_CREATIVE_PATH+'/'+name)}:/content?@microsoft.graph.conflictBehavior=rename`,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':file.type},body:file});
+    if(!res.ok){const t=await res.text();throw new Error(res.status===403||/accessDenied/.test(t)?'Your account can\'t save files to Integrations/Meta in SharePoint. A site owner needs to give you Edit access.':graphErrorText(res.status,t));}
+    await loadMetaCreative(token);renderMarketingReport();
+    showToast('Screenshot attached',file.name);
+  }catch(e){alert('Could not attach the screenshot: '+e.message);}
+}
+function metaCreativeHtml(c){
+  const list=META_CREATIVE[metaSlug(c.id)]||[];
+  const inputId='pmCreative-'+metaSlug(c.id);
+  return`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px">
+    ${list.map(x=>`<a href="${escapeAttr(x.url)}" target="_blank" rel="noopener" title="${escapeAttr(x.name)}" style="display:block;width:64px;height:64px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-alt) ${x.thumb?`url('${x.thumb.replace(/'/g,'%27')}') center/cover`:''}">${x.thumb?'':'<span class="u-meta" style="font-size:10px;padding:4px;display:block">Image</span>'}</a>`).join('')}
+    ${canEditCampaigns()?`<span class="mr-noprint"><input type="file" id="${inputId}" accept="image/*" style="display:none" onchange="uploadMetaCreative(this,'${escapeAttr(c.id)}')"><button class="btn btn-s" style="font-size:12px" onclick="document.getElementById('${inputId}').click()">${list.length?'+ Another screenshot':'Attach screenshot'}</button></span>`:''}
+  </div>`;
+}
+// One campaign: its figures, links out, attached screenshots, and its ads when the export has them.
+function metaCampaignDetailHtml(c,win,o){
+  const m=pmAgg([c],win);
+  const lib=metaAdLibraryUrl(c.venue);
+  const ads=(c.ads||[]).slice().sort((a,b)=>b.spend-a.spend);
+  return`<div style="border-top:1px solid var(--line);padding-top:8px">
+    <div style="font-size:12px;font-weight:700">${escapeAttr(c.name)}</div>
+    <div class="u-meta">${[escapeAttr(shortVenue(c.venue)),PM_OBJECTIVES[c.objective]||c.objective,PM_STATUS[c.status]&&c.status!=='UNKNOWN'?PM_STATUS[c.status].t:''].filter(Boolean).join(' · ')}</div>
+    <div class="u-meta" style="color:var(--ink)">${[o.canMoney&&pmMoney(m.spend),m.results!=null&&`${pmInt(m.results)} results`,o.canMoney&&m.costPerResult!=null&&`${pmMoney(m.costPerResult,true)} per result`,m.clicks!=null&&`${pmInt(m.clicks)} link clicks`,m.landingPageViews&&`${pmInt(m.landingPageViews)} landing page views`,o.canMoney&&m.costPerLpv!=null&&`${pmMoney(m.costPerLpv,true)} per landing page view`,o.canMoney&&m.cpc!=null&&`${pmMoney(m.cpc,true)} per click`,`${pmInt(m.reach)} reach`].filter(Boolean).join(' · ')}</div>
+    <div class="mr-noprint" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;font-size:12px"><a href="${escapeAttr(metaAdsManagerUrl(c))}" target="_blank" rel="noopener">Open in Ads Manager ↗</a>${lib?`<a href="${escapeAttr(lib)}" target="_blank" rel="noopener">Ad Library ↗</a>`:''}</div>
+    ${metaCreativeHtml(c)}
+    ${ads.length?`<details style="margin-top:6px"><summary class="u-meta" style="cursor:pointer">Ads (${ads.length})</summary><div style="display:grid;gap:6px;margin-top:6px">${ads.map(ad=>`<div style="font-size:12px"><span style="font-weight:600">${escapeAttr(ad.name)}</span>${ad.adset?` <span class="u-meta">· ${escapeAttr(ad.adset)}</span>`:''}
+      <div class="u-meta" style="color:var(--ink)">${[o.canMoney&&pmMoney(ad.spend),!o.missing.has('leads')||!o.missing.has('purchases')?`${pmInt(ad.results)} results${o.canMoney&&ad.results?` · ${pmMoney(ad.spend/ad.results,true)} per result`:''}`:'',!o.missing.has('clicks')&&`${pmInt(ad.clicks)} link clicks`,ad.landingPageViews&&`${pmInt(ad.landingPageViews)} landing page views`,`${pmInt(ad.impressions)} impressions`].filter(Boolean).join(' · ')}${ad.id?` · <a class="mr-noprint" href="${escapeAttr(metaAdsManagerUrl(c,ad.id))}" target="_blank" rel="noopener">Open ad ↗</a>`:''}</div></div>`).join('')}</div></details>`:''}
+    ${c.audience&&Object.keys(c.audience).length?`<details style="margin-top:4px"><summary class="u-meta" style="cursor:pointer">Who saw it and where</summary><div style="padding:6px 0;display:grid;gap:10px">${metaAudienceHtml([c],o.canMoney,o.missing)}${metaWhereHtml([c],o.canMoney,o.missing)}</div></details>`:''}
+  </div>`;
+}
+
+// "+ Create activity" from an unlinked campaign: opens the normal Submit → Activity form filled
+// in from the campaign, and links the campaign to the new activity once it's saved.
+let _pmCreateFromCampaign=null;
+function metaCampaignActivityTitle(c){
+  const parts=String(c.name||'').split('|').map(x=>x.trim()).filter(Boolean);
+  return parts.length>=2?parts[1]:String(c.name||'').trim();
+}
+function pmCreateActivityFromCampaign(campaignId){
+  const c=metaVisibleCampaigns().find(x=>String(x.id)===String(campaignId));if(!c)return;
+  const range=(META_SNAPSHOT?.ranges||[]).find(r=>(r.venues||[]).includes(c.venue)&&r.role==='totals');
+  navTo('submit');
+  setTimeout(()=>{
+    pickSubmitPath('activity');
+    _pmCreateFromCampaign={id:c.id,name:c.name};
+    const set=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null){el.value=val;el.dispatchEvent(new Event('change'));}};
+    const loaded=c.venue==='Loaded Rewards';
+    set('fVenue',c.venue&&c.venue!=='Unassigned'&&!loaded?c.venue:(loaded?'All Venues':''));
+    set('fActType','Campaign');
+    set('fActGroup','Campaigns & Marketing');
+    set('fActSubtype',loaded?'Loaded Rewards Campaign':'Venue Marketing Campaign');
+    set('fStart',c.start||range?.from||'');
+    set('fEnd',c.end||range?.to||'');
+    if(loaded){const cb=document.getElementById('fLoadedRewardsFlag');if(cb&&!cb.checked){cb.checked=true;cb.dispatchEvent(new Event('change'));}}
+    const t=document.getElementById('fTitle');if(t){t.value=metaCampaignActivityTitle(c);markTitleTouched();}
+    showFMsg(`Creating an activity for the Meta campaign "${c.name}". It's linked to the campaign as soon as it's submitted.`,'ok');
+  },150);
+}
+// Called by submitEvent() once a new activity is in EVENTS.
+async function pmLinkCreatedActivity(ev){
+  const pending=_pmCreateFromCampaign;_pmCreateFromCampaign=null;
+  if(!pending||!ev)return;
+  await linkMetaCampaign(pending.id,ev.id);
 }
 function metaExportUploadHtml(venue){
   if(!canEditCampaigns()||isPreviewMode)return'';
   const opts=['Whitfords Brewing Co','Loaded Rewards',...Object.values(REPORT_VENUE_CODES).filter(v=>!['Whitfords Brewing Co','Loaded Rewards'].includes(v))].filter((v,i,a)=>a.indexOf(v)===i);
   const files=META_SNAPSHOT?.source==='export'?(META_SNAPSHOT.ranges||[]):[];
+  const role={totals:'Drives the totals',breakdowns:'Breakdowns only (same period)',unused:'Not used'};
+  const cols='Account name, Account ID, Campaign name, Campaign ID, Campaign delivery, Starts, Ends, Amount spent, Reach, Impressions, Link clicks, CTR (link click-through rate), Results, Result indicator, Cost per result, Leads, Purchases, Purchases conversion value, Landing page views';
   return`<div class="mr-noprint" style="margin-top:8px">
-    ${files.length?`<div style="font-size:12px;margin-bottom:8px">${files.map(f=>`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:4px 0;border-top:1px solid var(--line)"><span style="flex:1;min-width:200px">${escapeAttr(f.file)} <span class="u-meta">· ${escapeAttr(f.venues.map(shortVenue).join(', '))}${f.from?` · ${fmtShort(f.from)} to ${fmtShort(f.to)}`:''}</span></span><button class="btn btn-s" onclick="removeMetaExport('${escapeAttr(f.id)}','${escapeAttr(f.file).replace(/'/g,'&#39;')}')">✕ Remove this upload</button></div>`).join('')}</div>`:''}
+    ${files.length?`<div style="font-size:12px;margin-bottom:8px">${files.map(f=>`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:4px 0;border-top:1px solid var(--line)"><span style="flex:1;min-width:200px">${escapeAttr(f.file)} <span class="u-meta">· ${escapeAttr(f.venues.map(shortVenue).join(', '))}${f.from?` · ${fmtShort(f.from)} to ${fmtShort(f.to)}`:''}${(f.breakdowns||[]).length?` · by ${escapeAttr(f.breakdowns.join(', '))}`:''}</span> <span class="tag ${f.role==='totals'?'t-b':'t-gr'}">${escapeAttr(role[f.role]||'')}</span></span><button class="btn btn-s" onclick="removeMetaExport('${escapeAttr(f.id)}','${escapeAttr(f.file).replace(/'/g,'&#39;')}')">✕ Remove this upload</button></div>`).join('')}</div>`:''}
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <select class="form-select" id="pmExportVenue" style="width:auto;font-size:12px" aria-label="Venue, if the export has no Account name column">${opts.map(v=>`<option value="${escapeAttr(v)}"${v===(venue||'Whitfords Brewing Co')?' selected':''}>${escapeAttr(v)}</option>`).join('')}</select>
       <input type="file" id="pmExportInput" accept=".csv,text/csv" style="display:none" onchange="uploadMetaExport(this)">
       <button class="btn btn-s" id="pmExportBtn" onclick="document.getElementById('pmExportInput').click()">Upload Meta export</button>
     </div>
-    <div class="u-meta" style="margin-top:4px">Ads Manager → Campaigns tab, no breakdowns, the date range you want → Reports → Export table data → .csv. Include <em>Account name</em> to upload all ad accounts in one file (the venue picker is then ignored), and <em>Link clicks</em>, <em>Results</em>, <em>Result indicator</em>, <em>Leads</em>, <em>Purchases</em>, <em>Purchases conversion value</em> and <em>Landing page views</em> for full results.</div>
+    <details style="margin-top:6px"><summary class="u-meta" style="cursor:pointer;font-weight:700">How to export from Ads Manager</summary>
+      <div class="u-meta" style="color:var(--ink);display:grid;gap:6px;margin-top:6px;line-height:1.5">
+        <div>Meta won't combine every breakdown in one export, so upload <strong>two files for the same date range</strong>. The newest one drives the totals; the other only adds its breakdowns, so spend is never counted twice.</div>
+        <div><strong>1. Demographics:</strong> Ads tab (or Campaigns tab), set the date range, Breakdown → By Delivery → <em>Age</em> and <em>Gender</em>, and By Time → <em>Month</em>. Reports → Export table data → .csv.</div>
+        <div><strong>2. Placement:</strong> same tab and dates, Breakdown → By Delivery → <em>Platform</em> and <em>Placement</em> (or <em>Region</em>). Export as above.</div>
+        <div><strong>Columns for both</strong> (Columns → Customise columns, save as a preset): ${cols}. Exporting from the Ads tab adds <em>Ad name</em>, <em>Ad ID</em> and <em>Ad set name</em>, so each ad is listed with an "Open ad" link.</div>
+        <div>Exports never include the ad image or text. Use <em>Attach screenshot</em> on a campaign, or its Ads Manager and Ad Library links.</div>
+      </div></details>
   </div>`;
 }
 
@@ -9782,6 +9927,7 @@ async function loadMetaSnapshot(force=false){
     let snap=await get(META_SNAPSHOT_PATH.all);
     if(!snap&&currentVenueAccess)snap=await get(`${META_SNAPSHOT_PATH.venues}/${venueSlug(currentVenueAccess)}.json`);
     // No sync yet: fall back to uploaded Ads Manager exports.
+    await loadMetaCreative(token);
     if(!snap){
       snap=await loadMetaExports(token);
       // An export is a report on one period: show every campaign in it, not just active ones.
@@ -9984,12 +10130,7 @@ function pmActivityCardHtml(ev,camps,win,o){
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">${pmFigsHtml(a,o)}</div>
     ${outcomes?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding-top:8px;border-top:1px solid var(--line)">${outcomes}</div><div class="u-meta" style="margin-top:-4px">Outcomes from the activity's post-campaign report.</div>`:(isActivityDelivered(ev)&&!isActivityReported(ev)?`<div class="u-meta">No post-campaign report yet, so ticket and revenue results aren't shown.</div>`:'')}
     <details class="mr-noprint"><summary class="u-meta" style="cursor:pointer;font-weight:700">Campaigns (${camps.length})</summary>
-      <div style="display:grid;gap:8px;margin-top:8px">${camps.slice().sort((x,y)=>(y.metrics?.[win]?.spend||0)-(x.metrics?.[win]?.spend||0)).map(c=>{
-        const m=pmAgg([c],win);
-        return`<div style="border-top:1px solid var(--line);padding-top:8px"><div style="font-size:12px;font-weight:700">${escapeAttr(c.name)}</div>
-          <div class="u-meta">${[escapeAttr(shortVenue(c.venue)),PM_OBJECTIVES[c.objective]||c.objective,PM_STATUS[c.status]&&c.status!=='UNKNOWN'?PM_STATUS[c.status].t:''].filter(Boolean).join(' · ')}</div>
-          <div class="u-meta" style="color:var(--ink)">${[o.canMoney&&pmMoney(m.spend),m.results!=null&&`${pmInt(m.results)} results`,m.clicks!=null&&`${pmInt(m.clicks)} link clicks`,m.landingPageViews&&`${pmInt(m.landingPageViews)} landing page views`,o.canMoney&&m.costPerLpv!=null&&`${pmMoney(m.costPerLpv,true)} per landing page view`,o.canMoney&&m.cpc!=null&&`${pmMoney(m.cpc,true)} per click`,`${pmInt(m.reach)} reach`].filter(Boolean).join(' · ')}</div>
-          ${c.audience?`<details style="margin-top:4px"><summary class="u-meta" style="cursor:pointer">Who saw it</summary><div style="padding:6px 0">${metaAudienceHtml([c],o.canMoney,o.missing)}</div></details>`:''}</div>`;}).join('')}</div>
+      <div style="display:grid;gap:8px;margin-top:8px">${camps.slice().sort((x,y)=>(y.metrics?.[win]?.spend||0)-(x.metrics?.[win]?.spend||0)).map(c=>metaCampaignDetailHtml(c,win,o)).join('')}</div>
     </details>
   </div>`;
 }
@@ -10159,6 +10300,10 @@ function renderPaidMediaSection(venue,from){
     const aud=metaAudienceHtml(rows,canMoney,missing);
     if(aud)h+=`<details class="mr-noprint" style="${PM_CARD_CSS}"><summary class="mr-sub" style="cursor:pointer">Who saw it${venue?' · '+escapeAttr(shortVenue(venue)):''}</summary><div style="margin-top:10px">${aud}</div><div class="mr-note" style="margin-top:8px">From the export's age and gender breakdown. Reach is added up across rows, so it overstates people reached.</div></details>`;
   }
+  if(fromExport&&rows.some(c=>c.audience&&META_WHERE_DIMS.some(([d])=>c.audience[d]))){
+    const where=metaWhereHtml(rows,canMoney,missing);
+    if(where)h+=`<details class="mr-noprint" style="${PM_CARD_CSS}"><summary class="mr-sub" style="cursor:pointer">Where it ran${venue?' · '+escapeAttr(shortVenue(venue)):''}</summary><div style="margin-top:10px">${where}</div><div class="mr-note" style="margin-top:8px">From the export's platform, placement and region breakdown.</div></details>`;
+  }
 
   // c) Needs linking, collapsed.
   if(unlinked.length){
@@ -10173,10 +10318,12 @@ function renderPaidMediaSection(venue,from){
       </span>`;};
     const ul=unlinked.slice().sort((a,b)=>(b.metrics?.[win]?.spend||0)-(a.metrics?.[win]?.spend||0));
     h+=`<details class="mr-noprint" style="${PM_CARD_CSS}"><summary class="mr-sub" style="cursor:pointer">Needs linking (${unlinked.length})${canMoney?` · ${pmMoney(pmTotals(unlinked,win).spend)} not yet counted against an activity`:''}</summary>
-      <div class="mr-note" style="margin:8px 0">Link each campaign to the activity it promoted, and its results join that activity's card. Several campaigns can link to one activity. New campaigns named "CODE | Activity name | MonYY" link themselves.</div>
+      <div class="mr-note" style="margin:8px 0">Link each campaign to the activity it promoted, and its results join that activity's card. Several campaigns can link to one activity. If there's no activity yet, <em>+ Create activity</em> opens the form filled in from the campaign. New campaigns named "CODE | Activity name | MonYY" link themselves.</div>
       <div style="display:grid;gap:10px">${ul.map(c=>{const m=pmAgg([c],win);return`<div style="border-top:1px solid var(--line);padding-top:10px;display:grid;gap:6px">
         <div><div style="font-size:13px;font-weight:700">${escapeAttr(c.name)}</div><div class="u-meta">${[escapeAttr(shortVenue(c.venue)),c.account&&c.account!==c.venue?escapeAttr(c.account):'',canMoney&&pmMoney(m.spend),m.results!=null&&`${pmInt(m.results)} results`,m.clicks!=null&&`${pmInt(m.clicks)} link clicks`].filter(Boolean).join(' · ')}</div></div>
-        ${canEditCampaigns()?linkCtl(c):''}</div>`;}).join('')}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px"><a href="${escapeAttr(metaAdsManagerUrl(c))}" target="_blank" rel="noopener">Open in Ads Manager ↗</a>${metaAdLibraryUrl(c.venue)?`<a href="${escapeAttr(metaAdLibraryUrl(c.venue))}" target="_blank" rel="noopener">Ad Library ↗</a>`:''}</div>
+        ${metaCreativeHtml(c)}
+        ${canEditCampaigns()?`${linkCtl(c)}<div><button class="btn btn-s" onclick="pmCreateActivityFromCampaign('${escapeAttr(c.id)}')">+ Create activity</button> <span class="u-meta">No activity for this yet? Create one from the campaign; it links itself.</span></div>`:''}</div>`;}).join('')}</div>
     </details>`;
   }
   if(fromExport)h+=metaExportUploadHtml(venue);
@@ -17093,6 +17240,7 @@ function readNotif(key,eventId){
 // SUBMIT FORM — conditional sections
 // ═══════════════════════════════════════
 function pickSubmitPath(path){
+  _pmCreateFromCampaign=null; // a "Create activity" from a Meta campaign only applies to the form it opened
   if(path==='import'&&!canApproveCampaigns()){
     alert('Bulk import is restricted to Head Office approvers.');
     path='';
@@ -18721,6 +18869,7 @@ async function submitEvent(){
     await loadCampaigns();
     // Verify it actually landed in EVENTS
     const found=EVENTS.find(e=>String(e.spId)===String(created.id));
+    if(found)await pmLinkCreatedActivity(found);
     if(!found){
       console.error('⚠︎︎ Item was created in SharePoint (ID '+created.id+') but did NOT appear in EVENTS after reload. This usually means a required field is missing or a Choice value did not match SharePoint exactly.');
       showFMsg('⚠︎︎ Submitted but not showing yet — check console (F12) for details, or refresh.','err');
