@@ -9819,18 +9819,26 @@ function pmLinkedEvent(c){
   }).filter(e=>!cs||(cs<=shift(e.end||e.start,7)&&ce>=shift(e.start,-60)))
     .sort((a,b)=>Math.abs(new Date(a.start)-new Date(cs||a.start))-Math.abs(new Date(b.start)-new Date(cs||b.start)))[0]||null;
 }
-// Activities a campaign can be linked to: those within 120 days either side of the campaign's
-// dates (the export's period when the campaign has none, else today). A campaign at a venue lists
+// Activities a campaign can be linked to. By default those within 120 days either side of the
+// campaign's dates (the export's period when the campaign has none, else today), so the likely
+// match is near the top; "All dates" lifts the window, and typing in the filter always searches
+// every activity, including Done and archived ones, so past campaigns can be linked to past
+// activities. Cancelled activities only appear with "Show cancelled". A campaign at a venue lists
 // that venue's activities and group-wide ones; a Loaded Rewards or unmatched campaign lists every
-// venue, grouped, Loaded-flagged activities first.
+// venue, grouped, Loaded-flagged activities first. Newest first within each group.
+// EVENTS already holds every activity in the list (loadCampaigns pages through all of them).
 const PM_LINK_WINDOW_DAYS=120;
-function pmLinkGroups(c){
+function pmLinkGroups(c,{allDates=false,cancelled=false,query=''}={}){
   const range=(META_SNAPSHOT?.ranges||[]).find(r=>(r.venues||[]).includes(c.venue));
   const today=toLocalISODate(new Date());
   const from0=c.start||range?.from||today,to0=c.end||range?.to||today;
   const shift=(d,n)=>{const x=new Date(d+'T00:00:00');x.setDate(x.getDate()+n);return toLocalISODate(x);};
   const lo=shift(from0,-PM_LINK_WINDOW_DAYS),hi=shift(to0,PM_LINK_WINDOW_DAYS);
-  const near=EVENTS.filter(e=>e.start&&!['Cancelled','Canceled'].includes(e.status)&&String(e.end||e.start)>=lo&&String(e.start)<=hi)
+  const q=String(query||'').toLowerCase().trim();
+  const wide=allDates||!!q;
+  const near=EVENTS.filter(e=>e.start&&(cancelled||!['Cancelled','Canceled'].includes(e.status))
+      &&(wide||(String(e.end||e.start)>=lo&&String(e.start)<=hi))
+      &&(!q||pmLinkLabel(e).toLowerCase().includes(q)))
     .sort((a,b)=>String(b.start).localeCompare(String(a.start)));
   const real=c.venue&&c.venue!=='Unassigned'&&c.venue!=='Loaded Rewards';
   if(real)return[{label:c.venue,items:near.filter(e=>e.venue===c.venue||e.venue==='All Venues')}].filter(g=>g.items.length);
@@ -9841,16 +9849,25 @@ function pmLinkGroups(c){
   venues.forEach(v=>groups.push({label:v,items:near.filter(e=>(e.venue||'No venue')===v&&!used.has(e.id))}));
   return groups.filter(g=>g.items.length);
 }
-// "Christmas Day · Darwin · 25/12"
+// "Christmas Day · Darwin · 25/12", or with the year once it's over: "Melbourne Cup · WBC · 03/11/25".
+// Cancelled and archived ones say so.
 function pmLinkLabel(e){
-  const d=String(e.start||'');
-  return`${e.title} · ${shortVenue(e.venue)||'No venue'}${d?` · ${d.slice(8,10)}/${d.slice(5,7)}`:''}`;
+  const d=String(e.start||''),past=String(e.end||e.start||'')<toLocalISODate(new Date());
+  const tag=['Cancelled','Canceled'].includes(e.status)?' (cancelled)':(['Archive','Archived'].includes(e.status)?' (archived)':'');
+  return`${e.title} · ${shortVenue(e.venue)||'No venue'}${d?` · ${d.slice(8,10)}/${d.slice(5,7)}${past?'/'+d.slice(2,4):''}`:''}${tag}`;
 }
-function pmFilterLinkOptions(selectId,q){
-  const sel=document.getElementById(selectId);if(!sel)return;
-  const t=String(q||'').toLowerCase().trim();
-  sel.querySelectorAll('option').forEach(o=>{if(o.value)o.hidden=!!t&&!o.textContent.toLowerCase().includes(t);});
-  sel.querySelectorAll('optgroup').forEach(g=>{g.hidden=![...g.querySelectorAll('option')].some(o=>!o.hidden);});
+function pmLinkOptionsHtml(c,opts){
+  const groups=pmLinkGroups(c,opts),n=groups.reduce((a,g)=>a+g.items.length,0);
+  const opt=e=>`<option value="${e.id}">${escapeAttr(pmLinkLabel(e))}</option>`;
+  const list=groups.length>1?groups.map(g=>`<optgroup label="${escapeAttr(g.label)}">${g.items.map(opt).join('')}</optgroup>`).join(''):(groups[0]?.items||[]).map(opt).join('');
+  const empty=opts?.query?'No activities match':(opts?.allDates?'No activities':'None near these dates: tick All dates');
+  return`<option value="">${n?`Choose activity… (${n})`:empty}</option>${list}`;
+}
+// Re-fills one row's picker from its filter box and ticks.
+function pmRefreshLinkOptions(sid){
+  const sel=document.getElementById(sid);if(!sel)return;
+  const c=metaVisibleCampaigns().find(x=>String(x.id)===sel.dataset.cid);if(!c)return;
+  sel.innerHTML=pmLinkOptionsHtml(c,{allDates:!!document.getElementById(sid+'-all')?.checked,cancelled:!!document.getElementById(sid+'-x')?.checked,query:document.getElementById(sid+'-q')?.value||''});
 }
 async function linkMetaCampaign(campaignId,evId){
   if(!canEditCampaigns()){alert('You do not have permission to edit activities.');return;}
@@ -9935,10 +9952,14 @@ function renderPaidMediaSection(venue){
   // Activities a campaign can be linked to: same venue (Loaded: Loaded-flagged anywhere; an
   // unassigned ad account: any venue), from the last 6 months on.
   const linkCtl=c=>{
-    const sid='pmLink-'+metaSlug(c.id),groups=pmLinkGroups(c),n=groups.reduce((a,g)=>a+g.items.length,0);
-    const opt=e=>`<option value="${e.id}">${escapeAttr(pmLinkLabel(e))}</option>`;
-    const list=groups.length>1?groups.map(g=>`<optgroup label="${escapeAttr(g.label)}">${g.items.map(opt).join('')}</optgroup>`).join(''):(groups[0]?.items||[]).map(opt).join('');
-    return`<span class="mr-noprint" style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap">${n>25?`<input type="search" class="form-input" style="width:140px;font-size:12px;padding:5px 8px" placeholder="Filter activities" aria-label="Filter activities for ${escapeAttr(c.name)}" oninput="pmFilterLinkOptions('${sid}',this.value)">`:''}<select class="form-select" style="width:auto;font-size:12px;max-width:260px" id="${sid}" aria-label="Activity for ${escapeAttr(c.name)}"><option value="">${n?'Choose activity…':'No activities near these dates'}</option>${list}</select><button class="btn btn-s" onclick="const s=document.getElementById('${sid}');if(!s.value){alert('Choose an activity first.');return;}linkMetaCampaign('${escapeAttr(c.id)}',s.value)">Link</button></span>`;};
+    const sid='pmLink-'+metaSlug(c.id);
+    return`<span class="mr-noprint" style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <input type="search" class="form-input" id="${sid}-q" style="width:140px;font-size:12px;padding:5px 8px" placeholder="Search all activities" aria-label="Search all activities for ${escapeAttr(c.name)}" oninput="pmRefreshLinkOptions('${sid}')">
+      <select class="form-select" style="width:auto;font-size:12px;max-width:260px" id="${sid}" data-cid="${escapeAttr(c.id)}" aria-label="Activity for ${escapeAttr(c.name)}">${pmLinkOptionsHtml(c,{})}</select>
+      <button class="btn btn-s" onclick="const s=document.getElementById('${sid}');if(!s.value){alert('Choose an activity first.');return;}linkMetaCampaign('${escapeAttr(c.id)}',s.value)">Link</button>
+      <label class="u-meta" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="${sid}-all" onchange="pmRefreshLinkOptions('${sid}')">All dates</label>
+      <label class="u-meta" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="${sid}-x" onchange="pmRefreshLinkOptions('${sid}')">Show cancelled</label>
+    </span>`;};
   const enriched=rows.map(c=>({c,m:pmDerive(c.metrics?.[win]),ev:pmLinkedEvent(c)}));
   const sv=({c,m},k)=>({name:c.name,venue:c.venue,status:c.status,end:c.end||'9999'})[k]??m[k];
   enriched.sort((a,b)=>{const va=sv(a,pmSortKey),vb=sv(b,pmSortKey);if(va==null&&vb==null)return 0;if(va==null)return 1;if(vb==null)return -1;const r=typeof va==='string'?va.localeCompare(vb):va-vb;return pmSortDir==='asc'?r:-r;});
