@@ -1,32 +1,30 @@
-# GDR automation: email request → activity → Job Folder → artwork filed
+# GDR automation: Jotform request → activity → Job Folder → Luca's artwork filed
 
-Written 27 Nov 2026. This automates Graphic Design Requests (GDRs) end to end using **Power Automate standard connectors only** (Outlook, SharePoint) and the Marlin OS. It needs no premium licence and no Claude usage.
+Written 27 Nov 2026, and updated the same day for how GDRs actually arrive. It uses **Jotform's own SharePoint integration** for intake, and **one Power Automate flow using standard connectors only** for filing artwork. It needs no premium Power Automate licence and no Claude usage.
+
+How GDRs work today:
+- Venue managers and staff fill in a **Jotform** Graphic Design Request.
+- Kim is copied on the notification emails.
+- **Luca** (design) is the only person who sends artwork back.
 
 ## The flow at a glance
 
-1. **Someone emails a GDR.** Flow A creates an activity in Submissions and replies "Logged as A-1234".
-2. **Kim approves it in the OS.** Job tickets are created, and the existing Job Folder flow creates the activity's folder (`JobFolderURL`).
-3. **Kim or the team selects ✉ Request artwork** on the activity, or on its design ticket in Queues. This opens an email to the designer with the brief, and the subject is `[A-1234] GDR – <title> – <venue>`.
-4. **The designer replies with the artwork attached, keeping `[A-1234]` in the subject.** Flow B saves the attachments into the activity's Job Folder, sets **Linked Artwork Folder** and posts a note on the activity.
-5. **The OS updates itself.** The activity and its design tickets show **Artwork received**, and the **Final artwork** Go Live check passes.
+1. **A venue manager submits the GDR Jotform.** Jotform adds a row to the Activities list straight away (stage Submissions) with the **Jotform Submission ID**. It can also save the uploaded files and the submission PDF to `GDR Inbox/<submission ID>`.
+2. **Jotform's notification email** goes to Luca and Kim, with the subject `GDR #<submission ID> – <venue> – <title>`.
+3. **Kim approves the activity in the OS.** Job tickets are created, and the existing Job Folder flow creates the activity's folder (`JobFolderURL`).
+4. **Luca replies with the artwork attached.** He replies either to the Jotform notification email, or to an OS **✉ Request artwork** email whose subject is `[A-1234] GDR #<id> – <title> – <venue>`.
+5. **Flow B** sees an email **from Luca with attachments**. It matches the activity by `[A-1234]`, or else by `GDR #<id>`, and saves the files into the activity's Job Folder. It then sets **Linked Artwork Folder** and posts a note on the activity.
+6. **The OS updates itself.** The activity and its design tickets show **Artwork received**, and the Go Live **Final artwork** check passes.
 
 ## What's already in the OS
 
 | Feature | Where |
 |---|---|
-| **Activity reference** "A-" + SharePoint item ID (e.g. A-1234) | Activity page header, Submissions cards, Pipeline cards, Queues rows. Typing `A-1234` in the top search box opens that activity. |
-| **✉ Request artwork** | Activity page → Design section, and Queues → Design tab rows. It emails the open design ticket's owner (default: the design lead, Luca). The email includes the brief, the due date, a link back to the activity, and asks them to reply with the artwork and keep the subject. |
+| **Activity reference** "A-" + SharePoint item ID (e.g. A-1234) | Activity page header, Submissions cards, Pipeline cards, Queues rows |
+| **GDR #<submission ID>**, shown next to the A-number when the activity came from Jotform | Same places. Search finds an activity by `A-1234`, by `GDR #…`, or by the bare submission ID. |
+| **✉ Request artwork** | Activity page → Design section, and Queues → Design tab rows. It opens an email to the open design ticket's owner (default Luca). The subject is `[A-1234] GDR #<id> – <title> – <venue>`. The body has the brief, the due date and a link back, and asks Luca to reply with the artwork attached and keep the subject. |
 | **Artwork received** | Shown on the activity's Design section and on its design and print tickets once **Artwork File** or **Linked Artwork Folder** is set. The Go Live "Final artwork" check passes at the same time. |
-
-## Set up the mailbox first (recommended)
-
-Flows triggered on a personal inbox stop when that person changes their password, leaves, or files the email somewhere else first. **Recommended: a shared mailbox, e.g. `design@marlingroup.com.au`**, with Kim and the flow owner given Full Access. GDRs and artwork replies go there. Shared mailboxes are free and don't need a licence. **IT has to create it** (Exchange admin).
-
-If a shared mailbox isn't possible yet:
-- **Use an Outlook folder in Kim's inbox:** make an Outlook rule "Subject includes **GDR** → move to folder **GDR**", and point both flows at that folder.
-- **Keep artwork replies on track:** a second rule, "Subject includes **[A-** → move to folder **GDR**", stops the main inbox rules filing them elsewhere.
-
-In the steps below, "the mailbox" means whichever you choose. For a shared mailbox, use the **"When a new email arrives in a shared mailbox (V2)"** trigger instead of **"When a new email arrives (V3)"**. Its settings are the same.
+| **Jotform Submission ID column** | **Admin & Schema → Proposed SharePoint columns** lists `JotformSubmissionId` (text). Select **Add missing** to create it. That button creates every missing column it lists, after a confirmation. |
 
 ## Names to use
 
@@ -37,175 +35,190 @@ In the steps below, "the mailbox" means whichever you choose. For a shared mailb
 | Comments list | `Activity Comments` |
 | Documents library | `Documents` (path `/Shared Documents`) |
 | Job Folders live in | `/Shared Documents/00. Marketing OS Files/00. Marketing Activities/` |
-| Fallback folder (create once) | `/Shared Documents/00. Marketing OS Files/GDR Inbox/` |
+| GDR Inbox (create once) | `/Shared Documents/00. Marketing OS Files/GDR Inbox/` |
+| Luca's address | `LUCA_EMAIL_HERE`. **Fill this in.** The OS uses `luca@marlingroup.com.au`; check this is the address he sends artwork from. |
 
-**Activities list columns (internal names)**, from `FIELD_MAPPING` and the OS code:
+## Part 1: Jotform → Activities (intake, no Power Automate)
 
-| Column | Internal name | Notes |
+### 1a. Create the column first
+
+In the OS, go to **Admin & Schema → Proposed SharePoint columns** and create **Jotform Submission ID** (`JotformSubmissionId`, single line of text) with **Add missing**.
+
+### 1b. Prepare the form
+
+In the Jotform builder:
+
+1. **Venue dropdown:** make the options **exactly** match the SharePoint Venue choices: `The Left Bank`, `The Ravenswood`, `Whitfords Brewing Co`, `Hotel Darwin`, `Mustang Bar`, `Beerland Brewing`, `All Venues`. Same spelling and capitals. Jotform sends the text as-is, so a value SharePoint doesn't know (e.g. "WBC" or "Whitfords") makes the row fail or leaves Venue blank.
+2. **Fixed values:** add these as **Hidden** fields (Form Elements → Hidden Box), so the integration has something to map to the fixed columns:
+   - `os_stage` = `Intake`
+   - `os_status` = `Active`
+   - `os_type` = `Campaign`
+   - `os_group` = `Venue, Brand & Collateral`
+   - `os_subtype` = `Brand Assets`
+
+   Kim changes the group and subtype in triage if needed. The OS needs a Group to choose job tickets.
+3. **Dates:** set every date field's format to **YYYY-MM-DD** (date field → Properties → Date Format). SharePoint date columns accept that reliably.
+   - **Start date is required by the OS.** If the form has no event or start date, map the "date needed by" field to Start, and Kim corrects it in triage.
+   - Alternatively, add a hidden Date field whose default is **Current Date**.
+4. **Description:** add a **Form Calculation** widget (or a hidden "Text" field filled by Conditions → Update/Calculate field) named `os_description` that combines the brief into one block:
+
+   ```
+   {briefDescription}
+   Formats / sizes: {dimensions}
+   Channels: {channels}
+   Due: {dueDate}
+
+   Submitted by: {requesterName} ({requesterEmail})
+   ```
+
+   Use your form's own field names in the braces. **Keep the `Submitted by:` line last.** The OS shows the last "Submitted by:" line as the requester, so Submissions shows the venue manager rather than whoever connected the integration.
+
+### 1c. Connect SharePoint
+
+1. In Jotform, open the form and go to **Settings → Integrations**. Search for **Microsoft SharePoint** and select **Authenticate**.
+2. Sign in with a Marlin Microsoft 365 account that can **edit** the Marketing site. Ideally use a shared or service account, not a personal one (see Permissions). Accept the consent screen.
+3. Choose the site **MarlinHospitalityMarketing**.
+4. **Action: Add row to an existing list**, list **Marketing & Activations 2026**.
+5. Map the fields as below. Jotform's menu names may differ slightly from what's described here; the mapping is what matters.
+
+| Jotform field (typical GDR form) | SharePoint column (internal name) | Notes |
 |---|---|---|
-| Title | `Title` | Required |
-| Venue | `Venue` | Choice: The Left Bank, The Ravenswood, Whitfords Brewing Co, Hotel Darwin, Mustang Bar, Beerland Brewing, All Venues |
-| Activity Type | `ActivityType` | Choice: Event, Promotion / Offer, Campaign, Maintenance / Update |
-| Start / End | `Start`, `End` | Date. Required in the OS. |
-| Workflow Stage | `WorkflowStage` | `Intake` shows as **Submissions** in the OS |
-| Status | `Status` | `Active` |
-| Description | `Description` | Multi-line text |
-| Activity Group / Subtype | `ActivityGroup`, `ActivitySubtype` | Group is a Choice; Subtype is text |
-| Job Folder | `JobFolderURL` | Written by the existing Job Folder flow |
-| Linked Artwork Folder | `LinkedArtworkFolderURL` | Flow B sets this |
-| Artwork file | `Artwork_x0020_File` | Display name "Artwork File" |
+| Activity / project title | `Title` | Required |
+| Venue (dropdown) | `Venue` | Choice. Must match exactly (see 1b). |
+| Event / start date | `Start` | Required. YYYY-MM-DD, or "date needed by" if there's no event date. |
+| End date | `End` | Optional. Leave unmapped for one-day items. |
+| `os_description` (calculated) | `Description` | Brief, formats, channels, due date and **Submitted by** |
+| `os_stage` (hidden: Intake) | `WorkflowStage` | Choice. `Intake` shows as **Submissions** in the OS. |
+| `os_status` (hidden: Active) | `Status` | Choice |
+| `os_type` (hidden: Campaign) | `ActivityType` | Choice: Event, Promotion / Offer, Campaign, Maintenance / Update |
+| `os_group` (hidden) | `ActivityGroup` | Choice. Exact text: `Venue, Brand & Collateral` |
+| `os_subtype` (hidden) | `ActivitySubtype` | Text |
+| **Submission ID** (`{id}`) | `JotformSubmissionId` | Text. This is what links Luca's reply. |
+| Channels (checkboxes) | (leave unmapped) | Goes into the description. `Channels` in SharePoint is a multi-choice column, and Jotform sends one string. |
+| Dimensions / formats | (leave unmapped) | Goes into the description |
+| Requester name / email | (leave unmapped) | Goes into the description's "Submitted by" line |
+| Due date | (optional) none | Goes into the description. The design ticket's due date is set on approval. |
 
-**Activity Comments columns:** `Title`, `Comment`, `CampaignId` (the activity's ID as text), `Recipient` (a name). This is what shows in the activity's Discussion and the Inbox.
+6. **Save, then send a test submission.** A new item should appear in the OS under Submissions with its **A-number** and **GDR #…**. If it doesn't, open the integration's **action logs** (Settings → Integrations → SharePoint → the action's menu). They show the exact SharePoint error. It's almost always a choice value that doesn't match, or a date format.
 
-## Flow A: "GDR email → Activity"
+**If a choice value doesn't match:**
+- **Venue:** make the dropdown options match SharePoint exactly, or map Venue from a hidden field and set it to `All Venues`, for Kim to fix in triage.
+- **Stage, Status, Type and Group:** these come from the hidden fields, so they can't drift.
+- **If SharePoint still rejects a choice:** the column has "Allow fill-in choices" turned off. Either fix the value, or turn fill-in on in list settings for that column. Fill-in is not recommended for Venue.
 
-1. **Create the flow.** In Power Automate: **Create → Automated cloud flow**. Name it `GDR email → Activity`, choose the trigger **When a new email arrives (V3)** (Office 365 Outlook), and select **Create**.
+### 1d. (Optional) Save the uploaded files and the submission PDF
+
+In the same integration, add a second action: **Upload files to a folder** (Jotform's file action for SharePoint).
+- **Library:** Documents
+- **Folder:** `00. Marketing OS Files/GDR Inbox`. If Jotform lets you name a subfolder from a form value, use the **Submission ID** so each GDR gets `GDR Inbox/<id>`.
+- **Turn on "Include submission PDF"** if offered.
+
+These are the requester's reference files. Luca's finished artwork goes into the activity's Job Folder (Part 3).
+
+## Part 2: The notification email subject (Kim does this in Jotform)
+
+Go to **Jotform → Settings → Emails**, edit the **Notification** email that goes to Luca and Kim, and set the **Subject** to:
+
+```
+GDR #{id} – {venue} – {activityTitle}
+```
+
+Use the form's real field names. `{id}` is Jotform's **Submission ID**. Luca usually replies to this email with the artwork, so his reply's subject carries `GDR #<id>`, and Flow B uses that to find the activity. Leave the reply-to as it is.
+
+## Part 3: Flow B "Luca's artwork → Job Folder" (Power Automate, standard connectors)
+
+This flow only reacts to **Luca's** emails with attachments, so nothing else in the inbox is touched.
+
+1. **Create the flow.** In Power Automate: **Create → Automated cloud flow**. Name it `GDR artwork (Luca) → Job Folder`, choose the trigger **When a new email arrives (V3)** (Office 365 Outlook), and select **Create**.
+   - If Luca's replies go to a **shared mailbox**, use **When a new email arrives in a shared mailbox (V2)** instead. Its settings are the same.
 2. **Trigger settings.** Open **Show all** and set:
-   - **Folder:** the mailbox or GDR folder
-   - **Subject Filter:** `GDR`
-   - **Include Attachments:** No
-   - **Only with Attachments:** No
-3. **Skip replies that are already logged.** Add **Condition**. Left side: expression `contains(triggerOutputs()?['body/subject'],'[A-')`, set to **is equal to** `true`.
-   - **If yes:** add **Terminate**, status **Succeeded**. It's an artwork reply or an already-logged GDR, which Flow B handles.
-   - **If no:** add the remaining steps in this branch.
-4. **Work out the venue.** Add **Compose** and rename it `Venue`. The expression checks the subject and body for a venue name or code, in order:
-
-   ```
-   if(or(contains(toLower(concat(triggerOutputs()?['body/subject'],' ',triggerOutputs()?['body/bodyPreview'])),'left bank'),contains(concat(' ',triggerOutputs()?['body/subject'],' '),' TLB '),contains(concat(' ',triggerOutputs()?['body/subject'],' '),' LB ')),'The Left Bank',
-   if(or(contains(toLower(concat(triggerOutputs()?['body/subject'],' ',triggerOutputs()?['body/bodyPreview'])),'ravenswood'),contains(concat(' ',triggerOutputs()?['body/subject'],' '),' RAV ')),'The Ravenswood',
-   if(or(contains(toLower(concat(triggerOutputs()?['body/subject'],' ',triggerOutputs()?['body/bodyPreview'])),'whitford'),contains(concat(' ',triggerOutputs()?['body/subject'],' '),' WBC ')),'Whitfords Brewing Co',
-   if(or(contains(toLower(concat(triggerOutputs()?['body/subject'],' ',triggerOutputs()?['body/bodyPreview'])),'hotel darwin'),contains(concat(' ',triggerOutputs()?['body/subject'],' '),' HD ')),'Hotel Darwin',
-   if(or(contains(toLower(concat(triggerOutputs()?['body/subject'],' ',triggerOutputs()?['body/bodyPreview'])),'mustang'),contains(concat(' ',triggerOutputs()?['body/subject'],' '),' MB ')),'Mustang Bar',
-   if(or(contains(toLower(concat(triggerOutputs()?['body/subject'],' ',triggerOutputs()?['body/bodyPreview'])),'beerland'),contains(concat(' ',triggerOutputs()?['body/subject'],' '),' BB '),contains(concat(' ',triggerOutputs()?['body/subject'],' '),' BL ')),'Beerland Brewing',
-   'All Venues'))))))
-   ```
-
-   Codes used in Marlin files: TLB/LB = The Left Bank, RAV = The Ravenswood, WBC = Whitfords Brewing Co, HD = Hotel Darwin, MB = Mustang Bar, BB/BL = Beerland Brewing. Codes only match as whole words in the subject, so "HD" inside another word won't match. If nothing matches, the venue is **All Venues** and Kim corrects it in triage.
-5. **Clean the title.** Add **Compose** and rename it `Title`:
-
-   ```
-   trim(replace(replace(replace(triggerOutputs()?['body/subject'],'FW: ',''),'RE: ',''),'GDR',''))
-   ```
-
-6. **Create the activity.** Add **Create item** (SharePoint).
-   - **Site Address:** the site above
-   - **List Name:** `Marketing & Activations 2026`
-   - **Title:** output of `Title`, prefixed `GDR – `
-   - **Venue Value:** output of `Venue`
-   - **ActivityType Value:** `Campaign`
-   - **Start:** `addDays(utcNow(),14,'yyyy-MM-dd')`. The real date is set in triage; a GDR email rarely gives one reliably.
-   - **End:** same as Start
-   - **WorkflowStage Value:** `Intake`
-   - **Status Value:** `Active`
-   - **ActivityGroup Value:** `Venue, Brand & Collateral`. The OS's Submit form requires a Group, so give it one Kim can change.
-   - **ActivitySubtype:** `Brand Assets`
-   - **Description:**
-
-     ```
-     GDR emailed by <From> on <Received Time>.
-     Dates and venue are placeholders, so check them in triage.
-
-     <Body>
-
-     Submitted by: <From>
-     Source email: <Web link>
-     ```
-
-     Use the trigger's **From**, **Received Time**, **Body** and **Web link** (or **Message Id**) dynamic values. The OS shows the last "Submitted by:" line as the requester, so Submissions shows the person who emailed rather than the flow owner. For HTML bodies, wrap Body in `html_to_text`. That's a standard Content Conversion action, or use **Body Preview**.
-7. **Reply to the sender.** Add **Reply to email (V3)**.
-   - **Message Id:** the trigger's Message Id
-   - **Body:** `Thanks — this design request is logged as A-@{outputs('Create_item')?['body/ID']}. Please keep [A-@{outputs('Create_item')?['body/ID']}] in the subject of any email about it, including the artwork reply.`
-   - **Reply All:** No
-8. **(Optional) Tag the subject for threading.** Use **Send an email (V2)** to Kim with the subject `[A-<ID>] GDR – <Title>`. Replying to that keeps the reference.
-9. **Save.** Test it by emailing the mailbox `GDR – Oyster Sundays WBC`. A new activity should appear in the OS Submissions, and you should get the "logged as A-…" reply.
-
-**What Kim does next in the OS:** open Submissions, correct the dates, venue and group, then **Approve**. Job tickets are proposed, and the existing flow creates the Job Folder. Then **✉ Request artwork** to email the designer.
-
-## Flow B: "Artwork reply → Job Folder"
-
-1. **Create the flow.** **Automated cloud flow** → **When a new email arrives (V3)**. Name it `Artwork reply → Job Folder`.
-2. **Trigger settings.**
-   - **Folder:** the mailbox or GDR folder
-   - **Subject Filter:** `[A-`
+   - **Folder:** Inbox (or the folder an Outlook rule moves GDR mail into)
+   - **From:** `LUCA_EMAIL_HERE`
    - **Only with Attachments:** Yes
    - **Include Attachments:** Yes
-3. **Get the reference.** Add **Compose** and rename it `ActivityID`:
-
-   ```
-   first(split(last(split(triggerOutputs()?['body/subject'],'[A-')),']'))
-   ```
-
-   It returns e.g. `1234`. Add a **Condition**: `isInt(outputs('ActivityID'))` is equal to `true`. Put everything below under **If yes**; under **If no**, use **Terminate**.
-4. **Get the activity.** Add **Get item** (SharePoint).
-   - **Site:** as above
-   - **List:** `Marketing & Activations 2026`
-   - **Id:** `outputs('ActivityID')`
-5. **Work out the folder.** Add **Compose** and rename it `FolderUrl`:
+   - **Subject Filter:** leave blank. The next steps check the subject.
+3. **Initialise variables.** Add **Initialize variable** three times:
+   - `ActivityID` (String, empty)
+   - `GdrID` (String, empty)
+   - `SaveTo` (String, empty)
+4. **Try the A-number first.** Add a **Condition**: `contains(triggerOutputs()?['body/subject'],'[A-')` is equal to `true`.
+   - **If yes:** add **Set variable** `ActivityID` = `first(split(last(split(triggerOutputs()?['body/subject'],'[A-')),']'))`.
+5. **Otherwise use the GDR number.** Add another **Condition**: `and(empty(variables('ActivityID')),contains(triggerOutputs()?['body/subject'],'GDR #'))` is equal to `true`.
+   - **If yes:**
+     - Add **Set variable** `GdrID` = `trim(first(split(first(split(last(split(triggerOutputs()?['body/subject'],'GDR #')),' ')),'–')))`.
+     - Add **Get items** (SharePoint). **List:** `Marketing & Activations 2026`. **Filter Query:** `JotformSubmissionId eq '@{variables('GdrID')}'`. **Top Count:** `1`.
+     - Add a **Condition**: `length(body('Get_items')?['value'])` is greater than `0`.
+       - **If yes:** **Set variable** `ActivityID` = `first(body('Get_items')?['value'])?['ID']`.
+6. **Nothing matched.** Add a **Condition**: `empty(variables('ActivityID'))` is equal to `true`.
+   - **If yes** (no `[A-…]`, and no activity with that GDR number):
+     - **Set variable** `SaveTo` = `concat('/Shared Documents/00. Marketing OS Files/GDR Inbox/',if(empty(variables('GdrID')),'Unmatched',variables('GdrID')))`.
+     - Add **Apply to each** over Attachments with the **Create file** steps from step 9.
+     - Add **Send an email (V2)** to Kim: "Artwork from Luca couldn't be matched to an activity (subject: …). Saved to GDR Inbox."
+     - Add **Terminate** (Succeeded).
+7. **Get the activity.** Add **Get item** (SharePoint). **List:** `Marketing & Activations 2026`. **Id:** `variables('ActivityID')`.
+8. **Work out the folder.** Add **Compose** and rename it `FolderUrl`. This handles `JobFolderURL` as a text column or a Hyperlink column:
 
    ```
    if(empty(body('Get_item')?['JobFolderURL']),'',if(contains(string(body('Get_item')?['JobFolderURL']),'"Url"'),body('Get_item')?['JobFolderURL']?['Url'],body('Get_item')?['JobFolderURL']))
    ```
 
-   This handles `JobFolderURL` whether it's a text column or a Hyperlink column. Then add **Compose** and rename it `FolderPath`, which turns the link into a library path:
+   Add **Compose** and rename it `FolderPath`, which turns the link into a library path:
 
    ```
    decodeUriComponent(last(split(first(split(outputs('FolderUrl'),'?')),'/sites/MarlinHospitalityMarketing')))
    ```
 
-   It returns e.g. `/Shared Documents/00. Marketing OS Files/00. Marketing Activities/WBC_DEC26_OYSTER_SUNDAYS`.
-6. **Decide where to save.** Add a **Condition**: `outputs('FolderUrl')` **is not equal to** an empty string, **and** `outputs('FolderPath')` **starts with** `/Shared Documents`.
-   - **If yes:** add **Compose** and rename it `SaveTo` = `outputs('FolderPath')`.
-   - **If no:** the Job Folder is missing, or the link is a sharing link the path can't be worked out from. This is the known failure mode in `docs/CALENDAR_DASHBOARD_AUDIT.md` §2.3. Add **Compose** and rename it `SaveTo` = `concat('/Shared Documents/00. Marketing OS Files/GDR Inbox/A-',outputs('ActivityID'))`.
-
-   (Simpler alternative: initialise a string variable `SaveTo` before the condition and **Set variable** in each branch.)
-7. **Save each attachment.** Add **Apply to each** over the trigger's **Attachments**. Inside it:
-   - **Condition:** `items('Apply_to_each')?['isInline']` is equal to `false` **and** `items('Apply_to_each')?['size']` is greater than `20000`. This skips email signature logos and inline images.
+   Add a **Condition**: `outputs('FolderUrl')` **is not equal to** an empty string **and** `outputs('FolderPath')` **starts with** `/Shared Documents`.
+   - **If yes:** **Set variable** `SaveTo` = `outputs('FolderPath')`.
+   - **If no:** **Set variable** `SaveTo` = `concat('/Shared Documents/00. Marketing OS Files/GDR Inbox/A-',variables('ActivityID'))`. The Job Folder is missing, or it's a sharing link. This is the known Job Folder failure in `docs/CALENDAR_DASHBOARD_AUDIT.md` §2.3.
+9. **Save the attachments.** Add **Apply to each** over the trigger's **Attachments**. Inside it:
+   - Add a **Condition**: `items('Apply_to_each')?['isInline']` is equal to `false` **and** `items('Apply_to_each')?['size']` is greater than `20000`. This skips signature logos and inline images.
    - **If yes:** add **Create file** (SharePoint).
-     - **Site:** as above
-     - **Folder Path:** `SaveTo`. Create file creates missing folders in the path, which covers the GDR Inbox fallback.
-     - **File Name:** `items('Apply_to_each')?['name']`
+     - **Folder Path:** `variables('SaveTo')`. Create file creates missing folders, which covers the GDR Inbox fallback.
+     - **File Name:** `concat(formatDateTime(utcNow(),'yyyyMMdd-HHmm'),'_',items('Apply_to_each')?['name'])`. The timestamp means revisions never overwrite each other.
      - **File Content:** `base64ToBinary(items('Apply_to_each')?['contentBytes'])`
-
-   If the same file name might come back twice (revisions), use File Name `concat(formatDateTime(utcNow(),'yyyyMMdd-HHmm'),'_',items('Apply_to_each')?['name'])` so nothing is overwritten.
-8. **Mark the activity as having artwork.**
-   - **If Linked Artwork Folder is empty and the Job Folder was found:** add **Update item** (SharePoint) with Id = `outputs('ActivityID')`, and set **LinkedArtworkFolderURL** = `outputs('FolderUrl')`. The OS then shows **Artwork received**, and the Go Live artwork check passes.
-     - If `LinkedArtworkFolderURL` is a **Hyperlink** column, Update item won't offer it. Use **Send an HTTP request to SharePoint** (standard) instead:
-     - **Method:** `POST`
-     - **Uri:** `_api/web/lists/getbytitle('Marketing & Activations 2026')/items(@{outputs('ActivityID')})/ValidateUpdateListItem`
-     - **Body:** `{"formValues":[{"FieldName":"LinkedArtworkFolderURL","FieldValue":"@{outputs('FolderUrl')}, Artwork"}]}`
-   - **In the fallback case:** leave it unset. Kim checks the GDR Inbox folder and links it from the activity page, under Linked Artwork Folder → Link.
-9. **Post a note on the activity.** Add **Create item** (SharePoint).
-   - **List:** `Activity Comments`
-   - **Title:** `body('Get_item')?['Title']`, first 50 characters
-   - **Comment:** `Artwork received from @{triggerOutputs()?['body/from']} (@{length(triggerOutputs()?['body/attachments'])} attachment(s)), saved to @{outputs('SaveTo')}.`
-     - In the fallback case, use instead: `Artwork received, but the Job Folder was missing, so it was saved to GDR Inbox/A-@{outputs('ActivityID')}. Please link the folder.`
-   - **CampaignId:** `outputs('ActivityID')`
-   - **Recipient:** `Kim` (tags her in the OS Inbox)
-10. **(Optional) Confirm to the designer.** Use **Reply to email (V3)** with "Thanks, artwork filed against A-1234."
-11. **Save.** Test it by replying to a **✉ Request artwork** email with a PDF attached. The PDF should appear in the activity's Job Folder, and the activity should show **Artwork received**.
+10. **Mark the activity as having artwork** (only when the Job Folder was found and Linked Artwork Folder is empty). Add **Update item**: **Id** = `variables('ActivityID')`, **LinkedArtworkFolderURL** = `outputs('FolderUrl')`. The OS then shows **Artwork received**, and the Go Live artwork check passes.
+    - If `LinkedArtworkFolderURL` is a **Hyperlink** column, Update item won't offer it. Use **Send an HTTP request to SharePoint** (standard) instead:
+      - **Method:** `POST`
+      - **Uri:** `_api/web/lists/getbytitle('Marketing & Activations 2026')/items(@{variables('ActivityID')})/ValidateUpdateListItem`
+      - **Body:** `{"formValues":[{"FieldName":"LinkedArtworkFolderURL","FieldValue":"@{outputs('FolderUrl')}, Artwork"}]}`
+11. **Post a note on the activity.** Add **Create item** (SharePoint).
+    - **List:** `Activity Comments`
+    - **Title:** first 50 characters of `body('Get_item')?['Title']`
+    - **Comment:** `Artwork received from Luca (@{length(triggerOutputs()?['body/attachments'])} attachment(s)), saved to @{variables('SaveTo')}.` In the fallback case, add "Job Folder missing, please link it."
+    - **CampaignId:** `variables('ActivityID')`
+    - **Recipient:** `Kim`. This shows in her OS Inbox and the activity's Discussion.
+12. **Save, then test.** Reply, as Luca, to a Jotform notification email (`GDR #…`) with a PDF attached. The PDF should appear in that activity's Job Folder, and the activity should show **Artwork received**.
 
 ## What can go wrong
 
 | Situation | What happens | Fix |
 |---|---|---|
-| The designer deletes `[A-1234]` from the subject | Flow B doesn't fire | Forward the email to the mailbox with `[A-1234]` added, or upload the files by hand |
-| No Job Folder yet (not approved, or the folder flow failed) | Files go to `GDR Inbox/A-1234` and a note is posted | Approve the activity, or use **Create folder / Link** on the activity page, then move the files |
+| A Jotform row fails | Nothing appears in Submissions | Check the integration's action logs. It's usually Venue spelling or the date format (1b). |
+| Luca sends a brand-new email (no `GDR #` or `[A-`) | It's saved to `GDR Inbox/Unmatched`, and Kim is emailed | Ask him to reply to the GDR or Request artwork email, or add `[A-1234]` to the subject |
+| No Job Folder yet (not approved, or the folder flow failed) | Files go to `GDR Inbox/A-1234`, and a note is posted | Approve the activity, or use **Create folder / Link** on the activity page, then move the files |
 | `JobFolderURL` holds a sharing link (`/:f:/s/…`) | The path can't be worked out, so the fallback is used | Re-link the folder from the activity page. The OS stores the folder's direct link. |
-| Signature images saved | They shouldn't be (inline and under 20KB are skipped) | Raise the size threshold |
-| The same reply arrives twice | Timestamped file names avoid overwriting | — |
+| Two activities have the same Jotform ID (e.g. duplicated in the OS) | The first match is used | Duplicates made with "Duplicate as next month" don't copy the Jotform ID |
 
-## IT and permissions
+## Plans, permissions and IT
 
-- **Shared mailbox** (recommended): IT creates `design@` (or similar) and gives Kim and the flow owner **Full Access**. No licence is needed.
-- **Flow owner account:** needs **Edit** on the Marketing site (the Activities list, Activity Comments and the Documents library). A Microsoft 365 business licence with standard Power Automate is enough. No premium connectors are used.
-- **Ownership:** have the flows owned by, or **co-owned with**, a second person or a service account, so they don't stop if one person's account changes.
-- **The existing Job Folder flow** is unchanged. Flow B only reads `JobFolderURL`.
-- **No app registrations, API keys or Azure resources** are needed.
+- **Jotform plan:** the SharePoint integration is in Jotform's Integrations. Check that your Jotform plan includes it and covers your monthly submission count; free plans have low limits. No Jotform Enterprise or Power Automate Jotform connector is needed. Microsoft lists that connector as **Premium**, which is why this guide uses Jotform's own integration.
+- **Microsoft sign-in and consent for Jotform:**
+  - **The consent screen:** connecting SharePoint in Jotform shows a Microsoft consent screen that lets the "Jotform" app access SharePoint on the signed-in user's behalf.
+  - **When IT is needed:** if Marlin's Microsoft 365 tenant blocks users from consenting to third-party apps, the screen says **"Need admin approval"**. An IT admin then has to approve the Jotform app (Entra ID → Enterprise applications → admin consent).
+  - **Which account:** connect with an account that will stay, such as a service account or Kim's, not a temporary one.
+- **Power Automate (Flow B):**
+  - **Licence:** Office 365 Outlook and SharePoint connectors only, which are standard, so a normal Microsoft 365 business licence is enough.
+  - **Access:** the flow owner needs **Edit** on the Marketing site (Activities, Activity Comments and Documents), and access to the mailbox Luca replies to.
+  - **Ownership:** add a **co-owner** so the flow survives account changes.
+- **Optional shared mailbox** (e.g. `design@marlingroup.com.au`): if Luca's replies should go somewhere other than Kim's inbox. IT creates it; it's free and needs no licence.
+- **No API keys, app registrations or Azure resources** are needed, beyond the Jotform consent above.
 
 ## Check it works
 
-1. Email `GDR – Test poster WBC` to the mailbox. You get a reply "logged as A-…", and the activity appears in Submissions with venue Whitfords Brewing Co.
-2. Approve it in the OS. Job tickets are proposed, and the Job Folder appears within a few minutes.
-3. On the activity, select **✉ Request artwork**. An email opens to Luca with `[A-…] GDR – …` in the subject.
-4. Reply to it with a PDF attached. The PDF appears in the Job Folder, a note appears in the activity's Discussion, and the activity shows **Artwork received**.
-5. Repeat with an activity that has no Job Folder. The file lands in `GDR Inbox/A-…`, and the note asks you to link the folder.
+1. **Create the column:** in **Admin & Schema**, create **Jotform Submission ID**.
+2. **Intake:** submit the GDR Jotform as a test. An activity appears in Submissions with its **A-number** and **GDR #…**, the right venue, and "Submitted by" showing the person who filled in the form.
+3. **Approve it** in the OS. Job tickets are proposed, and the Job Folder appears.
+4. **Request artwork:** select **✉ Request artwork**. The email to Luca has `[A-…] GDR #… – …` in its subject.
+5. **As Luca, reply to the Jotform notification email** with a PDF. The PDF lands in the Job Folder, a note appears on the activity, and the activity shows **Artwork received**.
+6. **As Luca, send a new email** with an attachment and no reference. It lands in `GDR Inbox/Unmatched`, and Kim is emailed.

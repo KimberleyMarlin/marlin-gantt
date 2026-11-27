@@ -6272,6 +6272,8 @@ async function loadCampaigns(){
         // The WorkflowStage value exactly as SharePoint holds it — differs from .stage only for
         // retired stages (In Build, Ready for Live) not yet rewritten by the stage clean-up.
         storedStageRaw,
+        // Jotform submission ID, written by the Jotform → SharePoint integration (docs/GDR_AUTOMATION.md).
+        jotformId:String(f.JotformSubmissionId||'').trim(),
         // Marked by an approver: Done without a Post-Campaign Report (see confirmDone).
         noReportNeeded:/--- NO REPORT NEEDED /.test(String(f.Description||'')),
         // Set by "Send back" on Submissions; cleared the next time the activity is edited.
@@ -14128,8 +14130,15 @@ function pickMyWorkTab(tab){_mwTab=tab;renderMyWork();}
 // SharePoint item ID. The Power Automate flows put it in email subjects ("[A-1234] GDR – …") so a
 // designer's reply with artwork can be filed into the right activity's Job Folder automatically.
 function activityRef(ev){return ev?.spId?`A-${ev.spId}`:'';}
-function activityRefHtml(ev){const r=activityRef(ev);return r?`<span class="tag t-gr" style="font-size:10px;font-variant-numeric:tabular-nums" title="Activity reference — keep [${r}] in email subjects about this activity">${r}</span>`:'';}
-function activityFromRef(text){const m=String(text||'').match(/\bA-?(\d{1,7})\b/i);return m?EVENTS.find(e=>String(e.spId)===m[1]):null;}
+// GDRs arrive through Jotform; its submission ID (JotformSubmissionId) is shown as "GDR #…" and is
+// what Luca's artwork reply to the Jotform notification email carries in its subject.
+function gdrRef(ev){return ev?.jotformId?`GDR #${ev.jotformId}`:'';}
+function activityRefHtml(ev){const r=activityRef(ev);const g=gdrRef(ev);return (r?`<span class="tag t-gr" style="font-size:10px;font-variant-numeric:tabular-nums" title="Activity reference — keep [${r}] in email subjects about this activity">${r}</span>`:'')+(g?` <span class="tag t-gr" style="font-size:10px;font-variant-numeric:tabular-nums" title="Jotform submission ID of the Graphic Design Request">${escapeAttr(g)}</span>`:'');}
+function activityFromRef(text){
+  const t=String(text||'');
+  const a=t.match(/\bA-?(\d{1,7})\b/i);if(a){const ev=EVENTS.find(e=>String(e.spId)===a[1]);if(ev)return ev;}
+  const g=t.match(/(?:GDR\s*#?\s*)?(\d{8,})/i);return g?EVENTS.find(e=>e.jotformId&&e.jotformId===g[1])||null:null;
+}
 // Artwork is "received" once final artwork is on the activity: an Artwork File, or a Linked Artwork
 // Folder (which Flow B sets to the Job Folder when it saves a designer's attachments).
 function artworkReceived(ev){return !!(ev&&(ev.artworkFile||ev.linkedArtworkFolderUrl));}
@@ -14148,7 +14157,7 @@ function requestArtwork(evId){
   const lines=[
     `Hi ${ticketOwnerName(to)},`,'',
     `Please design the artwork for this activity. Reply to this email with the final artwork attached and keep "[${ref}]" in the subject, so it saves into the activity's folder automatically.`,'',
-    `Activity: ${ev.title}`,`Reference: ${ref}`,`Venue: ${ev.venue||'TBC'}`,
+    `Activity: ${ev.title}`,`Reference: ${ref}`,gdrRef(ev)?`Jotform request: ${gdrRef(ev)}`:null,`Venue: ${ev.venue||'TBC'}`,
     `Dates: ${ev.start?fmtDate(ev.start):'TBC'}${ev.end&&ev.end!==ev.start?' to '+fmtDate(ev.end):''}`,
     due?`Artwork due: ${fmtDate(due)}`:null,
     (ev.assetsNeeded||[]).length?`Assets needed: ${ev.assetsNeeded.join(', ')}`:null,
@@ -14160,7 +14169,7 @@ function requestArtwork(evId){
     ev.description?`Details: ${strip(ev.description).slice(0,600)}`:null,'',
     `Open the activity: ${link}`
   ].filter(l=>l!==null);
-  const subject=`[${ref}] GDR – ${ev.title} – ${ev.venue||'TBC'}`;
+  const subject=`[${ref}] ${gdrRef(ev)||'GDR'} – ${ev.title} – ${ev.venue||'TBC'}`;
   window.location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`;
 }
 
@@ -15843,6 +15852,7 @@ const SCHEMA_KNOWN_GAPS=[
   {listKey:'myTasks',name:'ConvertedFromPersonalTaskId',displayName:'Converted From Personal Task Id',type:'number',purpose:'Back-reference to the private Personal Task this shared task was converted from, written at creation time. The authoritative idempotency check for convertPersonalTaskToShared — a retry after a failed patch-back on the Personal Task side reuses this record instead of creating a duplicate.'},
   {listKey:'ideas',name:'ActivityType',displayName:'Activity Type',type:'choice',choices:ACTIVITY_TYPE_OPTIONS.join(', '),purpose:'Captured at idea stage so "Continue Brief" can prefill it on the Activity submission form.'},
   {listKey:'ideas',name:'PromotedActivityId',displayName:'Promoted Activity Id',type:'number',purpose:'Links an idea to the real Activity created from it via "Continue Brief", so reopening a promoted idea opens that Activity instead of letting it be promoted twice.'},
+  {listKey:'campaigns',name:'JotformSubmissionId',displayName:'Jotform Submission ID',type:'text',purpose:'GDR intake: the Jotform submission ID ({id}), written by Jotform\'s SharePoint integration. Shown as "GDR #…" next to the A-number, and used by the artwork flow to match Luca\'s reply to the right activity. Text, not Number, because Jotform IDs are 19 digits.'},
   {listKey:'campaigns',name:'SentBackNote',displayName:'Sent Back Note',type:'text',purpose:'Set by "Send back" on Submissions: the reason, who sent it back and when. Shows "Sent back — waiting on submitter" on the Submissions card, and is cleared the next time the activity is edited. Without it, the send-back message still reaches the submitter, but the card status only lasts until the page reloads.'},
   {listKey:'campaigns',name:'DesignJobCreated',displayName:'Design Job Created',type:'yesno',purpose:'Marks that approval has already created this activity\'s proposed work items, so re-approving never creates a second set. Already read by the Hub; this is the first time anything writes to it.'},
   {listKey:'campaigns',name:'WebStatus',displayName:'Web Status',type:'choice',choices:'Not Required, To Do, In Progress, Done',purpose:'Build Channels checklist — Didier’s web build status.'},
@@ -19484,7 +19494,7 @@ function doSearch(q){
   const term=String(q||'').trim().toLowerCase();
   if(term.length<2){box.style.display='none';box.innerHTML='';return;}
   // "A-1234" (or "a1234") finds that activity by its reference.
-  const byRef=/^a-?\d+$/.test(term)?activityFromRef(term):null;
+  const byRef=/^(a-?\d+|(gdr\s*#?\s*)?\d{8,})$/.test(term)?activityFromRef(term):null;
   const results=byRef?[byRef]:EVENTS.filter(e=>[e.title,e.venue,e.activityType,e.eventFormat,e.description,e.product,e.supplierLookup,e.owner].some(value=>String(value||'').toLowerCase().includes(term))).slice(0,20);
   box.innerHTML=results.length?results.map(e=>`<div class="search-result" onclick="openSearchResult(${e.id})"><div class="search-result-title">${escapeAttr(e.title||'Untitled activity')}</div><div class="search-result-meta">${escapeAttr(e.venue||'No venue')} · ${escapeAttr(e.activityType||e.eventFormat||'Activity')} · ${e.start?fmtShort(e.start):'No date'}${isArchived(e)?' · Completed':''}</div></div>`).join(''):`<div class="search-result"><div class="search-result-title">No matching activities</div><div class="search-result-meta">Try a venue, campaign, product, supplier or owner.</div></div>`;
   box.style.display='block';
